@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radius Disc Golf — Intelligent Disc Golf Is Here</title>
+    <meta name="description" content="Radius is the AI-powered disc golf companion for iOS. CaddyAI recommendations, Game IQ tracking, satellite course maps, bag management, and a community built for the sport.">
+    <meta name="theme-color" content="#1a2821">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #1a2821;
+            --bg-mid: #2F3C35;
+            --bg-light: #3a4a42;
+            --gold: #F6C165;
+            --gold-dim: rgba(246,193,101,0.12);
+            --gold-ring: rgba(246,193,101,0.10);
+            --cream: #F5EDE1;
+            --cream-dark: #E8DFD0;
+            --sage: rgba(168,179,145,0.85);
+            --sage-dim: rgba(168,179,145,0.45);
+            --white: #FFFFFF;
+            --text-body: rgba(245,237,225,0.7);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-deep);
+            color: var(--cream);
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        /* ========== GLOBAL TEXTURES ========== */
+        .topo-pattern {
+            position: absolute;
+            inset: 0;
+            opacity: 0.06;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cpath d='M300 50 Q450 100 400 200 Q350 300 450 350 Q550 400 500 500 Q450 600 300 550 Q150 500 100 400 Q50 300 150 250 Q250 200 200 100 Q150 0 300 50Z' fill='none' stroke='%23A8B391' stroke-width='1.5'/%3E%3Cpath d='M300 100 Q400 140 370 220 Q340 300 410 340 Q480 380 450 460 Q420 540 300 500 Q180 460 150 380 Q120 300 190 260 Q260 220 240 150 Q220 80 300 100Z' fill='none' stroke='%23A8B391' stroke-width='1.5'/%3E%3Cpath d='M300 150 Q370 175 350 235 Q330 295 380 325 Q430 355 410 415 Q390 475 300 450 Q210 425 195 365 Q180 305 225 275 Q270 245 255 195 Q240 145 300 150Z' fill='none' stroke='%23A8B391' stroke-width='1.5'/%3E%3C/svg%3E");
+            background-size: 500px 500px;
+            pointer-events: none;
+        }
+
+        .noise {
+            position: absolute;
+            inset: 0;
+            opacity: 0.03;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+            background-size: 256px 256px;
+            pointer-events: none;
+        }
+
+        .ring-accent {
+            position: absolute;
+            border-radius: 50%;
+            border: 1.5px solid var(--gold-ring);
+            pointer-events: none;
+        }
+
+        .gold-glow {
+            position: absolute;
+            border-radius: 50%;
+            background: radial-gradient(ellipse, var(--gold-dim), transparent 70%);
+            pointer-events: none;
+        }
+
+        /* ========== NAV ========== */
+        nav {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 1000;
+            padding: 0 2rem;
+            transition: background 0.3s, box-shadow 0.3s;
+        }
+
+        nav.scrolled {
+            background: rgba(26, 40, 33, 0.92);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            box-shadow: 0 1px 0 rgba(168,179,145,0.08);
+        }
+
+        .nav-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 72px;
+        }
+
+        .nav-logo {
+            display: flex; align-items: center; gap: 10px;
+            text-decoration: none;
+        }
+
+        .nav-logo svg { width: 32px; height: 32px; }
+
+        .nav-wordmark {
+            font-family: 'Sora', sans-serif;
+            font-weight: 700;
+            font-size: 1.2rem;
+            color: var(--cream);
+            letter-spacing: -0.5px;
+        }
+
+        .nav-links {
+            display: flex; align-items: center; gap: 2.5rem;
+        }
+
+        .nav-links a {
+            color: var(--sage);
+            text-decoration: none;
+            font-size: 0.88rem;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover { color: var(--gold); }
+
+        .nav-cta {
+            background: var(--gold) !important;
+            color: var(--bg-deep) !important;
+            padding: 10px 22px !important;
+            border-radius: 100px;
+            font-weight: 700 !important;
+            font-size: 0.82rem !important;
+            letter-spacing: 0.3px;
+            transition: all 0.2s !important;
+        }
+
+        .nav-cta:hover {
+            background: #f8cf80 !important;
+            transform: translateY(-1px);
+        }
+
+        .mobile-toggle {
+            display: none; background: none; border: none; cursor: pointer; padding: 8px;
+        }
+
+        .mobile-toggle span {
+            display: block; width: 22px; height: 2px;
+            background: var(--cream); margin: 5px 0; border-radius: 2px;
+            transition: all 0.3s;
+        }
+
+        /* ========== HERO ========== */
+        .hero {
+            position: relative;
+            min-height: 100vh;
+            display: flex; align-items: center; justify-content: center;
+            background: linear-gradient(175deg, #1a2821 0%, #2F3C35 30%, #3a4a42 60%, #2F3C35 100%);
+            padding: 8rem 2rem 4rem;
+            overflow: hidden;
+        }
+
+        .hero-content {
+            max-width: 1200px; width: 100%;
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 3rem; align-items: center;
+            position: relative; z-index: 10;
+        }
+
+        .hero-text { max-width: 520px; }
+
+        .hero-badge {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: rgba(246,193,101,0.08);
+            border: 1px solid rgba(246,193,101,0.18);
+            border-radius: 100px;
+            padding: 6px 16px 6px 12px;
+            margin-bottom: 2rem;
+        }
+
+        .hero-badge .dot {
+            width: 7px; height: 7px;
+            background: var(--gold); border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.85); }
+        }
+
+        .hero-badge span {
+            font-family: 'Sora', sans-serif;
+            font-size: 0.72rem; font-weight: 600;
+            color: var(--gold); letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .hero h1 {
+            font-family: 'Sora', sans-serif;
+            font-weight: 800;
+            font-size: clamp(2.8rem, 5vw, 4rem);
+            line-height: 1.08;
+            color: var(--cream);
+            letter-spacing: -1.5px;
+            margin-bottom: 1.5rem;
+        }
+
+        .hero h1 .gold { color: var(--gold); }
+
+        .hero-sub {
+            color: var(--sage);
+            font-size: 1.1rem;
+            line-height: 1.7;
+            margin-bottom: 2.5rem;
+            font-weight: 400;
+        }
+
+        .hero-buttons { display: flex; gap: 1rem; align-items: center; }
+
+        .btn-gold {
+            display: inline-flex; align-items: center; gap: 10px;
+            background: var(--gold); color: var(--bg-deep);
+            padding: 16px 30px; border-radius: 14px;
+            text-decoration: none; font-weight: 700;
+            font-size: 0.95rem; letter-spacing: -0.2px;
+            transition: all 0.25s; border: none; cursor: pointer;
+        }
+
+        .btn-gold:hover {
+            background: #f8cf80;
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(246,193,101,0.25);
+        }
+
+        .btn-gold svg { width: 18px; height: 18px; }
+
+        .btn-ghost {
+            display: inline-flex; align-items: center; gap: 6px;
+            color: var(--sage); text-decoration: none;
+            font-weight: 600; font-size: 0.92rem;
+            padding: 16px 22px; border-radius: 14px;
+            border: 1px solid rgba(168,179,145,0.15);
+            transition: all 0.25s;
+        }
+
+        .btn-ghost:hover {
+            border-color: rgba(168,179,145,0.3);
+            color: var(--cream);
+            background: rgba(255,255,255,0.03);
+        }
+
+        /* Phone mockups */
+        .hero-phones {
+            position: relative;
+            display: flex; justify-content: center; align-items: center;
+            height: 600px;
+        }
+
+        .iphone-frame {
+            background: #1a1a1a;
+            border-radius: 40px;
+            padding: 8px;
+            position: relative;
+            box-shadow:
+                0 0 0 1.5px #3a3a3a,
+                0 30px 80px rgba(0,0,0,0.5),
+                0 15px 40px rgba(0,0,0,0.3),
+                inset 0 0 0 0.5px rgba(255,255,255,0.06);
+        }
+
+        .iphone-frame.hero-main {
+            width: 268px; height: 548px;
+            z-index: 3;
+        }
+
+        .iphone-frame.hero-back {
+            width: 240px; height: 492px;
+            position: absolute;
+            right: 0; top: 40px;
+            z-index: 1;
+            opacity: 0.6;
+            transform: rotate(3deg);
+        }
+
+        .iphone-screen {
+            width: 100%; height: 100%;
+            border-radius: 33px;
+            overflow: hidden;
+        }
+
+        .iphone-screen img {
+            width: 100%; height: 100%;
+            object-fit: cover; display: block;
+        }
+
+        /* ========== FEATURE SECTIONS (App Store preview style) ========== */
+        .feature-section {
+            position: relative;
+            padding: 8rem 2rem;
+            overflow: hidden;
+        }
+
+        .feature-section .bg-gradient {
+            position: absolute; inset: 0;
+            background: linear-gradient(175deg, #1a2821 0%, #2F3C35 30%, #3a4a42 60%, #2F3C35 100%);
+        }
+
+        .feature-section.alt .bg-gradient {
+            background: linear-gradient(175deg, #2F3C35 0%, #1a2821 50%, #2F3C35 100%);
+        }
+
+        .feature-inner {
+            max-width: 1100px; margin: 0 auto;
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 5rem; align-items: center;
+            position: relative; z-index: 10;
+        }
+
+        .feature-inner.reverse { direction: rtl; }
+        .feature-inner.reverse > * { direction: ltr; }
+
+        .feature-text {}
+
+        .feature-label {
+            font-family: 'Sora', sans-serif;
+            font-size: 0.72rem; font-weight: 700;
+            color: var(--gold); letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-bottom: 1.25rem;
+        }
+
+        .feature-text h2 {
+            font-family: 'Sora', sans-serif;
+            font-weight: 800;
+            font-size: clamp(2rem, 3.5vw, 2.8rem);
+            line-height: 1.1;
+            color: var(--cream);
+            letter-spacing: -1px;
+            margin-bottom: 1.25rem;
+        }
+
+        .feature-text h2 .gold { color: var(--gold); }
+
+        .feature-text p {
+            color: var(--sage);
+            font-size: 1rem;
+            line-height: 1.75;
+            margin-bottom: 1.5rem;
+        }
+
+        .feature-checks {
+            display: flex; flex-direction: column; gap: 0.9rem;
+        }
+
+        .feature-check {
+            display: flex; gap: 12px; align-items: flex-start;
+        }
+
+        .feature-check .icon {
+            width: 24px; height: 24px; min-width: 24px;
+            background: rgba(246,193,101,0.1);
+            border-radius: 6px;
+            display: flex; align-items: center; justify-content: center;
+            margin-top: 1px;
+        }
+
+        .feature-check .icon svg {
+            width: 12px; height: 12px; color: var(--gold);
+        }
+
+        .feature-check span {
+            color: var(--text-body); font-size: 0.9rem; line-height: 1.5;
+        }
+
+        .feature-phone {
+            display: flex; justify-content: center;
+        }
+
+        .feature-phone .iphone-frame {
+            width: 280px; height: 574px;
+        }
+
+        /* ========== SCREENSHOTS CAROUSEL ========== */
+        .screenshots-section {
+            position: relative;
+            padding: 7rem 0;
+            overflow: hidden;
+            background: linear-gradient(175deg, var(--bg-mid) 0%, var(--bg-deep) 100%);
+        }
+
+        .screenshots-header {
+            text-align: center;
+            padding: 0 2rem;
+            margin-bottom: 3rem;
+            position: relative; z-index: 10;
+        }
+
+        .screenshots-header h2 {
+            font-family: 'Sora', sans-serif;
+            font-weight: 800;
+            font-size: clamp(2rem, 3.5vw, 2.8rem);
+            color: var(--cream);
+            letter-spacing: -1px;
+            margin-bottom: 0.75rem;
+        }
+
+        .screenshots-header h2 .gold { color: var(--gold); }
+
+        .screenshots-header p {
+            color: var(--sage);
+            font-size: 1rem;
+        }
+
+        .screenshots-track {
+            display: flex; gap: 1.5rem;
+            padding: 1rem 2rem 2rem;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            position: relative; z-index: 10;
+            justify-content: center;
+        }
+
+        .screenshots-track::-webkit-scrollbar { display: none; }
+
+        .screenshot-item {
+            flex: 0 0 auto;
+            scroll-snap-align: center;
+            text-align: center;
+        }
+
+        .screenshot-item .iphone-frame {
+            width: 200px; height: 410px;
+            border-radius: 30px; padding: 6px;
+        }
+
+        .screenshot-item .iphone-screen {
+            border-radius: 25px;
+        }
+
+        .screenshot-item .label {
+            margin-top: 0.75rem;
+            font-family: 'Sora', sans-serif;
+            font-size: 0.78rem; font-weight: 600;
+            color: var(--sage-dim);
+            letter-spacing: 0.02em;
+        }
+
+        /* ========== CTA ========== */
+        .cta-section {
+            position: relative;
+            padding: 8rem 2rem;
+            text-align: center;
+            overflow: hidden;
+            background: linear-gradient(175deg, #1a2821 0%, #2F3C35 50%, #1a2821 100%);
+        }
+
+        .cta-inner {
+            position: relative; z-index: 10;
+            max-width: 600px; margin: 0 auto;
+        }
+
+        .cta-inner h2 {
+            font-family: 'Sora', sans-serif;
+            font-weight: 800;
+            font-size: clamp(2.2rem, 4vw, 3.2rem);
+            color: var(--cream);
+            letter-spacing: -1.5px;
+            line-height: 1.08;
+            margin-bottom: 1rem;
+        }
+
+        .cta-inner h2 .gold { color: var(--gold); }
+
+        .cta-inner p {
+            color: var(--sage);
+            font-size: 1.05rem;
+            line-height: 1.7;
+            margin-bottom: 2.5rem;
+        }
+
+        .cta-inner .btn-gold {
+            font-size: 1rem;
+            padding: 18px 36px;
+        }
+
+        /* ========== FOOTER ========== */
+        footer {
+            position: relative;
+            background: var(--bg-deep);
+            padding: 2.5rem 2rem;
+            border-top: 1px solid rgba(168,179,145,0.08);
+        }
+
+        .footer-inner {
+            max-width: 1100px; margin: 0 auto;
+            display: flex; justify-content: space-between;
+            align-items: center; flex-wrap: wrap; gap: 1rem;
+        }
+
+        .footer-left {
+            display: flex; align-items: center; gap: 10px;
+        }
+
+        .footer-left svg { width: 24px; height: 24px; }
+
+        .footer-left span {
+            font-family: 'Sora', sans-serif;
+            font-size: 0.9rem; font-weight: 600;
+            color: var(--sage-dim);
+        }
+
+        .footer-links {
+            display: flex; gap: 2rem; align-items: center;
+        }
+
+        .footer-links a {
+            color: var(--sage-dim);
+            text-decoration: none;
+            font-size: 0.82rem; font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover { color: var(--gold); }
+
+        .footer-bottom {
+            max-width: 1100px; margin: 1.5rem auto 0;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(168,179,145,0.06);
+            text-align: center;
+        }
+
+        .footer-bottom p {
+            color: rgba(168,179,145,0.25);
+            font-size: 0.75rem;
+        }
+
+        /* ========== ANIMATIONS ========== */
+        .reveal {
+            opacity: 0; transform: translateY(40px);
+            transition: opacity 0.8s ease, transform 0.8s ease;
+        }
+
+        .reveal.visible {
+            opacity: 1; transform: translateY(0);
+        }
+
+        /* ========== MOBILE ========== */
+        @media (max-width: 900px) {
+            .nav-links {
+                display: none;
+                position: absolute; top: 72px; left: 0; right: 0;
+                background: rgba(26, 40, 33, 0.98);
+                backdrop-filter: blur(20px);
+                flex-direction: column;
+                padding: 1.5rem 2rem 2rem; gap: 1rem;
+                border-bottom: 1px solid rgba(168,179,145,0.1);
+            }
+            .nav-links.open { display: flex; }
+            .mobile-toggle { display: block; }
+
+            .hero-content {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+            .hero-text { max-width: 100%; }
+            .hero-buttons { justify-content: center; flex-wrap: wrap; }
+            .hero-phones { height: 480px; }
+            .hero-phones .hero-back { display: none; }
+
+            .feature-inner, .feature-inner.reverse {
+                grid-template-columns: 1fr;
+                text-align: center;
+                direction: ltr;
+                gap: 3rem;
+            }
+            .feature-phone { order: -1; }
+            .feature-checks { align-items: center; }
+            .feature-check { text-align: left; }
+
+            .screenshots-track {
+                justify-content: flex-start;
+                padding-left: calc(50vw - 110px);
+            }
+
+            .footer-inner {
+                flex-direction: column; text-align: center;
+            }
+            .footer-links { flex-wrap: wrap; justify-content: center; }
+        }
+
+        @media (max-width: 480px) {
+            .hero h1 { font-size: 2.4rem; }
+            .feature-text h2 { font-size: 1.8rem; }
+            .iphone-frame.hero-main { width: 230px; height: 470px; }
+            .feature-phone .iphone-frame { width: 240px; height: 492px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav id="navbar">
+    <div class="nav-inner">
+        <a href="#" class="nav-logo">
+            <svg viewBox="0 0 100 100" fill="none">
+                <path d="M65 15C45 15 30 28 25 45C20 62 25 78 40 88C35 82 33 72 37 60C41 48 52 38 65 35C78 32 88 38 92 48C88 30 78 15 65 15Z" fill="#F5EDE1"/>
+                <path d="M25 45C20 62 25 78 40 88C35 82 33 72 37 60C41 48 52 38 65 35" stroke="#F6C165" stroke-width="4" fill="none" stroke-linecap="round"/>
+            </svg>
+            <span class="nav-wordmark">Radius</span>
+        </a>
+        <div class="nav-links" id="navLinks">
+            <a href="#caddy-ai">CaddyAI</a>
+            <a href="#course-maps">Course Maps</a>
+            <a href="#my-bag">My Bag</a>
+            <a href="#community">Community</a>
+            <a href="#download" class="nav-cta">Download</a>
+        </div>
+        <button class="mobile-toggle" id="mobileToggle" aria-label="Menu">
+            <span></span><span></span><span></span>
+        </button>
+    </div>
+</nav>
+
+<!-- ==================== HERO ==================== -->
+<section class="hero">
+    <div class="topo-pattern"></div>
+    <div class="noise"></div>
+    <div class="gold-glow" style="width:800px;height:800px;top:-300px;left:50%;transform:translateX(-50%)"></div>
+    <div class="ring-accent" style="width:500px;height:500px;top:-200px;right:-200px"></div>
+    <div class="ring-accent" style="width:650px;height:650px;top:-250px;right:-250px"></div>
+    <div class="ring-accent" style="width:350px;height:350px;bottom:100px;left:-150px"></div>
+
+    <div class="hero-content">
+        <div class="hero-text reveal">
+            <div class="hero-badge">
+                <div class="dot"></div>
+                <span>Now on iOS</span>
+            </div>
+            <h1>Intelligent<br>disc golf<br><span class="gold">is here.</span></h1>
+            <p class="hero-sub">The AI-powered disc golf companion that knows your bag, reads the hole, and makes you a smarter player. Every round.</p>
+            <div class="hero-buttons">
+                <a href="#download" class="btn-gold">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5C17.88 20.74 17 21.95 15.66 21.97C14.32 21.99 13.89 21.18 12.37 21.18C10.84 21.18 10.37 21.95 9.1 21.99C7.79 22.03 6.8 20.68 5.96 19.47C4.25 16.99 2.97 12.5 4.7 9.45C5.55 7.93 7.13 6.96 8.82 6.94C10.1 6.92 11.29 7.82 12.05 7.82C12.81 7.82 14.25 6.74 15.8 6.9C16.45 6.93 18.27 7.16 19.44 8.84C19.34 8.91 17.25 10.1 17.28 12.63C17.31 15.65 19.89 16.65 19.92 16.66C19.89 16.73 19.5 18.09 18.71 19.5ZM13 3.5C13.73 2.67 14.94 2.04 15.94 2C16.07 3.17 15.6 4.35 14.9 5.19C14.21 6.04 13.07 6.7 11.95 6.61C11.8 5.46 12.36 4.26 13 3.5Z"/></svg>
+                    Download for iOS
+                </a>
+                <a href="#caddy-ai" class="btn-ghost">
+                    See features
+                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 2l5 5-5 5"/></svg>
+                </a>
+            </div>
+        </div>
+        <div class="hero-phones reveal">
+            <div class="iphone-frame hero-back">
+                <div class="iphone-screen">
+                    <img src="assets/screen-caddy.png" alt="CaddyAI recommendations">
+                </div>
+            </div>
+            <div class="iphone-frame hero-main">
+                <div class="iphone-screen">
+                    <img src="assets/screen-home.png" alt="Radius home screen with Game IQ">
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== CADDY AI ==================== -->
+<section class="feature-section" id="caddy-ai">
+    <div class="bg-gradient"></div>
+    <div class="topo-pattern"></div>
+    <div class="noise"></div>
+    <div class="gold-glow" style="width:600px;height:600px;top:-100px;right:-200px"></div>
+    <div class="ring-accent" style="width:400px;height:400px;top:-100px;left:-200px"></div>
+    <div class="ring-accent" style="width:500px;height:500px;top:-150px;left:-250px"></div>
+
+    <div class="feature-inner reveal">
+        <div class="feature-text">
+            <div class="feature-label">CaddyAI</div>
+            <h2><span class="gold">AI</span> That Knows<br>Every Shot</h2>
+            <p>Disc picks tailored to your bag and the hole. CaddyAI reads distance, wind, and elevation to give you ranked recommendations with confidence scores.</p>
+            <div class="feature-checks">
+                <div class="feature-check">
+                    <div class="icon"><svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                    <span>Wind &amp; weather-aware recommendations</span>
+                </div>
+                <div class="feature-check">
+                    <div class="icon"><svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                    <span>Picks from the discs you actually carry</span>
+                </div>
+                <div class="feature-check">
+                    <div class="icon"><svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                    <span>Release angle, power, and form tips</span>
+                </div>
+                <div class="feature-check">
+                    <div class="icon"><svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                    <span>Confidence scoring on every pick</span>
+                </div>
+            </div>
+        </div>
+        <div class="feature-phone">
+            <div class="iphone-frame">
+                <div class="iphone-screen">
+                    <img src="assets/screen-caddy.png" alt="CaddyAI screen">
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== COURSE MAPS ==================== -->
+<section class="feature-section alt" id="course-maps">
+    <div class="bg-gradient"></div>
+    <div class="topo-pattern"></div>
+    <div class="noise"></div>
+    <div class="gold-glow" style="width:500px;height:500px;bottom:-100px;left:-100px"></div>
+    <div class="ring-accent" style="width:350px;height:350px;bottom:-100px;right:-150px"></div>
+
+    <div class="feature-inner reverse reveal">
+        <div class="feature-text">
+            <div class="feature-label">Live Course Maps</div>
+            <h2>Track <span class="gold">Every Throw</span><br>in Real Time</h2>
+            <p>Satellite maps with distance markers, wind data, and live scoring. See every hole from above and know exactly where you stand.</p>
+            <div class="feature-checks">
+                <div class="feature-check">
+                    <div class="icon"><svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                    <span>Real satellite imagery for every hole</span>
+                </div>
+                <div class="feature-check">
+                    <div class="icon"><svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                    <span>Distance markers from tee to basket</span>
+                </div>
+                <div class="feature-check">
+                    <div class="icon"><svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                    <span>Live weather &amp; wind conditions</span>
+                </div>
+            </div>
+        </div>
+        <div class="feature-phone">
+            <div class="iphone-frame">
+                <div class="iphone-screen">
+                    <img src="assets/screen-holemap.png" alt="Satellite hole map">
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== MY BAG ==================== -->
+<section class="feature-section" id="my-bag">
+    <div class="bg-gradient"></div>
+    <div class="topo-pattern"></div>
+    <div class="noise"></div>
+    <div class="gold-glow" style="width:600px;height:600px;top:-200px;left:50%;transform:translateX(-50%)"></div>
+    <div class="ring-accent" style="width:450px;height:450px;top:50px;right:-200px"></div>
+
+    <div class="feature-inner reveal">
+        <div class="feature-text">
+            <div class="feature-label">My Bag</div>
+            <h2><span class="gold">Master</span><br>Your Bag</h2>
+            <p>Smart ratings. Scan discs. Build smarter. Digitize your entire bag, see flight numbers at a glance, and find gaps in your lineup.</p>
+            <div class="feature-checks">
+                <div class="feature-check">
+                    <div class="icon"><svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                    <span>Full bag digitization with flight numbers</span>
+                </div>
+                <div class="feature-check">
+                    <div class="icon"><svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                    <span>AI-powered disc scanner</span>
+                </div>
+                <div class="feature-check">
+                    <div class="icon"><svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                    <span>Bag Analysis &amp; Gap Report</span>
+                </div>
+            </div>
+        </div>
+        <div class="feature-phone">
+            <div class="iphone-frame">
+                <div class="iphone-screen">
+                    <img src="assets/screen-mybag.png" alt="My Bag screen">
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== SCREENSHOTS ==================== -->
+<section class="screenshots-section">
+    <div class="topo-pattern"></div>
+    <div class="noise"></div>
+    <div class="gold-glow" style="width:500px;height:500px;top:50%;left:50%;transform:translate(-50%,-50%)"></div>
+
+    <div class="screenshots-header reveal">
+        <h2>Designed for the <span class="gold">Course</span></h2>
+        <p>A beautiful, intuitive interface built for disc golfers.</p>
+    </div>
+    <div class="screenshots-track">
+        <div class="screenshot-item">
+            <div class="iphone-frame"><div class="iphone-screen"><img src="assets/screen-home.png" alt="Home"></div></div>
+            <div class="label">Home</div>
+        </div>
+        <div class="screenshot-item">
+            <div class="iphone-frame"><div class="iphone-screen"><img src="assets/screen-caddy.png" alt="CaddyAI"></div></div>
+            <div class="label">CaddyAI</div>
+        </div>
+        <div class="screenshot-item">
+            <div class="iphone-frame"><div class="iphone-screen"><img src="assets/screen-holemap.png" alt="Course Map"></div></div>
+            <div class="label">Course Maps</div>
+        </div>
+        <div class="screenshot-item">
+            <div class="iphone-frame"><div class="iphone-screen"><img src="assets/screen-mybag.png" alt="My Bag"></div></div>
+            <div class="label">My Bag</div>
+        </div>
+        <div class="screenshot-item">
+            <div class="iphone-frame"><div class="iphone-screen"><img src="assets/screen-discover.png" alt="Discover"></div></div>
+            <div class="label">Discover</div>
+        </div>
+        <div class="screenshot-item">
+            <div class="iphone-frame"><div class="iphone-screen"><img src="assets/screen-locals.png" alt="Find Groups"></div></div>
+            <div class="label">Find Groups</div>
+        </div>
+        <div class="screenshot-item">
+            <div class="iphone-frame"><div class="iphone-screen"><img src="assets/screen-courses.png" alt="Courses"></div></div>
+            <div class="label">Courses</div>
+        </div>
+        <div class="screenshot-item">
+            <div class="iphone-frame"><div class="iphone-screen"><img src="assets/screen-profile.png" alt="Profile"></div></div>
+            <div class="label">Profile</div>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== COMMUNITY ==================== -->
+<section class="feature-section alt" id="community">
+    <div class="bg-gradient"></div>
+    <div class="topo-pattern"></div>
+    <div class="noise"></div>
+    <div class="gold-glow" style="width:600px;height:600px;bottom:-200px;right:-200px"></div>
+    <div class="ring-accent" style="width:500px;height:500px;top:-150px;right:-250px"></div>
+
+    <div class="feature-inner reverse reveal">
+        <div class="feature-text">
+            <div class="feature-label">Community</div>
+            <h2>Join the <span class="gold">Community</span></h2>
+            <p>Tips. Highlights. Forums. Your people. Find local casual rounds, follow players, and dive into conversations with disc golfers at every level.</p>
+            <div class="feature-checks">
+                <div class="feature-check">
+                    <div class="icon"><svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                    <span>Trending highlights &amp; disc reviews</span>
+                </div>
+                <div class="feature-check">
+                    <div class="icon"><svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                    <span>Find local rounds &amp; meetups near you</span>
+                </div>
+                <div class="feature-check">
+                    <div class="icon"><svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                    <span>Forums for tournaments, form checks &amp; advice</span>
+                </div>
+            </div>
+        </div>
+        <div class="feature-phone">
+            <div class="iphone-frame">
+                <div class="iphone-screen">
+                    <img src="assets/screen-discover.png" alt="Discover feed">
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== CTA ==================== -->
+<section class="cta-section" id="download">
+    <div class="topo-pattern"></div>
+    <div class="noise"></div>
+    <div class="gold-glow" style="width:700px;height:700px;top:50%;left:50%;transform:translate(-50%,-50%)"></div>
+    <div class="ring-accent" style="width:400px;height:400px;top:50%;left:50%;transform:translate(-50%,-50%)"></div>
+    <div class="ring-accent" style="width:600px;height:600px;top:50%;left:50%;transform:translate(-50%,-50%)"></div>
+    <div class="ring-accent" style="width:800px;height:800px;top:50%;left:50%;transform:translate(-50%,-50%)"></div>
+
+    <div class="cta-inner reveal">
+        <svg width="48" height="48" viewBox="0 0 100 100" fill="none" style="margin-bottom:1.5rem">
+            <path d="M65 15C45 15 30 28 25 45C20 62 25 78 40 88C35 82 33 72 37 60C41 48 52 38 65 35C78 32 88 38 92 48C88 30 78 15 65 15Z" fill="#F5EDE1"/>
+            <path d="M25 45C20 62 25 78 40 88C35 82 33 72 37 60C41 48 52 38 65 35" stroke="#F6C165" stroke-width="4" fill="none" stroke-linecap="round"/>
+        </svg>
+        <h2>Ready to play<br><span class="gold">smarter?</span></h2>
+        <p>Download Radius and bring AI-powered intelligence to every round you play.</p>
+        <a href="#" class="btn-gold">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5C17.88 20.74 17 21.95 15.66 21.97C14.32 21.99 13.89 21.18 12.37 21.18C10.84 21.18 10.37 21.95 9.1 21.99C7.79 22.03 6.8 20.68 5.96 19.47C4.25 16.99 2.97 12.5 4.7 9.45C5.55 7.93 7.13 6.96 8.82 6.94C10.1 6.92 11.29 7.82 12.05 7.82C12.81 7.82 14.25 6.74 15.8 6.9C16.45 6.93 18.27 7.16 19.44 8.84C19.34 8.91 17.25 10.1 17.28 12.63C17.31 15.65 19.89 16.65 19.92 16.66C19.89 16.73 19.5 18.09 18.71 19.5ZM13 3.5C13.73 2.67 14.94 2.04 15.94 2C16.07 3.17 15.6 4.35 14.9 5.19C14.21 6.04 13.07 6.7 11.95 6.61C11.8 5.46 12.36 4.26 13 3.5Z"/></svg>
+            Download for iOS
+        </a>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer>
+    <div class="footer-inner">
+        <div class="footer-left">
+            <svg viewBox="0 0 100 100" fill="none">
+                <path d="M65 15C45 15 30 28 25 45C20 62 25 78 40 88C35 82 33 72 37 60C41 48 52 38 65 35C78 32 88 38 92 48C88 30 78 15 65 15Z" fill="rgba(168,179,145,0.4)"/>
+                <path d="M25 45C20 62 25 78 40 88C35 82 33 72 37 60C41 48 52 38 65 35" stroke="#F6C165" stroke-width="4" fill="none" stroke-linecap="round"/>
+            </svg>
+            <span>Radius Disc Golf</span>
+        </div>
+        <div class="footer-links">
+            <a href="privacy.html">Privacy Policy</a>
+            <a href="mailto:support@radiusdiscgolf.com">Contact</a>
+        </div>
+    </div>
+    <div class="footer-bottom">
+        <p>&copy; 2026 Radius Disc Golf. All rights reserved.</p>
+    </div>
+</footer>
+
+<script>
+// Nav scroll
+const nav = document.getElementById('navbar');
+window.addEventListener('scroll', () => nav.classList.toggle('scrolled', window.scrollY > 50));
+
+// Mobile menu
+const toggle = document.getElementById('mobileToggle');
+const links = document.getElementById('navLinks');
+toggle.addEventListener('click', () => links.classList.toggle('open'));
+
+// Scroll reveal
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.12, rootMargin: '0px 0px -60px 0px' });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// Smooth scroll
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+        e.preventDefault();
+        const t = document.querySelector(a.getAttribute('href'));
+        if (t) { t.scrollIntoView({ behavior: 'smooth', block: 'start' }); links.classList.remove('open'); }
+    });
+});
+</script>
+</body>
+</html>

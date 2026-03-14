@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy — Radius Disc Golf</title>
+    <meta name="description" content="Privacy Policy for Radius Disc Golf iOS application.">
+    <meta name="theme-color" content="#1a2821">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #1a2821;
+            --bg-mid: #2F3C35;
+            --gold: #F6C165;
+            --cream: #F5EDE1;
+            --sage: rgba(168,179,145,0.85);
+            --sage-dim: rgba(168,179,145,0.45);
+            --text-body: rgba(245,237,225,0.7);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-deep);
+            color: var(--cream);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        nav {
+            background: var(--bg-deep);
+            padding: 0 2rem;
+            border-bottom: 1px solid rgba(168,179,145,0.08);
+        }
+
+        .nav-inner {
+            max-width: 1200px; margin: 0 auto;
+            display: flex; align-items: center;
+            justify-content: space-between; height: 72px;
+        }
+
+        .nav-logo {
+            display: flex; align-items: center; gap: 10px;
+            text-decoration: none;
+        }
+
+        .nav-logo svg { width: 32px; height: 32px; }
+
+        .nav-wordmark {
+            font-family: 'Sora', sans-serif;
+            font-weight: 700; font-size: 1.2rem;
+            color: var(--cream); letter-spacing: -0.5px;
+        }
+
+        .nav-back {
+            color: var(--sage-dim);
+            text-decoration: none;
+            font-size: 0.88rem; font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .nav-back:hover { color: var(--gold); }
+
+        .privacy-header {
+            position: relative;
+            padding: 5rem 2rem 3rem;
+            text-align: center;
+            background: linear-gradient(175deg, var(--bg-deep) 0%, var(--bg-mid) 100%);
+            overflow: hidden;
+        }
+
+        .privacy-header .topo-pattern {
+            position: absolute; inset: 0;
+            opacity: 0.06;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cpath d='M300 50 Q450 100 400 200 Q350 300 450 350 Q550 400 500 500 Q450 600 300 550 Q150 500 100 400 Q50 300 150 250 Q250 200 200 100 Q150 0 300 50Z' fill='none' stroke='%23A8B391' stroke-width='1.5'/%3E%3Cpath d='M300 100 Q400 140 370 220 Q340 300 410 340 Q480 380 450 460 Q420 540 300 500 Q180 460 150 380 Q120 300 190 260 Q260 220 240 150 Q220 80 300 100Z' fill='none' stroke='%23A8B391' stroke-width='1.5'/%3E%3C/svg%3E");
+            background-size: 500px 500px;
+            pointer-events: none;
+        }
+
+        .privacy-header h1 {
+            font-family: 'Sora', sans-serif;
+            font-weight: 800; font-size: 2.5rem;
+            color: var(--cream); letter-spacing: -1px;
+            margin-bottom: 0.5rem;
+            position: relative; z-index: 2;
+        }
+
+        .privacy-header p {
+            color: var(--sage-dim); font-size: 0.9rem;
+            position: relative; z-index: 2;
+        }
+
+        .privacy-content {
+            max-width: 720px; margin: 0 auto;
+            padding: 3rem 2rem 5rem;
+        }
+
+        .privacy-content h2 {
+            font-family: 'Sora', sans-serif;
+            font-size: 1.2rem; font-weight: 700;
+            color: var(--cream);
+            margin-top: 2.5rem; margin-bottom: 0.75rem;
+            letter-spacing: -0.3px;
+        }
+
+        .privacy-content h2:first-child { margin-top: 0; }
+
+        .privacy-content p {
+            color: var(--text-body);
+            font-size: 0.92rem; line-height: 1.8;
+            margin-bottom: 1rem;
+        }
+
+        .privacy-content ul {
+            color: var(--text-body);
+            font-size: 0.92rem; line-height: 1.8;
+            margin-bottom: 1rem; padding-left: 1.5rem;
+        }
+
+        .privacy-content ul li { margin-bottom: 0.35rem; }
+
+        .privacy-content a { color: var(--gold); text-decoration: underline; }
+        .privacy-content strong { color: var(--cream); }
+
+        footer {
+            background: var(--bg-deep);
+            padding: 2rem; text-align: center;
+            border-top: 1px solid rgba(168,179,145,0.06);
+        }
+
+        footer p {
+            color: rgba(168,179,145,0.25); font-size: 0.75rem;
+        }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="nav-inner">
+        <a href="index.html" class="nav-logo">
+            <svg viewBox="0 0 100 100" fill="none">
+                <path d="M65 15C45 15 30 28 25 45C20 62 25 78 40 88C35 82 33 72 37 60C41 48 52 38 65 35C78 32 88 38 92 48C88 30 78 15 65 15Z" fill="#F5EDE1"/>
+                <path d="M25 45C20 62 25 78 40 88C35 82 33 72 37 60C41 48 52 38 65 35" stroke="#F6C165" stroke-width="4" fill="none" stroke-linecap="round"/>
+            </svg>
+            <span class="nav-wordmark">Radius</span>
+        </a>
+        <a href="index.html" class="nav-back">&larr; Back to Home</a>
+    </div>
+</nav>
+
+<div class="privacy-header">
+    <div class="topo-pattern"></div>
+    <h1>Privacy Policy</h1>
+    <p>Last updated: March 14, 2026</p>
+</div>
+
+<div class="privacy-content">
+
+    <h2>Introduction</h2>
+    <p>Radius Disc Golf ("Radius," "we," "us," or "our") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use the Radius Disc Golf mobile application (the "App"). Please read this policy carefully. By using the App, you agree to the collection and use of information in accordance with this policy.</p>
+
+    <h2>Information We Collect</h2>
+    <p><strong>Account Information:</strong> When you create an account, we collect your name, email address, username, and profile photo.</p>
+    <p><strong>Gameplay Data:</strong> We collect data related to your disc golf rounds, including scores, disc selections, course information, hole-by-hole performance, and Game IQ metrics (distance control, accuracy, and putting scores).</p>
+    <p><strong>Bag and Disc Data:</strong> Information about the discs in your bag, including disc names, manufacturers, flight numbers, and usage statistics.</p>
+    <p><strong>Location Data:</strong> With your permission, we collect location data to provide course maps, satellite imagery, distance measurements, and local weather conditions during gameplay. We also use location to help you find local casual rounds and meetups.</p>
+    <p><strong>Device Information:</strong> We may collect device type, operating system version, unique device identifiers, and general diagnostic data to improve app performance.</p>
+    <p><strong>User-Generated Content:</strong> Posts, comments, forum threads, and other content you create within the Discover and community features of the App.</p>
+
+    <h2>How We Use Your Information</h2>
+    <ul>
+        <li>Provide, operate, and maintain the App and its features</li>
+        <li>Power CaddyAI recommendations based on your bag, the hole, and current conditions</li>
+        <li>Calculate and update your Game IQ performance metrics</li>
+        <li>Display satellite course maps and real-time weather data</li>
+        <li>Enable community features such as the Discover feed, forums, local meetups, and player connections</li>
+        <li>Improve and personalize your experience</li>
+        <li>Communicate with you about updates, features, and support</li>
+        <li>Detect, prevent, and address technical issues or abuse</li>
+    </ul>
+
+    <h2>AI and Machine Learning</h2>
+    <p>Radius uses artificial intelligence to power features like CaddyAI disc recommendations, Game IQ scoring, and Disc Scanner identification. These AI features process your gameplay data, bag configuration, and environmental conditions (wind, temperature, hole layout) to generate personalized recommendations. AI processing occurs on our servers, and the data used to generate recommendations is not shared with third parties.</p>
+
+    <h2>Sharing of Information</h2>
+    <p>We do not sell your personal information to third parties. We may share information in the following limited circumstances:</p>
+    <ul>
+        <li><strong>Community Features:</strong> Content you post publicly (forum threads, Discover posts, comments) is visible to other users of the App</li>
+        <li><strong>Service Providers:</strong> We may share information with trusted third-party services that help us operate the App (e.g., cloud hosting, analytics), subject to confidentiality obligations</li>
+        <li><strong>Legal Requirements:</strong> We may disclose information if required by law, regulation, or legal process</li>
+        <li><strong>Safety:</strong> We may share information when we believe it is necessary to protect the safety, rights, or property of Radius, our users, or the public</li>
+    </ul>
+
+    <h2>Data Storage and Security</h2>
+    <p>Your data is stored on secure servers with industry-standard encryption and access controls. We implement appropriate technical and organizational measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction. However, no method of transmission over the internet or electronic storage is 100% secure, and we cannot guarantee absolute security.</p>
+
+    <h2>Data Retention</h2>
+    <p>We retain your personal information for as long as your account is active or as needed to provide you with the App's services. If you delete your account, we will delete or anonymize your personal data within 30 days, except where we are required to retain it for legal or legitimate business purposes.</p>
+
+    <h2>Your Rights and Choices</h2>
+    <p><strong>Location Data:</strong> You can enable or disable location services at any time through your device settings. Disabling location may limit certain features such as course maps, weather data, and local meetups.</p>
+    <p><strong>Account Deletion:</strong> You may request deletion of your account and associated data by contacting us at the email address below.</p>
+    <p><strong>Data Access:</strong> You have the right to request a copy of the personal data we hold about you.</p>
+    <p><strong>Corrections:</strong> You may update or correct your account information at any time within the App's Profile settings.</p>
+
+    <h2>Children's Privacy</h2>
+    <p>The App is not intended for children under the age of 13. We do not knowingly collect personal information from children under 13. If we learn that we have collected information from a child under 13, we will promptly delete that information.</p>
+
+    <h2>Third-Party Links and Services</h2>
+    <p>The App may contain links to third-party websites or services. We are not responsible for the privacy practices of these third parties. We encourage you to review the privacy policies of any third-party services you access through the App.</p>
+
+    <h2>Changes to This Policy</h2>
+    <p>We may update this Privacy Policy from time to time. When we make changes, we will update the "Last updated" date at the top of this page. Your continued use of the App after changes are posted constitutes your acceptance of the revised policy.</p>
+
+    <h2>Contact Us</h2>
+    <p>If you have any questions about this Privacy Policy, please contact us at:</p>
+    <p><strong>Radius Disc Golf</strong><br>
+    Email: <a href="mailto:support@radiusdiscgolf.com">support@radiusdiscgolf.com</a></p>
+
+</div>
+
+<footer>
+    <p>&copy; 2026 Radius Disc Golf. All rights reserved.</p>
+</footer>
+
+</body>
+</html>
