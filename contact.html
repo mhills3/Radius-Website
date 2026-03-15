@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact Us — Radius Disc Golf</title>
+    <meta name="description" content="Get in touch with the Radius Disc Golf team. Send feedback, report issues, or explore partnerships.">
+    <meta name="theme-color" content="#1a2821">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://radiusdiscgolf.com/contact">
+    <meta property="og:title" content="Contact Us — Radius Disc Golf">
+    <meta property="og:description" content="Get in touch with the Radius Disc Golf team.">
+    <meta property="og:image" content="https://radiusdiscgolf.com/assets/og-image.png">
+
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+    <link rel="apple-touch-icon" href="assets/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #1a2821;
+            --bg-mid: #2F3C35;
+            --gold: #F6C165;
+            --cream: #F5EDE1;
+            --sage: rgba(168,179,145,0.85);
+            --sage-dim: rgba(168,179,145,0.45);
+            --text-body: rgba(245,237,225,0.7);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-deep);
+            color: var(--cream);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        nav {
+            background: var(--bg-deep);
+            padding: 0 2rem;
+            border-bottom: 1px solid rgba(168,179,145,0.08);
+        }
+
+        .nav-inner {
+            max-width: 1200px; margin: 0 auto;
+            display: flex; align-items: center;
+            justify-content: space-between; height: 72px;
+        }
+
+        .nav-logo {
+            display: flex; align-items: center; gap: 10px;
+            text-decoration: none;
+        }
+
+        .nav-wordmark {
+            font-family: 'Sora', sans-serif;
+            font-weight: 700; font-size: 1.2rem;
+            color: var(--cream); letter-spacing: -0.5px;
+        }
+
+        .nav-back {
+            color: var(--sage-dim);
+            text-decoration: none;
+            font-size: 0.88rem; font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .nav-back:hover { color: var(--gold); }
+
+        .contact-header {
+            position: relative;
+            padding: 5rem 2rem 3rem;
+            text-align: center;
+            background: linear-gradient(175deg, var(--bg-deep) 0%, var(--bg-mid) 100%);
+            overflow: hidden;
+        }
+
+        .contact-header .topo-pattern {
+            position: absolute; inset: 0;
+            opacity: 0.06;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cpath d='M300 50 Q450 100 400 200 Q350 300 450 350 Q550 400 500 500 Q450 600 300 550 Q150 500 100 400 Q50 300 150 250 Q250 200 200 100 Q150 0 300 50Z' fill='none' stroke='%23A8B391' stroke-width='1.5'/%3E%3Cpath d='M300 100 Q400 140 370 220 Q340 300 410 340 Q480 380 450 460 Q420 540 300 500 Q180 460 150 380 Q120 300 190 260 Q260 220 240 150 Q220 80 300 100Z' fill='none' stroke='%23A8B391' stroke-width='1.5'/%3E%3C/svg%3E");
+            background-size: 500px 500px;
+            pointer-events: none;
+        }
+
+        .contact-header h1 {
+            font-family: 'Sora', sans-serif;
+            font-weight: 800; font-size: 2.5rem;
+            color: var(--cream); letter-spacing: -1px;
+            margin-bottom: 0.5rem;
+            position: relative; z-index: 2;
+        }
+
+        .contact-header h1 .gold { color: var(--gold); }
+
+        .contact-header p {
+            color: var(--sage-dim); font-size: 0.95rem;
+            position: relative; z-index: 2;
+        }
+
+        .contact-content {
+            max-width: 560px; margin: 0 auto;
+            padding: 3rem 2rem 5rem;
+        }
+
+        .contact-form {
+            display: flex; flex-direction: column; gap: 1.25rem;
+        }
+
+        .contact-form select,
+        .contact-form input,
+        .contact-form textarea {
+            width: 100%;
+            padding: 14px 18px;
+            border-radius: 12px;
+            border: 1px solid rgba(168,179,145,0.15);
+            background: rgba(255,255,255,0.04);
+            color: var(--cream);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.92rem;
+            outline: none;
+            transition: border-color 0.2s, background 0.2s;
+        }
+
+        .contact-form select:focus,
+        .contact-form input:focus,
+        .contact-form textarea:focus {
+            border-color: var(--gold);
+            background: rgba(255,255,255,0.06);
+        }
+
+        .contact-form select {
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23A8B391' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            cursor: pointer;
+        }
+
+        .contact-form select option {
+            background: var(--bg-deep);
+            color: var(--cream);
+        }
+
+        .contact-form textarea {
+            min-height: 140px;
+            resize: vertical;
+        }
+
+        .contact-form ::placeholder {
+            color: var(--sage-dim);
+        }
+
+        .btn-gold {
+            display: inline-flex; align-items: center; gap: 10px;
+            background: var(--gold); color: var(--bg-deep);
+            padding: 16px 40px; border-radius: 14px;
+            text-decoration: none; font-weight: 700;
+            font-size: 0.95rem; letter-spacing: -0.2px;
+            transition: all 0.25s; border: none; cursor: pointer;
+            align-self: center;
+        }
+
+        .btn-gold:hover {
+            background: #f8cf80;
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(246,193,101,0.25);
+        }
+
+        footer {
+            background: var(--bg-deep);
+            padding: 2rem; text-align: center;
+            border-top: 1px solid rgba(168,179,145,0.06);
+        }
+
+        footer p {
+            color: rgba(168,179,145,0.25); font-size: 0.75rem;
+        }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="nav-inner">
+        <a href="index.html" class="nav-logo">
+            <img src="assets/logo.svg" alt="Radius" style="width:32px;height:32px;border-radius:6px">
+            <span class="nav-wordmark">Radius</span>
+        </a>
+        <a href="index.html" class="nav-back">&larr; Back to Home</a>
+    </div>
+</nav>
+
+<div class="contact-header">
+    <div class="topo-pattern"></div>
+    <h1>Get in <span class="gold">Touch</span></h1>
+    <p>Have feedback, found a bug, or want to partner with us? We'd love to hear from you.</p>
+</div>
+
+<div class="contact-content">
+    <form class="contact-form" action="https://formsubmit.co/mikey@radiusdiscgolf.com" method="POST">
+        <input type="hidden" name="_subject" value="New message from radiusdiscgolf.com">
+        <input type="hidden" name="_captcha" value="false">
+        <input type="hidden" name="_next" value="https://radiusdiscgolf.com/contact.html">
+
+        <select name="category" required>
+            <option value="" disabled selected>Select a topic</option>
+            <option value="Feedback">Feedback</option>
+            <option value="Report an Issue">Report an Issue</option>
+            <option value="Partnerships">Partnerships</option>
+            <option value="General Question">General Question</option>
+        </select>
+
+        <input type="text" name="name" placeholder="Your name" required>
+        <input type="email" name="email" placeholder="Your email" required>
+        <textarea name="message" placeholder="Your message..." required></textarea>
+
+        <button type="submit" class="btn-gold">
+            Send Message
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
+        </button>
+    </form>
+</div>
+
+<footer>
+    <p>&copy; 2026 Radius Disc Golf. All rights reserved.</p>
+</footer>
+
+</body>
+</html>
