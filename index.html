@@ -464,6 +464,98 @@
             letter-spacing: 0.02em;
         }
 
+        /* ========== CONTACT FORM ========== */
+        .contact-section {
+            position: relative;
+            padding: 8rem 2rem;
+            overflow: hidden;
+            background: linear-gradient(175deg, #2F3C35 0%, #1a2821 50%, #2F3C35 100%);
+        }
+
+        .contact-inner {
+            position: relative; z-index: 10;
+            max-width: 560px; margin: 0 auto;
+        }
+
+        .contact-inner .feature-label {
+            text-align: center;
+        }
+
+        .contact-inner h2 {
+            font-family: 'Sora', sans-serif;
+            font-weight: 800;
+            font-size: clamp(2rem, 3.5vw, 2.8rem);
+            color: var(--cream);
+            letter-spacing: -1px;
+            line-height: 1.1;
+            margin-bottom: 0.75rem;
+            text-align: center;
+        }
+
+        .contact-inner h2 .gold { color: var(--gold); }
+
+        .contact-inner > p {
+            color: var(--sage);
+            font-size: 1rem;
+            line-height: 1.7;
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .contact-form {
+            display: flex; flex-direction: column; gap: 1.25rem;
+        }
+
+        .contact-form select,
+        .contact-form input,
+        .contact-form textarea {
+            width: 100%;
+            padding: 14px 18px;
+            border-radius: 12px;
+            border: 1px solid rgba(168,179,145,0.15);
+            background: rgba(255,255,255,0.04);
+            color: var(--cream);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.92rem;
+            outline: none;
+            transition: border-color 0.2s, background 0.2s;
+        }
+
+        .contact-form select:focus,
+        .contact-form input:focus,
+        .contact-form textarea:focus {
+            border-color: var(--gold);
+            background: rgba(255,255,255,0.06);
+        }
+
+        .contact-form select {
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23A8B391' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            cursor: pointer;
+        }
+
+        .contact-form select option {
+            background: var(--bg-deep);
+            color: var(--cream);
+        }
+
+        .contact-form textarea {
+            min-height: 140px;
+            resize: vertical;
+        }
+
+        .contact-form ::placeholder {
+            color: var(--sage-dim);
+        }
+
+        .contact-form .btn-gold {
+            align-self: center;
+            padding: 16px 40px;
+        }
+
         /* ========== CTA ========== */
         .cta-section {
             position: relative;
@@ -629,6 +721,7 @@
             <a href="#course-maps">Course Maps</a>
             <a href="#my-bag">My Bag</a>
             <a href="#community">Community</a>
+            <a href="#contact">Contact</a>
             <a href="#download" class="nav-cta">Download</a>
         </div>
         <button class="mobile-toggle" id="mobileToggle" aria-label="Menu">
@@ -883,6 +976,43 @@
     </div>
 </section>
 
+<!-- ==================== CONTACT ==================== -->
+<section class="contact-section" id="contact">
+    <div class="topo-pattern"></div>
+    <div class="noise"></div>
+    <div class="gold-glow" style="width:500px;height:500px;top:50%;left:50%;transform:translate(-50%,-50%)"></div>
+    <div class="ring-accent" style="width:400px;height:400px;top:-100px;left:-200px"></div>
+
+    <div class="contact-inner reveal">
+        <div class="feature-label">Contact Us</div>
+        <h2>Get in <span class="gold">Touch</span></h2>
+        <p>Have feedback, found a bug, or want to partner with us? We'd love to hear from you.</p>
+
+        <form class="contact-form" action="https://formsubmit.co/mikey@radiusdiscgolf.com" method="POST">
+            <input type="hidden" name="_subject" value="New message from radiusdiscgolf.com">
+            <input type="hidden" name="_captcha" value="false">
+            <input type="hidden" name="_next" value="https://radiusdiscgolf.com/#contact">
+
+            <select name="category" required>
+                <option value="" disabled selected>Select a topic</option>
+                <option value="Feedback">Feedback</option>
+                <option value="Report an Issue">Report an Issue</option>
+                <option value="Partnerships">Partnerships</option>
+                <option value="General Question">General Question</option>
+            </select>
+
+            <input type="text" name="name" placeholder="Your name" required>
+            <input type="email" name="email" placeholder="Your email" required>
+            <textarea name="message" placeholder="Your message..." required></textarea>
+
+            <button type="submit" class="btn-gold">
+                Send Message
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
+            </button>
+        </form>
+    </div>
+</section>
+
 <!-- ==================== CTA ==================== -->
 <section class="cta-section" id="download">
     <div class="topo-pattern"></div>
@@ -912,7 +1042,7 @@
         </div>
         <div class="footer-links">
             <a href="privacy.html">Privacy Policy</a>
-            <a href="mailto:support@radiusdiscgolf.com">Contact</a>
+            <a href="mailto:mikey@radiusdiscgolf.com">Contact</a>
         </div>
     </div>
     <div class="footer-bottom">
