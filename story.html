@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Our Story — Radius Disc Golf</title>
+    <meta name="description" content="The story behind Radius Disc Golf — why we built it and what drives us.">
+    <meta name="theme-color" content="#1a2821">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://radiusdiscgolf.com/story">
+    <meta property="og:title" content="Our Story — Radius Disc Golf">
+    <meta property="og:description" content="The story behind Radius Disc Golf — why we built it and what drives us.">
+    <meta property="og:image" content="https://radiusdiscgolf.com/assets/og-image.png">
+
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+    <link rel="apple-touch-icon" href="assets/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #1a2821;
+            --bg-mid: #2F3C35;
+            --gold: #F6C165;
+            --cream: #F5EDE1;
+            --sage: rgba(168,179,145,0.85);
+            --sage-dim: rgba(168,179,145,0.45);
+            --text-body: rgba(245,237,225,0.7);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-deep);
+            color: var(--cream);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        nav {
+            background: var(--bg-deep);
+            padding: 0 2rem;
+            border-bottom: 1px solid rgba(168,179,145,0.08);
+        }
+
+        .nav-inner {
+            max-width: 1200px; margin: 0 auto;
+            display: flex; align-items: center;
+            justify-content: space-between; height: 72px;
+        }
+
+        .nav-logo {
+            display: flex; align-items: center; gap: 10px;
+            text-decoration: none;
+        }
+
+        .nav-wordmark {
+            font-family: 'Sora', sans-serif;
+            font-weight: 700; font-size: 1.2rem;
+            color: var(--cream); letter-spacing: -0.5px;
+        }
+
+        .nav-back {
+            color: var(--sage-dim);
+            text-decoration: none;
+            font-size: 0.88rem; font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .nav-back:hover { color: var(--gold); }
+
+        .story-header {
+            position: relative;
+            padding: 5rem 2rem 3rem;
+            text-align: center;
+            background: linear-gradient(175deg, var(--bg-deep) 0%, var(--bg-mid) 100%);
+            overflow: hidden;
+        }
+
+        .story-header .topo-pattern {
+            position: absolute; inset: 0;
+            opacity: 0.06;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cpath d='M300 50 Q450 100 400 200 Q350 300 450 350 Q550 400 500 500 Q450 600 300 550 Q150 500 100 400 Q50 300 150 250 Q250 200 200 100 Q150 0 300 50Z' fill='none' stroke='%23A8B391' stroke-width='1.5'/%3E%3Cpath d='M300 100 Q400 140 370 220 Q340 300 410 340 Q480 380 450 460 Q420 540 300 500 Q180 460 150 380 Q120 300 190 260 Q260 220 240 150 Q220 80 300 100Z' fill='none' stroke='%23A8B391' stroke-width='1.5'/%3E%3C/svg%3E");
+            background-size: 500px 500px;
+            pointer-events: none;
+        }
+
+        .story-header h1 {
+            font-family: 'Sora', sans-serif;
+            font-weight: 800; font-size: 2.5rem;
+            color: var(--cream); letter-spacing: -1px;
+            margin-bottom: 0.5rem;
+            position: relative; z-index: 2;
+        }
+
+        .story-header h1 .gold { color: var(--gold); }
+
+        .story-header p {
+            color: var(--sage-dim); font-size: 0.95rem;
+            position: relative; z-index: 2;
+        }
+
+        .story-content {
+            max-width: 720px; margin: 0 auto;
+            padding: 3rem 2rem 5rem;
+        }
+
+        .founder-card {
+            display: flex; align-items: center; gap: 1.5rem;
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(168,179,145,0.1);
+            border-radius: 16px;
+        }
+
+        .founder-photo {
+            width: 110px; height: 110px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid var(--gold);
+            flex-shrink: 0;
+        }
+
+        .founder-info h3 {
+            font-family: 'Sora', sans-serif;
+            font-size: 1.2rem; font-weight: 700;
+            color: var(--cream);
+            margin-bottom: 0.25rem;
+        }
+
+        .founder-info .role {
+            font-size: 0.85rem;
+            color: var(--gold);
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+
+        .story-content p {
+            color: var(--text-body);
+            font-size: 0.95rem; line-height: 1.85;
+            margin-bottom: 1.25rem;
+        }
+
+        .story-content p.highlight {
+            color: var(--cream);
+            font-family: 'Sora', sans-serif;
+            font-size: 1.15rem;
+            font-weight: 600;
+            line-height: 1.6;
+            margin: 2rem 0;
+            padding-left: 1.25rem;
+            border-left: 3px solid var(--gold);
+        }
+
+        .story-content p.emphasis {
+            color: var(--sage);
+            font-size: 1rem;
+            font-weight: 500;
+            line-height: 1.7;
+        }
+
+        .story-values {
+            margin: 2.5rem 0;
+            display: flex; flex-direction: column; gap: 0.5rem;
+        }
+
+        .story-values p {
+            color: var(--cream);
+            font-size: 1rem;
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+        }
+
+        .story-closing {
+            margin-top: 2.5rem;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(168,179,145,0.1);
+        }
+
+        .story-closing p {
+            font-family: 'Sora', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 800;
+            color: var(--gold);
+            text-align: center;
+        }
+
+        @media (max-width: 600px) {
+            .founder-card {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+
+        footer {
+            background: var(--bg-deep);
+            padding: 2rem; text-align: center;
+            border-top: 1px solid rgba(168,179,145,0.06);
+        }
+
+        footer p {
+            color: rgba(168,179,145,0.25); font-size: 0.75rem;
+        }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="nav-inner">
+        <a href="index.html" class="nav-logo">
+            <img src="assets/logo.svg" alt="Radius" style="width:32px;height:32px;border-radius:6px">
+            <span class="nav-wordmark">Radius</span>
+        </a>
+        <a href="index.html" class="nav-back">&larr; Back to Home</a>
+    </div>
+</nav>
+
+<div class="story-header">
+    <div class="topo-pattern"></div>
+    <h1>Our <span class="gold">Story</span></h1>
+    <p>Why Radius exists and the vision behind it.</p>
+</div>
+
+<div class="story-content">
+
+    <div class="founder-card">
+        <img src="assets/mikey-headshot.jpg" alt="Mikey Hills" class="founder-photo">
+        <div class="founder-info">
+            <h3>Mikey Hills</h3>
+            <div class="role">Founder & Developer</div>
+        </div>
+    </div>
+
+    <p>I didn't set out to build a disc golf app.</p>
+
+    <p>At the time, I was working on a completely different platform for the financial industry. But as I spent more time playing and getting involved in the disc golf community, something started to stand out.</p>
+
+    <p class="highlight">There were gaps.</p>
+
+    <p>Coming from a golf background, I was used to seeing advanced tools, analytics, and clear pathways to improvement. In disc golf, that didn't really exist. As a competitive person, that frustrated me.</p>
+
+    <p>I didn't know where I stood in my game. I didn't know what I needed to improve. And the only real measure of progress was my final score.</p>
+
+    <p>There was no system. No feedback loop. No real way to get better with intention.</p>
+
+    <p class="emphasis">That's when the idea for Radius started to take shape.</p>
+
+    <p>I had some exposure to software through a friend from church, but building an app like this was completely new territory. What started as a simple idea quickly grew into something much bigger.</p>
+
+    <p>The hardest part wasn't just building it — it was realizing how much the app could become. There were so many ways Radius could help players improve, connect, and experience the game differently. Turning that vision into something real took time, iteration, and a lot of persistence.</p>
+
+    <p class="highlight">But I built it.</p>
+
+    <p>Radius is designed to bring the disc golf community together — helping players meet, compete, and share experiences — while also giving them the tools to actually improve. To understand their game. To make smarter decisions. To see real progress.</p>
+
+    <p>If Radius succeeds, disc golf won't just grow — it will evolve. It will become more analytical, more intentional, and more advanced — just like other sports that have embraced technology.</p>
+
+    <p>I care about this because disc golf has quickly become one of my favorite parts of life.</p>
+
+    <div class="story-values">
+        <p>The people.</p>
+        <p>The competition.</p>
+        <p>The community.</p>
+    </div>
+
+    <p>I want to help grow that. I want to help players get better. I want to help the community expand. And I want to be part of pushing the sport forward.</p>
+
+    <div class="story-closing">
+        <p>That's why Radius exists.</p>
+    </div>
+
+</div>
+
+<footer>
+    <p>&copy; 2026 Radius Disc Golf. All rights reserved.</p>
+</footer>
+
+</body>
+</html>
