@@ -224,35 +224,28 @@
             text-align: center;
         }
 
-        .team-photo-wrap {
+        .team-member img {
             width: 100%;
-            min-height: 200px;
             border-radius: 16px;
-            overflow: hidden;
-            margin-bottom: 0.5rem;
-            -webkit-mask-image: -webkit-radial-gradient(white, black);
-        }
-
-        .team-photo-wrap img {
-            width: 90%;
-            height: 100%;
             object-fit: cover;
-            object-position: center top;
-            display: block;
             filter: grayscale(100%);
-            margin: 0 auto;
+            display: block;
         }
 
-        .team-member h4 {
+        .team-member-name {
+            margin-top: 1.25rem;
+            text-align: center;
+        }
+
+        .team-member-name h4 {
             font-family: 'Sora', sans-serif;
-            font-size: 1.1rem; font-weight: 700;
+            font-size: 1.3rem; font-weight: 700;
             color: var(--cream);
-            margin-bottom: 0.15rem;
-            margin-top: 0.25rem;
+            margin-bottom: 0.3rem;
         }
 
-        .team-member .team-role {
-            font-size: 0.85rem;
+        .team-member-name .team-role {
+            font-size: 0.88rem;
             color: var(--gold);
             font-weight: 600;
         }
@@ -402,18 +395,18 @@
 
         <div class="team-members">
             <div class="team-member">
-                <div class="team-photo-wrap">
-                    <img src="assets/nick-headshot.png" alt="Nick Harshaw">
+                <img src="assets/nick-headshot.png" alt="Nick Harshaw">
+                <div class="team-member-name">
+                    <h4>Nick Harshaw</h4>
+                    <div class="team-role">Director of Partnerships</div>
                 </div>
-                <h4>Nick Harshaw</h4>
-                <div class="team-role">Director of Partnerships</div>
             </div>
             <div class="team-member">
-                <div class="team-photo-wrap">
-                    <img src="assets/ben-headshot.png" alt="Ben Richardson">
+                <img src="assets/ben-headshot.png" alt="Ben Richardson">
+                <div class="team-member-name">
+                    <h4>Ben Richardson</h4>
+                    <div class="team-role">Director of Operations</div>
                 </div>
-                <h4>Ben Richardson</h4>
-                <div class="team-role">Director of Operations</div>
             </div>
         </div>
     </div>
