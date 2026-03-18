@@ -223,8 +223,7 @@
         /* ========== TEAM SECTION ========== */
         .team-section {
             max-width: 720px; margin: 0 auto;
-            padding: 3rem 2rem 4rem;
-            border-top: 1px solid rgba(168,179,145,0.08);
+            padding: 2rem 2rem 3rem;
         }
 
         .team-section h2 {
@@ -257,15 +256,22 @@
             text-align: center;
         }
 
-        .team-member .avatar {
-            width: 100px; height: 100px;
+        .team-member .avatar-wrap {
+            width: 110px; height: 110px;
             border-radius: 50%;
-            object-fit: cover;
-            object-position: center top;
             border: 2.5px solid var(--gold);
             margin: 0 auto 0.75rem;
-            filter: grayscale(100%);
+            overflow: hidden;
             background: var(--bg-mid);
+        }
+
+        .team-member .avatar-wrap img {
+            width: 140%;
+            height: 140%;
+            margin: -20% 0 0 -20%;
+            object-fit: cover;
+            object-position: center top;
+            filter: grayscale(100%);
         }
 
         .team-member h4 {
@@ -366,6 +372,24 @@
     </div>
 </div>
 
+<div class="team-section">
+    <h2>The <span class="gold">Team</span></h2>
+    <p>Radius wouldn't be possible without the people who share the vision. Nick and Ben saw the same potential in what disc golf could become and are excited to be part of this journey from the beginning.</p>
+
+    <div class="team-members">
+        <div class="team-member">
+            <div class="avatar-wrap"><img src="assets/nick-headshot.png" alt="Nick Harshaw"></div>
+            <h4>Nick Harshaw</h4>
+            <div class="team-role">Director of Growth</div>
+        </div>
+        <div class="team-member">
+            <div class="avatar-wrap"><img src="assets/ben-headshot.png" alt="Ben Richardson"></div>
+            <h4>Ben Richardson</h4>
+            <div class="team-role">Director of Operations</div>
+        </div>
+    </div>
+</div>
+
 <div class="story-continued">
     <p>I had some exposure to software through a friend from church, but building an app like this was completely new territory. What started as a simple idea quickly grew into something much bigger.</p>
 
@@ -387,24 +411,6 @@
 
     <div class="story-closing">
         <p>That's why Radius exists.</p>
-    </div>
-</div>
-
-<div class="team-section">
-    <h2>The <span class="gold">Team</span></h2>
-    <p>Radius wouldn't be possible without the people who share the vision. Nick and Ben saw the same potential in what disc golf could become and are excited to be part of this journey from the beginning.</p>
-
-    <div class="team-members">
-        <div class="team-member">
-            <img src="assets/nick-headshot.png" alt="Nick" class="avatar">
-            <h4>Nick</h4>
-            <div class="team-role">Director of Growth</div>
-        </div>
-        <div class="team-member">
-            <img src="assets/ben-headshot.png" alt="Ben" class="avatar">
-            <h4>Ben</h4>
-            <div class="team-role">Director of Operations</div>
-        </div>
     </div>
 </div>
 
