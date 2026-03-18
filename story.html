@@ -258,16 +258,12 @@
         }
 
         .team-member .avatar {
-            width: 80px; height: 80px;
+            width: 100px; height: 100px;
             border-radius: 50%;
-            background: rgba(246,193,101,0.1);
+            object-fit: cover;
             border: 2px solid rgba(246,193,101,0.25);
-            display: flex; align-items: center; justify-content: center;
             margin: 0 auto 0.75rem;
-            font-family: 'Sora', sans-serif;
-            font-weight: 700;
-            font-size: 1.4rem;
-            color: var(--gold);
+            filter: grayscale(100%);
         }
 
         .team-member h4 {
@@ -398,14 +394,14 @@
 
     <div class="team-members">
         <div class="team-member">
-            <div class="avatar">N</div>
+            <img src="assets/nick-headshot.png" alt="Nick" class="avatar">
             <h4>Nick</h4>
-            <div class="team-role">Co-Builder</div>
+            <div class="team-role">Director of Growth</div>
         </div>
         <div class="team-member">
-            <div class="avatar">B</div>
+            <img src="assets/ben-headshot.png" alt="Ben" class="avatar">
             <h4>Ben</h4>
-            <div class="team-role">Co-Builder</div>
+            <div class="team-role">Director of Operations</div>
         </div>
     </div>
 </div>
