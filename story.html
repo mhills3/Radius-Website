@@ -177,7 +177,7 @@
             display: grid;
             grid-template-columns: 380px 1fr;
             gap: 4rem;
-            align-items: start;
+            align-items: stretch;
         }
 
         .story-bottom-left h2 {
@@ -198,10 +198,26 @@
             margin-bottom: 2rem;
         }
 
+        .story-bottom-left {
+            display: flex;
+            flex-direction: column;
+        }
+
         .team-members {
             display: flex;
             flex-direction: column;
             gap: 2rem;
+            flex: 1;
+        }
+
+        .team-members .team-member:last-child .team-photo-wrap {
+            flex: 1;
+        }
+
+        .team-members .team-member:last-child {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
         }
 
         .team-member {
@@ -210,7 +226,7 @@
 
         .team-photo-wrap {
             width: 100%;
-            aspect-ratio: 3 / 4;
+            min-height: 200px;
             border-radius: 16px;
             overflow: hidden;
             margin-bottom: 0.75rem;
