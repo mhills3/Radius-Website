@@ -222,7 +222,7 @@
 
         /* ========== TEAM SECTION ========== */
         .team-section {
-            max-width: 720px; margin: 0 auto;
+            max-width: 900px; margin: 0 auto;
             padding: 2rem 2rem 3rem;
         }
 
@@ -243,24 +243,33 @@
             font-size: 0.95rem;
             line-height: 1.85;
             text-align: center;
-            margin-bottom: 2rem;
+            margin-bottom: 2.5rem;
+            max-width: 620px;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         .team-members {
-            display: flex;
-            justify-content: center;
-            gap: 3rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2.5rem;
         }
 
         .team-member {
-            text-align: center;
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+            padding: 1.5rem;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(168,179,145,0.1);
+            border-radius: 16px;
         }
 
         .team-member .avatar-wrap {
-            width: 110px; height: 110px;
+            width: 90px; height: 90px;
+            min-width: 90px;
             border-radius: 50%;
             border: 2.5px solid var(--gold);
-            margin: 0 auto 0.75rem;
             overflow: hidden;
             background: var(--bg-mid);
         }
@@ -274,17 +283,23 @@
             filter: grayscale(100%);
         }
 
-        .team-member h4 {
+        .team-member-info h4 {
             font-family: 'Sora', sans-serif;
-            font-size: 1rem; font-weight: 700;
+            font-size: 1.1rem; font-weight: 700;
             color: var(--cream);
-            margin-bottom: 0.15rem;
+            margin-bottom: 0.2rem;
         }
 
-        .team-member .team-role {
-            font-size: 0.8rem;
-            color: var(--sage-dim);
-            font-weight: 500;
+        .team-member-info .team-role {
+            font-size: 0.82rem;
+            color: var(--gold);
+            font-weight: 600;
+        }
+
+        @media (max-width: 600px) {
+            .team-members {
+                grid-template-columns: 1fr;
+            }
         }
 
         /* ========== GLORY ========== */
@@ -296,12 +311,22 @@
         }
 
         .glory p {
-            font-family: 'Sora', sans-serif;
-            font-size: 0.85rem;
-            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.88rem;
+            font-weight: 400;
             color: var(--sage-dim);
-            letter-spacing: 0.05em;
+            line-height: 1.8;
             font-style: italic;
+        }
+
+        .glory .verse-ref {
+            font-family: 'Sora', sans-serif;
+            font-style: normal;
+            font-weight: 700;
+            font-size: 0.82rem;
+            color: var(--gold);
+            margin-top: 0.75rem;
+            letter-spacing: 0.03em;
         }
 
         /* ========== MOBILE ========== */
@@ -379,13 +404,17 @@
     <div class="team-members">
         <div class="team-member">
             <div class="avatar-wrap"><img src="assets/nick-headshot.png" alt="Nick Harshaw"></div>
-            <h4>Nick Harshaw</h4>
-            <div class="team-role">Director of Growth</div>
+            <div class="team-member-info">
+                <h4>Nick Harshaw</h4>
+                <div class="team-role">Director of Growth</div>
+            </div>
         </div>
         <div class="team-member">
             <div class="avatar-wrap"><img src="assets/ben-headshot.png" alt="Ben Richardson"></div>
-            <h4>Ben Richardson</h4>
-            <div class="team-role">Director of Operations</div>
+            <div class="team-member-info">
+                <h4>Ben Richardson</h4>
+                <div class="team-role">Director of Operations</div>
+            </div>
         </div>
     </div>
 </div>
@@ -415,7 +444,8 @@
 </div>
 
 <div class="glory">
-    <p>To God be all the glory.</p>
+    <p>"I sought the Lord, and He heard me, and delivered me from all my fears. They looked to Him and were radiant, and their faces were not ashamed. This poor man cried out, and the Lord heard him, and saved him out of all his troubles. The angel of the Lord encamps all around those who fear Him, and delivers them."</p>
+    <p class="verse-ref">Psalm 34:4-7</p>
 </div>
 
 <footer>
