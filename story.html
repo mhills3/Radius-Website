@@ -170,90 +170,38 @@
             line-height: 1.7;
         }
 
-        /* ========== CONTINUED STORY ========== */
-        .story-continued {
+        /* ========== BOTTOM TWO-COLUMN ========== */
+        .story-bottom {
             max-width: 1000px; margin: 0 auto;
             padding: 0 2rem 3rem;
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 4rem;
+            align-items: start;
         }
 
-        .story-continued p {
-            color: var(--text-body);
-            font-size: 0.95rem; line-height: 1.85;
-            margin-bottom: 1.25rem;
-        }
-
-        .story-continued p.highlight {
-            color: var(--cream);
-            font-family: 'Sora', sans-serif;
-            font-size: 1.15rem;
-            font-weight: 600;
-            line-height: 1.6;
-            margin: 2rem 0;
-            padding-left: 1.25rem;
-            border-left: 3px solid var(--gold);
-        }
-
-        .story-values {
-            margin: 2.5rem 0;
-            display: flex; flex-direction: column; gap: 0.5rem;
-        }
-
-        .story-values p {
-            color: var(--cream);
-            font-size: 1rem;
-            font-weight: 500;
-            margin-bottom: 0.25rem;
-        }
-
-        .story-closing {
-            margin-top: 2.5rem;
-            padding-top: 2rem;
-            border-top: 1px solid rgba(168,179,145,0.1);
-        }
-
-        .story-closing p {
-            font-family: 'Sora', sans-serif;
-            font-size: 1.3rem;
-            font-weight: 800;
-            color: var(--gold);
-            text-align: center;
-            margin-bottom: 0;
-        }
-
-        /* ========== TEAM SECTION ========== */
-        .team-section {
-            max-width: 900px; margin: 0 auto;
-            padding: 4rem 2rem;
-            border-top: 1px solid rgba(168,179,145,0.08);
-        }
-
-        .team-section h2 {
+        .story-bottom-left h2 {
             font-family: 'Sora', sans-serif;
             font-weight: 800;
-            font-size: 1.8rem;
+            font-size: 1.6rem;
             color: var(--cream);
             letter-spacing: -0.5px;
-            margin-bottom: 1rem;
-            text-align: center;
+            margin-bottom: 0.75rem;
         }
 
-        .team-section h2 .gold { color: var(--gold); }
+        .story-bottom-left h2 .gold { color: var(--gold); }
 
-        .team-section > p {
+        .story-bottom-left .team-desc {
             color: var(--text-body);
-            font-size: 0.95rem;
-            line-height: 1.85;
-            text-align: center;
-            margin-bottom: 3rem;
-            max-width: 620px;
-            margin-left: auto;
-            margin-right: auto;
+            font-size: 0.9rem;
+            line-height: 1.75;
+            margin-bottom: 2rem;
         }
 
         .team-members {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 3rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
         }
 
         .team-member {
@@ -261,11 +209,11 @@
         }
 
         .team-photo-wrap {
-            width: 220px; height: 220px;
+            width: 180px; height: 180px;
             border-radius: 50%;
             border: 3px solid var(--gold);
             overflow: hidden;
-            margin: 0 auto 1.25rem;
+            margin: 0 auto 1rem;
             background: var(--bg-mid);
         }
 
@@ -280,23 +228,64 @@
 
         .team-member h4 {
             font-family: 'Sora', sans-serif;
-            font-size: 1.2rem; font-weight: 700;
+            font-size: 1.1rem; font-weight: 700;
             color: var(--cream);
-            margin-bottom: 0.25rem;
+            margin-bottom: 0.2rem;
         }
 
         .team-member .team-role {
-            font-size: 0.88rem;
+            font-size: 0.85rem;
             color: var(--gold);
             font-weight: 600;
         }
 
-        @media (max-width: 600px) {
-            .team-members {
+        .story-bottom-right p {
+            color: var(--text-body);
+            font-size: 0.95rem; line-height: 1.85;
+            margin-bottom: 1.25rem;
+        }
+
+        .story-values {
+            margin: 2rem 0;
+            display: flex; flex-direction: column; gap: 0.5rem;
+        }
+
+        .story-values p {
+            color: var(--cream);
+            font-size: 1rem;
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+        }
+
+        .story-closing {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(168,179,145,0.1);
+        }
+
+        .story-closing p {
+            font-family: 'Sora', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 800;
+            color: var(--gold);
+            text-align: center;
+            margin-bottom: 0;
+        }
+
+        @media (max-width: 768px) {
+            .story-bottom {
                 grid-template-columns: 1fr;
+                gap: 2.5rem;
+            }
+            .story-bottom-left {
+                text-align: center;
+            }
+            .team-members {
+                flex-direction: row;
+                justify-content: center;
             }
             .team-photo-wrap {
-                width: 180px; height: 180px;
+                width: 150px; height: 150px;
             }
         }
 
@@ -395,48 +384,50 @@
     </div>
 </div>
 
-<div class="story-continued">
-    <p>I had some exposure to software through a friend from church, but building an app like this was completely new territory. What started as a simple idea quickly grew into something much bigger.</p>
+<div class="story-bottom">
+    <div class="story-bottom-left">
+        <h2>The <span class="gold">Team</span></h2>
+        <p class="team-desc">Radius wouldn't be possible without the people who share the vision. Nick and Ben saw the same potential in what disc golf could become and are excited to be part of this journey from the beginning.</p>
 
-    <p>The hardest part wasn't just building it — it was realizing how much the app could become. There were so many ways Radius could help players improve, connect, and experience the game differently. Turning that vision into something real took time, iteration, and a lot of persistence.</p>
-
-    <p>Radius is designed to bring the disc golf community together — helping players meet, compete, and share experiences — while also giving them the tools to actually improve. To understand their game. To make smarter decisions. To see real progress.</p>
-
-    <p>If Radius succeeds, disc golf won't just grow — it will evolve. It will become more analytical, more intentional, and more advanced — just like other sports that have embraced technology.</p>
-
-    <p>I care about this because disc golf has quickly become one of my favorite parts of life.</p>
-
-    <div class="story-values">
-        <p>The people.</p>
-        <p>The competition.</p>
-        <p>The community.</p>
-    </div>
-
-    <p>I want to help grow that. I want to help players get better. I want to help the community expand. And I want to be part of pushing the sport forward.</p>
-
-    <div class="story-closing">
-        <p>That's why Radius exists.</p>
-    </div>
-</div>
-
-<div class="team-section">
-    <h2>The <span class="gold">Team</span></h2>
-    <p>Radius wouldn't be possible without the people who share the vision. Nick and Ben saw the same potential in what disc golf could become and are excited to be part of this journey from the beginning.</p>
-
-    <div class="team-members">
-        <div class="team-member">
-            <div class="team-photo-wrap">
-                <img src="assets/nick-headshot.png" alt="Nick Harshaw">
+        <div class="team-members">
+            <div class="team-member">
+                <div class="team-photo-wrap">
+                    <img src="assets/nick-headshot.png" alt="Nick Harshaw">
+                </div>
+                <h4>Nick Harshaw</h4>
+                <div class="team-role">Director of Partnerships</div>
             </div>
-            <h4>Nick Harshaw</h4>
-            <div class="team-role">Director of Partnerships</div>
+            <div class="team-member">
+                <div class="team-photo-wrap">
+                    <img src="assets/ben-headshot.png" alt="Ben Richardson">
+                </div>
+                <h4>Ben Richardson</h4>
+                <div class="team-role">Director of Operations</div>
+            </div>
         </div>
-        <div class="team-member">
-            <div class="team-photo-wrap">
-                <img src="assets/ben-headshot.png" alt="Ben Richardson">
-            </div>
-            <h4>Ben Richardson</h4>
-            <div class="team-role">Director of Operations</div>
+    </div>
+
+    <div class="story-bottom-right">
+        <p>I had some exposure to software through a friend from church, but building an app like this was completely new territory. What started as a simple idea quickly grew into something much bigger.</p>
+
+        <p>The hardest part wasn't just building it — it was realizing how much the app could become. There were so many ways Radius could help players improve, connect, and experience the game differently. Turning that vision into something real took time, iteration, and a lot of persistence.</p>
+
+        <p>Radius is designed to bring the disc golf community together — helping players meet, compete, and share experiences — while also giving them the tools to actually improve. To understand their game. To make smarter decisions. To see real progress.</p>
+
+        <p>If Radius succeeds, disc golf won't just grow — it will evolve. It will become more analytical, more intentional, and more advanced — just like other sports that have embraced technology.</p>
+
+        <p>I care about this because disc golf has quickly become one of my favorite parts of life.</p>
+
+        <div class="story-values">
+            <p>The people.</p>
+            <p>The competition.</p>
+            <p>The community.</p>
+        </div>
+
+        <p>I want to help grow that. I want to help players get better. I want to help the community expand. And I want to be part of pushing the sport forward.</p>
+
+        <div class="story-closing">
+            <p>That's why Radius exists.</p>
         </div>
     </div>
 </div>
