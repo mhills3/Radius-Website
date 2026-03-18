@@ -224,10 +224,20 @@
             text-align: center;
         }
 
-        .team-member img {
+        .team-member .team-img {
             width: 100%;
+            aspect-ratio: 3 / 4;
             border-radius: 16px;
+            overflow: hidden;
+            background: var(--bg-mid);
+        }
+
+        .team-member .team-img img {
+            width: 110%;
+            height: 110%;
+            margin: -5% 0 0 -5%;
             object-fit: cover;
+            object-position: center top;
             filter: grayscale(100%);
             display: block;
         }
@@ -395,14 +405,14 @@
 
         <div class="team-members">
             <div class="team-member">
-                <img src="assets/nick-headshot.png" alt="Nick Harshaw">
+                <div class="team-img"><img src="assets/nick-headshot.png" alt="Nick Harshaw"></div>
                 <div class="team-member-name">
                     <h4>Nick Harshaw</h4>
                     <div class="team-role">Director of Partnerships</div>
                 </div>
             </div>
             <div class="team-member">
-                <img src="assets/ben-headshot.png" alt="Ben Richardson">
+                <div class="team-img"><img src="assets/ben-headshot.png" alt="Ben Richardson"></div>
                 <div class="team-member-name">
                     <h4>Ben Richardson</h4>
                     <div class="team-role">Director of Operations</div>
