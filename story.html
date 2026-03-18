@@ -223,16 +223,17 @@
         /* ========== TEAM SECTION ========== */
         .team-section {
             max-width: 900px; margin: 0 auto;
-            padding: 2rem 2rem 3rem;
+            padding: 4rem 2rem;
+            border-top: 1px solid rgba(168,179,145,0.08);
         }
 
         .team-section h2 {
             font-family: 'Sora', sans-serif;
             font-weight: 800;
-            font-size: 1.6rem;
+            font-size: 1.8rem;
             color: var(--cream);
             letter-spacing: -0.5px;
-            margin-bottom: 1.25rem;
+            margin-bottom: 1rem;
             text-align: center;
         }
 
@@ -243,7 +244,7 @@
             font-size: 0.95rem;
             line-height: 1.85;
             text-align: center;
-            margin-bottom: 2.5rem;
+            margin-bottom: 3rem;
             max-width: 620px;
             margin-left: auto;
             margin-right: auto;
@@ -252,46 +253,40 @@
         .team-members {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 2.5rem;
+            gap: 3rem;
         }
 
         .team-member {
-            display: flex;
-            align-items: center;
-            gap: 1.25rem;
-            padding: 1.5rem;
-            background: rgba(255,255,255,0.03);
-            border: 1px solid rgba(168,179,145,0.1);
-            border-radius: 16px;
+            text-align: center;
         }
 
-        .team-member .avatar-wrap {
-            width: 90px; height: 90px;
-            min-width: 90px;
+        .team-photo-wrap {
+            width: 220px; height: 220px;
             border-radius: 50%;
-            border: 2.5px solid var(--gold);
+            border: 3px solid var(--gold);
             overflow: hidden;
+            margin: 0 auto 1.25rem;
             background: var(--bg-mid);
         }
 
-        .team-member .avatar-wrap img {
-            width: 160%;
-            height: 160%;
-            margin: -30% 0 0 -30%;
+        .team-photo-wrap img {
+            width: 150%;
+            height: 150%;
+            margin: -25% 0 0 -25%;
             object-fit: cover;
             object-position: center top;
             filter: grayscale(100%);
         }
 
-        .team-member-info h4 {
+        .team-member h4 {
             font-family: 'Sora', sans-serif;
-            font-size: 1.1rem; font-weight: 700;
+            font-size: 1.2rem; font-weight: 700;
             color: var(--cream);
-            margin-bottom: 0.2rem;
+            margin-bottom: 0.25rem;
         }
 
-        .team-member-info .team-role {
-            font-size: 0.82rem;
+        .team-member .team-role {
+            font-size: 0.88rem;
             color: var(--gold);
             font-weight: 600;
         }
@@ -299,6 +294,9 @@
         @media (max-width: 600px) {
             .team-members {
                 grid-template-columns: 1fr;
+            }
+            .team-photo-wrap {
+                width: 180px; height: 180px;
             }
         }
 
@@ -397,28 +395,6 @@
     </div>
 </div>
 
-<div class="team-section">
-    <h2>The <span class="gold">Team</span></h2>
-    <p>Radius wouldn't be possible without the people who share the vision. Nick and Ben saw the same potential in what disc golf could become and are excited to be part of this journey from the beginning.</p>
-
-    <div class="team-members">
-        <div class="team-member">
-            <div class="avatar-wrap"><img src="assets/nick-headshot.png" alt="Nick Harshaw"></div>
-            <div class="team-member-info">
-                <h4>Nick Harshaw</h4>
-                <div class="team-role">Director of Partnerships</div>
-            </div>
-        </div>
-        <div class="team-member">
-            <div class="avatar-wrap"><img src="assets/ben-headshot.png" alt="Ben Richardson"></div>
-            <div class="team-member-info">
-                <h4>Ben Richardson</h4>
-                <div class="team-role">Director of Operations</div>
-            </div>
-        </div>
-    </div>
-</div>
-
 <div class="story-continued">
     <p>I had some exposure to software through a friend from church, but building an app like this was completely new territory. What started as a simple idea quickly grew into something much bigger.</p>
 
@@ -440,6 +416,28 @@
 
     <div class="story-closing">
         <p>That's why Radius exists.</p>
+    </div>
+</div>
+
+<div class="team-section">
+    <h2>The <span class="gold">Team</span></h2>
+    <p>Radius wouldn't be possible without the people who share the vision. Nick and Ben saw the same potential in what disc golf could become and are excited to be part of this journey from the beginning.</p>
+
+    <div class="team-members">
+        <div class="team-member">
+            <div class="team-photo-wrap">
+                <img src="assets/nick-headshot.png" alt="Nick Harshaw">
+            </div>
+            <h4>Nick Harshaw</h4>
+            <div class="team-role">Director of Partnerships</div>
+        </div>
+        <div class="team-member">
+            <div class="team-photo-wrap">
+                <img src="assets/ben-headshot.png" alt="Ben Richardson">
+            </div>
+            <h4>Ben Richardson</h4>
+            <div class="team-role">Director of Operations</div>
+        </div>
     </div>
 </div>
 
