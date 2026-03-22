@@ -411,9 +411,18 @@
             transform: rotate(3deg);
         }
 
-        .community-phones > .iphone-frame:not(.community-back) {
+        .community-phones > .iphone-frame:not(.community-back):not(.community-back-left) {
             position: relative;
             z-index: 2;
+        }
+
+        .community-phones .community-back-left {
+            position: absolute;
+            width: 240px !important; height: 492px !important;
+            left: -30px; top: 30px;
+            z-index: 0;
+            opacity: 0.55;
+            transform: rotate(-3deg);
         }
 
         /* ========== SCREENSHOTS CAROUSEL ========== */
@@ -953,6 +962,11 @@
             </div>
         </div>
         <div class="feature-phone community-phones">
+            <div class="iphone-frame community-back-left">
+                <div class="iphone-screen">
+                    <img src="assets/screen-baganalysis.png" alt="Bag Analysis">
+                </div>
+            </div>
             <div class="iphone-frame community-back">
                 <div class="iphone-screen">
                     <img src="assets/screen-gapreport.png" alt="Bag Gap Report">
