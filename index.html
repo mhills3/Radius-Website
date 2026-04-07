@@ -581,6 +581,14 @@
             background: rgba(255,255,255,0.09);
         }
 
+        .app-store-btn {
+            display: inline-block;
+            transition: transform 0.2s ease, opacity 0.2s ease;
+            line-height: 0;
+        }
+        .app-store-btn:hover { transform: scale(1.05); opacity: 0.9; }
+        .app-store-btn img { display: block; }
+
         .signup-form .btn-gold {
             margin-top: 0.5rem;
             justify-content: center;
@@ -736,7 +744,7 @@
             <a href="#community">Community</a>
             <a href="story.html">Our Story</a>
             <a href="contact.html">Contact</a>
-            <a href="#signup" class="nav-cta">Sign Up</a>
+            <a href="https://apps.apple.com/us/app/radius-disc-golf/id6760574186" class="nav-cta" target="_blank" rel="noopener">Download</a>
         </div>
         <button class="mobile-toggle" id="mobileToggle" aria-label="Menu">
             <span></span><span></span><span></span>
@@ -757,13 +765,13 @@
         <div class="hero-text reveal">
             <div class="hero-badge">
                 <div class="dot"></div>
-                <span>Coming Soon</span>
+                <span>Now Available</span>
             </div>
             <h1>Intelligent<br>disc golf<br><span class="gold">is here.</span></h1>
             <p class="hero-sub">The disc golf companion that knows your bag, reads the hole — wind, elevation, and all — and makes you a smarter player. Every round.</p>
             <div class="hero-buttons">
-                <a href="#signup" class="btn-gold">
-                    Join the Waitlist
+                <a href="https://apps.apple.com/us/app/radius-disc-golf/id6760574186" class="app-store-btn" target="_blank" rel="noopener" aria-label="Download on the App Store">
+                    <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" height="56">
                 </a>
                 <a href="#caddy-ai" class="btn-ghost">
                     See features
@@ -797,49 +805,11 @@
     <div class="ring-accent" style="width:400px;height:400px;top:-100px;right:-200px"></div>
 
     <div class="signup-inner reveal">
-        <h2>Get <span class="gold">Early Access</span></h2>
-        <p>Be one of the first to try Radius. Sign up to join our beta and help shape the future of disc golf.</p>
-        <form class="signup-form" onsubmit="return submitForm(event, this)">
-            <div class="form-group">
-                <label for="name1">Name</label>
-                <input type="text" id="name1" name="name" placeholder="Your name" required>
-            </div>
-            <div class="form-group">
-                <label for="email1">Email</label>
-                <input type="email" id="email1" name="email" placeholder="you@email.com" required>
-            </div>
-            <div class="form-group">
-                <label for="source1">How did you hear about us?</label>
-                <select id="source1" name="source" required>
-                    <option value="" disabled selected>Select one</option>
-                    <option value="Social Media">Social Media</option>
-                    <option value="Friend / Word of Mouth">Friend / Word of Mouth</option>
-                    <option value="Search Engine">Search Engine</option>
-                    <option value="Disc Golf Forum / Reddit">Disc Golf Forum / Reddit</option>
-                    <option value="YouTube">YouTube</option>
-                    <option value="Tournament / Event">Tournament / Event</option>
-                    <option value="Other">Other</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="feature1">What feature interests you most?</label>
-                <select id="feature1" name="feature" required>
-                    <option value="" disabled selected>Select one</option>
-                    <option value="Caddy's Picks">Caddy's Picks — Personalized disc recommendations</option>
-                    <option value="Course Maps">Course Maps — Satellite & 3D maps</option>
-                    <option value="My Bag">My Bag — Bag management & scanner</option>
-                    <option value="Community">Community — Social & discovery</option>
-                    <option value="Game IQ">Game IQ — Stats & tracking</option>
-                    <option value="Learn">Learn — Drills & improvement</option>
-                    <option value="All of them">All of them</option>
-                </select>
-            </div>
-            <button type="submit" class="btn-gold">Join the Waitlist</button>
-        </form>
-        <div class="form-success">
-            <h3>You're on the list!</h3>
-            <p>We'll reach out when Radius is ready for you.</p>
-        </div>
+        <h2>Now <span class="gold">Available</span></h2>
+        <p>Radius is live on the App Store. Download now and start playing smarter today.</p>
+        <a href="https://apps.apple.com/us/app/radius-disc-golf/id6760574186" class="app-store-btn" target="_blank" rel="noopener" aria-label="Download on the App Store">
+            <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" height="64">
+        </a>
     </div>
 </section>
 
@@ -1319,48 +1289,10 @@
     <div class="signup-inner reveal">
         <img src="assets/logo.svg" alt="Radius" style="width:72px;height:72px;border-radius:14px;margin-bottom:1.5rem">
         <h2>Ready to play<br><span class="gold">smarter?</span></h2>
-        <p>Sign up for early access and be the first to experience Radius.</p>
-        <form class="signup-form" onsubmit="return submitForm(event, this)">
-            <div class="form-group">
-                <label for="name2">Name</label>
-                <input type="text" id="name2" name="name" placeholder="Your name" required>
-            </div>
-            <div class="form-group">
-                <label for="email2">Email</label>
-                <input type="email" id="email2" name="email" placeholder="you@email.com" required>
-            </div>
-            <div class="form-group">
-                <label for="source2">How did you hear about us?</label>
-                <select id="source2" name="source" required>
-                    <option value="" disabled selected>Select one</option>
-                    <option value="Social Media">Social Media</option>
-                    <option value="Friend / Word of Mouth">Friend / Word of Mouth</option>
-                    <option value="Search Engine">Search Engine</option>
-                    <option value="Disc Golf Forum / Reddit">Disc Golf Forum / Reddit</option>
-                    <option value="YouTube">YouTube</option>
-                    <option value="Tournament / Event">Tournament / Event</option>
-                    <option value="Other">Other</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="feature2">What feature interests you most?</label>
-                <select id="feature2" name="feature" required>
-                    <option value="" disabled selected>Select one</option>
-                    <option value="Caddy's Picks">Caddy's Picks — Personalized disc recommendations</option>
-                    <option value="Course Maps">Course Maps — Satellite & 3D maps</option>
-                    <option value="My Bag">My Bag — Bag management & scanner</option>
-                    <option value="Community">Community — Social & discovery</option>
-                    <option value="Game IQ">Game IQ — Stats & tracking</option>
-                    <option value="Learn">Learn — Drills & improvement</option>
-                    <option value="All of them">All of them</option>
-                </select>
-            </div>
-            <button type="submit" class="btn-gold">Join the Waitlist</button>
-        </form>
-        <div class="form-success">
-            <h3>You're on the list!</h3>
-            <p>We'll reach out when Radius is ready for you.</p>
-        </div>
+        <p>Radius is now available on the App Store. Download today.</p>
+        <a href="https://apps.apple.com/us/app/radius-disc-golf/id6760574186" class="app-store-btn" target="_blank" rel="noopener" aria-label="Download on the App Store">
+            <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" height="64">
+        </a>
     </div>
 </section>
 
