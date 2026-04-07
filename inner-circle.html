@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inner Circle — Radius Disc Golf</title>
+    <meta name="description" content="Join the Radius Inner Circle — a founding community of disc golfers helping shape the future of the sport.">
+    <meta name="theme-color" content="#1a2821">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://radiusdiscgolf.com/inner-circle">
+    <meta property="og:title" content="Inner Circle — Radius Disc Golf">
+    <meta property="og:description" content="A founding community of disc golfers shaping the future of Radius.">
+    <meta property="og:image" content="https://radiusdiscgolf.com/assets/og-image.png">
+
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+    <link rel="apple-touch-icon" href="assets/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #1a2821;
+            --bg-mid: #2F3C35;
+            --gold: #F6C165;
+            --gold-dim: rgba(246,193,101,0.18);
+            --cream: #F5EDE1;
+            --sage: rgba(168,179,145,0.85);
+            --sage-dim: rgba(168,179,145,0.45);
+            --text-body: rgba(245,237,225,0.7);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-deep);
+            color: var(--cream);
+            -webkit-font-smoothing: antialiased;
+            line-height: 1.55;
+        }
+
+        h1, h2, h3 { font-family: 'Sora', sans-serif; letter-spacing: -0.5px; }
+        .gold { color: var(--gold); }
+
+        nav {
+            background: var(--bg-deep);
+            padding: 0 2rem;
+            border-bottom: 1px solid rgba(168,179,145,0.08);
+        }
+        .nav-inner {
+            max-width: 1200px; margin: 0 auto;
+            display: flex; align-items: center;
+            justify-content: space-between; height: 72px;
+        }
+        .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+        .nav-wordmark {
+            font-family: 'Sora', sans-serif;
+            font-weight: 700; font-size: 1.2rem;
+            color: var(--cream); letter-spacing: -0.5px;
+        }
+        .nav-links { display: flex; align-items: center; gap: 2.5rem; }
+        .nav-links a {
+            color: var(--sage);
+            text-decoration: none;
+            font-size: 0.88rem; font-weight: 500;
+            transition: color 0.2s;
+        }
+        .nav-links a:hover { color: var(--gold); }
+        .nav-cta {
+            background: var(--gold) !important;
+            color: var(--bg-deep) !important;
+            padding: 10px 22px !important;
+            border-radius: 100px;
+            font-weight: 700 !important;
+            font-size: 0.82rem !important;
+            letter-spacing: 0.3px;
+            transition: all 0.2s !important;
+        }
+        .nav-cta:hover { background: #f8cf80 !important; transform: translateY(-1px); }
+        @media (max-width: 768px) {
+            .nav-links { gap: 1.25rem; }
+            .nav-links a:not(.nav-cta) { display: none; }
+        }
+
+        /* ========== HERO ========== */
+        .ic-hero {
+            position: relative;
+            padding: 6rem 2rem 5rem;
+            text-align: center;
+            background: linear-gradient(175deg, var(--bg-deep) 0%, var(--bg-mid) 100%);
+            overflow: hidden;
+        }
+        .ic-hero .glow {
+            position: absolute;
+            width: 700px; height: 700px;
+            top: -200px; left: 50%; transform: translateX(-50%);
+            background: radial-gradient(ellipse, var(--gold-dim), transparent 70%);
+            pointer-events: none;
+        }
+        .ic-hero-inner { position: relative; max-width: 800px; margin: 0 auto; z-index: 2; }
+
+        .ic-badge {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: rgba(246,193,101,0.08);
+            border: 1px solid rgba(246,193,101,0.22);
+            border-radius: 100px;
+            padding: 6px 16px 6px 12px;
+            margin-bottom: 1.75rem;
+            font-size: 0.82rem;
+            color: var(--gold);
+            font-weight: 600;
+            letter-spacing: 0.3px;
+        }
+        .ic-badge .dot {
+            width: 7px; height: 7px;
+            background: var(--gold); border-radius: 50%;
+            box-shadow: 0 0 12px var(--gold);
+        }
+
+        .ic-hero h1 {
+            font-size: 3.4rem; font-weight: 800;
+            line-height: 1.05; margin-bottom: 1.5rem;
+        }
+        .ic-hero p.lede {
+            font-size: 1.15rem;
+            color: var(--text-body);
+            max-width: 620px; margin: 0 auto 2.5rem;
+        }
+
+        .btn-gold {
+            display: inline-flex; align-items: center; gap: 10px;
+            background: var(--gold); color: var(--bg-deep);
+            text-decoration: none;
+            padding: 14px 28px;
+            border-radius: 100px;
+            font-weight: 700; font-size: 0.95rem;
+            transition: all 0.2s;
+            border: none; cursor: pointer;
+        }
+        .btn-gold:hover { background: #f8cf80; transform: translateY(-2px); }
+
+        .btn-ghost {
+            display: inline-flex; align-items: center; gap: 8px;
+            color: var(--cream); text-decoration: none;
+            padding: 14px 24px;
+            border: 1px solid rgba(245,237,225,0.18);
+            border-radius: 100px;
+            font-weight: 600; font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        .btn-ghost:hover { border-color: var(--gold); color: var(--gold); }
+
+        .ic-hero-buttons { display: inline-flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+
+        /* ========== SECTION BASE ========== */
+        section.ic-section {
+            position: relative;
+            padding: 5rem 2rem;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .section-label {
+            display: inline-block;
+            color: var(--gold);
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 0.75rem;
+        }
+
+        .section-head {
+            text-align: center;
+            max-width: 720px;
+            margin: 0 auto 3rem;
+        }
+        .section-head h2 { font-size: 2.4rem; font-weight: 800; margin-bottom: 1rem; }
+        .section-head p { color: var(--text-body); font-size: 1.05rem; }
+
+        /* ========== FOUNDERS NOTE ========== */
+        .founders-note {
+            background: linear-gradient(180deg, rgba(246,193,101,0.06), rgba(246,193,101,0.02));
+            border: 1px solid rgba(246,193,101,0.18);
+            border-radius: 22px;
+            padding: 2.5rem 2.5rem;
+            text-align: center;
+        }
+        .founders-note h3 {
+            font-size: 1.5rem; font-weight: 700;
+            margin-bottom: 0.75rem;
+        }
+        .founders-note p {
+            color: var(--text-body);
+            max-width: 620px; margin: 0 auto;
+            font-size: 1rem;
+        }
+
+        /* ========== TIER CARDS ========== */
+        .tiers {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+        }
+        .tier {
+            position: relative;
+            background: rgba(168,179,145,0.04);
+            border: 1px solid rgba(168,179,145,0.12);
+            border-radius: 22px;
+            padding: 2.25rem 2rem;
+            transition: all 0.3s;
+        }
+        .tier.gold {
+            background: linear-gradient(180deg, rgba(246,193,101,0.08), rgba(246,193,101,0.02));
+            border-color: rgba(246,193,101,0.35);
+        }
+        .tier:hover { transform: translateY(-4px); border-color: rgba(246,193,101,0.4); }
+
+        .tier-tag {
+            display: inline-block;
+            background: rgba(246,193,101,0.12);
+            color: var(--gold);
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            padding: 5px 12px;
+            border-radius: 100px;
+            margin-bottom: 1rem;
+        }
+        .tier h3 {
+            font-size: 1.6rem; font-weight: 800;
+            margin-bottom: 0.5rem;
+        }
+        .tier .req {
+            color: var(--sage);
+            font-size: 0.92rem;
+            margin-bottom: 1.5rem;
+        }
+        .tier ul {
+            list-style: none;
+            display: flex; flex-direction: column; gap: 0.75rem;
+        }
+        .tier li {
+            display: flex; align-items: flex-start; gap: 12px;
+            color: var(--text-body); font-size: 0.95rem;
+        }
+        .tier li svg {
+            flex-shrink: 0;
+            width: 18px; height: 18px;
+            color: var(--gold); margin-top: 3px;
+        }
+
+        @media (max-width: 720px) {
+            .tiers { grid-template-columns: 1fr; }
+            .ic-hero h1 { font-size: 2.4rem; }
+            .section-head h2 { font-size: 1.8rem; }
+        }
+
+        /* ========== HOW IT WORKS ========== */
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.25rem;
+        }
+        .step {
+            background: rgba(168,179,145,0.04);
+            border: 1px solid rgba(168,179,145,0.12);
+            border-radius: 18px;
+            padding: 1.75rem 1.5rem;
+        }
+        .step-num {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 36px; height: 36px;
+            background: rgba(246,193,101,0.14);
+            color: var(--gold);
+            border-radius: 50%;
+            font-family: 'Sora', sans-serif;
+            font-weight: 800; font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+        .step h4 { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.5rem; }
+        .step p { color: var(--text-body); font-size: 0.92rem; }
+
+        @media (max-width: 720px) { .steps { grid-template-columns: 1fr; } }
+
+        /* ========== FINAL CTA ========== */
+        .final-cta {
+            text-align: center;
+            padding: 5rem 2rem 6rem;
+            background: linear-gradient(180deg, transparent, rgba(246,193,101,0.04));
+        }
+        .final-cta h2 { font-size: 2.4rem; font-weight: 800; margin-bottom: 1rem; }
+        .final-cta p { color: var(--text-body); margin-bottom: 2rem; max-width: 540px; margin-left: auto; margin-right: auto; }
+
+        /* ========== FOOTER ========== */
+        footer {
+            background: var(--bg-deep);
+            border-top: 1px solid rgba(168,179,145,0.08);
+            padding: 2.5rem 2rem;
+        }
+        .footer-inner {
+            max-width: 1200px; margin: 0 auto;
+            display: flex; justify-content: space-between; align-items: center;
+            flex-wrap: wrap; gap: 1.5rem;
+        }
+        .footer-left { display: flex; align-items: center; gap: 12px; color: var(--cream); font-weight: 600; }
+        .footer-links { display: flex; gap: 1.75rem; flex-wrap: wrap; }
+        .footer-links a { color: var(--sage-dim); text-decoration: none; font-size: 0.88rem; transition: color 0.2s; }
+        .footer-links a:hover { color: var(--gold); }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="nav-inner">
+        <a href="index.html" class="nav-logo">
+            <img src="assets/logo.svg" alt="Radius" style="width:32px;height:32px;border-radius:6px">
+            <span class="nav-wordmark">Radius</span>
+        </a>
+        <div class="nav-links">
+            <a href="index.html#caddy-ai">Features</a>
+            <a href="inner-circle.html">Inner Circle</a>
+            <a href="story.html">Our Story</a>
+            <a href="contact.html">Contact</a>
+            <a href="https://apps.apple.com/us/app/radius-disc-golf/id6760574186" class="nav-cta" target="_blank" rel="noopener">Download</a>
+        </div>
+    </div>
+</nav>
+
+<!-- HERO -->
+<section class="ic-hero">
+    <div class="glow"></div>
+    <div class="ic-hero-inner">
+        <div class="ic-badge"><div class="dot"></div>The Inner Circle</div>
+        <h1>Built by the players<br>who <span class="gold">build the game</span>.</h1>
+        <p class="lede">The Inner Circle is our home for the disc golfers helping shape Radius from the ground up — a place for early access, exclusive drops, and a real seat at the table.</p>
+        <div class="ic-hero-buttons">
+            <a href="https://discord.gg/nWqx7SeHc" class="btn-gold" target="_blank" rel="noopener">
+                Join the Community
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 2l5 5-5 5"/></svg>
+            </a>
+            <a href="#path" class="btn-ghost">See the path</a>
+        </div>
+    </div>
+</section>
+
+<!-- FOUNDING MEMBERS -->
+<section class="ic-section">
+    <div class="founders-note">
+        <h3>For our <span class="gold">founding members</span>.</h3>
+        <p>Radius isn't just an app — it's a community. The players who help us map courses, test what's next, and grow this thing aren't just members. They're founders. And founders get a voice in where Radius goes next.</p>
+    </div>
+</section>
+
+<!-- THE PATH -->
+<section class="ic-section" id="path">
+    <div class="section-head">
+        <div class="section-label">The Path</div>
+        <h2>How you get <span class="gold">in</span>.</h2>
+        <p>Everyone starts in the community. From there, the players who put in the work to map courses earn their way into the Inner Circle.</p>
+    </div>
+
+    <div class="tiers">
+        <div class="tier">
+            <div class="tier-tag">5 Courses</div>
+            <h3>Inner Circle</h3>
+            <div class="req">Map 5 approved courses to earn your spot.</div>
+            <ul>
+                <li><svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg>Founding member status</li>
+                <li><svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg>Early access to beta features</li>
+                <li><svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg>First look at limited drops</li>
+                <li><svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg>Exclusive offers from partners</li>
+                <li><svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg>Private channels with the team</li>
+                <li><svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg>A vote on what we build next</li>
+            </ul>
+        </div>
+
+        <div class="tier gold">
+            <div class="tier-tag">10 Courses</div>
+            <h3>Inner Circle Pro</h3>
+            <div class="req">Map 10 approved courses to unlock the top tier.</div>
+            <ul>
+                <li><svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg>Everything in Inner Circle</li>
+                <li><svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg><strong>Radius Pro free for a full year</strong></li>
+                <li><svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg>Direct line to the founders</li>
+                <li><svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg>Top-tier recognition in the community</li>
+                <li><svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg>First access to everything new</li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="ic-section">
+    <div class="section-head">
+        <div class="section-label">How It Works</div>
+        <h2>Three steps to <span class="gold">founding member</span>.</h2>
+    </div>
+    <div class="steps">
+        <div class="step">
+            <div class="step-num">1</div>
+            <h4>Join the community</h4>
+            <p>Hop into the Discord. Meet other players, follow updates, and find your way around.</p>
+        </div>
+        <div class="step">
+            <div class="step-num">2</div>
+            <h4>Map courses</h4>
+            <p>Submit the courses you've built for review. Our team approves each one before it counts toward your total.</p>
+        </div>
+        <div class="step">
+            <div class="step-num">3</div>
+            <h4>Earn your access</h4>
+            <p>Hit 5 approved courses for Inner Circle. Hit 10 for Inner Circle Pro and a year of Radius Pro on us.</p>
+        </div>
+    </div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="final-cta">
+    <h2>Ready to <span class="gold">build something</span>?</h2>
+    <p>The Inner Circle starts in the Discord. Come say hi.</p>
+    <a href="https://discord.gg/nWqx7SeHc" class="btn-gold" target="_blank" rel="noopener">
+        Join the Community
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 2l5 5-5 5"/></svg>
+    </a>
+</section>
+
+<footer>
+    <div class="footer-inner">
+        <div class="footer-left">
+            <img src="assets/logo.svg" alt="Radius" style="width:32px;height:32px;border-radius:6px">
+            <span>Radius Disc Golf</span>
+        </div>
+        <div class="footer-links">
+            <a href="story.html">Our Story</a>
+            <a href="inner-circle.html">Inner Circle</a>
+            <a href="privacy.html">Privacy Policy</a>
+            <a href="terms.html">Terms of Service</a>
+            <a href="contact.html">Contact</a>
+        </div>
+    </div>
+</footer>
+
+</body>
+</html>

@@ -72,6 +72,31 @@
 
         .nav-back:hover { color: var(--gold); }
 
+        .nav-links { display: flex; align-items: center; gap: 2.5rem; }
+        .nav-links a {
+            color: var(--sage);
+            text-decoration: none;
+            font-size: 0.88rem;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        .nav-links a:hover { color: var(--gold); }
+        .nav-cta {
+            background: var(--gold) !important;
+            color: var(--bg-deep) !important;
+            padding: 10px 22px !important;
+            border-radius: 100px;
+            font-weight: 700 !important;
+            font-size: 0.82rem !important;
+            letter-spacing: 0.3px;
+            transition: all 0.2s !important;
+        }
+        .nav-cta:hover { background: #f8cf80 !important; transform: translateY(-1px); }
+        @media (max-width: 768px) {
+            .nav-links { gap: 1.25rem; }
+            .nav-links a:not(.nav-cta) { display: none; }
+        }
+
         .contact-header {
             position: relative;
             padding: 5rem 2rem 3rem;
@@ -192,7 +217,13 @@
             <img src="assets/logo.svg" alt="Radius" style="width:32px;height:32px;border-radius:6px">
             <span class="nav-wordmark">Radius</span>
         </a>
-        <a href="index.html" class="nav-back">&larr; Back to Home</a>
+        <div class="nav-links">
+            <a href="index.html#caddy-ai">Features</a>
+            <a href="inner-circle.html">Inner Circle</a>
+            <a href="story.html">Our Story</a>
+            <a href="contact.html">Contact</a>
+            <a href="https://apps.apple.com/us/app/radius-disc-golf/id6760574186" class="nav-cta" target="_blank" rel="noopener">Download</a>
+        </div>
     </div>
 </nav>
 
