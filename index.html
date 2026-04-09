@@ -589,6 +589,31 @@
         .app-store-btn:hover { transform: scale(1.05); opacity: 0.9; }
         .app-store-btn img { display: block; }
 
+        .play-soon-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: #000;
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.22);
+            border-radius: 10px;
+            padding: 8px 16px;
+            text-decoration: none;
+            font-family: 'Inter', -apple-system, sans-serif;
+            height: 56px;
+            box-sizing: border-box;
+            cursor: default;
+            opacity: 0.85;
+        }
+        .play-soon-btn.lg { height: 64px; padding: 10px 20px; }
+        .play-soon-btn svg { width: 26px; height: 26px; flex-shrink: 0; }
+        .play-soon-btn .txt { display: flex; flex-direction: column; line-height: 1.1; text-align: left; }
+        .play-soon-btn .txt small { font-size: 0.62rem; font-weight: 400; opacity: 0.85; letter-spacing: 0.3px; }
+        .play-soon-btn.lg .txt small { font-size: 0.68rem; }
+        .play-soon-btn .txt span { font-size: 1.1rem; font-weight: 600; font-family: 'Sora', sans-serif; letter-spacing: 0.2px; }
+        .play-soon-btn.lg .txt span { font-size: 1.25rem; }
+        .hero-buttons { flex-wrap: wrap; }
+
         .signup-form .btn-gold {
             margin-top: 0.5rem;
             justify-content: center;
@@ -771,6 +796,10 @@
                 <a href="https://apps.apple.com/us/app/radius-disc-golf/id6760574186" class="app-store-btn" target="_blank" rel="noopener" aria-label="Download on the App Store">
                     <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" height="56">
                 </a>
+                <span class="play-soon-btn" aria-label="Coming soon to Google Play">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3.5 2.5v19l15-9.5-15-9.5z" fill="#f6c165"/><path d="M3.5 2.5l10.5 6.5 4.5-3-15-3.5z" fill="#fff" opacity="0.9"/></svg>
+                    <span class="txt"><small>COMING SOON TO</small><span>Google Play</span></span>
+                </span>
                 <a href="#caddy-ai" class="btn-ghost">
                     See features
                     <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 2l5 5-5 5"/></svg>
@@ -1268,9 +1297,15 @@
         <img src="assets/logo.svg" alt="Radius" style="width:72px;height:72px;border-radius:14px;margin-bottom:1.5rem">
         <h2>Ready to play<br><span class="gold">smarter?</span></h2>
         <p>Radius is now available on the App Store. Download today.</p>
-        <a href="https://apps.apple.com/us/app/radius-disc-golf/id6760574186" class="app-store-btn" target="_blank" rel="noopener" aria-label="Download on the App Store">
-            <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" height="64">
-        </a>
+        <div style="display:inline-flex;gap:1rem;flex-wrap:wrap;justify-content:center;align-items:center">
+            <a href="https://apps.apple.com/us/app/radius-disc-golf/id6760574186" class="app-store-btn" target="_blank" rel="noopener" aria-label="Download on the App Store">
+                <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" height="64">
+            </a>
+            <span class="play-soon-btn lg" aria-label="Coming soon to Google Play">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3.5 2.5v19l15-9.5-15-9.5z" fill="#f6c165"/><path d="M3.5 2.5l10.5 6.5 4.5-3-15-3.5z" fill="#fff" opacity="0.9"/></svg>
+                <span class="txt"><small>COMING SOON TO</small><span>Google Play</span></span>
+            </span>
+        </div>
     </div>
 </section>
 
