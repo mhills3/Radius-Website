@@ -551,14 +551,14 @@ function renderCourses() {
             <div class="location">${esc(c.city || '')}${c.state ? ', ' + esc(c.state) : ''}</div>
             <div class="card-meta">
                 ${reviewsByCourse[c.id] ? `<span class="card-stars">${'★'.repeat(Math.round(reviewsByCourse[c.id].total / reviewsByCourse[c.id].count))} <span style="color:var(--cream);font-weight:600">${(reviewsByCourse[c.id].total / reviewsByCourse[c.id].count).toFixed(1)}</span> <span style="color:var(--sage-dim)">(${reviewsByCourse[c.id].count})</span></span>` : ''}
-                ${c.communityAverage != null ? `<span class="card-avg">🌐 ${fmtScore(Math.round(c.communityAverage))}</span>` : ''}
+                ${c.communityAverage != null ? `<span class="card-avg">🌐 ${c.communityAverage > 0 ? '+' : ''}${c.communityAverage.toFixed(1)}</span>` : ''}
             </div>
             <div class="tags">
                 <span class="tag">${c.holeCount || 0} holes</span>
                 <span class="tag">Par ${c.par || 0}</span>
                 ${c.distanceFt ? `<span class="tag">${c.distanceFt.toLocaleString()} ft</span>` : ''}
                 ${c.terrain ? `<span class="tag" style="text-transform:capitalize">${esc(c.terrain)}</span>` : ''}
-                ${userLat && c.latitude ? `<span class="tag" style="color:var(--gold)">${Math.round(getDistMi(userLat, userLng, c.latitude, c.longitude))} mi</span>` : ''}
+                ${userLat && c.latitude ? `<span class="tag" style="color:var(--gold);font-weight:700">📍 ${getDistMi(userLat, userLng, c.latitude, c.longitude).toFixed(1)} mi</span>` : ''}
             </div>
         </div>
     `).join('');
@@ -691,7 +691,7 @@ async function showCourse(course) {
         <div class="stat-pill"><div class="sp-label">Holes</div><div class="sp-val">${course.holeCount || 0}</div></div>
         <div class="stat-pill"><div class="sp-label">Par</div><div class="sp-val">${course.par || 0}</div></div>
         ${course.distanceFt ? `<div class="stat-pill"><div class="sp-label">Distance</div><div class="sp-val">${course.distanceFt.toLocaleString()} ft</div></div>` : ''}
-        ${course.communityAverage != null ? `<div class="stat-pill blue"><div class="sp-label">Avg Score</div><div class="sp-val"><span class="sp-icon">🌐</span>${fmtScore(Math.round(course.communityAverage))}</div></div>` : ''}
+        ${course.communityAverage != null ? `<div class="stat-pill blue"><div class="sp-label">Avg Score</div><div class="sp-val"><span class="sp-icon">🌐</span>${course.communityAverage > 0 ? '+' : ''}${course.communityAverage.toFixed(1)}</div></div>` : ''}
         ${courseReviews.length > 0 ? `<div class="stat-pill gold" style="cursor:pointer" onclick="openReviewsModal()"><div class="sp-label">Rating</div><div class="sp-val">${avgR.toFixed(1)} ★</div></div>` : ''}
     `;
 
