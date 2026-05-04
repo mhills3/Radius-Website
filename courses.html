@@ -259,8 +259,7 @@ let map = null;
 
 // ==================== LOAD COURSES ====================
 async function loadCourses() {
-    const q = query(collection(db, "courses"), where("reviewStatus", "==", "approved"));
-    const snap = await getDocs(q);
+    const snap = await getDocs(collection(db, "courses"));
     allCourses = snap.docs.map(d => {
         const data = d.data();
         let holes = data.holes || [];
@@ -407,7 +406,7 @@ async function showCourse(course) {
 function renderMap(course, holes) {
     if (map) { map.remove(); map = null; }
 
-    mapboxgl.accessToken = 'pk.eyJ1IjoibWlrZXkzIiwiYSI6ImNtb3BxMHlkczFvYzMydHBwdmRudXprbTEifQ.3JgnNFpVWPHH1EVeSe7vbA';
+    mapboxgl.accessToken = 'pk.eyJ1IjoibWlrZXkzIiwiYSI6ImNtb3Fra25hZzB6dnIycHB6ZHMxcjIwNHYifQ.tyyS7i-aoR54_l11rW0Khg';
     const hasHoleCoords = holes.some(h => h.teeLat && h.teeLng);
     const center = hasHoleCoords
         ? [holes.find(h => h.teeLng).teeLng, holes.find(h => h.teeLat).teeLat]
