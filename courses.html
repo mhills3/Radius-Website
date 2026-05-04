@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disc Golf Courses — Radius Disc Golf</title>
+    <meta name="description" content="Browse disc golf courses mapped by the Radius community. Hole-by-hole layouts, leaderboards, satellite maps, and more.">
+    <meta name="theme-color" content="#1a2821">
+
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://radiusdiscgolf.com/courses">
+    <meta property="og:title" content="Disc Golf Courses — Radius Disc Golf">
+    <meta property="og:description" content="Browse disc golf courses with hole maps, leaderboards, and more.">
+    <meta property="og:image" content="https://radiusdiscgolf.com/assets/og-image.png">
+
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+    <link rel="apple-touch-icon" href="assets/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.4.0/mapbox-gl.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #131e18;
+            --bg-mid: #1a2821;
+            --bg-card: #2F3C35;
+            --gold: #F6C165;
+            --gold-bright: #f8cf80;
+            --gold-dim: rgba(246,193,101,0.12);
+            --cream: #F5EDE1;
+            --sage: rgba(168,179,145,0.85);
+            --sage-dim: rgba(168,179,145,0.45);
+            --text-body: rgba(245,237,225,0.7);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-deep);
+            color: var(--cream);
+            -webkit-font-smoothing: antialiased;
+        }
+        h1,h2,h3,h4 { font-family: 'Sora', sans-serif; letter-spacing: -0.5px; }
+        .gold { color: var(--gold); }
+
+        /* NAV */
+        nav { background: var(--bg-deep); padding: 0 2rem; border-bottom: 1px solid rgba(168,179,145,0.08); }
+        .nav-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; height: 72px; }
+        .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+        .nav-links { display: flex; align-items: center; gap: 2.5rem; }
+        .nav-links a { color: var(--sage); text-decoration: none; font-size: 0.88rem; font-weight: 500; transition: color 0.2s; }
+        .nav-links a:hover { color: var(--gold); }
+        .nav-cta { background: var(--gold) !important; color: var(--bg-deep) !important; padding: 10px 22px !important; border-radius: 100px; font-weight: 700 !important; font-size: 0.82rem !important; letter-spacing: 0.3px; transition: all 0.2s !important; }
+        .nav-cta:hover { background: var(--gold-bright) !important; transform: translateY(-1px); }
+        @media (max-width: 768px) { .nav-links { gap: 1.25rem; } .nav-links a:not(.nav-cta) { display: none; } }
+
+        /* HEADER */
+        .page-header { position: relative; padding: 4rem 2rem 3rem; text-align: center; background: linear-gradient(175deg, var(--bg-deep), var(--bg-mid)); overflow: hidden; }
+        .page-header .glow { position: absolute; width: 600px; height: 600px; top: -200px; left: 50%; transform: translateX(-50%); background: radial-gradient(circle, var(--gold-dim), transparent 65%); pointer-events: none; }
+        .page-header h1 { position: relative; z-index: 2; font-size: 2.8rem; font-weight: 800; }
+        .page-header p { position: relative; z-index: 2; color: var(--text-body); margin-top: 0.5rem; }
+
+        /* SEARCH / FILTERS */
+        .filters { max-width: 1200px; margin: 0 auto; padding: 1.5rem 2rem; display: flex; flex-wrap: wrap; gap: 0.75rem; }
+        .filters input, .filters select {
+            background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px; padding: 12px 16px; color: var(--cream); font-size: 0.9rem;
+            font-family: 'Inter', sans-serif; outline: none; transition: border-color 0.2s;
+        }
+        .filters input { flex: 1; min-width: 200px; max-width: 380px; }
+        .filters input::placeholder { color: var(--sage-dim); }
+        .filters input:focus, .filters select:focus { border-color: rgba(246,193,101,0.5); }
+        .filters select option { background: var(--bg-card); color: var(--cream); }
+        .result-count { max-width: 1200px; margin: 0 auto; padding: 0 2rem; font-size: 0.82rem; color: var(--sage-dim); }
+
+        /* COURSE GRID */
+        .course-grid {
+            max-width: 1200px; margin: 1rem auto 3rem; padding: 0 2rem;
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem;
+        }
+        .course-card {
+            background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 18px; padding: 1.5rem; cursor: pointer; transition: all 0.25s;
+            text-decoration: none; color: inherit; display: block;
+        }
+        .course-card:hover { transform: translateY(-4px); border-color: rgba(246,193,101,0.4); box-shadow: 0 16px 48px rgba(0,0,0,0.35); }
+        .course-card h3 { font-size: 1.15rem; font-weight: 700; transition: color 0.2s; }
+        .course-card:hover h3 { color: var(--gold); }
+        .course-card .location { color: var(--sage); font-size: 0.88rem; margin-top: 0.25rem; }
+        .course-card .tags { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
+        .course-card .tag { background: rgba(255,255,255,0.05); border-radius: 100px; padding: 4px 12px; font-size: 0.78rem; color: var(--text-body); }
+
+        /* LOADING */
+        .loading { text-align: center; padding: 5rem 2rem; color: var(--sage); }
+        .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid rgba(168,179,145,0.3); border-top-color: var(--gold); border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 10px; vertical-align: middle; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .empty { text-align: center; padding: 4rem 2rem; color: var(--sage-dim); }
+
+        /* DETAIL VIEW */
+        .detail-view { display: none; max-width: 1200px; margin: 0 auto; padding: 2rem; }
+        .detail-view.active { display: block; }
+        .directory-view.hidden { display: none; }
+        .back-btn { display: inline-flex; align-items: center; gap: 8px; color: var(--sage-dim); font-size: 0.88rem; text-decoration: none; cursor: pointer; transition: color 0.2s; margin-bottom: 1.5rem; background: none; border: none; font-family: inherit; }
+        .back-btn:hover { color: var(--gold); }
+        .detail-header h1 { font-size: 2.5rem; font-weight: 800; line-height: 1.1; }
+        .detail-header .loc { color: var(--sage); font-size: 1.05rem; margin-top: 0.35rem; }
+        .stats-row { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1.5rem; }
+        .stat-box { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 0.75rem 1.25rem; }
+        .stat-box.gold { border-color: rgba(246,193,101,0.25); background: rgba(246,193,101,0.06); }
+        .stat-box .label { font-size: 0.7rem; color: var(--sage-dim); text-transform: uppercase; letter-spacing: 1px; }
+        .stat-box.gold .label { color: var(--gold); }
+        .stat-box .val { font-family: 'Sora', sans-serif; font-size: 1.3rem; font-weight: 800; margin-top: 2px; }
+        .stat-box.gold .val { color: var(--gold); }
+        .detail-desc { max-width: 720px; color: var(--text-body); margin-top: 1.5rem; line-height: 1.7; }
+
+        /* MAP */
+        .map-section { margin-top: 2rem; }
+        .map-section h2 { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.75rem; }
+        #course-map { width: 100%; height: 420px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); }
+        .mapboxgl-popup-content { background: var(--bg-card) !important; color: var(--cream) !important; border-radius: 10px !important; padding: 10px 14px !important; font-family: 'Inter', sans-serif !important; font-size: 0.82rem !important; box-shadow: 0 8px 24px rgba(0,0,0,0.5) !important; }
+        .mapboxgl-popup-tip { border-top-color: var(--bg-card) !important; }
+        .mapboxgl-popup-close-button { color: var(--sage) !important; font-size: 16px !important; }
+
+        /* HOLE TABLE */
+        .hole-section { margin-top: 2.5rem; }
+        .hole-section h2 { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.75rem; }
+        .hole-table-wrap { overflow-x: auto; border-radius: 14px; border: 1px solid rgba(255,255,255,0.06); }
+        .hole-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+        .hole-table th { text-align: left; padding: 0.75rem 1rem; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1px; color: var(--sage-dim); background: rgba(255,255,255,0.025); border-bottom: 1px solid rgba(255,255,255,0.06); }
+        .hole-table td { padding: 0.65rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.04); }
+        .hole-table tr:hover td { background: rgba(255,255,255,0.015); }
+        .hole-table .hole-num { color: var(--gold); font-weight: 700; }
+        .hole-table .total-row { background: rgba(255,255,255,0.025); font-weight: 700; }
+
+        /* LEADERBOARD */
+        .lb-section { margin-top: 2.5rem; }
+        .lb-section h2 { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.75rem; }
+        .lb-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+        .lb-table th { text-align: left; padding: 0.75rem 1rem; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1px; color: var(--sage-dim); background: rgba(255,255,255,0.025); border-bottom: 1px solid rgba(255,255,255,0.06); }
+        .lb-table td { padding: 0.65rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.04); }
+        .lb-table tr:hover td { background: rgba(255,255,255,0.015); }
+        .score-under { color: #6ee7b7; }
+        .score-even { color: var(--cream); }
+        .score-over { color: #f87171; }
+
+        /* DOWNLOAD CTA */
+        .download-cta { margin-top: 3rem; text-align: center; border-radius: 18px; border: 1px solid rgba(246,193,101,0.18); background: rgba(246,193,101,0.04); padding: 2.5rem 2rem; }
+        .download-cta h3 { font-size: 1.5rem; font-weight: 800; }
+        .download-cta p { color: var(--text-body); font-size: 0.92rem; margin-top: 0.5rem; max-width: 420px; margin-left: auto; margin-right: auto; }
+        .download-cta .btn-gold { display: inline-flex; align-items: center; gap: 8px; background: var(--gold); color: var(--bg-deep); padding: 14px 28px; border-radius: 100px; font-weight: 700; font-size: 0.92rem; text-decoration: none; margin-top: 1.25rem; transition: all 0.2s; box-shadow: 0 8px 24px rgba(246,193,101,0.25); }
+        .download-cta .btn-gold:hover { background: var(--gold-bright); transform: translateY(-2px); }
+
+        /* FOOTER */
+        footer { background: var(--bg-deep); border-top: 1px solid rgba(168,179,145,0.08); padding: 2.5rem 2rem; }
+        .footer-inner { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem; }
+        .footer-left { display: flex; align-items: center; gap: 12px; color: var(--cream); font-weight: 600; }
+        .footer-links { display: flex; gap: 1.75rem; flex-wrap: wrap; }
+        .footer-links a { color: var(--sage-dim); text-decoration: none; font-size: 0.88rem; transition: color 0.2s; }
+        .footer-links a:hover { color: var(--gold); }
+
+        @media (max-width: 600px) {
+            .page-header h1 { font-size: 2rem; }
+            .detail-header h1 { font-size: 1.8rem; }
+            .course-grid { grid-template-columns: 1fr; }
+            #course-map { height: 300px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="nav-inner">
+        <a href="index.html" class="nav-logo">
+            <img src="assets/logo-lettermark.svg" alt="Radius" style="height:28px;width:auto">
+        </a>
+        <div class="nav-links">
+            <a href="index.html#caddy-ai">Features</a>
+            <a href="courses.html">Courses</a>
+            <a href="inner-circle.html">Inner Circle</a>
+            <a href="story.html">Our Story</a>
+            <a href="contact.html">Contact</a>
+            <a href="https://apps.apple.com/us/app/radius-disc-golf/id6760574186" class="nav-cta" target="_blank" rel="noopener">Download</a>
+        </div>
+    </div>
+</nav>
+
+<!-- DIRECTORY VIEW -->
+<div class="directory-view" id="directoryView">
+    <div class="page-header">
+        <div class="glow"></div>
+        <h1>Disc Golf <span class="gold">Courses</span></h1>
+        <p>Browse courses mapped by the Radius community.</p>
+    </div>
+
+    <div class="filters">
+        <input type="text" id="searchInput" placeholder="Search by name or city...">
+        <select id="stateFilter"><option value="">All States</option></select>
+    </div>
+    <div class="result-count" id="resultCount"></div>
+    <div class="loading" id="loadingIndicator"><span class="spinner"></span>Loading courses...</div>
+    <div class="course-grid" id="courseGrid"></div>
+    <div class="empty" id="emptyMsg" style="display:none">No courses match your search.</div>
+</div>
+
+<!-- DETAIL VIEW -->
+<div class="detail-view" id="detailView">
+    <button class="back-btn" onclick="showDirectory()">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 12L4 7l5-5"/></svg>
+        All Courses
+    </button>
+    <div class="detail-header" id="detailHeader"></div>
+    <div class="map-section" id="mapSection" style="display:none">
+        <h2>Course Map</h2>
+        <div id="course-map"></div>
+    </div>
+    <div class="hole-section" id="holeSection"></div>
+    <div class="lb-section" id="lbSection"></div>
+    <div class="download-cta">
+        <h3>Play this course with <span class="gold">Radius</span></h3>
+        <p>Get personalized disc recommendations, track your rounds, and compete on the leaderboard.</p>
+        <a href="https://apps.apple.com/us/app/radius-disc-golf/id6760574186" class="btn-gold" target="_blank" rel="noopener">Download Radius</a>
+    </div>
+</div>
+
+<footer>
+    <div class="footer-inner">
+        <div class="footer-left">
+            <img src="assets/logo.svg" alt="Radius" style="width:32px;height:32px;border-radius:6px">
+            <span>Radius Disc Golf</span>
+        </div>
+        <div class="footer-links">
+            <a href="story.html">Our Story</a>
+            <a href="courses.html">Courses</a>
+            <a href="inner-circle.html">Inner Circle</a>
+            <a href="privacy.html">Privacy Policy</a>
+            <a href="terms.html">Terms of Service</a>
+            <a href="contact.html">Contact</a>
+        </div>
+    </div>
+</footer>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, getDocs, doc, getDoc, query, where, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const app = initializeApp({
+    apiKey: "AIzaSyCVjfvMNwy5sLFjONGZFfPpPsnqO79IiPE",
+    authDomain: "radius-dg.firebaseapp.com",
+    projectId: "radius-dg",
+    storageBucket: "radius-dg.firebasestorage.app",
+    messagingSenderId: "357255426355",
+    appId: "1:357255426355:web:3af86d8a659c10464bce46"
+});
+const db = getFirestore(app);
+
+let allCourses = [];
+let map = null;
+
+// ==================== LOAD COURSES ====================
+async function loadCourses() {
+    const q = query(collection(db, "courses"), where("reviewStatus", "==", "approved"));
+    const snap = await getDocs(q);
+    allCourses = snap.docs.map(d => {
+        const data = d.data();
+        let holes = data.holes || [];
+        if (data.holesJSON) {
+            try { holes = JSON.parse(data.holesJSON); } catch(e) {}
+        }
+        return { id: d.id, ...data, holes };
+    });
+    allCourses.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+    // Populate state filter
+    const states = [...new Set(allCourses.map(c => c.state).filter(Boolean))].sort();
+    const sel = document.getElementById('stateFilter');
+    states.forEach(s => { const o = document.createElement('option'); o.value = s; o.textContent = s; sel.appendChild(o); });
+
+    document.getElementById('loadingIndicator').style.display = 'none';
+    renderCourses();
+
+    // Check hash
+    if (location.hash.startsWith('#course-')) {
+        const id = location.hash.slice(8);
+        const c = allCourses.find(x => x.id === id);
+        if (c) showCourse(c);
+    }
+}
+
+// ==================== RENDER GRID ====================
+function renderCourses() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    const state = document.getElementById('stateFilter').value;
+    const filtered = allCourses.filter(c => {
+        if (state && c.state !== state) return false;
+        if (q && !(c.name||'').toLowerCase().includes(q) && !(c.city||'').toLowerCase().includes(q)) return false;
+        return true;
+    });
+
+    const grid = document.getElementById('courseGrid');
+    const empty = document.getElementById('emptyMsg');
+    const count = document.getElementById('resultCount');
+    count.textContent = `${filtered.length} course${filtered.length !== 1 ? 's' : ''} found`;
+
+    if (filtered.length === 0) { grid.innerHTML = ''; empty.style.display = 'block'; return; }
+    empty.style.display = 'none';
+
+    grid.innerHTML = filtered.map(c => `
+        <div class="course-card" data-id="${c.id}">
+            <h3>${esc(c.name)}</h3>
+            <div class="location">${esc(c.city || '')}${c.state ? ', ' + esc(c.state) : ''}</div>
+            <div class="tags">
+                <span class="tag">${c.holeCount || 0} holes</span>
+                <span class="tag">Par ${c.par || 0}</span>
+                ${c.distanceFt ? `<span class="tag">${c.distanceFt.toLocaleString()} ft</span>` : ''}
+                ${c.terrain ? `<span class="tag" style="text-transform:capitalize">${esc(c.terrain)}</span>` : ''}
+            </div>
+        </div>
+    `).join('');
+
+    grid.querySelectorAll('.course-card').forEach(el => {
+        el.addEventListener('click', () => {
+            const c = allCourses.find(x => x.id === el.dataset.id);
+            if (c) showCourse(c);
+        });
+    });
+}
+
+// ==================== SHOW COURSE DETAIL ====================
+async function showCourse(course) {
+    history.pushState(null, '', '#course-' + course.id);
+    document.title = course.name + ' — Radius Disc Golf';
+    document.getElementById('directoryView').classList.add('hidden');
+    document.getElementById('detailView').classList.add('active');
+    window.scrollTo(0, 0);
+
+    // Header
+    const hdr = document.getElementById('detailHeader');
+    const fmtScore = n => n === 0 ? 'E' : (n > 0 ? '+' + n : '' + n);
+    hdr.innerHTML = `
+        <h1>${esc(course.name)}</h1>
+        <div class="loc">${esc(course.city || '')}${course.state ? ', ' + esc(course.state) : ''}</div>
+        <div class="stats-row">
+            <div class="stat-box"><div class="label">Holes</div><div class="val">${course.holeCount || 0}</div></div>
+            <div class="stat-box"><div class="label">Par</div><div class="val">${course.par || 0}</div></div>
+            ${course.distanceFt ? `<div class="stat-box"><div class="label">Distance</div><div class="val">${course.distanceFt.toLocaleString()} ft</div></div>` : ''}
+            ${course.terrain ? `<div class="stat-box"><div class="label">Terrain</div><div class="val" style="text-transform:capitalize">${esc(course.terrain)}</div></div>` : ''}
+            ${course.communityAverage != null ? `<div class="stat-box gold"><div class="label">Avg Score</div><div class="val">${fmtScore(Math.round(course.communityAverage))}</div></div>` : ''}
+        </div>
+        ${course.description ? `<p class="detail-desc">${esc(course.description)}</p>` : ''}
+    `;
+
+    // Holes
+    const holes = (course.holes || []).slice().sort((a, b) => (a.holeNumber || 0) - (b.holeNumber || 0));
+    const holeSec = document.getElementById('holeSection');
+    if (holes.length > 0) {
+        const totalPar = holes.reduce((s, h) => s + (h.par || 0), 0);
+        const totalDist = holes.reduce((s, h) => s + (h.distance || 0), 0);
+        holeSec.innerHTML = `<h2>Hole-by-Hole</h2>
+        <div class="hole-table-wrap"><table class="hole-table">
+            <thead><tr><th>Hole</th><th>Par</th><th>Distance</th></tr></thead>
+            <tbody>
+                ${holes.map(h => `<tr><td class="hole-num">${h.holeNumber}</td><td>${h.par}</td><td>${h.distance ? h.distance + ' ft' : '—'}</td></tr>`).join('')}
+                <tr class="total-row"><td>Total</td><td>${totalPar}</td><td>${totalDist.toLocaleString()} ft</td></tr>
+            </tbody>
+        </table></div>`;
+    } else {
+        holeSec.innerHTML = '';
+    }
+
+    // Map
+    const mapSec = document.getElementById('mapSection');
+    const hasCoords = holes.some(h => h.teeLat && h.teeLng);
+    if (hasCoords || (course.latitude && course.longitude)) {
+        mapSec.style.display = 'block';
+        setTimeout(() => renderMap(course, holes), 100);
+    } else {
+        mapSec.style.display = 'none';
+    }
+
+    // Leaderboard
+    const lbSec = document.getElementById('lbSection');
+    lbSec.innerHTML = '<h2>Leaderboard</h2><div class="loading" style="padding:2rem"><span class="spinner"></span>Loading scores...</div>';
+    try {
+        const q2 = query(collection(db, "courseScores"), where("courseId", "==", course.id), orderBy("relativeToPar", "asc"), limit(20));
+        const snap = await getDocs(q2);
+        const scores = snap.docs.map(d => d.data());
+        if (scores.length > 0) {
+            lbSec.innerHTML = `<h2>Leaderboard</h2>
+            <div class="hole-table-wrap"><table class="lb-table">
+                <thead><tr><th>#</th><th>Player</th><th>Score</th><th>Date</th></tr></thead>
+                <tbody>${scores.map((s, i) => {
+                    const cls = s.relativeToPar < 0 ? 'score-under' : s.relativeToPar === 0 ? 'score-even' : 'score-over';
+                    const d = s.date ? new Date(s.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+                    return `<tr><td style="color:var(--sage-dim)">${i + 1}</td><td>${esc(s.playerName || '')}${s.username ? ' <span style="color:var(--sage-dim)">@' + esc(s.username) + '</span>' : ''}</td><td class="${cls}" style="font-weight:700">${fmtScore(s.relativeToPar)}</td><td style="color:var(--text-body)">${d}</td></tr>`;
+                }).join('')}</tbody>
+            </table></div>`;
+        } else {
+            lbSec.innerHTML = '<h2>Leaderboard</h2><p style="color:var(--sage-dim);padding:1rem 0">No scores recorded yet. Be the first — download Radius and play this course.</p>';
+        }
+    } catch(e) {
+        lbSec.innerHTML = '<h2>Leaderboard</h2><p style="color:var(--sage-dim)">Could not load scores.</p>';
+    }
+}
+
+// ==================== MAP ====================
+function renderMap(course, holes) {
+    if (map) { map.remove(); map = null; }
+
+    mapboxgl.accessToken = 'pk.eyJ1IjoibWlrZXkzIiwiYSI6ImNtb3BxMHlkczFvYzMydHBwdmRudXprbTEifQ.3JgnNFpVWPHH1EVeSe7vbA';
+    const hasHoleCoords = holes.some(h => h.teeLat && h.teeLng);
+    const center = hasHoleCoords
+        ? [holes.find(h => h.teeLng).teeLng, holes.find(h => h.teeLat).teeLat]
+        : [course.longitude, course.latitude];
+
+    map = new mapboxgl.Map({
+        container: 'course-map',
+        style: 'mapbox://styles/mapbox/satellite-streets-v12',
+        center: center,
+        zoom: 16,
+        attributionControl: false
+    });
+    map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+    const bounds = new mapboxgl.LngLatBounds();
+
+    holes.forEach(h => {
+        if (!h.teeLat || !h.teeLng) return;
+
+        // Tee marker
+        const teeEl = document.createElement('div');
+        teeEl.style.cssText = 'width:22px;height:22px;background:var(--gold);border:2px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#1a2821;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.5);';
+        teeEl.textContent = h.holeNumber;
+        new mapboxgl.Marker({ element: teeEl })
+            .setLngLat([h.teeLng, h.teeLat])
+            .setPopup(new mapboxgl.Popup({ offset: 12 }).setHTML(`<strong>Hole ${h.holeNumber} Tee</strong><br>Par ${h.par}${h.distance ? ' · ' + h.distance + ' ft' : ''}`))
+            .addTo(map);
+        bounds.extend([h.teeLng, h.teeLat]);
+
+        // Basket marker
+        if (h.basketLat && h.basketLng) {
+            const bEl = document.createElement('div');
+            bEl.style.cssText = 'width:16px;height:16px;background:#fff;border:2px solid var(--gold);border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.4);cursor:pointer;';
+            new mapboxgl.Marker({ element: bEl })
+                .setLngLat([h.basketLng, h.basketLat])
+                .setPopup(new mapboxgl.Popup({ offset: 10 }).setHTML(`<strong>Hole ${h.holeNumber} Basket</strong>`))
+                .addTo(map);
+            bounds.extend([h.basketLng, h.basketLat]);
+        }
+
+        // Line from tee to basket
+        if (h.basketLat && h.basketLng) {
+            map.on('load', () => {
+                const lineId = 'line-' + h.holeNumber;
+                if (map.getSource(lineId)) return;
+
+                const coords = [[h.teeLng, h.teeLat]];
+                if (h.elbows && h.elbows.length > 0) {
+                    h.elbows.forEach(e => {
+                        if (Array.isArray(e) && e.length >= 2) coords.push([e[1], e[0]]);
+                    });
+                }
+                coords.push([h.basketLng, h.basketLat]);
+
+                map.addSource(lineId, { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: coords } } });
+                map.addLayer({ id: lineId, type: 'line', source: lineId, paint: { 'line-color': '#F6C165', 'line-width': 2.5, 'line-opacity': 0.7, 'line-dasharray': [3, 2] } });
+            });
+        }
+    });
+
+    if (!bounds.isEmpty()) {
+        map.fitBounds(bounds, { padding: 60, maxZoom: 17 });
+    }
+}
+
+// ==================== NAV ====================
+window.showDirectory = function() {
+    document.getElementById('detailView').classList.remove('active');
+    document.getElementById('directoryView').classList.remove('hidden');
+    document.title = 'Disc Golf Courses — Radius Disc Golf';
+    history.pushState(null, '', 'courses.html');
+    if (map) { map.remove(); map = null; }
+};
+
+window.addEventListener('popstate', () => {
+    if (location.hash.startsWith('#course-')) {
+        const id = location.hash.slice(8);
+        const c = allCourses.find(x => x.id === id);
+        if (c) showCourse(c);
+    } else {
+        showDirectory();
+    }
+});
+
+// ==================== FILTERS ====================
+document.getElementById('searchInput').addEventListener('input', renderCourses);
+document.getElementById('stateFilter').addEventListener('change', renderCourses);
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+// ==================== INIT ====================
+loadCourses();
+</script>
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.4.0/mapbox-gl.js"></script>
+</body>
+</html>
