@@ -13,8 +13,8 @@
     <meta property="og:description" content="Browse disc golf courses with hole maps, leaderboards, and more.">
     <meta property="og:image" content="https://radiusdiscgolf.com/assets/og-image.png">
 
-    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
-    <link rel="apple-touch-icon" href="assets/favicon.png">
+    <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+    <link rel="apple-touch-icon" href="/assets/favicon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -158,7 +158,7 @@
         .stat-pill.gold .sp-val { color: var(--gold); }
         .stat-pill.blue .sp-label { color: #5BA4E6; }
         .stat-pill.blue .sp-val { color: #5BA4E6; }
-        .stat-pill .sp-icon { font-size: 0.85rem; margin-right: 2px; }
+        .stat-pill .sp-icon { font-size: 1.15rem; margin-right: 4px; vertical-align: -1px; }
 
         /* CONTENT BODY */
         .detail-body { max-width: 1100px; margin: 0 auto; padding: 1.5rem 2.5rem 4rem; }
@@ -295,7 +295,7 @@
 <nav>
     <div class="nav-inner">
         <a href="index.html" class="nav-logo">
-            <img src="assets/logo-lettermark.svg" alt="Radius" style="height:28px;width:auto">
+            <img src="/assets/logo-lettermark.svg" alt="Radius" style="height:28px;width:auto">
         </a>
         <div class="nav-links">
             <a href="index.html#caddy-ai">Features</a>
@@ -402,7 +402,7 @@
 <footer>
     <div class="footer-inner">
         <div class="footer-left">
-            <img src="assets/logo.svg" alt="Radius" style="width:32px;height:32px;border-radius:6px">
+            <img src="/assets/logo.svg" alt="Radius" style="width:32px;height:32px;border-radius:6px">
             <span>Radius Disc Golf</span>
         </div>
         <div class="footer-links">
@@ -591,7 +591,7 @@ function updateDirectoryMarkers() {
 
         const el = document.createElement('div');
         el.style.cssText = 'width:32px;height:38px;cursor:pointer;';
-        el.innerHTML = '<img src="assets/basket-pin.svg" style="width:100%;height:100%;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.6))">';
+        el.innerHTML = '<img src="/assets/basket-pin.svg" style="width:100%;height:100%;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.6))">';
 
         const marker = new mapboxgl.Marker({ element: el })
             .setLngLat([c.longitude, c.latitude])
@@ -944,7 +944,7 @@ function renderMap(course, holes) {
         if (h.basketLat && h.basketLng) {
             const bEl = document.createElement('div');
             bEl.style.cssText = 'width:28px;height:34px;cursor:pointer;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.6));';
-            bEl.innerHTML = '<img src="assets/basket-pin.svg" style="width:100%;height:100%">';
+            bEl.innerHTML = '<img src="/assets/basket-pin.svg" style="width:100%;height:100%">';
             new mapboxgl.Marker({ element: bEl, anchor: 'bottom' })
                 .setLngLat([h.basketLng, h.basketLat])
                 .setPopup(new mapboxgl.Popup({ offset: 14 }).setHTML(`<strong>Hole ${num} Basket</strong>`))
