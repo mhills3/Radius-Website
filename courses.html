@@ -170,12 +170,12 @@
         .score-even { color: var(--cream); }
         .score-over { color: #f87171; }
 
-        /* PHOTO GRID */
-        .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.5rem; margin-top: 1.5rem; }
-        .photo-grid img { width: 100%; height: 140px; object-fit: cover; border-radius: 12px; cursor: pointer; transition: opacity 0.2s; }
-        .photo-grid img:hover { opacity: 0.85; }
-        .photo-grid img:first-child { grid-column: 1 / -1; height: 260px; border-radius: 14px; }
-        @media (max-width: 600px) { .photo-grid img:first-child { height: 180px; } .photo-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); } }
+        /* PHOTO STRIP */
+        .photo-strip { display: flex; gap: 0.5rem; overflow-x: auto; margin-top: 1.25rem; padding-bottom: 0.5rem; }
+        .photo-strip::-webkit-scrollbar { height: 5px; }
+        .photo-strip::-webkit-scrollbar-thumb { background: rgba(168,179,145,0.2); border-radius: 3px; }
+        .photo-strip img { height: 100px; width: auto; min-width: 100px; max-width: 200px; object-fit: cover; border-radius: 10px; cursor: pointer; transition: opacity 0.2s; flex-shrink: 0; }
+        .photo-strip img:hover { opacity: 0.8; }
 
         /* LIGHTBOX */
         .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 9999; display: flex; align-items: center; justify-content: center; cursor: pointer; }
@@ -504,6 +504,7 @@ async function showCourse(course) {
             ${course.distanceFt ? `<div class="stat-box"><div class="label">Distance</div><div class="val">${course.distanceFt.toLocaleString()} ft</div></div>` : ''}
             ${course.terrain ? `<div class="stat-box"><div class="label">Terrain</div><div class="val" style="text-transform:capitalize">${esc(course.terrain)}</div></div>` : ''}
             ${course.communityAverage != null ? `<div class="stat-box gold"><div class="label">Avg Score</div><div class="val">${fmtScore(Math.round(course.communityAverage))}</div></div>` : ''}
+            ${course.rating ? `<div class="stat-box gold"><div class="label">Rating</div><div class="val">${Number(course.rating).toFixed(1)} ★</div></div>` : ''}
         </div>
         ${course.description ? `<p class="detail-desc">${esc(course.description)}</p>` : ''}
     `;
@@ -518,7 +519,7 @@ async function showCourse(course) {
     if (course.coverPhotoUrl) allPhotos.push(course.coverPhotoUrl);
     if (course.galleryPhotoUrls) allPhotos.push(...course.galleryPhotoUrls.filter(u => u !== course.coverPhotoUrl));
     if (allPhotos.length > 0) {
-        galSec.innerHTML = `<div class="photo-grid">${allPhotos.map(url => `<img src="${url}" alt="Course photo" loading="lazy" onclick="openLightbox('${url}')">`).join('')}</div>`;
+        galSec.innerHTML = `<div class="photo-strip">${allPhotos.map(url => `<img src="${url}" alt="Course photo" loading="lazy" onclick="openLightbox('${url}')">`).join('')}</div>`;
     } else {
         galSec.innerHTML = '';
     }
@@ -578,15 +579,18 @@ async function showCourse(course) {
     lbSec.innerHTML = '<h2>Leaderboard</h2><div class="loading" style="padding:2rem"><span class="spinner"></span>Loading scores...</div>';
     let scores = [];
     try {
-        // Try top-level courseScores first
-        const q2 = query(collection(db, "courseScores"), where("courseId", "==", course.id), orderBy("relativeToPar", "asc"), limit(20));
+        // Try top-level courseScores (no orderBy to avoid composite index requirement)
+        const q2 = query(collection(db, "courseScores"), where("courseId", "==", course.id));
         const snap = await getDocs(q2);
         scores = snap.docs.map(d => d.data());
         // Fallback to nested subcollection
         if (scores.length === 0) {
             const subSnap = await getDocs(collection(db, "courses", course.id, "scores"));
-            scores = subSnap.docs.map(d => d.data()).sort((a, b) => (a.relativeToPar || 0) - (b.relativeToPar || 0)).slice(0, 20);
+            scores = subSnap.docs.map(d => d.data());
         }
+        // Sort and limit client-side
+        scores.sort((a, b) => (a.relativeToPar || 0) - (b.relativeToPar || 0));
+        scores = scores.slice(0, 20);
         if (scores.length > 0) {
             lbSec.innerHTML = `<h2>Leaderboard</h2>
             <div class="hole-table-wrap"><table class="lb-table">
@@ -656,17 +660,24 @@ async function showCourse(course) {
         recSec.innerHTML = '<h2>Records</h2><div class="record-empty">Could not load records.</div>';
     }
 
-    // Reviews (embedded array on course doc + subcollection)
+    // Reviews (try embedded array, subcollection, and parsed JSON)
     const revSec = document.getElementById('reviewsSection');
     try {
         let reviews = [];
-        // Read from embedded array first
+        // 1. Embedded array
         if (course.reviews && Array.isArray(course.reviews) && course.reviews.length > 0) {
             reviews = course.reviews;
-        } else {
-            // Fallback to subcollection
-            const revSnap = await getDocs(collection(db, "courses", course.id, "reviews"));
-            reviews = revSnap.docs.map(d => d.data());
+        }
+        // 2. Maybe stored as JSON string
+        if (reviews.length === 0 && course.reviewsJSON) {
+            try { reviews = JSON.parse(course.reviewsJSON); } catch(e) {}
+        }
+        // 3. Subcollection fallback
+        if (reviews.length === 0) {
+            try {
+                const revSnap = await getDocs(collection(db, "courses", course.id, "reviews"));
+                reviews = revSnap.docs.map(d => d.data());
+            } catch(e) {}
         }
         if (reviews.length > 0) {
             revSec.innerHTML = `<h2>Reviews</h2>${reviews.map(r => {
