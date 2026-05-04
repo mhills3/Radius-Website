@@ -248,8 +248,16 @@
         .review-card .review-rating { color: var(--gold); font-size: 0.82rem; letter-spacing: 1px; }
         .review-card .review-text { color: var(--text-body); font-size: 0.88rem; line-height: 1.6; margin-top: 0.3rem; }
 
-        /* COVER ON CARD */
+        /* CARD EXTRAS */
         .card-cover { width: 100%; height: 120px; object-fit: cover; border-radius: 10px; margin-bottom: 0.75rem; }
+        .card-meta { display: flex; align-items: center; gap: 0.75rem; margin-top: 0.5rem; font-size: 0.78rem; }
+        .card-stars { color: var(--gold); letter-spacing: 1px; }
+        .card-avg { color: #5BA4E6; font-weight: 600; }
+
+        /* RECORD AVATARS */
+        .rec-avatar { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(255,255,255,0.1); flex-shrink: 0; }
+        .rec-avatar-placeholder { width: 24px; height: 24px; border-radius: 50%; background: rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: center; font-size: 0.6rem; color: var(--sage-dim); flex-shrink: 0; }
+        .record-item { display: flex; align-items: center; gap: 10px; }
 
         /* LIGHTBOX */
         .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.94); z-index: 9999; display: flex; align-items: center; justify-content: center; cursor: pointer; backdrop-filter: blur(10px); }
@@ -439,6 +447,8 @@ let dirMarkers = [];
 let activePopup = null;
 let userLat = null;
 let userLng = null;
+let reviewsByCourse = {}; // courseId → { avg, count }
+let userProfileCache = {}; // userId → { name, photoUrl }
 
 // ==================== LOAD COURSES ====================
 async function loadCourses() {
@@ -464,6 +474,18 @@ async function loadCourses() {
     regions.forEach(s => { const o = document.createElement('option'); o.value = s; o.textContent = stateNames[s] ? `${stateNames[s]} (${s})` : s; sel.appendChild(o); });
 
     document.getElementById('loadingIndicator').style.display = 'none';
+
+    // Fetch all reviews for card ratings (single query)
+    try {
+        const allRevSnap = await getDocs(collection(db, "courseReviews"));
+        allRevSnap.docs.forEach(d => {
+            const r = d.data();
+            if (!r.courseId) return;
+            if (!reviewsByCourse[r.courseId]) reviewsByCourse[r.courseId] = { total: 0, count: 0 };
+            reviewsByCourse[r.courseId].total += (r.rating || 0);
+            reviewsByCourse[r.courseId].count++;
+        });
+    } catch(e) {}
 
     // Request location to sort by nearest
     if (navigator.geolocation) {
@@ -527,6 +549,10 @@ function renderCourses() {
             ${c.coverPhotoUrl ? `<img src="${c.coverPhotoUrl}" alt="${esc(c.name)}" class="card-cover" loading="lazy">` : ''}
             <h3>${esc(c.name)}</h3>
             <div class="location">${esc(c.city || '')}${c.state ? ', ' + esc(c.state) : ''}</div>
+            <div class="card-meta">
+                ${reviewsByCourse[c.id] ? `<span class="card-stars">${'★'.repeat(Math.round(reviewsByCourse[c.id].total / reviewsByCourse[c.id].count))} <span style="color:var(--cream);font-weight:600">${(reviewsByCourse[c.id].total / reviewsByCourse[c.id].count).toFixed(1)}</span> <span style="color:var(--sage-dim)">(${reviewsByCourse[c.id].count})</span></span>` : ''}
+                ${c.communityAverage != null ? `<span class="card-avg">🌐 ${fmtScore(Math.round(c.communityAverage))}</span>` : ''}
+            </div>
             <div class="tags">
                 <span class="tag">${c.holeCount || 0} holes</span>
                 <span class="tag">Par ${c.par || 0}</span>
@@ -633,7 +659,6 @@ async function showCourse(course) {
 
     // Hero
     const hdr = document.getElementById('detailHeader');
-    const fmtScore = n => n === 0 ? 'E' : (n > 0 ? '+' + n : '' + n);
     const heroBg = document.getElementById('heroBg');
     if (course.coverPhotoUrl) {
         heroBg.style.backgroundImage = `url(${course.coverPhotoUrl})`;
@@ -852,6 +877,15 @@ async function showCourse(course) {
         // Store raw records for layout filtering
         window._allAces = aces;
         window._allDrives = drives;
+
+        // Fetch profile photos for all record holders
+        const allUserIds = [
+            ...aces.map(a => a.playerId || a.playerUid),
+            ...drives.map(d => d.playerId || d.playerUid),
+            ...(window._allRawScores || []).slice(0, 10).map(s => s.playerId || s.playerUid)
+        ].filter(Boolean);
+        await fetchUserPhotos([...new Set(allUserIds)]);
+
         window._renderRecords = function() {
             const ln = window._selectedLayoutName;
             let filteredScores = window._allRawScores || [];
@@ -868,7 +902,8 @@ async function showCourse(course) {
             html += '<h3>Aces</h3>';
             if (aces.length > 0) {
                 html += aces.map(a => `<div class="record-item">
-                    <div><span class="rec-player">${esc(a.playerName || 'Unknown')}</span> <span class="rec-detail">· Hole ${a.holeNumber || '?'}${a.discName ? ' · ' + esc(a.discName) : ''}</span></div>
+                    ${avatarHtml(a.playerId || a.playerUid, a.playerName)}
+                    <div style="flex:1"><span class="rec-player">${esc(a.playerName || 'Unknown')}</span> <span class="rec-detail">· Hole ${a.holeNumber || '?'}${a.discName ? ' · ' + esc(a.discName) : ''}</span></div>
                     <div class="rec-val">🥏</div>
                 </div>`).join('');
             } else {
@@ -877,7 +912,8 @@ async function showCourse(course) {
             html += '<h3>Best Scores</h3>';
             if (bestScores.length > 0) {
                 html += bestScores.map((s, i) => `<div class="record-item">
-                    <div><span class="rec-player">${esc(s.playerName || '')}</span> <span class="rec-detail">${s.username ? '@' + esc(s.username) : ''}</span></div>
+                    ${avatarHtml(s.playerId || s.playerUid, s.playerName)}
+                    <div style="flex:1"><span class="rec-player">${esc(s.playerName || '')}</span> <span class="rec-detail">${s.username ? '@' + esc(s.username) : ''}</span></div>
                     <div class="rec-val">${fmtScore(s.relativeToPar)}</div>
                 </div>`).join('');
             } else {
@@ -887,7 +923,8 @@ async function showCourse(course) {
             html += '<h3>Long Drives</h3>';
             if (drives.length > 0) {
                 html += drives.slice(0, 5).map(d => `<div class="record-item">
-                    <div><span class="rec-player">${esc(d.playerName || 'Unknown')}</span> <span class="rec-detail">· Hole ${d.holeNumber || '?'}${d.discName ? ' · ' + esc(d.discName) : ''}</span></div>
+                    ${avatarHtml(d.playerId || d.playerUid, d.playerName)}
+                    <div style="flex:1"><span class="rec-player">${esc(d.playerName || 'Unknown')}</span> <span class="rec-detail">· Hole ${d.holeNumber || '?'}${d.discName ? ' · ' + esc(d.discName) : ''}</span></div>
                     <div class="rec-val">${(d.distanceFt || d.distance || 0).toLocaleString()} ft</div>
                 </div>`).join('');
             } else {
@@ -1009,6 +1046,7 @@ document.getElementById('searchInput').addEventListener('input', renderCourses);
 document.getElementById('stateFilter').addEventListener('change', renderCourses);
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+function fmtScore(n) { return n === 0 ? 'E' : (n > 0 ? '+' + n : '' + n); }
 
 function getDistMi(lat1, lng1, lat2, lng2) {
     if (!lat1 || !lng1 || !lat2 || !lng2) return 99999;
@@ -1017,6 +1055,28 @@ function getDistMi(lat1, lng1, lat2, lng2) {
     const dLng = (lng2 - lng1) * Math.PI / 180;
     const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+async function fetchUserPhotos(userIds) {
+    const needed = userIds.filter(id => id && !userProfileCache[id]);
+    for (const uid of needed.slice(0, 20)) {
+        try {
+            const snap = await getDoc(doc(db, "users", uid));
+            if (snap.exists()) {
+                const d = snap.data();
+                userProfileCache[uid] = { name: d.name || '', photoUrl: d.profileImageUrl || '' };
+            }
+        } catch(e) {}
+    }
+}
+
+function avatarHtml(userId, name) {
+    const cached = userProfileCache[userId];
+    if (cached && cached.photoUrl) {
+        return `<img src="${cached.photoUrl}" alt="${esc(name)}" class="rec-avatar">`;
+    }
+    const initials = (name || '?').split(' ').map(w => w[0] || '').join('').slice(0, 2).toUpperCase();
+    return `<div class="rec-avatar-placeholder">${initials}</div>`;
 }
 
 window.openReviewsModal = function() {
