@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/courses", "destination": "/courses.html" },
+    { "source": "/courses/:slug", "destination": "/courses.html" }
+  ]
+}
