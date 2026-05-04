@@ -796,10 +796,11 @@ async function showCourse(course) {
             const subSnap = await getDocs(collection(db, "courses", course.id, "scores"));
             scores = subSnap.docs.map(d => d.data());
         }
-        // Deduplicate: keep only each player's best score
+        // Deduplicate: keep only each player's best score (use name as key — IDs can be inconsistent)
         const bestByPlayer = {};
         scores.forEach(s => {
-            const key = s.playerId || s.playerUid || s.playerName;
+            const key = (s.playerName || s.playerId || '').toLowerCase().trim();
+            if (!key) return;
             if (!bestByPlayer[key] || (s.relativeToPar || 0) < (bestByPlayer[key].relativeToPar || 0)) {
                 bestByPlayer[key] = s;
             }
@@ -824,7 +825,8 @@ async function showCourse(course) {
             // Deduplicate by player within period
             const best = {};
             filtered.forEach(s => {
-                const key = s.playerId || s.playerUid || s.playerName;
+                const key = (s.playerName || s.playerId || '').toLowerCase().trim();
+                if (!key) return;
                 if (!best[key] || (s.relativeToPar || 0) < (best[key].relativeToPar || 0)) best[key] = s;
             });
             filtered = Object.values(best).sort((a, b) => (a.relativeToPar || 0) - (b.relativeToPar || 0)).slice(0, 20);
@@ -895,7 +897,8 @@ async function showCourse(course) {
             // Deduplicate best scores by player
             const best = {};
             filteredScores.forEach(s => {
-                const key = s.playerId || s.playerUid || s.playerName;
+                const key = (s.playerName || s.playerId || '').toLowerCase().trim();
+                if (!key) return;
                 if (!best[key] || (s.relativeToPar || 0) < (best[key].relativeToPar || 0)) best[key] = s;
             });
             const bestScores = Object.values(best).sort((a, b) => (a.relativeToPar || 0) - (b.relativeToPar || 0)).slice(0, 5);
@@ -1061,12 +1064,26 @@ function getDistMi(lat1, lng1, lat2, lng2) {
 
 async function fetchUserPhotos(userIds) {
     const needed = userIds.filter(id => id && !userProfileCache[id]);
-    for (const uid of needed.slice(0, 20)) {
+    for (const uid of needed.slice(0, 30)) {
         try {
-            const snap = await getDoc(doc(db, "users", uid));
+            // Try direct lookup
+            let snap = await getDoc(doc(db, "users", uid));
             if (snap.exists()) {
                 const d = snap.data();
                 userProfileCache[uid] = { name: d.name || '', photoUrl: d.profileImageUrl || '' };
+                continue;
+            }
+            // Try userIdMap (legacy CloudKit UUID → Firebase UID)
+            const mapSnap = await getDoc(doc(db, "userIdMap", uid));
+            if (mapSnap.exists()) {
+                const firebaseUid = mapSnap.data().firebaseUid;
+                if (firebaseUid) {
+                    snap = await getDoc(doc(db, "users", firebaseUid));
+                    if (snap.exists()) {
+                        const d = snap.data();
+                        userProfileCache[uid] = { name: d.name || '', photoUrl: d.profileImageUrl || '' };
+                    }
+                }
             }
         } catch(e) {}
     }
