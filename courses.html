@@ -60,35 +60,50 @@
         .page-header h1 { position: relative; z-index: 2; font-size: 2.8rem; font-weight: 800; }
         .page-header p { position: relative; z-index: 2; color: var(--text-body); margin-top: 0.5rem; }
 
-        /* SEARCH / FILTERS */
-        .filters { max-width: 1200px; margin: 0 auto; padding: 1.5rem 2rem; display: flex; flex-wrap: wrap; gap: 0.75rem; }
+        /* SPLIT LAYOUT */
+        .split-layout { display: flex; height: calc(100vh - 72px); overflow: hidden; }
+        .list-panel { width: 420px; min-width: 360px; display: flex; flex-direction: column; border-right: 1px solid rgba(255,255,255,0.06); }
+        .list-header { padding: 1.25rem 1.5rem 0; flex-shrink: 0; }
+        .list-header h1 { font-size: 1.5rem; font-weight: 800; }
+        .list-header p { color: var(--text-body); font-size: 0.82rem; margin-top: 0.25rem; }
+        .filters { padding: 1rem 1.5rem; display: flex; flex-wrap: wrap; gap: 0.5rem; flex-shrink: 0; }
         .filters input, .filters select {
             background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 12px; padding: 12px 16px; color: var(--cream); font-size: 0.9rem;
+            border-radius: 10px; padding: 10px 14px; color: var(--cream); font-size: 0.85rem;
             font-family: 'Inter', sans-serif; outline: none; transition: border-color 0.2s;
         }
-        .filters input { flex: 1; min-width: 200px; max-width: 380px; }
+        .filters input { flex: 1; min-width: 140px; }
         .filters input::placeholder { color: var(--sage-dim); }
         .filters input:focus, .filters select:focus { border-color: rgba(246,193,101,0.5); }
         .filters select option { background: var(--bg-card); color: var(--cream); }
-        .result-count { max-width: 1200px; margin: 0 auto; padding: 0 2rem; font-size: 0.82rem; color: var(--sage-dim); }
+        .result-count { padding: 0 1.5rem 0.5rem; font-size: 0.78rem; color: var(--sage-dim); flex-shrink: 0; }
+        .course-list { flex: 1; overflow-y: auto; padding: 0 1rem 2rem; }
+        .course-list::-webkit-scrollbar { width: 6px; }
+        .course-list::-webkit-scrollbar-track { background: transparent; }
+        .course-list::-webkit-scrollbar-thumb { background: rgba(168,179,145,0.2); border-radius: 3px; }
 
-        /* COURSE GRID */
-        .course-grid {
-            max-width: 1200px; margin: 1rem auto 3rem; padding: 0 2rem;
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem;
-        }
+        .map-panel { flex: 1; position: relative; }
+        #directory-map { width: 100%; height: 100%; }
+
+        /* COURSE CARDS */
         .course-card {
             background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.06);
-            border-radius: 18px; padding: 1.5rem; cursor: pointer; transition: all 0.25s;
-            text-decoration: none; color: inherit; display: block;
+            border-radius: 14px; padding: 1.1rem 1.25rem; cursor: pointer; transition: all 0.2s;
+            text-decoration: none; color: inherit; display: block; margin-bottom: 0.5rem;
         }
-        .course-card:hover { transform: translateY(-4px); border-color: rgba(246,193,101,0.4); box-shadow: 0 16px 48px rgba(0,0,0,0.35); }
-        .course-card h3 { font-size: 1.15rem; font-weight: 700; transition: color 0.2s; }
-        .course-card:hover h3 { color: var(--gold); }
-        .course-card .location { color: var(--sage); font-size: 0.88rem; margin-top: 0.25rem; }
-        .course-card .tags { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
-        .course-card .tag { background: rgba(255,255,255,0.05); border-radius: 100px; padding: 4px 12px; font-size: 0.78rem; color: var(--text-body); }
+        .course-card:hover, .course-card.active { border-color: rgba(246,193,101,0.5); background: rgba(246,193,101,0.06); }
+        .course-card h3 { font-size: 1rem; font-weight: 700; transition: color 0.2s; }
+        .course-card:hover h3, .course-card.active h3 { color: var(--gold); }
+        .course-card .location { color: var(--sage); font-size: 0.82rem; margin-top: 0.15rem; }
+        .course-card .tags { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.65rem; }
+        .course-card .tag { background: rgba(255,255,255,0.05); border-radius: 100px; padding: 3px 10px; font-size: 0.72rem; color: var(--text-body); }
+
+        @media (max-width: 900px) {
+            .split-layout { flex-direction: column; height: auto; }
+            .list-panel { width: 100%; min-width: 0; border-right: none; border-bottom: 1px solid rgba(255,255,255,0.06); }
+            .course-list { max-height: 50vh; }
+            .map-panel { height: 50vh; }
+        }
 
         /* LOADING */
         .loading { text-align: center; padding: 5rem 2rem; color: var(--sage); }
@@ -186,20 +201,25 @@
 
 <!-- DIRECTORY VIEW -->
 <div class="directory-view" id="directoryView">
-    <div class="page-header">
-        <div class="glow"></div>
-        <h1>Disc Golf <span class="gold">Courses</span></h1>
-        <p>Browse courses mapped by the Radius community.</p>
+    <div class="split-layout">
+        <div class="list-panel">
+            <div class="list-header">
+                <h1>Disc Golf <span class="gold">Courses</span></h1>
+                <p>Browse courses mapped by the Radius community.</p>
+            </div>
+            <div class="filters">
+                <input type="text" id="searchInput" placeholder="Search by name or city...">
+                <select id="stateFilter"><option value="">All States</option></select>
+            </div>
+            <div class="result-count" id="resultCount"></div>
+            <div class="loading" id="loadingIndicator"><span class="spinner"></span>Loading courses...</div>
+            <div class="course-list" id="courseGrid"></div>
+            <div class="empty" id="emptyMsg" style="display:none;padding:2rem 1.5rem">No courses match your search.</div>
+        </div>
+        <div class="map-panel">
+            <div id="directory-map"></div>
+        </div>
     </div>
-
-    <div class="filters">
-        <input type="text" id="searchInput" placeholder="Search by name or city...">
-        <select id="stateFilter"><option value="">All States</option></select>
-    </div>
-    <div class="result-count" id="resultCount"></div>
-    <div class="loading" id="loadingIndicator"><span class="spinner"></span>Loading courses...</div>
-    <div class="course-grid" id="courseGrid"></div>
-    <div class="empty" id="emptyMsg" style="display:none">No courses match your search.</div>
 </div>
 
 <!-- DETAIL VIEW -->
@@ -239,7 +259,8 @@
     </div>
 </footer>
 
-<!-- Firebase SDK -->
+<script>document.querySelector('footer').style.display='none';</script>
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.4.0/mapbox-gl.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, getDocs, doc, getDoc, query, where, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -256,6 +277,9 @@ const db = getFirestore(app);
 
 let allCourses = [];
 let map = null;
+let dirMap = null;
+let dirMarkers = [];
+let activePopup = null;
 
 // ==================== LOAD COURSES ====================
 async function loadCourses() {
@@ -277,6 +301,7 @@ async function loadCourses() {
 
     document.getElementById('loadingIndicator').style.display = 'none';
     renderCourses();
+    initDirectoryMap();
 
     // Check hash
     if (location.hash.startsWith('#course-')) {
@@ -322,7 +347,83 @@ function renderCourses() {
             const c = allCourses.find(x => x.id === el.dataset.id);
             if (c) showCourse(c);
         });
+        el.addEventListener('mouseenter', () => {
+            const c = allCourses.find(x => x.id === el.dataset.id);
+            if (c && c.latitude && c.longitude && dirMap) {
+                document.querySelectorAll('.course-card').forEach(e => e.classList.remove('active'));
+                el.classList.add('active');
+            }
+        });
     });
+    updateDirectoryMarkers();
+}
+
+// ==================== DIRECTORY MAP ====================
+function initDirectoryMap() {
+    mapboxgl.accessToken = 'pk.eyJ1IjoibWlrZXkzIiwiYSI6ImNtb3Fra25hZzB6dnIycHB6ZHMxcjIwNHYifQ.tyyS7i-aoR54_l11rW0Khg';
+    dirMap = new mapboxgl.Map({
+        container: 'directory-map',
+        style: 'mapbox://styles/mapbox/dark-v11',
+        center: [-95.7, 37.8],
+        zoom: 3.8,
+        attributionControl: false
+    });
+    dirMap.addControl(new mapboxgl.NavigationControl(), 'top-right');
+    updateDirectoryMarkers();
+}
+
+function updateDirectoryMarkers() {
+    if (!dirMap) return;
+    // Clear old markers
+    dirMarkers.forEach(m => m.remove());
+    dirMarkers = [];
+    if (activePopup) { activePopup.remove(); activePopup = null; }
+
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    const state = document.getElementById('stateFilter').value;
+    const filtered = allCourses.filter(c => {
+        if (state && c.state !== state) return false;
+        if (q && !(c.name||'').toLowerCase().includes(q) && !(c.city||'').toLowerCase().includes(q)) return false;
+        return true;
+    });
+
+    const bounds = new mapboxgl.LngLatBounds();
+    let hasPoints = false;
+
+    filtered.forEach(c => {
+        if (!c.latitude || !c.longitude) return;
+        hasPoints = true;
+
+        const el = document.createElement('div');
+        el.style.cssText = 'width:32px;height:38px;cursor:pointer;';
+        el.innerHTML = '<img src="assets/basket-pin.svg" style="width:100%;height:100%;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.6))">';
+
+        const marker = new mapboxgl.Marker({ element: el })
+            .setLngLat([c.longitude, c.latitude])
+            .addTo(dirMap);
+
+        el.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (activePopup) activePopup.remove();
+            activePopup = new mapboxgl.Popup({ offset: 20, closeButton: true, maxWidth: '240px' })
+                .setLngLat([c.longitude, c.latitude])
+                .setHTML(`<div style="cursor:pointer" onclick="document.querySelector('[data-id=\\'${c.id}\\']').click()"><strong>${esc(c.name)}</strong><br><span style="color:var(--sage);font-size:0.78rem">${esc(c.city||'')}${c.state ? ', '+esc(c.state) : ''}</span><br><span style="color:var(--gold);font-size:0.75rem;font-weight:600">${c.holeCount} holes · Par ${c.par}</span></div>`)
+                .addTo(dirMap);
+            // Highlight card
+            document.querySelectorAll('.course-card').forEach(el => el.classList.remove('active'));
+            const card = document.querySelector(`[data-id="${c.id}"]`);
+            if (card) { card.classList.add('active'); card.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+        });
+
+        dirMarkers.push(marker);
+        bounds.extend([c.longitude, c.latitude]);
+    });
+
+    if (hasPoints && !document.getElementById('searchInput').value && !document.getElementById('stateFilter').value) {
+        // Only fit bounds on filter, not on initial load (keep US overview)
+    } else if (hasPoints && (q || state)) {
+        dirMap.fitBounds(bounds, { padding: 60, maxZoom: 12 });
+    }
 }
 
 // ==================== SHOW COURSE DETAIL ====================
@@ -331,6 +432,7 @@ async function showCourse(course) {
     document.title = course.name + ' — Radius Disc Golf';
     document.getElementById('directoryView').classList.add('hidden');
     document.getElementById('detailView').classList.add('active');
+    document.querySelector('footer').style.display = '';
     window.scrollTo(0, 0);
 
     // Header
@@ -476,9 +578,11 @@ function renderMap(course, holes) {
 window.showDirectory = function() {
     document.getElementById('detailView').classList.remove('active');
     document.getElementById('directoryView').classList.remove('hidden');
+    document.querySelector('footer').style.display = 'none';
     document.title = 'Disc Golf Courses — Radius Disc Golf';
     history.pushState(null, '', 'courses.html');
     if (map) { map.remove(); map = null; }
+    if (dirMap) setTimeout(() => dirMap.resize(), 100);
 };
 
 window.addEventListener('popstate', () => {
@@ -500,6 +604,5 @@ function esc(s) { const d = document.createElement('div'); d.textContent = s || 
 // ==================== INIT ====================
 loadCourses();
 </script>
-<script src="https://api.mapbox.com/mapbox-gl-js/v3.4.0/mapbox-gl.js"></script>
 </body>
 </html>
