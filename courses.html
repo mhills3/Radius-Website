@@ -44,8 +44,8 @@
         .gold { color: var(--gold); }
 
         /* NAV */
-        nav { background: var(--bg-deep); padding: 0 2rem; border-bottom: 1px solid rgba(168,179,145,0.08); }
-        .nav-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; height: 72px; }
+        nav { background: var(--bg-deep); padding: 0 1.5rem; border-bottom: 1px solid rgba(168,179,145,0.08); }
+        .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 72px; }
         .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
         .nav-links { display: flex; align-items: center; gap: 2.5rem; }
         .nav-links a { color: var(--sage); text-decoration: none; font-size: 0.88rem; font-weight: 500; transition: color 0.2s; }
@@ -363,7 +363,7 @@ function initDirectoryMap() {
     mapboxgl.accessToken = 'pk.eyJ1IjoibWlrZXkzIiwiYSI6ImNtb3Fra25hZzB6dnIycHB6ZHMxcjIwNHYifQ.tyyS7i-aoR54_l11rW0Khg';
     dirMap = new mapboxgl.Map({
         container: 'directory-map',
-        style: 'mapbox://styles/mapbox/dark-v11',
+        style: 'mapbox://styles/mapbox/satellite-streets-v12',
         center: [-95.7, 37.8],
         zoom: 3.8,
         attributionControl: false
