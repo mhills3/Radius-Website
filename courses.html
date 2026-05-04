@@ -1064,28 +1064,26 @@ function getDistMi(lat1, lng1, lat2, lng2) {
 
 async function fetchUserPhotos(userIds) {
     const needed = userIds.filter(id => id && !userProfileCache[id]);
-    for (const uid of needed.slice(0, 30)) {
+    if (needed.length === 0) return;
+    console.log('Fetching photos for', needed.length, 'users. Sample IDs:', needed.slice(0, 3));
+
+    // Batch fetch all users once (more efficient than individual lookups)
+    if (!window._allUsersLoaded) {
         try {
-            // Try direct lookup
-            let snap = await getDoc(doc(db, "users", uid));
-            if (snap.exists()) {
-                const d = snap.data();
-                userProfileCache[uid] = { name: d.name || '', photoUrl: d.profileImageUrl || '' };
-                continue;
-            }
-            // Try userIdMap (legacy CloudKit UUID → Firebase UID)
-            const mapSnap = await getDoc(doc(db, "userIdMap", uid));
-            if (mapSnap.exists()) {
-                const firebaseUid = mapSnap.data().firebaseUid;
-                if (firebaseUid) {
-                    snap = await getDoc(doc(db, "users", firebaseUid));
-                    if (snap.exists()) {
-                        const d = snap.data();
-                        userProfileCache[uid] = { name: d.name || '', photoUrl: d.profileImageUrl || '' };
-                    }
-                }
-            }
-        } catch(e) {}
+            const usersSnap = await getDocs(collection(db, "users"));
+            usersSnap.docs.forEach(d => {
+                const data = d.data();
+                // Cache by document ID
+                userProfileCache[d.id] = { name: data.name || '', photoUrl: data.profileImageUrl || '' };
+                // Also cache by uid field and legacyUserId
+                if (data.uid) userProfileCache[data.uid] = userProfileCache[d.id];
+                if (data.legacyUserId) userProfileCache[data.legacyUserId] = userProfileCache[d.id];
+            });
+            window._allUsersLoaded = true;
+            console.log('Loaded', usersSnap.docs.length, 'user profiles');
+        } catch(e) {
+            console.error('Failed to fetch users:', e);
+        }
     }
 }
 
