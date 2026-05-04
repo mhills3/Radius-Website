@@ -750,40 +750,25 @@ async function showCourse(course) {
         recSec.innerHTML = '<h2>Records</h2><div class="record-empty">Could not load records.</div>';
     }
 
-    // Reviews — fetch fresh from Firestore doc (not from cached loadCourses data)
+    // Reviews — from top-level courseReviews collection
     const revSec = document.getElementById('reviewsSection');
     try {
-        let reviews = [];
-        // Fetch the full course doc fresh to get reviews array
-        const freshDoc = await getDoc(doc(db, "courses", course.id));
-        const freshData = freshDoc.exists() ? freshDoc.data() : {};
-        console.log('Course doc keys:', Object.keys(freshData));
-        console.log('reviews field:', freshData.reviews);
-        console.log('rating:', freshData.rating, 'reviewCount:', freshData.reviewCount);
-
-        if (freshData.reviews && Array.isArray(freshData.reviews) && freshData.reviews.length > 0) {
-            reviews = freshData.reviews;
-        }
-        // Subcollection fallback
-        if (reviews.length === 0) {
-            const revSnap = await getDocs(collection(db, "courses", course.id, "reviews"));
-            reviews = revSnap.docs.map(d => d.data());
-            console.log('Subcollection reviews:', reviews.length);
-        }
+        const revQuery = query(collection(db, "courseReviews"), where("courseId", "==", course.id));
+        const revSnap = await getDocs(revQuery);
+        let reviews = revSnap.docs.map(d => d.data());
         if (reviews.length > 0) {
-            revSec.innerHTML = `<h2>Reviews</h2>${reviews.map(r => {
-                const date = r.date || r.createdAt;
+            const avgRating = reviews.reduce((s, r) => s + (r.rating || 0), 0) / reviews.length;
+            revSec.innerHTML = `<h2>Reviews <span style="color:var(--gold);font-size:0.9rem;font-weight:600;margin-left:0.5rem">${avgRating.toFixed(1)} ★ (${reviews.length})</span></h2>${reviews.map(r => {
+                const date = r.createdAt || r.date;
                 const dateStr = date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
-                const rating = r.rating ? '★'.repeat(Math.round(r.rating)) + '☆'.repeat(5 - Math.round(r.rating)) : '';
+                const stars = r.rating ? '★'.repeat(Math.round(r.rating)) + '☆'.repeat(5 - Math.round(r.rating)) : '';
                 return `<div class="review-card">
-                    <span class="review-author">${esc(r.authorName || r.playerName || 'Anonymous')}</span>
+                    <span class="review-author">${esc(r.authorName || 'Anonymous')}</span>
                     <span class="review-date">${dateStr}</span>
-                    ${rating ? `<div class="review-rating">${rating}</div>` : ''}
-                    ${r.text || r.comment || r.body ? `<div class="review-text">${esc(r.text || r.comment || r.body)}</div>` : ''}
+                    ${stars ? `<div class="review-rating">${stars}</div>` : ''}
+                    ${r.text || r.comment ? `<div class="review-text">${esc(r.text || r.comment)}</div>` : ''}
                 </div>`;
             }).join('')}`;
-        } else if (course.rating || course.reviewCount) {
-            revSec.innerHTML = `<h2>Reviews</h2><p style="color:var(--text-body);padding:0.5rem 0">${course.rating ? Number(course.rating).toFixed(1) + ' ★' : ''} ${course.reviewCount ? '(' + course.reviewCount + ' review' + (course.reviewCount !== 1 ? 's' : '') + ')' : ''} — see full reviews in the app.</p>`;
         } else {
             revSec.innerHTML = '';
         }
