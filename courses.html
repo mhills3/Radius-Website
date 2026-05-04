@@ -158,6 +158,25 @@
         .score-even { color: var(--cream); }
         .score-over { color: #f87171; }
 
+        /* GALLERY */
+        .gallery { display: flex; gap: 0.75rem; overflow-x: auto; padding-bottom: 0.5rem; margin-top: 1.5rem; margin-bottom: 1rem; }
+        .gallery::-webkit-scrollbar { height: 6px; }
+        .gallery::-webkit-scrollbar-thumb { background: rgba(168,179,145,0.2); border-radius: 3px; }
+        .gallery-img { height: 200px; border-radius: 14px; object-fit: cover; cursor: pointer; transition: transform 0.2s; flex-shrink: 0; }
+        .gallery-img:hover { transform: scale(1.03); }
+
+        /* REVIEWS */
+        .reviews-section { margin-top: 2.5rem; }
+        .reviews-section h2 { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.75rem; }
+        .review-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 1.25rem; margin-bottom: 0.75rem; }
+        .review-card .review-author { font-weight: 600; font-size: 0.92rem; }
+        .review-card .review-date { color: var(--sage-dim); font-size: 0.78rem; margin-left: 0.5rem; }
+        .review-card .review-text { color: var(--text-body); font-size: 0.9rem; margin-top: 0.5rem; line-height: 1.6; }
+        .review-card .review-rating { color: var(--gold); font-size: 0.85rem; margin-top: 0.35rem; }
+
+        /* COVER ON CARD */
+        .card-cover { width: 100%; height: 120px; object-fit: cover; border-radius: 10px; margin-bottom: 0.75rem; }
+
         /* DOWNLOAD CTA */
         .download-cta { margin-top: 3rem; text-align: center; border-radius: 18px; border: 1px solid rgba(246,193,101,0.18); background: rgba(246,193,101,0.04); padding: 2.5rem 2rem; }
         .download-cta h3 { font-size: 1.5rem; font-weight: 800; }
@@ -229,12 +248,14 @@
         All Courses
     </button>
     <div class="detail-header" id="detailHeader"></div>
+    <div id="gallerySection"></div>
     <div class="map-section" id="mapSection" style="display:none">
         <h2>Course Map</h2>
         <div id="course-map"></div>
     </div>
     <div class="hole-section" id="holeSection"></div>
     <div class="lb-section" id="lbSection"></div>
+    <div class="reviews-section" id="reviewsSection"></div>
     <div class="download-cta">
         <h3>Play this course with <span class="gold">Radius</span></h3>
         <p>Get personalized disc recommendations, track your rounds, and compete on the leaderboard.</p>
@@ -331,6 +352,7 @@ function renderCourses() {
 
     grid.innerHTML = filtered.map(c => `
         <div class="course-card" data-id="${c.id}">
+            ${c.coverPhotoUrl ? `<img src="${c.coverPhotoUrl}" alt="${esc(c.name)}" class="card-cover" loading="lazy">` : ''}
             <h3>${esc(c.name)}</h3>
             <div class="location">${esc(c.city || '')}${c.state ? ', ' + esc(c.state) : ''}</div>
             <div class="tags">
@@ -451,8 +473,22 @@ async function showCourse(course) {
         ${course.description ? `<p class="detail-desc">${esc(course.description)}</p>` : ''}
     `;
 
-    // Holes
-    const holes = (course.holes || []).slice().sort((a, b) => (a.holeNumber || 0) - (b.holeNumber || 0));
+    // Normalize hole numbers (fallback to index+1 if missing)
+    const holes = (course.holes || []).map((h, i) => ({ ...h, holeNumber: h.holeNumber || h.number || (i + 1) }))
+        .sort((a, b) => a.holeNumber - b.holeNumber);
+
+    // Cover photo + gallery
+    const galSec = document.getElementById('gallerySection');
+    const photos = [];
+    if (course.coverPhotoUrl) photos.push(course.coverPhotoUrl);
+    if (course.galleryPhotoUrls && course.galleryPhotoUrls.length) photos.push(...course.galleryPhotoUrls);
+    if (photos.length > 0) {
+        galSec.innerHTML = `<div class="gallery">${photos.map(url => `<img src="${url}" alt="Course photo" class="gallery-img" onclick="window.open('${url}','_blank')">`).join('')}</div>`;
+    } else {
+        galSec.innerHTML = '';
+    }
+
+    // Holes table
     const holeSec = document.getElementById('holeSection');
     if (holes.length > 0) {
         const totalPar = holes.reduce((s, h) => s + (h.par || 0), 0);
@@ -502,6 +538,30 @@ async function showCourse(course) {
     } catch(e) {
         lbSec.innerHTML = '<h2>Leaderboard</h2><p style="color:var(--sage-dim)">Could not load scores.</p>';
     }
+
+    // Reviews
+    const revSec = document.getElementById('reviewsSection');
+    try {
+        const revSnap = await getDocs(collection(db, "courses", course.id, "reviews"));
+        const reviews = revSnap.docs.map(d => d.data());
+        if (reviews.length > 0) {
+            revSec.innerHTML = `<h2>Reviews</h2>${reviews.map(r => {
+                const date = r.date || r.createdAt;
+                const dateStr = date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+                const rating = r.rating ? '★'.repeat(Math.round(r.rating)) + '☆'.repeat(5 - Math.round(r.rating)) : '';
+                return `<div class="review-card">
+                    <span class="review-author">${esc(r.authorName || r.playerName || 'Anonymous')}</span>
+                    <span class="review-date">${dateStr}</span>
+                    ${rating ? `<div class="review-rating">${rating}</div>` : ''}
+                    ${r.text || r.comment || r.body ? `<div class="review-text">${esc(r.text || r.comment || r.body)}</div>` : ''}
+                </div>`;
+            }).join('')}`;
+        } else {
+            revSec.innerHTML = '';
+        }
+    } catch(e) {
+        revSec.innerHTML = '';
+    }
 }
 
 // ==================== MAP ====================
@@ -528,23 +588,26 @@ function renderMap(course, holes) {
     holes.forEach(h => {
         if (!h.teeLat || !h.teeLng) return;
 
-        // Tee marker
+        const num = h.holeNumber;
+
+        // Tee marker — square tee pad style
         const teeEl = document.createElement('div');
-        teeEl.style.cssText = 'width:22px;height:22px;background:var(--gold);border:2px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#1a2821;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.5);';
-        teeEl.textContent = h.holeNumber;
+        teeEl.style.cssText = 'width:26px;height:26px;background:#F6C165;border:2px solid #fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#1a2821;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.5);';
+        teeEl.textContent = num;
         new mapboxgl.Marker({ element: teeEl })
             .setLngLat([h.teeLng, h.teeLat])
-            .setPopup(new mapboxgl.Popup({ offset: 12 }).setHTML(`<strong>Hole ${h.holeNumber} Tee</strong><br>Par ${h.par}${h.distance ? ' · ' + h.distance + ' ft' : ''}`))
+            .setPopup(new mapboxgl.Popup({ offset: 14 }).setHTML(`<strong>Hole ${num} Tee</strong><br>Par ${h.par}${h.distance ? ' · ' + h.distance + ' ft' : ''}`))
             .addTo(map);
         bounds.extend([h.teeLng, h.teeLat]);
 
-        // Basket marker
+        // Basket marker — basket pin SVG
         if (h.basketLat && h.basketLng) {
             const bEl = document.createElement('div');
-            bEl.style.cssText = 'width:16px;height:16px;background:#fff;border:2px solid var(--gold);border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.4);cursor:pointer;';
-            new mapboxgl.Marker({ element: bEl })
+            bEl.style.cssText = 'width:28px;height:34px;cursor:pointer;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.6));';
+            bEl.innerHTML = '<img src="assets/basket-pin.svg" style="width:100%;height:100%">';
+            new mapboxgl.Marker({ element: bEl, anchor: 'bottom' })
                 .setLngLat([h.basketLng, h.basketLat])
-                .setPopup(new mapboxgl.Popup({ offset: 10 }).setHTML(`<strong>Hole ${h.holeNumber} Basket</strong>`))
+                .setPopup(new mapboxgl.Popup({ offset: 14 }).setHTML(`<strong>Hole ${num} Basket</strong>`))
                 .addTo(map);
             bounds.extend([h.basketLng, h.basketLat]);
         }
@@ -552,7 +615,7 @@ function renderMap(course, holes) {
         // Line from tee to basket
         if (h.basketLat && h.basketLng) {
             map.on('load', () => {
-                const lineId = 'line-' + h.holeNumber;
+                const lineId = 'line-' + num;
                 if (map.getSource(lineId)) return;
 
                 const coords = [[h.teeLng, h.teeLat]];
