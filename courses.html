@@ -331,6 +331,8 @@ let map = null;
 let dirMap = null;
 let dirMarkers = [];
 let activePopup = null;
+let userLat = null;
+let userLng = null;
 
 // ==================== LOAD COURSES ====================
 async function loadCourses() {
@@ -356,6 +358,29 @@ async function loadCourses() {
     regions.forEach(s => { const o = document.createElement('option'); o.value = s; o.textContent = stateNames[s] ? `${stateNames[s]} (${s})` : s; sel.appendChild(o); });
 
     document.getElementById('loadingIndicator').style.display = 'none';
+
+    // Request location to sort by nearest
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => {
+            userLat = pos.coords.latitude;
+            userLng = pos.coords.longitude;
+            // Re-sort by distance
+            allCourses.sort((a, b) => {
+                const da = getDistMi(userLat, userLng, a.latitude, a.longitude);
+                const db2 = getDistMi(userLat, userLng, b.latitude, b.longitude);
+                return da - db2;
+            });
+            renderCourses();
+            if (dirMap) {
+                dirMap.flyTo({ center: [userLng, userLat], zoom: 8, duration: 1500 });
+                // Add user marker
+                const uEl = document.createElement('div');
+                uEl.style.cssText = 'width:14px;height:14px;background:#4A90D9;border:3px solid #fff;border-radius:50%;box-shadow:0 0 10px rgba(74,144,217,0.7);';
+                new mapboxgl.Marker({ element: uEl }).setLngLat([userLng, userLat]).addTo(dirMap);
+            }
+        }, () => {}, { timeout: 8000 });
+    }
+
     renderCourses();
     initDirectoryMap();
 
@@ -395,6 +420,7 @@ function renderCourses() {
                 <span class="tag">Par ${c.par || 0}</span>
                 ${c.distanceFt ? `<span class="tag">${c.distanceFt.toLocaleString()} ft</span>` : ''}
                 ${c.terrain ? `<span class="tag" style="text-transform:capitalize">${esc(c.terrain)}</span>` : ''}
+                ${userLat && c.latitude ? `<span class="tag" style="color:var(--gold)">${Math.round(getDistMi(userLat, userLng, c.latitude, c.longitude))} mi</span>` : ''}
             </div>
         </div>
     `).join('');
@@ -588,7 +614,15 @@ async function showCourse(course) {
             const subSnap = await getDocs(collection(db, "courses", course.id, "scores"));
             scores = subSnap.docs.map(d => d.data());
         }
-        // Sort and limit client-side
+        // Deduplicate: keep only each player's best score
+        const bestByPlayer = {};
+        scores.forEach(s => {
+            const key = s.playerId || s.playerUid || s.playerName;
+            if (!bestByPlayer[key] || (s.relativeToPar || 0) < (bestByPlayer[key].relativeToPar || 0)) {
+                bestByPlayer[key] = s;
+            }
+        });
+        scores = Object.values(bestByPlayer);
         scores.sort((a, b) => (a.relativeToPar || 0) - (b.relativeToPar || 0));
         scores = scores.slice(0, 20);
         if (scores.length > 0) {
@@ -660,24 +694,32 @@ async function showCourse(course) {
         recSec.innerHTML = '<h2>Records</h2><div class="record-empty">Could not load records.</div>';
     }
 
-    // Reviews (try embedded array, subcollection, and parsed JSON)
+    // Reviews
     const revSec = document.getElementById('reviewsSection');
     try {
         let reviews = [];
-        // 1. Embedded array
-        if (course.reviews && Array.isArray(course.reviews) && course.reviews.length > 0) {
-            reviews = course.reviews;
+        // 1. Embedded array (could be under reviews, courseReviews, etc.)
+        const possibleFields = [course.reviews, course.courseReviews, course.reviewList];
+        for (const field of possibleFields) {
+            if (field && Array.isArray(field) && field.length > 0) { reviews = field; break; }
         }
-        // 2. Maybe stored as JSON string
-        if (reviews.length === 0 && course.reviewsJSON) {
-            try { reviews = JSON.parse(course.reviewsJSON); } catch(e) {}
+        // 2. JSON string
+        if (reviews.length === 0) {
+            const jsonFields = [course.reviewsJSON, course.courseReviewsJSON];
+            for (const f of jsonFields) {
+                if (f) { try { reviews = JSON.parse(f); break; } catch(e) {} }
+            }
         }
-        // 3. Subcollection fallback
+        // 3. Subcollection
         if (reviews.length === 0) {
             try {
                 const revSnap = await getDocs(collection(db, "courses", course.id, "reviews"));
                 reviews = revSnap.docs.map(d => d.data());
             } catch(e) {}
+        }
+        // 4. Log for debugging
+        if (reviews.length === 0) {
+            console.log('No reviews found. Course fields with "review":', Object.keys(course).filter(k => k.toLowerCase().includes('review')));
         }
         if (reviews.length > 0) {
             revSec.innerHTML = `<h2>Reviews</h2>${reviews.map(r => {
@@ -691,6 +733,8 @@ async function showCourse(course) {
                     ${r.text || r.comment || r.body ? `<div class="review-text">${esc(r.text || r.comment || r.body)}</div>` : ''}
                 </div>`;
             }).join('')}`;
+        } else if (course.rating || course.reviewCount) {
+            revSec.innerHTML = `<h2>Reviews</h2><p style="color:var(--text-body);padding:0.5rem 0">${course.rating ? Number(course.rating).toFixed(1) + ' ★' : ''} ${course.reviewCount ? '(' + course.reviewCount + ' review' + (course.reviewCount !== 1 ? 's' : '') + ')' : ''} — see full reviews in the app.</p>`;
         } else {
             revSec.innerHTML = '';
         }
@@ -798,6 +842,15 @@ document.getElementById('searchInput').addEventListener('input', renderCourses);
 document.getElementById('stateFilter').addEventListener('change', renderCourses);
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+function getDistMi(lat1, lng1, lat2, lng2) {
+    if (!lat1 || !lng1 || !lat2 || !lng2) return 99999;
+    const R = 3959;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
 
 window.openLightbox = function(url) {
     const lb = document.createElement('div');
