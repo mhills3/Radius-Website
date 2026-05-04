@@ -1,6 +1,12 @@
 {
-  "cleanUrls": true,
+  "trailingSlash": false,
   "rewrites": [
-    { "source": "/courses/(.*)", "destination": "/courses.html" }
+    { "source": "/story", "destination": "/story.html" },
+    { "source": "/contact", "destination": "/contact.html" },
+    { "source": "/inner-circle", "destination": "/inner-circle.html" },
+    { "source": "/privacy", "destination": "/privacy.html" },
+    { "source": "/terms", "destination": "/terms.html" },
+    { "source": "/courses", "destination": "/courses.html" },
+    { "source": "/courses/:path*", "destination": "/courses.html" }
   ]
 }
