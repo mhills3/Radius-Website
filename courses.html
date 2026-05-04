@@ -73,7 +73,7 @@
             font-family: 'Inter', sans-serif; outline: none; transition: border-color 0.2s;
         }
         .filters input { flex: 3; min-width: 140px; }
-        .filters select { flex: 1; min-width: 100px; max-width: 160px; }
+        .filters select { flex: 1; min-width: 140px; max-width: 220px; }
         .filters input::placeholder { color: var(--sage-dim); }
         .filters input:focus, .filters select:focus { border-color: rgba(246,193,101,0.5); }
         .filters select option { background: var(--bg-card); color: var(--cream); }
@@ -353,7 +353,7 @@ async function loadCourses() {
         return na.localeCompare(nb);
     });
     const sel = document.getElementById('stateFilter');
-    regions.forEach(s => { const o = document.createElement('option'); o.value = s; o.textContent = stateNames[s] || s; sel.appendChild(o); });
+    regions.forEach(s => { const o = document.createElement('option'); o.value = s; o.textContent = stateNames[s] ? `${stateNames[s]} (${s})` : s; sel.appendChild(o); });
 
     document.getElementById('loadingIndicator').style.display = 'none';
     renderCourses();
