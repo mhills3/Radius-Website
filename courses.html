@@ -72,7 +72,8 @@
             border-radius: 10px; padding: 10px 14px; color: var(--cream); font-size: 0.85rem;
             font-family: 'Inter', sans-serif; outline: none; transition: border-color 0.2s;
         }
-        .filters input { flex: 1; min-width: 140px; }
+        .filters input { flex: 3; min-width: 140px; }
+        .filters select { flex: 1; min-width: 100px; max-width: 160px; }
         .filters input::placeholder { color: var(--sage-dim); }
         .filters input:focus, .filters select:focus { border-color: rgba(246,193,101,0.5); }
         .filters select option { background: var(--bg-card); color: var(--cream); }
@@ -254,7 +255,7 @@
             </div>
             <div class="filters">
                 <input type="text" id="searchInput" placeholder="Search by name or city...">
-                <select id="stateFilter"><option value="">All States</option></select>
+                <select id="stateFilter"><option value="">All Regions</option></select>
             </div>
             <div class="result-count" id="resultCount"></div>
             <div class="loading" id="loadingIndicator"><span class="spinner"></span>Loading courses...</div>
@@ -344,10 +345,15 @@ async function loadCourses() {
     });
     allCourses.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
-    // Populate state filter
-    const states = [...new Set(allCourses.map(c => c.state).filter(Boolean))].sort();
+    // Populate region filter with full names
+    const stateNames = {AL:'Alabama',AK:'Alaska',AZ:'Arizona',AR:'Arkansas',CA:'California',CO:'Colorado',CT:'Connecticut',DE:'Delaware',FL:'Florida',GA:'Georgia',HI:'Hawaii',ID:'Idaho',IL:'Illinois',IN:'Indiana',IA:'Iowa',KS:'Kansas',KY:'Kentucky',LA:'Louisiana',ME:'Maine',MD:'Maryland',MA:'Massachusetts',MI:'Michigan',MN:'Minnesota',MS:'Mississippi',MO:'Missouri',MT:'Montana',NE:'Nebraska',NV:'Nevada',NH:'New Hampshire',NJ:'New Jersey',NM:'New Mexico',NY:'New York',NC:'North Carolina',ND:'North Dakota',OH:'Ohio',OK:'Oklahoma',OR:'Oregon',PA:'Pennsylvania',RI:'Rhode Island',SC:'South Carolina',SD:'South Dakota',TN:'Tennessee',TX:'Texas',UT:'Utah',VT:'Vermont',VA:'Virginia',WA:'Washington',WV:'West Virginia',WI:'Wisconsin',WY:'Wyoming',DC:'Washington D.C.',PR:'Puerto Rico',GU:'Guam',VI:'U.S. Virgin Islands',AS:'American Samoa',MP:'Northern Mariana Islands'};
+    const regions = [...new Set(allCourses.map(c => c.state).filter(Boolean))].sort((a, b) => {
+        const na = stateNames[a] || a;
+        const nb = stateNames[b] || b;
+        return na.localeCompare(nb);
+    });
     const sel = document.getElementById('stateFilter');
-    states.forEach(s => { const o = document.createElement('option'); o.value = s; o.textContent = s; sel.appendChild(o); });
+    regions.forEach(s => { const o = document.createElement('option'); o.value = s; o.textContent = stateNames[s] || s; sel.appendChild(o); });
 
     document.getElementById('loadingIndicator').style.display = 'none';
     renderCourses();
