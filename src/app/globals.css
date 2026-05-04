@@ -1,26 +1,40 @@
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg-deep: #131e18;
+  --bg-mid: #1a2821;
+  --bg-card: #2F3C35;
+  --gold: #F6C165;
+  --gold-bright: #f8cf80;
+  --gold-dim: rgba(246,193,101,0.12);
+  --cream: #F5EDE1;
+  --sage: rgba(168,179,145,0.85);
+  --sage-dim: rgba(168,179,145,0.45);
+  --text-body: rgba(245,237,225,0.7);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg-deep: var(--bg-deep);
+  --color-bg-mid: var(--bg-mid);
+  --color-bg-card: var(--bg-card);
+  --color-gold: var(--gold);
+  --color-gold-bright: var(--gold-bright);
+  --color-gold-dim: var(--gold-dim);
+  --color-cream: var(--cream);
+  --color-sage: var(--sage);
+  --color-sage-dim: var(--sage-dim);
+  --color-text-body: var(--text-body);
+  --font-heading: 'Sora', sans-serif;
+  --font-body: 'Inter', sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body);
+  background: var(--bg-deep);
+  color: var(--cream);
+  -webkit-font-smoothing: antialiased;
 }
