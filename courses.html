@@ -159,6 +159,11 @@
         .hole-table .hole-num { color: var(--gold); font-weight: 700; }
         .hole-table .total-row { background: rgba(255,255,255,0.025); font-weight: 700; }
 
+        /* TIME FILTER TABS */
+        .time-tabs { display: flex; gap: 0.35rem; margin-bottom: 0.75rem; }
+        .time-tab { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 5px 12px; font-size: 0.75rem; font-weight: 600; color: var(--sage); cursor: pointer; transition: all 0.2s; font-family: inherit; }
+        .time-tab.active { background: rgba(246,193,101,0.15); border-color: var(--gold); color: var(--gold); }
+
         /* LEADERBOARD */
         .lb-section { margin-top: 2.5rem; }
         .lb-section h2 { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.75rem; }
@@ -625,20 +630,49 @@ async function showCourse(course) {
         scores = Object.values(bestByPlayer);
         scores.sort((a, b) => (a.relativeToPar || 0) - (b.relativeToPar || 0));
         scores = scores.slice(0, 20);
-        if (scores.length > 0) {
-            lbSec.innerHTML = `<h2>Leaderboard</h2>
-            <div class="hole-table-wrap"><table class="lb-table">
-                <thead><tr><th>#</th><th>Player</th><th>Score</th><th>Date</th></tr></thead>
-                <tbody>${scores.map((s, i) => {
+        // Store raw scores globally for filtering
+        window._allRawScores = scores;
+        window._renderLeaderboard = function(period) {
+            const now = Date.now();
+            const cutoffs = { '1M': 30, '6M': 180, '1Y': 365, 'All': 99999 };
+            const days = cutoffs[period] || 99999;
+            const cutoff = now - days * 86400000;
+            let filtered = window._allRawScores.filter(s => (s.date || 0) >= cutoff || days >= 99999);
+            // Deduplicate by player within period
+            const best = {};
+            filtered.forEach(s => {
+                const key = s.playerId || s.playerUid || s.playerName;
+                if (!best[key] || (s.relativeToPar || 0) < (best[key].relativeToPar || 0)) best[key] = s;
+            });
+            filtered = Object.values(best).sort((a, b) => (a.relativeToPar || 0) - (b.relativeToPar || 0)).slice(0, 20);
+
+            const tbody = document.getElementById('lbBody');
+            if (filtered.length > 0) {
+                tbody.innerHTML = filtered.map((s, i) => {
                     const cls = s.relativeToPar < 0 ? 'score-under' : s.relativeToPar === 0 ? 'score-even' : 'score-over';
                     const d = s.date ? new Date(s.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
                     return `<tr><td style="color:var(--sage-dim)">${i + 1}</td><td>${esc(s.playerName || '')}${s.username ? ' <span style="color:var(--sage-dim)">@' + esc(s.username) + '</span>' : ''}</td><td class="${cls}" style="font-weight:700">${fmtScore(s.relativeToPar)}</td><td style="color:var(--text-body)">${d}</td></tr>`;
-                }).join('')}</tbody>
+                }).join('');
+            } else {
+                tbody.innerHTML = '<tr><td colspan="4" style="color:var(--sage-dim);padding:1.5rem;text-align:center">No scores in this period.</td></tr>';
+            }
+            document.querySelectorAll('.time-tab').forEach(t => t.classList.toggle('active', t.dataset.period === period));
+        };
+
+        lbSec.innerHTML = `<h2>Leaderboard</h2>
+            <div class="time-tabs">
+                <button class="time-tab" data-period="1M" onclick="_renderLeaderboard('1M')">1M</button>
+                <button class="time-tab" data-period="6M" onclick="_renderLeaderboard('6M')">6M</button>
+                <button class="time-tab" data-period="1Y" onclick="_renderLeaderboard('1Y')">1Y</button>
+                <button class="time-tab active" data-period="All" onclick="_renderLeaderboard('All')">All</button>
+            </div>
+            <div class="hole-table-wrap"><table class="lb-table">
+                <thead><tr><th>#</th><th>Player</th><th>Score</th><th>Date</th></tr></thead>
+                <tbody id="lbBody"></tbody>
             </table></div>`;
-        } else {
-            lbSec.innerHTML = '<h2>Leaderboard</h2><p style="color:var(--sage-dim);padding:1rem 0">No scores recorded yet. Be the first — download Radius and play this course.</p>';
-        }
+        window._renderLeaderboard('All');
     } catch(e) {
+        console.error('Leaderboard error:', e);
         lbSec.innerHTML = '<h2>Leaderboard</h2><p style="color:var(--sage-dim)">Could not load scores.</p>';
     }
 
@@ -652,7 +686,7 @@ async function showCourse(course) {
         ]);
         const aces = acesSnap.docs.map(d => d.data());
         const drives = drivesSnap.docs.map(d => d.data()).sort((a, b) => (b.distanceFt || b.distance || 0) - (a.distanceFt || a.distance || 0));
-        const bestScores = scores.slice(0, 5);
+        const bestScores = (window._allRawScores || scores).slice(0, 5);
 
         let html = '<h2>Records</h2>';
 
@@ -694,32 +728,25 @@ async function showCourse(course) {
         recSec.innerHTML = '<h2>Records</h2><div class="record-empty">Could not load records.</div>';
     }
 
-    // Reviews
+    // Reviews — fetch fresh from Firestore doc (not from cached loadCourses data)
     const revSec = document.getElementById('reviewsSection');
     try {
         let reviews = [];
-        // 1. Embedded array (could be under reviews, courseReviews, etc.)
-        const possibleFields = [course.reviews, course.courseReviews, course.reviewList];
-        for (const field of possibleFields) {
-            if (field && Array.isArray(field) && field.length > 0) { reviews = field; break; }
+        // Fetch the full course doc fresh to get reviews array
+        const freshDoc = await getDoc(doc(db, "courses", course.id));
+        const freshData = freshDoc.exists() ? freshDoc.data() : {};
+        console.log('Course doc keys:', Object.keys(freshData));
+        console.log('reviews field:', freshData.reviews);
+        console.log('rating:', freshData.rating, 'reviewCount:', freshData.reviewCount);
+
+        if (freshData.reviews && Array.isArray(freshData.reviews) && freshData.reviews.length > 0) {
+            reviews = freshData.reviews;
         }
-        // 2. JSON string
+        // Subcollection fallback
         if (reviews.length === 0) {
-            const jsonFields = [course.reviewsJSON, course.courseReviewsJSON];
-            for (const f of jsonFields) {
-                if (f) { try { reviews = JSON.parse(f); break; } catch(e) {} }
-            }
-        }
-        // 3. Subcollection
-        if (reviews.length === 0) {
-            try {
-                const revSnap = await getDocs(collection(db, "courses", course.id, "reviews"));
-                reviews = revSnap.docs.map(d => d.data());
-            } catch(e) {}
-        }
-        // 4. Log for debugging
-        if (reviews.length === 0) {
-            console.log('No reviews found. Course fields with "review":', Object.keys(course).filter(k => k.toLowerCase().includes('review')));
+            const revSnap = await getDocs(collection(db, "courses", course.id, "reviews"));
+            reviews = revSnap.docs.map(d => d.data());
+            console.log('Subcollection reviews:', reviews.length);
         }
         if (reviews.length > 0) {
             revSec.innerHTML = `<h2>Reviews</h2>${reviews.map(r => {
