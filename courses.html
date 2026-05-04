@@ -169,12 +169,16 @@
         .score-even { color: var(--cream); }
         .score-over { color: #f87171; }
 
+        /* COVER HERO */
+        .cover-hero { margin-top: 1.5rem; border-radius: 16px; overflow: hidden; max-height: 320px; }
+        .cover-hero img { width: 100%; height: 320px; object-fit: cover; display: block; }
+        @media (max-width: 600px) { .cover-hero, .cover-hero img { max-height: 200px; height: 200px; } }
+
         /* GALLERY */
-        .gallery { display: flex; gap: 0.75rem; overflow-x: auto; padding-bottom: 0.5rem; margin-top: 1.5rem; margin-bottom: 1rem; }
+        .gallery { display: flex; gap: 0.75rem; overflow-x: auto; padding-bottom: 0.5rem; margin-top: 0.75rem; }
         .gallery::-webkit-scrollbar { height: 6px; }
         .gallery::-webkit-scrollbar-thumb { background: rgba(168,179,145,0.2); border-radius: 3px; }
-        .gallery-img { height: 200px; border-radius: 14px; object-fit: cover; cursor: pointer; transition: transform 0.2s; flex-shrink: 0; }
-        .gallery-img:hover { transform: scale(1.03); }
+        .gallery-img { height: 140px; border-radius: 12px; object-fit: cover; flex-shrink: 0; }
 
         /* REVIEWS */
         .reviews-section { margin-top: 2.5rem; }
@@ -204,10 +208,15 @@
         .footer-links a:hover { color: var(--gold); }
 
         @media (max-width: 600px) {
-            .page-header h1 { font-size: 2rem; }
-            .detail-header h1 { font-size: 1.8rem; }
-            .course-grid { grid-template-columns: 1fr; }
-            #course-map { height: 300px; }
+            .detail-header h1 { font-size: 1.6rem; }
+            .detail-view { padding: 1.25rem; }
+            .stats-row { gap: 0.5rem; }
+            .stat-box { padding: 0.5rem 0.75rem; }
+            .stat-box .val { font-size: 1.1rem; }
+            #course-map { height: 260px; }
+            .hole-records-row { gap: 1rem; }
+            .download-cta { padding: 1.5rem 1.25rem; }
+            .download-cta h3 { font-size: 1.2rem; }
         }
     </style>
 </head>
@@ -491,16 +500,17 @@ async function showCourse(course) {
     const holes = (course.holes || []).map((h, i) => ({ ...h, holeNumber: h.holeNumber || h.number || (i + 1) }))
         .sort((a, b) => a.holeNumber - b.holeNumber);
 
-    // Cover photo + gallery
+    // Cover photo hero + gallery
     const galSec = document.getElementById('gallerySection');
-    const photos = [];
-    if (course.coverPhotoUrl) photos.push(course.coverPhotoUrl);
-    if (course.galleryPhotoUrls && course.galleryPhotoUrls.length) photos.push(...course.galleryPhotoUrls);
-    if (photos.length > 0) {
-        galSec.innerHTML = `<div class="gallery">${photos.map(url => `<img src="${url}" alt="Course photo" class="gallery-img" onclick="window.open('${url}','_blank')">`).join('')}</div>`;
-    } else {
-        galSec.innerHTML = '';
+    const galleryOnly = (course.galleryPhotoUrls || []).filter(u => u !== course.coverPhotoUrl);
+    let galHtml = '';
+    if (course.coverPhotoUrl) {
+        galHtml += `<div class="cover-hero"><img src="${course.coverPhotoUrl}" alt="${esc(course.name)}"></div>`;
     }
+    if (galleryOnly.length > 0) {
+        galHtml += `<div class="gallery">${galleryOnly.map(url => `<img src="${url}" alt="Course photo" class="gallery-img">`).join('')}</div>`;
+    }
+    galSec.innerHTML = galHtml;
 
     // Holes table
     const holeSec = document.getElementById('holeSection');
@@ -532,10 +542,11 @@ async function showCourse(course) {
     // Leaderboard
     const lbSec = document.getElementById('lbSection');
     lbSec.innerHTML = '<h2>Leaderboard</h2><div class="loading" style="padding:2rem"><span class="spinner"></span>Loading scores...</div>';
+    let scores = [];
     try {
         const q2 = query(collection(db, "courseScores"), where("courseId", "==", course.id), orderBy("relativeToPar", "asc"), limit(20));
         const snap = await getDocs(q2);
-        const scores = snap.docs.map(d => d.data());
+        scores = snap.docs.map(d => d.data());
         if (scores.length > 0) {
             lbSec.innerHTML = `<h2>Leaderboard</h2>
             <div class="hole-table-wrap"><table class="lb-table">
