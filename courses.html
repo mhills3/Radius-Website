@@ -169,16 +169,22 @@
         .score-even { color: var(--cream); }
         .score-over { color: #f87171; }
 
-        /* COVER HERO */
-        .cover-hero { margin-top: 1.5rem; border-radius: 16px; overflow: hidden; max-height: 320px; }
-        .cover-hero img { width: 100%; height: 320px; object-fit: cover; display: block; }
-        @media (max-width: 600px) { .cover-hero, .cover-hero img { max-height: 200px; height: 200px; } }
+        /* PHOTO GRID */
+        .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.5rem; margin-top: 1.5rem; }
+        .photo-grid img { width: 100%; height: 140px; object-fit: cover; border-radius: 12px; cursor: pointer; transition: opacity 0.2s; }
+        .photo-grid img:hover { opacity: 0.85; }
+        .photo-grid img:first-child { grid-column: 1 / -1; height: 260px; border-radius: 14px; }
+        @media (max-width: 600px) { .photo-grid img:first-child { height: 180px; } .photo-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); } }
 
-        /* GALLERY */
-        .gallery { display: flex; gap: 0.75rem; overflow-x: auto; padding-bottom: 0.5rem; margin-top: 0.75rem; }
-        .gallery::-webkit-scrollbar { height: 6px; }
-        .gallery::-webkit-scrollbar-thumb { background: rgba(168,179,145,0.2); border-radius: 3px; }
-        .gallery-img { height: 140px; border-radius: 12px; object-fit: cover; flex-shrink: 0; }
+        /* LIGHTBOX */
+        .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 9999; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .lightbox img { max-width: 90vw; max-height: 90vh; object-fit: contain; border-radius: 12px; }
+        .lightbox-close { position: absolute; top: 20px; right: 24px; color: #fff; font-size: 2rem; cursor: pointer; font-weight: 300; z-index: 10000; }
+
+        /* LAYOUT TABS */
+        .layout-tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+        .layout-tab { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 6px 14px; font-size: 0.8rem; font-weight: 600; color: var(--sage); cursor: pointer; transition: all 0.2s; font-family: inherit; }
+        .layout-tab.active { background: rgba(246,193,101,0.15); border-color: var(--gold); color: var(--gold); }
 
         /* REVIEWS */
         .reviews-section { margin-top: 2.5rem; }
@@ -500,27 +506,49 @@ async function showCourse(course) {
     const holes = (course.holes || []).map((h, i) => ({ ...h, holeNumber: h.holeNumber || h.number || (i + 1) }))
         .sort((a, b) => a.holeNumber - b.holeNumber);
 
-    // Cover photo hero + gallery
+    // Photos (cover + gallery in a grid with lightbox)
     const galSec = document.getElementById('gallerySection');
-    const galleryOnly = (course.galleryPhotoUrls || []).filter(u => u !== course.coverPhotoUrl);
-    let galHtml = '';
-    if (course.coverPhotoUrl) {
-        galHtml += `<div class="cover-hero"><img src="${course.coverPhotoUrl}" alt="${esc(course.name)}"></div>`;
+    const allPhotos = [];
+    if (course.coverPhotoUrl) allPhotos.push(course.coverPhotoUrl);
+    if (course.galleryPhotoUrls) allPhotos.push(...course.galleryPhotoUrls.filter(u => u !== course.coverPhotoUrl));
+    if (allPhotos.length > 0) {
+        galSec.innerHTML = `<div class="photo-grid">${allPhotos.map(url => `<img src="${url}" alt="Course photo" loading="lazy" onclick="openLightbox('${url}')">`).join('')}</div>`;
+    } else {
+        galSec.innerHTML = '';
     }
-    if (galleryOnly.length > 0) {
-        galHtml += `<div class="gallery">${galleryOnly.map(url => `<img src="${url}" alt="Course photo" class="gallery-img">`).join('')}</div>`;
-    }
-    galSec.innerHTML = galHtml;
 
-    // Holes table
+    // Layouts + Holes table
     const holeSec = document.getElementById('holeSection');
-    if (holes.length > 0) {
+    const layouts = (course.layouts || []).filter(l => l.isPublished !== false);
+    const allLayouts = [{ name: 'Default', holes }];
+    layouts.forEach(l => {
+        const lHoles = (l.holes || []).map((h, i) => ({ ...h, holeNumber: h.holeNumber || h.number || (i + 1) }))
+            .sort((a, b) => a.holeNumber - b.holeNumber);
+        if (lHoles.length > 0) allLayouts.push({ name: l.name || 'Layout', holes: lHoles });
+    });
+
+    window._courseLayouts = allLayouts;
+    window._renderHoleTable = function(idx) {
+        const layout = allLayouts[idx];
+        const h = layout.holes;
+        const totalPar = h.reduce((s, x) => s + (x.par || 0), 0);
+        const totalDist = h.reduce((s, x) => s + (x.distance || 0), 0);
+        document.getElementById('holeTableBody').innerHTML = `
+            ${h.map(x => `<tr><td class="hole-num">${x.holeNumber}</td><td>${x.par}</td><td>${x.distance ? x.distance + ' ft' : '—'}</td></tr>`).join('')}
+            <tr class="total-row"><td>Total</td><td>${totalPar}</td><td>${totalDist.toLocaleString()} ft</td></tr>`;
+        document.querySelectorAll('.layout-tab').forEach((t, i) => t.classList.toggle('active', i === idx));
+    };
+
+    if (holes.length > 0 || layouts.length > 0) {
+        const tabsHtml = allLayouts.length > 1
+            ? `<div class="layout-tabs">${allLayouts.map((l, i) => `<button class="layout-tab${i === 0 ? ' active' : ''}" onclick="_renderHoleTable(${i})">${esc(l.name)}</button>`).join('')}</div>`
+            : '';
         const totalPar = holes.reduce((s, h) => s + (h.par || 0), 0);
         const totalDist = holes.reduce((s, h) => s + (h.distance || 0), 0);
-        holeSec.innerHTML = `<h2>Hole-by-Hole</h2>
+        holeSec.innerHTML = `<h2>Hole-by-Hole</h2>${tabsHtml}
         <div class="hole-table-wrap"><table class="hole-table">
             <thead><tr><th>Hole</th><th>Par</th><th>Distance</th></tr></thead>
-            <tbody>
+            <tbody id="holeTableBody">
                 ${holes.map(h => `<tr><td class="hole-num">${h.holeNumber}</td><td>${h.par}</td><td>${h.distance ? h.distance + ' ft' : '—'}</td></tr>`).join('')}
                 <tr class="total-row"><td>Total</td><td>${totalPar}</td><td>${totalDist.toLocaleString()} ft</td></tr>
             </tbody>
@@ -544,9 +572,15 @@ async function showCourse(course) {
     lbSec.innerHTML = '<h2>Leaderboard</h2><div class="loading" style="padding:2rem"><span class="spinner"></span>Loading scores...</div>';
     let scores = [];
     try {
+        // Try top-level courseScores first
         const q2 = query(collection(db, "courseScores"), where("courseId", "==", course.id), orderBy("relativeToPar", "asc"), limit(20));
         const snap = await getDocs(q2);
         scores = snap.docs.map(d => d.data());
+        // Fallback to nested subcollection
+        if (scores.length === 0) {
+            const subSnap = await getDocs(collection(db, "courses", course.id, "scores"));
+            scores = subSnap.docs.map(d => d.data()).sort((a, b) => (a.relativeToPar || 0) - (b.relativeToPar || 0)).slice(0, 20);
+        }
         if (scores.length > 0) {
             lbSec.innerHTML = `<h2>Leaderboard</h2>
             <div class="hole-table-wrap"><table class="lb-table">
@@ -616,11 +650,18 @@ async function showCourse(course) {
         recSec.innerHTML = '<h2>Records</h2><div class="record-empty">Could not load records.</div>';
     }
 
-    // Reviews
+    // Reviews (embedded array on course doc + subcollection)
     const revSec = document.getElementById('reviewsSection');
     try {
-        const revSnap = await getDocs(collection(db, "courses", course.id, "reviews"));
-        const reviews = revSnap.docs.map(d => d.data());
+        let reviews = [];
+        // Read from embedded array first
+        if (course.reviews && Array.isArray(course.reviews) && course.reviews.length > 0) {
+            reviews = course.reviews;
+        } else {
+            // Fallback to subcollection
+            const revSnap = await getDocs(collection(db, "courses", course.id, "reviews"));
+            reviews = revSnap.docs.map(d => d.data());
+        }
         if (reviews.length > 0) {
             revSec.innerHTML = `<h2>Reviews</h2>${reviews.map(r => {
                 const date = r.date || r.createdAt;
@@ -740,6 +781,14 @@ document.getElementById('searchInput').addEventListener('input', renderCourses);
 document.getElementById('stateFilter').addEventListener('change', renderCourses);
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+window.openLightbox = function(url) {
+    const lb = document.createElement('div');
+    lb.className = 'lightbox';
+    lb.innerHTML = `<span class="lightbox-close">&times;</span><img src="${url}" alt="Photo">`;
+    lb.addEventListener('click', () => lb.remove());
+    document.body.appendChild(lb);
+};
 
 // ==================== INIT ====================
 loadCourses();
