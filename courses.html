@@ -566,7 +566,10 @@ async function showCourse(course) {
     });
 
     window._courseLayouts = allLayouts;
+    window._currentCourse = course;
+    window._selectedLayoutIdx = 0;
     window._renderHoleTable = function(idx) {
+        window._selectedLayoutIdx = idx;
         const layout = allLayouts[idx];
         const h = layout.holes;
         const totalPar = h.reduce((s, x) => s + (x.par || 0), 0);
@@ -575,6 +578,19 @@ async function showCourse(course) {
             ${h.map(x => `<tr><td class="hole-num">${x.holeNumber}</td><td>${x.par}</td><td>${x.distance ? x.distance + ' ft' : '—'}</td></tr>`).join('')}
             <tr class="total-row"><td>Total</td><td>${totalPar}</td><td>${totalDist.toLocaleString()} ft</td></tr>`;
         document.querySelectorAll('.layout-tab').forEach((t, i) => t.classList.toggle('active', i === idx));
+
+        // Re-render map with selected layout's holes
+        const hasCoords = h.some(x => x.teeLat && x.teeLng);
+        if (hasCoords || (course.latitude && course.longitude)) {
+            setTimeout(() => renderMap(course, h), 50);
+        }
+
+        // Filter leaderboard by layout
+        if (window._renderLeaderboard) {
+            window._selectedLayoutName = idx === 0 ? null : layout.name;
+            const activeTab = document.querySelector('.time-tab.active');
+            window._renderLeaderboard(activeTab ? activeTab.dataset.period : 'All');
+        }
     };
 
     if (holes.length > 0 || layouts.length > 0) {
@@ -632,12 +648,18 @@ async function showCourse(course) {
         scores = scores.slice(0, 20);
         // Store raw scores globally for filtering
         window._allRawScores = scores;
+        window._selectedLayoutName = null;
         window._renderLeaderboard = function(period) {
             const now = Date.now();
             const cutoffs = { '1M': 30, '6M': 180, '1Y': 365, 'All': 99999 };
             const days = cutoffs[period] || 99999;
             const cutoff = now - days * 86400000;
             let filtered = window._allRawScores.filter(s => (s.date || 0) >= cutoff || days >= 99999);
+            // Filter by layout if one is selected
+            if (window._selectedLayoutName) {
+                const ln = window._selectedLayoutName.toLowerCase();
+                filtered = filtered.filter(s => (s.layoutName || '').toLowerCase() === ln);
+            }
             // Deduplicate by player within period
             const best = {};
             filtered.forEach(s => {
