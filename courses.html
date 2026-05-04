@@ -837,7 +837,8 @@ async function showCourse(course) {
                     const d = s.date ? new Date(s.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
                     const rankCls = i < 3 ? ` class="rank-${i+1}"` : '';
                     const rank = i < 3 ? `<span class="rank-medal">${medals[i]}</span>` : (i + 1);
-                    return `<tr${rankCls}><td>${rank}</td><td>${esc(s.playerName || '')}${s.username ? ' <span style="color:var(--sage-dim)">@' + esc(s.username) + '</span>' : ''}</td><td class="${cls}" style="font-weight:700;font-family:'Sora',sans-serif">${fmtScore(s.relativeToPar)}</td><td style="color:var(--text-body)">${d}</td></tr>`;
+                    const uid = s.playerId || s.playerUid || '';
+                    return `<tr${rankCls}><td>${rank}</td><td style="display:flex;align-items:center;gap:8px">${avatarHtml(uid, s.playerName)}${esc(s.playerName || '')}${s.username ? ' <span style="color:var(--sage-dim)">@' + esc(s.username) + '</span>' : ''}</td><td class="${cls}" style="font-weight:700;font-family:'Sora',sans-serif">${fmtScore(s.relativeToPar)}</td><td style="color:var(--text-body)">${d}</td></tr>`;
                 }).join('');
             } else {
                 tbody.innerHTML = '<tr><td colspan="4" style="color:var(--sage-dim);padding:1.5rem;text-align:center">No scores in this period.</td></tr>';
@@ -878,11 +879,12 @@ async function showCourse(course) {
         window._allAces = aces;
         window._allDrives = drives;
 
-        // Fetch profile photos for all record holders
+        // Fetch profile photos for all record holders + leaderboard + reviews
         const allUserIds = [
             ...aces.map(a => a.playerId || a.playerUid),
             ...drives.map(d => d.playerId || d.playerUid),
-            ...(window._allRawScores || []).slice(0, 10).map(s => s.playerId || s.playerUid)
+            ...(window._allRawScores || []).map(s => s.playerId || s.playerUid),
+            ...(window._courseReviews || []).map(r => r.authorUid || r.userId)
         ].filter(Boolean);
         await fetchUserPhotos([...new Set(allUserIds)]);
 
@@ -1107,8 +1109,9 @@ window.openReviewsModal = function() {
                     const date = r.createdAt || r.date;
                     const dateStr = date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
                     const stars = r.rating ? '★'.repeat(Math.round(r.rating)) + '☆'.repeat(5 - Math.round(r.rating)) : '';
+                    const rUid = r.authorUid || r.userId || '';
                     return `<div class="review-card">
-                        <div class="review-top"><span class="review-author">${esc(r.authorName || 'Anonymous')}</span><span class="review-date">${dateStr}</span></div>
+                        <div class="review-top"><div style="display:flex;align-items:center;gap:8px">${avatarHtml(rUid, r.authorName)}<span class="review-author">${esc(r.authorName || 'Anonymous')}</span></div><span class="review-date">${dateStr}</span></div>
                         ${stars ? `<div class="review-rating">${stars}</div>` : ''}
                         ${r.text || r.comment ? `<div class="review-text">${esc(r.text || r.comment)}</div>` : ''}
                     </div>`;
