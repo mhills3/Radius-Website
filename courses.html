@@ -708,11 +708,14 @@ async function showCourse(course) {
             setTimeout(() => renderMap(course, h), 50);
         }
 
-        // Filter leaderboard by layout
+        // Filter leaderboard + records by layout
+        window._selectedLayoutName = idx === 0 ? null : layout.name;
         if (window._renderLeaderboard) {
-            window._selectedLayoutName = idx === 0 ? null : layout.name;
             const activeTab = document.querySelector('.time-tab.active');
             window._renderLeaderboard(activeTab ? activeTab.dataset.period : 'All');
+        }
+        if (window._renderRecords) {
+            window._renderRecords();
         }
     };
 
@@ -836,44 +839,53 @@ async function showCourse(course) {
         ]);
         const aces = acesSnap.docs.map(d => d.data());
         const drives = drivesSnap.docs.map(d => d.data()).sort((a, b) => (b.distanceFt || b.distance || 0) - (a.distanceFt || a.distance || 0));
-        const bestScores = (window._allRawScores || scores).slice(0, 5);
+        // Store raw records for layout filtering
+        window._allAces = aces;
+        window._allDrives = drives;
+        window._renderRecords = function() {
+            const ln = window._selectedLayoutName;
+            let filteredScores = window._allRawScores || [];
+            if (ln) filteredScores = filteredScores.filter(s => (s.layoutName || '').toLowerCase() === ln.toLowerCase());
+            // Deduplicate best scores by player
+            const best = {};
+            filteredScores.forEach(s => {
+                const key = s.playerId || s.playerUid || s.playerName;
+                if (!best[key] || (s.relativeToPar || 0) < (best[key].relativeToPar || 0)) best[key] = s;
+            });
+            const bestScores = Object.values(best).sort((a, b) => (a.relativeToPar || 0) - (b.relativeToPar || 0)).slice(0, 5);
 
-        let html = '<h2>Records</h2>';
+            let html = '<h2>Records</h2>';
+            html += '<h3>Aces</h3>';
+            if (aces.length > 0) {
+                html += aces.map(a => `<div class="record-item">
+                    <div><span class="rec-player">${esc(a.playerName || 'Unknown')}</span> <span class="rec-detail">· Hole ${a.holeNumber || '?'}${a.discName ? ' · ' + esc(a.discName) : ''}</span></div>
+                    <div class="rec-val">🥏</div>
+                </div>`).join('');
+            } else {
+                html += '<div class="record-empty">No aces recorded yet.</div>';
+            }
+            html += '<h3>Best Scores</h3>';
+            if (bestScores.length > 0) {
+                html += bestScores.map((s, i) => `<div class="record-item">
+                    <div><span class="rec-player">${esc(s.playerName || '')}</span> <span class="rec-detail">${s.username ? '@' + esc(s.username) : ''}</span></div>
+                    <div class="rec-val">${fmtScore(s.relativeToPar)}</div>
+                </div>`).join('');
+            } else {
+                html += '<div class="record-empty">No scores recorded yet.</div>';
+            }
 
-        // Aces
-        html += '<h3>Aces</h3>';
-        if (aces.length > 0) {
-            html += aces.map(a => `<div class="record-item">
-                <div><span class="rec-player">${esc(a.playerName || 'Unknown')}</span> <span class="rec-detail">· Hole ${a.holeNumber || '?'}${a.discName ? ' · ' + esc(a.discName) : ''}</span></div>
-                <div class="rec-val">🥏</div>
-            </div>`).join('');
-        } else {
-            html += '<div class="record-empty">No aces recorded yet.</div>';
-        }
-
-        // Best Scores
-        html += '<h3>Best Scores</h3>';
-        if (bestScores.length > 0) {
-            html += bestScores.map((s, i) => `<div class="record-item">
-                <div><span class="rec-player">${esc(s.playerName || '')}</span> <span class="rec-detail">${s.username ? '@' + esc(s.username) : ''}</span></div>
-                <div class="rec-val">${fmtScore(s.relativeToPar)}</div>
-            </div>`).join('');
-        } else {
-            html += '<div class="record-empty">No scores recorded yet.</div>';
-        }
-
-        // Long Drives
-        html += '<h3>Long Drives</h3>';
-        if (drives.length > 0) {
-            html += drives.slice(0, 5).map(d => `<div class="record-item">
-                <div><span class="rec-player">${esc(d.playerName || 'Unknown')}</span> <span class="rec-detail">· Hole ${d.holeNumber || '?'}${d.discName ? ' · ' + esc(d.discName) : ''}</span></div>
-                <div class="rec-val">${(d.distanceFt || d.distance || 0).toLocaleString()} ft</div>
-            </div>`).join('');
-        } else {
-            html += '<div class="record-empty">No long drives recorded yet.</div>';
-        }
-
-        recSec.innerHTML = html;
+            html += '<h3>Long Drives</h3>';
+            if (drives.length > 0) {
+                html += drives.slice(0, 5).map(d => `<div class="record-item">
+                    <div><span class="rec-player">${esc(d.playerName || 'Unknown')}</span> <span class="rec-detail">· Hole ${d.holeNumber || '?'}${d.discName ? ' · ' + esc(d.discName) : ''}</span></div>
+                    <div class="rec-val">${(d.distanceFt || d.distance || 0).toLocaleString()} ft</div>
+                </div>`).join('');
+            } else {
+                html += '<div class="record-empty">No long drives recorded yet.</div>';
+            }
+            recSec.innerHTML = html;
+        };
+        window._renderRecords();
     } catch(e) {
         recSec.innerHTML = '<h2>Records</h2><div class="record-empty">Could not load records.</div>';
     }
