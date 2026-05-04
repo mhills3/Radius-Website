@@ -136,9 +136,20 @@
         .mapboxgl-popup-tip { border-top-color: var(--bg-card) !important; }
         .mapboxgl-popup-close-button { color: var(--sage) !important; font-size: 16px !important; }
 
+        /* HOLE + RECORDS SPLIT */
+        .hole-records-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 2.5rem; }
+        @media (max-width: 800px) { .hole-records-row { grid-template-columns: 1fr; } }
+        .hole-section h2, .records-section h2 { font-size: 1.15rem; font-weight: 700; margin-bottom: 0.75rem; }
+        .records-section h3 { font-size: 0.92rem; font-weight: 700; margin: 1.25rem 0 0.5rem; color: var(--gold); }
+        .records-section h3:first-child { margin-top: 0; }
+        .record-item { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 0.85rem; }
+        .record-item .rec-player { color: var(--cream); font-weight: 500; }
+        .record-item .rec-detail { color: var(--sage); font-size: 0.82rem; }
+        .record-item .rec-val { color: var(--gold); font-weight: 700; white-space: nowrap; }
+        .record-empty { color: var(--sage-dim); font-size: 0.82rem; padding: 0.5rem 0; }
+
         /* HOLE TABLE */
-        .hole-section { margin-top: 2.5rem; }
-        .hole-section h2 { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.75rem; }
+        .hole-section { }
         .hole-table-wrap { overflow-x: auto; border-radius: 14px; border: 1px solid rgba(255,255,255,0.06); }
         .hole-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
         .hole-table th { text-align: left; padding: 0.75rem 1rem; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1px; color: var(--sage-dim); background: rgba(255,255,255,0.025); border-bottom: 1px solid rgba(255,255,255,0.06); }
@@ -253,7 +264,10 @@
         <h2>Course Map</h2>
         <div id="course-map"></div>
     </div>
-    <div class="hole-section" id="holeSection"></div>
+    <div class="hole-records-row">
+        <div class="hole-section" id="holeSection"></div>
+        <div class="records-section" id="recordsSection"></div>
+    </div>
     <div class="lb-section" id="lbSection"></div>
     <div class="reviews-section" id="reviewsSection"></div>
     <div class="download-cta">
@@ -537,6 +551,58 @@ async function showCourse(course) {
         }
     } catch(e) {
         lbSec.innerHTML = '<h2>Leaderboard</h2><p style="color:var(--sage-dim)">Could not load scores.</p>';
+    }
+
+    // Records (aces, drives, best scores)
+    const recSec = document.getElementById('recordsSection');
+    recSec.innerHTML = '<h2>Records</h2><div class="loading" style="padding:1rem"><span class="spinner"></span></div>';
+    try {
+        const [acesSnap, drivesSnap] = await Promise.all([
+            getDocs(collection(db, "courses", course.id, "aces")),
+            getDocs(collection(db, "courses", course.id, "drives"))
+        ]);
+        const aces = acesSnap.docs.map(d => d.data());
+        const drives = drivesSnap.docs.map(d => d.data()).sort((a, b) => (b.distanceFt || b.distance || 0) - (a.distanceFt || a.distance || 0));
+        const bestScores = scores.slice(0, 5);
+
+        let html = '<h2>Records</h2>';
+
+        // Aces
+        html += '<h3>Aces</h3>';
+        if (aces.length > 0) {
+            html += aces.map(a => `<div class="record-item">
+                <div><span class="rec-player">${esc(a.playerName || 'Unknown')}</span> <span class="rec-detail">· Hole ${a.holeNumber || '?'}${a.discName ? ' · ' + esc(a.discName) : ''}</span></div>
+                <div class="rec-val">🥏</div>
+            </div>`).join('');
+        } else {
+            html += '<div class="record-empty">No aces recorded yet.</div>';
+        }
+
+        // Best Scores
+        html += '<h3>Best Scores</h3>';
+        if (bestScores.length > 0) {
+            html += bestScores.map((s, i) => `<div class="record-item">
+                <div><span class="rec-player">${esc(s.playerName || '')}</span> <span class="rec-detail">${s.username ? '@' + esc(s.username) : ''}</span></div>
+                <div class="rec-val">${fmtScore(s.relativeToPar)}</div>
+            </div>`).join('');
+        } else {
+            html += '<div class="record-empty">No scores recorded yet.</div>';
+        }
+
+        // Long Drives
+        html += '<h3>Long Drives</h3>';
+        if (drives.length > 0) {
+            html += drives.slice(0, 5).map(d => `<div class="record-item">
+                <div><span class="rec-player">${esc(d.playerName || 'Unknown')}</span> <span class="rec-detail">· Hole ${d.holeNumber || '?'}${d.discName ? ' · ' + esc(d.discName) : ''}</span></div>
+                <div class="rec-val">${(d.distanceFt || d.distance || 0).toLocaleString()} ft</div>
+            </div>`).join('');
+        } else {
+            html += '<div class="record-empty">No long drives recorded yet.</div>';
+        }
+
+        recSec.innerHTML = html;
+    } catch(e) {
+        recSec.innerHTML = '<h2>Records</h2><div class="record-empty">Could not load records.</div>';
     }
 
     // Reviews
