@@ -99,12 +99,6 @@
         .course-card .tags { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.65rem; }
         .course-card .tag { background: rgba(255,255,255,0.05); border-radius: 100px; padding: 3px 10px; font-size: 0.72rem; color: var(--text-body); }
 
-        @media (max-width: 900px) {
-            .split-layout { flex-direction: column; height: auto; }
-            .list-panel { width: 100%; min-width: 0; border-right: none; border-bottom: 1px solid rgba(255,255,255,0.06); }
-            .course-list { max-height: 50vh; }
-            .map-panel { height: 50vh; }
-        }
 
         /* LOADING */
         .loading { text-align: center; padding: 5rem 2rem; color: var(--sage); }
@@ -213,6 +207,10 @@
         .record-item .rec-player { color: var(--cream); font-weight: 500; }
         .record-item .rec-detail { color: var(--sage-dim); font-size: 0.75rem; }
         .record-item .rec-val { color: var(--gold); font-weight: 700; font-family: 'Sora', sans-serif; white-space: nowrap; }
+        .record-item .rec-rank { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; font-size: 0.7rem; font-weight: 800; font-family: 'Sora', sans-serif; background: rgba(255,255,255,0.05); color: var(--sage-dim); flex-shrink: 0; border: 1px solid rgba(255,255,255,0.06); }
+        .record-item .rec-rank-1 { background: linear-gradient(135deg, #f6c165, #d4a045); color: #2a1f08; border-color: rgba(246,193,101,0.5); box-shadow: 0 2px 8px rgba(246,193,101,0.25); }
+        .record-item .rec-rank-2 { background: linear-gradient(135deg, #e2e2e2, #a8a8a8); color: #1f1f1f; border-color: rgba(220,220,220,0.4); }
+        .record-item .rec-rank-3 { background: linear-gradient(135deg, #cd9966, #8c5e2f); color: #2a180a; border-color: rgba(205,153,102,0.4); }
         .record-empty { color: var(--sage-dim); font-size: 0.78rem; padding: 0.4rem 0.6rem; }
 
         /* TIME FILTER TABS */
@@ -282,19 +280,144 @@
         .footer-links a { color: var(--sage-dim); text-decoration: none; font-size: 0.88rem; transition: color 0.2s; }
         .footer-links a:hover { color: var(--gold); }
 
+        /* MOBILE MAP FAB + OVERLAY — hidden on desktop */
+        .map-fab { display: none; }
+        .map-overlay-close { display: none; }
+
+        @media (max-width: 900px) {
+            /* Single-column flow: list takes the page, map is hidden by default */
+            .split-layout { flex-direction: column; height: auto; overflow: visible; }
+            .list-panel { width: 100%; min-width: 0; border-right: none; border-bottom: none; }
+            .course-list { max-height: none; overflow-y: visible; padding-bottom: 6rem; }
+            .map-panel { display: none; }
+
+            /* When .show-map is on the layout, the map becomes a full-screen overlay */
+            .split-layout.show-map .map-panel {
+                display: block;
+                position: fixed;
+                inset: 0;
+                z-index: 9990;
+                background: var(--bg-deep);
+                height: 100vh;
+                width: 100vw;
+            }
+            .split-layout.show-map .map-overlay-close {
+                display: flex;
+                position: fixed;
+                top: 12px;
+                right: 12px;
+                z-index: 9991;
+                width: 40px; height: 40px;
+                align-items: center; justify-content: center;
+                background: var(--bg-mid);
+                border: 1px solid rgba(255,255,255,0.15);
+                border-radius: 50%;
+                color: var(--cream);
+                font-size: 1.4rem;
+                cursor: pointer;
+                font-family: inherit;
+                box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+            }
+            /* Lock body scroll while overlay is open */
+            body.map-open { overflow: hidden; }
+
+            /* Floating "Map" action button — sticks at bottom of viewport */
+            .map-fab {
+                display: inline-flex;
+                position: fixed;
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                z-index: 100;
+                align-items: center;
+                gap: 8px;
+                background: var(--gold);
+                color: var(--bg-deep);
+                border: none;
+                border-radius: 100px;
+                padding: 12px 22px;
+                font-size: 0.9rem;
+                font-weight: 700;
+                font-family: inherit;
+                cursor: pointer;
+                box-shadow: 0 8px 24px rgba(0,0,0,0.45), 0 2px 6px rgba(246,193,101,0.3);
+                transition: transform 0.15s;
+            }
+            .map-fab:active { transform: translateX(-50%) scale(0.96); }
+            .map-fab svg { width: 16px; height: 16px; }
+            /* Hide the FAB while the map overlay is open */
+            .split-layout.show-map .map-fab { display: none; }
+        }
+
         @media (max-width: 600px) {
-            .course-hero { min-height: 260px; }
-            .course-hero h1 { font-size: 2rem; }
-            .course-hero .hero-inner { padding: 1.5rem; }
+            /* Directory */
+            .list-header { padding: 1rem 1rem 0; }
+            .list-header h1 { font-size: 1.35rem; }
+            .filters { padding: 0.75rem 1rem; gap: 0.5rem; }
+            .filters input, .filters select { flex: 1 1 100%; min-width: 0; max-width: none; padding: 11px 14px; font-size: 0.9rem; }
+            .result-count { padding: 0 1rem 0.5rem; }
+            .course-list { padding: 0 0.75rem 1.5rem; }
+            .course-card { padding: 0.95rem 1rem; border-radius: 12px; }
+
+            /* Detail hero */
+            .course-hero { min-height: 220px; }
+            .course-hero h1 { font-size: 1.75rem; line-height: 1.1; letter-spacing: -0.5px; word-wrap: break-word; }
+            .course-hero .hero-loc { font-size: 0.95rem; }
+            .course-hero .hero-inner { padding: 1.25rem 1rem 1.5rem; }
+            .course-hero .back-btn { margin-bottom: 0.85rem; }
+
+            /* Stat strip — wrap into 3-col grid so values don't get crushed */
             .stat-strip { padding: 0 1rem; }
-            .stat-pill .sp-val { font-size: 1rem; }
-            .stat-pill { padding: 0.75rem 0.5rem; }
-            .detail-body { padding: 1.25rem 1rem 3rem; }
-            #course-map { height: 280px; }
+            .stat-strip-inner { display: grid; grid-template-columns: repeat(3, 1fr); border-radius: 12px; }
+            .stat-pill { padding: 0.7rem 0.4rem; border-right: 1px solid rgba(255,255,255,0.06); border-bottom: 1px solid rgba(255,255,255,0.06); }
+            .stat-pill:nth-child(3n) { border-right: none; }
+            .stat-pill:nth-last-child(-n+3):nth-child(3n+1),
+            .stat-pill:nth-last-child(-n+3):nth-child(3n+1) ~ .stat-pill { border-bottom: none; }
+            .stat-pill .sp-val { font-size: 0.95rem; margin-top: 2px; }
+            .stat-pill .sp-label { font-size: 0.55rem; letter-spacing: 0.8px; }
+            .stat-pill .sp-icon { font-size: 0.9rem; margin-right: 2px; }
+
+            /* Body */
+            .detail-body { padding: 1.25rem 1rem 2.5rem; }
+            .content-grid { gap: 1.5rem; }
+            #course-map { height: 260px; }
+
+            /* Layout tabs */
+            .layout-tabs { gap: 0.3rem; }
+            .layout-tab { padding: 5px 12px; font-size: 0.75rem; }
+
+            /* Scorecard */
+            .hole-table { font-size: 0.78rem; }
+            .hole-table th, .hole-table td { padding: 0.5rem 0.4rem; }
+            .hole-table th { font-size: 0.6rem; }
+
+            /* Records */
+            .record-item { gap: 8px; padding: 0.5rem 0.4rem; font-size: 0.8rem; }
+            .record-item .rec-detail { font-size: 0.7rem; }
+            .record-item > div[style*="flex:1"] { min-width: 0; overflow: hidden; }
+            .record-item .rec-player { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+            /* Leaderboard */
+            .lb-table { font-size: 0.78rem; }
+            .lb-table th, .lb-table td { padding: 0.5rem 0.45rem; }
+            .lb-header { gap: 0.5rem; margin-bottom: 0.75rem; }
+
+            /* Reviews */
             .review-big-rating { font-size: 2rem; }
-            .download-cta { padding: 2.5rem 1.5rem; }
-            .download-cta h3 { font-size: 1.25rem; }
-            .download-cta .cta-ring { width: 280px; height: 280px; }
+            .reviews-modal-content { padding: 1.5rem 1.25rem; width: 94vw; }
+            .review-card { padding: 0.85rem 1rem; }
+
+            /* CTA */
+            .download-cta { padding: 2.25rem 1.25rem; }
+            .download-cta h3 { font-size: 1.2rem; }
+            .download-cta .cta-ring { width: 260px; height: 260px; }
+        }
+
+        @media (max-width: 380px) {
+            .stat-strip-inner { grid-template-columns: repeat(2, 1fr); }
+            .stat-pill:nth-child(3n) { border-right: 1px solid rgba(255,255,255,0.06); }
+            .stat-pill:nth-child(2n) { border-right: none; }
+            .course-hero h1 { font-size: 1.5rem; }
         }
     </style>
 </head>
@@ -319,6 +442,11 @@
 <!-- DIRECTORY VIEW -->
 <div class="directory-view" id="directoryView">
     <div class="split-layout">
+        <button class="map-fab" type="button" id="mapFab" aria-label="Show map view">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l5.553 2.276A1 1 0 0022 18.382V7.618a1 1 0 00-1.447-.894L15 4m0 13V4m0 0L9 7"/></svg>
+            Map
+        </button>
+        <button class="map-overlay-close" type="button" id="mapClose" aria-label="Close map">×</button>
         <div class="list-panel">
             <div class="list-header">
                 <h1>Disc Golf <span class="gold">Courses</span></h1>
@@ -875,7 +1003,7 @@ async function showCourse(course) {
             getDocs(collection(db, "courses", course.id, "aces")),
             getDocs(collection(db, "courses", course.id, "drives"))
         ]);
-        const aces = acesSnap.docs.map(d => d.data());
+        const aces = acesSnap.docs.map(d => d.data()).sort((a, b) => (b.date || 0) - (a.date || 0));
         const drives = drivesSnap.docs.map(d => d.data()).sort((a, b) => (b.distanceFt || b.distance || 0) - (a.distanceFt || a.distance || 0));
         // Store raw records for layout filtering
         window._allAces = aces;
@@ -903,10 +1031,12 @@ async function showCourse(course) {
             });
             const bestScores = Object.values(best).sort((a, b) => (a.relativeToPar || 0) - (b.relativeToPar || 0)).slice(0, 5);
 
+            const rankCls = i => `rec-rank${i < 3 ? ' rec-rank-' + (i+1) : ''}`;
             let html = '<h2>Records</h2>';
             html += '<h3>Aces</h3>';
             if (aces.length > 0) {
-                html += aces.map(a => `<div class="record-item">
+                html += aces.map((a, i) => `<div class="record-item">
+                    <div class="${rankCls(i)}">${i+1}</div>
                     ${avatarHtml(a.playerId || a.playerUid, a.playerName)}
                     <div style="flex:1"><span class="rec-player">${esc(a.playerName || 'Unknown')}</span> <span class="rec-detail">· Hole ${a.holeNumber || '?'}${a.discName ? ' · ' + esc(a.discName) : ''}</span></div>
                     <div class="rec-val">🥏</div>
@@ -917,6 +1047,7 @@ async function showCourse(course) {
             html += '<h3>Best Scores</h3>';
             if (bestScores.length > 0) {
                 html += bestScores.map((s, i) => `<div class="record-item">
+                    <div class="${rankCls(i)}">${i+1}</div>
                     ${avatarHtml(s.playerId || s.playerUid, s.playerName)}
                     <div style="flex:1"><span class="rec-player">${esc(s.playerName || '')}</span> <span class="rec-detail">${s.username ? '@' + esc(s.username) : ''}</span></div>
                     <div class="rec-val">${fmtScore(s.relativeToPar)}</div>
@@ -927,7 +1058,8 @@ async function showCourse(course) {
 
             html += '<h3>Long Drives</h3>';
             if (drives.length > 0) {
-                html += drives.slice(0, 5).map(d => `<div class="record-item">
+                html += drives.slice(0, 5).map((d, i) => `<div class="record-item">
+                    <div class="${rankCls(i)}">${i+1}</div>
                     ${avatarHtml(d.playerId || d.playerUid, d.playerName)}
                     <div style="flex:1"><span class="rec-player">${esc(d.playerName || 'Unknown')}</span> <span class="rec-detail">· Hole ${d.holeNumber || '?'}${d.discName ? ' · ' + esc(d.discName) : ''}</span></div>
                     <div class="rec-val">${(d.distanceFt || d.distance || 0).toLocaleString()} ft</div>
@@ -1146,6 +1278,25 @@ window.openLightbox = function(url) {
     lb.addEventListener('click', () => lb.remove());
     document.body.appendChild(lb);
 };
+
+// ==================== MOBILE MAP OVERLAY ====================
+(function() {
+    const layout = document.querySelector('.split-layout');
+    const fab = document.getElementById('mapFab');
+    const close = document.getElementById('mapClose');
+    function open() {
+        layout.classList.add('show-map');
+        document.body.classList.add('map-open');
+        if (dirMap) setTimeout(() => dirMap.resize(), 50);
+    }
+    function dismiss() {
+        layout.classList.remove('show-map');
+        document.body.classList.remove('map-open');
+    }
+    if (fab) fab.addEventListener('click', open);
+    if (close) close.addEventListener('click', dismiss);
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') dismiss(); });
+})();
 
 // ==================== INIT ====================
 loadCourses();
