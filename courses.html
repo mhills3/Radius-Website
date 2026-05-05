@@ -589,6 +589,15 @@ async function loadCourses() {
         }
         return { id: d.id, ...data, holes };
     });
+    // Hide test/junk entries from the public site (does NOT delete from Firestore)
+    const HIDDEN_NAMES = new Set(['test', 'hshsha']);
+    allCourses = allCourses.filter(c => {
+        const n = (c.name || '').trim().toLowerCase();
+        if (!n) return false;
+        if (HIDDEN_NAMES.has(n)) return false;
+        if (/^test(\s|\d|$)/.test(n)) return false;
+        return true;
+    });
     allCourses.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
     // Populate region filter with full names
