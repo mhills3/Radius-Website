@@ -7,6 +7,7 @@
     { "source": "/privacy", "destination": "/privacy.html" },
     { "source": "/terms", "destination": "/terms.html" },
     { "source": "/courses", "destination": "/courses.html" },
-    { "source": "/courses/:path*", "destination": "/courses.html" }
+    { "source": "/courses/:path*", "destination": "/courses.html" },
+    { "source": "/tutorials", "destination": "/tutorials.html" }
   ]
 }

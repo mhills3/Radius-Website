@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tutorials — Radius Disc Golf</title>
+    <meta name="description" content="Short walkthroughs that show you how to use Radius — Home tab, Discover, Live Play, Game Modes, and building your own courses.">
+    <meta name="theme-color" content="#1a2821">
+
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://radiusdiscgolf.com/tutorials">
+    <meta property="og:title" content="Tutorials — Radius Disc Golf">
+    <meta property="og:description" content="Short walkthroughs that show you how to use Radius.">
+    <meta property="og:image" content="https://radiusdiscgolf.com/assets/og-image.png">
+
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+    <link rel="apple-touch-icon" href="assets/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #1a2821;
+            --bg-mid: #2F3C35;
+            --gold: #F6C165;
+            --gold-bright: #f8cf80;
+            --gold-dim: rgba(246,193,101,0.12);
+            --cream: #F5EDE1;
+            --sage: rgba(168,179,145,0.85);
+            --sage-dim: rgba(168,179,145,0.45);
+            --text-body: rgba(245,237,225,0.7);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-deep);
+            color: var(--cream);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* NAV */
+        nav { background: var(--bg-deep); padding: 0 2rem; border-bottom: 1px solid rgba(168,179,145,0.08); }
+        .nav-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; height: 72px; }
+        .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+        .nav-links { display: flex; align-items: center; gap: 2.5rem; }
+        .nav-links a { color: var(--sage); text-decoration: none; font-size: 0.88rem; font-weight: 500; transition: color 0.2s; }
+        .nav-links a:hover, .nav-links a.current { color: var(--gold); }
+        .nav-cta {
+            background: var(--gold) !important; color: var(--bg-deep) !important;
+            padding: 10px 22px !important; border-radius: 100px;
+            font-weight: 700 !important; font-size: 0.82rem !important;
+            letter-spacing: 0.3px; transition: all 0.2s !important;
+        }
+        .nav-cta:hover { background: var(--gold-bright) !important; transform: translateY(-1px); }
+        @media (max-width: 768px) {
+            .nav-links { gap: 1.25rem; }
+            .nav-links a:not(.nav-cta) { display: none; }
+        }
+
+        /* HEADER */
+        .page-header {
+            position: relative;
+            padding: 5rem 2rem 3rem;
+            text-align: center;
+            background: linear-gradient(175deg, var(--bg-deep) 0%, var(--bg-mid) 100%);
+            overflow: hidden;
+        }
+        .page-header .topo-pattern {
+            position: absolute; inset: 0; opacity: 0.06;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cpath d='M300 50 Q450 100 400 200 Q350 300 450 350 Q550 400 500 500 Q450 600 300 550 Q150 500 100 400 Q50 300 150 250 Q250 200 200 100 Q150 0 300 50Z' fill='none' stroke='%23A8B391' stroke-width='1.5'/%3E%3Cpath d='M300 100 Q400 140 370 220 Q340 300 410 340 Q480 380 450 460 Q420 540 300 500 Q180 460 150 380 Q120 300 190 260 Q260 220 240 150 Q220 80 300 100Z' fill='none' stroke='%23A8B391' stroke-width='1.5'/%3E%3C/svg%3E");
+            background-size: 500px 500px;
+            pointer-events: none;
+        }
+        .page-header .glow {
+            position: absolute; width: 600px; height: 600px;
+            top: -260px; left: 50%; transform: translateX(-50%);
+            background: radial-gradient(circle, var(--gold-dim), transparent 65%);
+            pointer-events: none;
+        }
+        .page-header h1 {
+            font-family: 'Sora', sans-serif;
+            font-weight: 800; font-size: 2.5rem;
+            color: var(--cream); letter-spacing: -1px;
+            margin-bottom: 0.5rem;
+            position: relative; z-index: 2;
+        }
+        .page-header h1 .gold { color: var(--gold); }
+        .page-header p.lead {
+            color: var(--text-body); font-size: 1rem;
+            position: relative; z-index: 2;
+            max-width: 560px; margin: 0 auto;
+        }
+
+        /* HEADS-UP NOTICE */
+        .notice {
+            max-width: 760px; margin: 2.5rem auto 0;
+            background: rgba(246,193,101,0.07);
+            border: 1px solid rgba(246,193,101,0.25);
+            border-radius: 14px;
+            padding: 1rem 1.25rem;
+            display: flex; gap: 0.85rem; align-items: flex-start;
+            position: relative; z-index: 2;
+            text-align: left;
+        }
+        .notice .icon {
+            flex-shrink: 0; width: 22px; height: 22px;
+            color: var(--gold); margin-top: 1px;
+        }
+        .notice p {
+            color: var(--text-body); font-size: 0.88rem; line-height: 1.55;
+        }
+        .notice strong { color: var(--cream); font-weight: 600; }
+
+        /* CONTENT */
+        .content {
+            max-width: 1100px; margin: 0 auto;
+            padding: 3.5rem 2rem 5rem;
+        }
+        .sec-label {
+            font-size: 0.7rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1.8px;
+            color: var(--gold); margin-bottom: 1.1rem;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .sec-label::after {
+            content: ''; flex: 1; height: 1px;
+            background: rgba(246,193,101,0.18);
+        }
+        .section-block + .section-block { margin-top: 3.5rem; }
+
+        /* GRID */
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.25rem;
+        }
+
+        /* CARD */
+        .video-card {
+            background: rgba(255,255,255,0.025);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 16px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.22s ease;
+            text-align: left;
+            font-family: inherit;
+            color: inherit;
+            display: block;
+            width: 100%;
+            padding: 0;
+        }
+        .video-card:hover {
+            border-color: rgba(246,193,101,0.5);
+            background: rgba(246,193,101,0.05);
+            transform: translateY(-3px);
+        }
+        .video-card .thumb {
+            position: relative; aspect-ratio: 16 / 9;
+            background: #0d1a14;
+            overflow: hidden;
+        }
+        .video-card .thumb img {
+            width: 100%; height: 100%; object-fit: cover;
+            display: block;
+            transition: transform 0.35s ease;
+        }
+        .video-card:hover .thumb img { transform: scale(1.04); }
+        .video-card .play-overlay {
+            position: absolute; inset: 0;
+            display: flex; align-items: center; justify-content: center;
+            background: linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.35) 100%);
+            transition: background 0.22s ease;
+        }
+        .video-card:hover .play-overlay { background: linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.45) 100%); }
+        .video-card .play-btn {
+            width: 56px; height: 56px; border-radius: 50%;
+            background: var(--gold);
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+            transition: transform 0.22s ease;
+        }
+        .video-card:hover .play-btn { transform: scale(1.08); }
+        .video-card .play-btn svg {
+            width: 22px; height: 22px;
+            fill: var(--bg-deep);
+            margin-left: 3px;
+        }
+        .video-card .meta { padding: 1rem 1.15rem 1.15rem; }
+        .video-card .meta h3 {
+            font-family: 'Sora', sans-serif;
+            font-size: 1.02rem; font-weight: 700;
+            color: var(--cream); letter-spacing: -0.3px;
+            line-height: 1.3;
+        }
+        .video-card:hover .meta h3 { color: var(--gold); }
+        .video-card .meta p {
+            color: var(--text-body); font-size: 0.82rem;
+            margin-top: 0.35rem; line-height: 1.45;
+        }
+
+        /* COMING SOON CARD */
+        .video-card.soon { cursor: default; opacity: 0.78; }
+        .video-card.soon:hover {
+            border-color: rgba(255,255,255,0.06);
+            background: rgba(255,255,255,0.025);
+            transform: none;
+        }
+        .video-card.soon:hover .thumb img { transform: none; }
+        .video-card.soon:hover .meta h3 { color: var(--cream); }
+        .video-card.soon .thumb {
+            background: linear-gradient(135deg, #1f2e26 0%, #263730 100%);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .video-card.soon .soon-mark {
+            font-family: 'Sora', sans-serif;
+            font-size: 0.7rem; font-weight: 700;
+            color: var(--gold); letter-spacing: 1.8px;
+            text-transform: uppercase;
+            padding: 6px 14px; border-radius: 100px;
+            background: rgba(246,193,101,0.12);
+            border: 1px solid rgba(246,193,101,0.3);
+        }
+
+        /* LIGHTBOX */
+        .lightbox {
+            position: fixed; inset: 0; z-index: 9999;
+            display: none; align-items: center; justify-content: center;
+            padding: 2rem;
+        }
+        .lightbox.open { display: flex; }
+        .lightbox-backdrop {
+            position: absolute; inset: 0;
+            background: rgba(8,14,11,0.92);
+            backdrop-filter: blur(8px);
+        }
+        .lightbox-frame {
+            position: relative; z-index: 2;
+            width: 100%; max-width: 1100px;
+            aspect-ratio: 16 / 9;
+            background: #000;
+            border-radius: 14px; overflow: hidden;
+            box-shadow: 0 32px 80px rgba(0,0,0,0.7);
+        }
+        .lightbox-frame iframe {
+            width: 100%; height: 100%;
+            border: 0;
+        }
+        .lightbox-close {
+            position: absolute; top: -3rem; right: 0;
+            z-index: 3; background: none; border: none;
+            color: var(--cream); cursor: pointer;
+            font-family: inherit; font-size: 0.85rem;
+            font-weight: 600; letter-spacing: 0.5px;
+            display: flex; align-items: center; gap: 8px;
+            transition: color 0.2s;
+        }
+        .lightbox-close:hover { color: var(--gold); }
+        .lightbox-close svg { width: 18px; height: 18px; }
+        @media (max-width: 768px) {
+            .lightbox { padding: 1rem; }
+            .lightbox-close { top: -2.4rem; font-size: 0.78rem; }
+        }
+
+        /* FOOTER */
+        footer {
+            background: var(--bg-deep);
+            padding: 2rem; text-align: center;
+            border-top: 1px solid rgba(168,179,145,0.06);
+        }
+        footer p { color: rgba(168,179,145,0.25); font-size: 0.75rem; }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="nav-inner">
+        <a href="index.html" class="nav-logo">
+            <img src="assets/logo-lettermark.svg" alt="Radius" style="height:28px;width:auto">
+        </a>
+        <div class="nav-links">
+            <a href="index.html#caddy-ai">Features</a>
+            <a href="tutorials.html" class="current">Tutorials</a>
+            <a href="inner-circle.html">Inner Circle</a>
+            <a href="story.html">Our Story</a>
+            <a href="contact.html">Contact</a>
+            <a href="https://apps.apple.com/us/app/radius-disc-golf/id6760574186" class="nav-cta" target="_blank" rel="noopener">Download</a>
+        </div>
+    </div>
+</nav>
+
+<div class="page-header">
+    <div class="topo-pattern"></div>
+    <div class="glow"></div>
+    <h1><span class="gold">Tutorials</span></h1>
+    <p class="lead">Short walkthroughs that show you how each part of Radius works — so you can spend less time figuring it out and more time playing.</p>
+
+    <div class="notice">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <p><strong>Heads up:</strong> these walkthroughs are a few weeks behind the latest build. Fresher versions that capture the most recent version of the app are in the works — for now, these will get you up to speed.</p>
+    </div>
+</div>
+
+<div class="content">
+
+    <div class="section-block">
+        <div class="sec-label">Get to know the app</div>
+        <div class="video-grid">
+
+            <button class="video-card" data-video="JUt9u6Fcrnc" data-title="How to Use the Home Tab">
+                <div class="thumb">
+                    <img src="https://i.ytimg.com/vi/JUt9u6Fcrnc/hqdefault.jpg" alt="" loading="lazy">
+                    <div class="play-overlay">
+                        <div class="play-btn"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+                    </div>
+                </div>
+                <div class="meta">
+                    <h3>How to Use the Home Tab</h3>
+                    <p>Your dashboard for recent rounds, stats, and quick actions.</p>
+                </div>
+            </button>
+
+            <button class="video-card" data-video="WO1zfsUm5hQ" data-title="How to Use the Discover Tab">
+                <div class="thumb">
+                    <img src="https://i.ytimg.com/vi/WO1zfsUm5hQ/hqdefault.jpg" alt="" loading="lazy">
+                    <div class="play-overlay">
+                        <div class="play-btn"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+                    </div>
+                </div>
+                <div class="meta">
+                    <h3>How to Use the Discover Tab</h3>
+                    <p>Find courses, players, and the community around you.</p>
+                </div>
+            </button>
+
+            <button class="video-card" data-video="qgmhvFEuJfk" data-title="How to Use Live Play to Track Your Round">
+                <div class="thumb">
+                    <img src="https://i.ytimg.com/vi/qgmhvFEuJfk/hqdefault.jpg" alt="" loading="lazy">
+                    <div class="play-overlay">
+                        <div class="play-btn"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+                    </div>
+                </div>
+                <div class="meta">
+                    <h3>How to Use Live Play to Track Your Round</h3>
+                    <p>Score, log shots, and capture data as you play.</p>
+                </div>
+            </button>
+
+            <button class="video-card" data-video="UK2VdbCMF-I" data-title="How to Use Game Modes">
+                <div class="thumb">
+                    <img src="https://i.ytimg.com/vi/UK2VdbCMF-I/hqdefault.jpg" alt="" loading="lazy">
+                    <div class="play-overlay">
+                        <div class="play-btn"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+                    </div>
+                </div>
+                <div class="meta">
+                    <h3>How to Use Game Modes</h3>
+                    <p>Run different formats with friends — solo, doubles, and more.</p>
+                </div>
+            </button>
+
+            <button class="video-card" data-video="SHdkJ8qQGU4" data-title="How to Build a Course">
+                <div class="thumb">
+                    <img src="https://i.ytimg.com/vi/SHdkJ8qQGU4/hqdefault.jpg" alt="" loading="lazy">
+                    <div class="play-overlay">
+                        <div class="play-btn"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+                    </div>
+                </div>
+                <div class="meta">
+                    <h3>How to Build a Course</h3>
+                    <p>Map a course hole-by-hole and share it with the community.</p>
+                </div>
+            </button>
+
+        </div>
+    </div>
+
+    <div class="section-block">
+        <div class="sec-label">Coming soon</div>
+        <div class="video-grid">
+
+            <div class="video-card soon">
+                <div class="thumb"><span class="soon-mark">Coming soon</span></div>
+                <div class="meta">
+                    <h3>Getting Started with Radius</h3>
+                    <p>A start-to-finish overview for brand-new players.</p>
+                </div>
+            </div>
+
+            <div class="video-card soon">
+                <div class="thumb"><span class="soon-mark">Coming soon</span></div>
+                <div class="meta">
+                    <h3>How to Use the Improve Tab</h3>
+                    <p>Target your weak spots with drills and tailored practice.</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Video player">
+    <div class="lightbox-backdrop" data-close></div>
+    <div class="lightbox-frame">
+        <button class="lightbox-close" type="button" data-close aria-label="Close video">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            Close
+        </button>
+        <iframe id="lightboxFrame" src="" title="" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+    </div>
+</div>
+
+<footer>
+    <p>&copy; 2026 Radius Disc Golf. All rights reserved.</p>
+</footer>
+
+<script>
+    const lightbox = document.getElementById('lightbox');
+    const frame = document.getElementById('lightboxFrame');
+
+    function openVideo(id, title) {
+        frame.src = 'https://www.youtube.com/embed/' + id + '?autoplay=1&rel=0&modestbranding=1';
+        frame.title = title || 'Radius tutorial';
+        lightbox.classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+    function closeVideo() {
+        lightbox.classList.remove('open');
+        frame.src = '';
+        document.body.style.overflow = '';
+    }
+
+    document.querySelectorAll('.video-card[data-video]').forEach(card => {
+        card.addEventListener('click', () => openVideo(card.dataset.video, card.dataset.title));
+    });
+    document.querySelectorAll('[data-close]').forEach(el => el.addEventListener('click', closeVideo));
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && lightbox.classList.contains('open')) closeVideo(); });
+</script>
+
+</body>
+</html>

@@ -492,6 +492,74 @@
             letter-spacing: 0.02em;
         }
 
+        /* ========== TUTORIALS TEASER ========== */
+        .tutorials-teaser {
+            position: relative;
+            padding: 5rem 2rem;
+            overflow: hidden;
+            background: var(--bg-deep);
+            border-top: 1px solid rgba(168,179,145,0.06);
+            border-bottom: 1px solid rgba(168,179,145,0.06);
+        }
+        .tutorials-teaser .gold-glow {
+            position: absolute;
+            width: 500px; height: 500px;
+            top: 50%; left: 50%; transform: translate(-50%,-50%);
+            background: radial-gradient(circle, rgba(246,193,101,0.08), transparent 65%);
+            pointer-events: none;
+        }
+        .tutorials-teaser-inner {
+            position: relative; z-index: 2;
+            max-width: 1100px; margin: 0 auto;
+            display: grid; grid-template-columns: 1fr auto;
+            gap: 2rem; align-items: center;
+        }
+        .tutorials-teaser .eyebrow {
+            font-family: 'Sora', sans-serif;
+            font-size: 0.72rem; font-weight: 700;
+            color: var(--gold);
+            text-transform: uppercase; letter-spacing: 1.8px;
+            margin-bottom: 0.65rem;
+        }
+        .tutorials-teaser h2 {
+            font-family: 'Sora', sans-serif;
+            font-weight: 800;
+            font-size: clamp(1.6rem, 3vw, 2.2rem);
+            color: var(--cream); letter-spacing: -0.8px;
+            line-height: 1.15;
+        }
+        .tutorials-teaser h2 .gold { color: var(--gold); }
+        .tutorials-teaser p {
+            color: var(--text-body);
+            font-size: 0.95rem;
+            margin-top: 0.65rem;
+            max-width: 540px;
+            line-height: 1.6;
+        }
+        .tutorials-teaser .cta {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: var(--gold);
+            color: var(--bg-deep);
+            text-decoration: none;
+            padding: 14px 26px;
+            border-radius: 100px;
+            font-weight: 700;
+            font-size: 0.92rem;
+            letter-spacing: -0.2px;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+        .tutorials-teaser .cta:hover {
+            background: var(--gold-bright);
+            transform: translateY(-1px);
+        }
+        .tutorials-teaser .cta svg { width: 16px; height: 16px; }
+        @media (max-width: 768px) {
+            .tutorials-teaser-inner { grid-template-columns: 1fr; text-align: center; }
+            .tutorials-teaser p { margin-left: auto; margin-right: auto; }
+            .tutorials-teaser .cta { justify-self: center; }
+        }
+
         /* ========== SIGNUP FORM ========== */
         .signup-section {
             position: relative;
@@ -786,6 +854,7 @@
         </a>
         <div class="nav-links" id="navLinks">
             <a href="#caddy-ai">Features</a>
+            <a href="tutorials.html">Tutorials</a>
             <a href="courses.html">Courses</a>
             <a href="inner-circle.html">Inner Circle</a>
             <a href="story.html">Our Story</a>
@@ -1305,6 +1374,22 @@
             <div class="iphone-frame"><div class="iphone-screen"><img src="assets/screen-courses.png" alt="Courses"></div></div>
             <div class="label">Courses</div>
         </div>
+    </div>
+</section>
+
+<!-- ==================== TUTORIALS TEASER ==================== -->
+<section class="tutorials-teaser">
+    <div class="gold-glow"></div>
+    <div class="tutorials-teaser-inner reveal">
+        <div>
+            <div class="eyebrow">See it in action</div>
+            <h2>Short walkthroughs to <span class="gold">get you going</span></h2>
+            <p>From scoring a round in Live Play to building your own course — quick videos that show you how each part of Radius works.</p>
+        </div>
+        <a href="tutorials.html" class="cta">
+            Watch tutorials
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </a>
     </div>
 </section>
 
