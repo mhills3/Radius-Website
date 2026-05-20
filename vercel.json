@@ -8,6 +8,7 @@
     { "source": "/terms", "destination": "/terms.html" },
     { "source": "/courses", "destination": "/courses.html" },
     { "source": "/courses/:path*", "destination": "/courses.html" },
-    { "source": "/tutorials", "destination": "/tutorials.html" }
+    { "source": "/tutorials", "destination": "/tutorials.html" },
+    { "source": "/creators", "destination": "/creators.html" }
   ]
 }

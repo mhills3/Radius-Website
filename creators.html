@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Creator Partner Program — Radius Disc Golf</title>
+    <meta name="description" content="Get paid to make content about the app built for how you actually throw. Apply to the Radius Creator Partner Program.">
+    <meta name="theme-color" content="#1a2821">
+
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://radiusdiscgolf.com/creators">
+    <meta property="og:title" content="Creator Partner Program — Radius Disc Golf">
+    <meta property="og:description" content="Get paid to make content about the app built for how you actually throw.">
+    <meta property="og:image" content="https://radiusdiscgolf.com/assets/og-image.png">
+
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+    <link rel="apple-touch-icon" href="assets/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #131e18;
+            --bg-mid: #1a2821;
+            --bg-card: #2F3C35;
+            --gold: #F6C165;
+            --gold-bright: #f8cf80;
+            --gold-dim: rgba(246,193,101,0.12);
+            --cream: #F5EDE1;
+            --sage: rgba(168,179,145,0.85);
+            --sage-dim: rgba(168,179,145,0.45);
+            --text-body: rgba(245,237,225,0.7);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-deep);
+            color: var(--cream);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* NAV */
+        nav { background: var(--bg-deep); padding: 0 2rem; border-bottom: 1px solid rgba(168,179,145,0.08); }
+        .nav-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; height: 72px; }
+        .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+        .nav-links { display: flex; align-items: center; gap: 2.5rem; }
+        .nav-links a { color: var(--sage); text-decoration: none; font-size: 0.88rem; font-weight: 500; transition: color 0.2s; }
+        .nav-links a:hover, .nav-links a.current { color: var(--gold); }
+        .nav-cta {
+            background: var(--gold) !important; color: var(--bg-deep) !important;
+            padding: 10px 22px !important; border-radius: 100px;
+            font-weight: 700 !important; font-size: 0.82rem !important;
+            letter-spacing: 0.3px; transition: all 0.2s !important;
+        }
+        .nav-cta:hover { background: var(--gold-bright) !important; transform: translateY(-1px); }
+        @media (max-width: 768px) {
+            .nav-links { gap: 1.25rem; }
+            .nav-links a:not(.nav-cta) { display: none; }
+        }
+
+        /* HERO */
+        .hero {
+            position: relative;
+            padding: 6rem 2rem 5rem;
+            text-align: center;
+            background: linear-gradient(175deg, var(--bg-deep) 0%, var(--bg-mid) 65%, var(--bg-deep) 100%);
+            overflow: hidden;
+        }
+        .hero .topo-pattern {
+            position: absolute; inset: 0; opacity: 0.05;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cpath d='M300 50 Q450 100 400 200 Q350 300 450 350 Q550 400 500 500 Q450 600 300 550 Q150 500 100 400 Q50 300 150 250 Q250 200 200 100 Q150 0 300 50Z' fill='none' stroke='%23A8B391' stroke-width='1.5'/%3E%3Cpath d='M300 100 Q400 140 370 220 Q340 300 410 340 Q480 380 450 460 Q420 540 300 500 Q180 460 150 380 Q120 300 190 260 Q260 220 240 150 Q220 80 300 100Z' fill='none' stroke='%23A8B391' stroke-width='1.5'/%3E%3C/svg%3E");
+            background-size: 500px 500px;
+            pointer-events: none;
+        }
+        .hero .glow {
+            position: absolute; width: 800px; height: 800px;
+            top: -380px; left: 50%; transform: translateX(-50%);
+            background: radial-gradient(circle, var(--gold-dim), transparent 65%);
+            pointer-events: none;
+        }
+        .hero-inner { position: relative; z-index: 2; max-width: 760px; margin: 0 auto; }
+        .eyebrow {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: rgba(246,193,101,0.08);
+            border: 1px solid rgba(246,193,101,0.25);
+            border-radius: 100px;
+            padding: 6px 14px 6px 12px;
+            font-family: 'Sora', sans-serif;
+            font-size: 0.72rem; font-weight: 700;
+            color: var(--gold);
+            text-transform: uppercase; letter-spacing: 1.6px;
+            margin-bottom: 1.5rem;
+        }
+        .eyebrow .dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: var(--gold);
+            box-shadow: 0 0 12px var(--gold);
+        }
+        .hero h1 {
+            font-family: 'Sora', sans-serif;
+            font-weight: 800;
+            font-size: clamp(2.4rem, 5vw, 3.6rem);
+            color: var(--cream); letter-spacing: -1.5px;
+            line-height: 1.05;
+            margin-bottom: 1.1rem;
+        }
+        .hero h1 .gold { color: var(--gold); }
+        .hero .lead {
+            color: var(--text-body); font-size: 1.1rem;
+            line-height: 1.55;
+            max-width: 580px; margin: 0 auto 2.25rem;
+        }
+        .hero .application-note {
+            display: inline-flex; align-items: center; gap: 10px;
+            font-family: 'Sora', sans-serif;
+            font-size: 0.78rem; font-weight: 600;
+            color: var(--sage); letter-spacing: 0.3px;
+        }
+        .hero .application-note .divider {
+            width: 36px; height: 1px;
+            background: rgba(168,179,145,0.3);
+        }
+        .hero-cta {
+            display: inline-flex; align-items: center; gap: 10px;
+            background: var(--gold); color: var(--bg-deep);
+            padding: 16px 32px; border-radius: 100px;
+            text-decoration: none; font-weight: 700;
+            font-size: 0.95rem; letter-spacing: -0.2px;
+            margin-top: 1.75rem;
+            transition: all 0.22s ease;
+        }
+        .hero-cta:hover {
+            background: var(--gold-bright);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(246,193,101,0.25);
+        }
+        .hero-cta svg { width: 16px; height: 16px; }
+
+        /* SECTIONS */
+        section.block {
+            position: relative;
+            padding: 5rem 2rem;
+        }
+        section.block.alt { background: linear-gradient(175deg, var(--bg-mid) 0%, var(--bg-deep) 100%); }
+        .block-inner { max-width: 1000px; margin: 0 auto; position: relative; z-index: 2; }
+        .sec-label {
+            font-family: 'Sora', sans-serif;
+            font-size: 0.7rem; font-weight: 700;
+            color: var(--gold);
+            text-transform: uppercase; letter-spacing: 1.8px;
+            margin-bottom: 1rem;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .sec-label::after {
+            content: ''; flex: 1; height: 1px;
+            background: rgba(246,193,101,0.18);
+            max-width: 100px;
+        }
+        .block h2 {
+            font-family: 'Sora', sans-serif;
+            font-weight: 800;
+            font-size: clamp(1.7rem, 3vw, 2.2rem);
+            color: var(--cream); letter-spacing: -0.8px;
+            line-height: 1.15;
+            margin-bottom: 1.25rem;
+        }
+        .block h2 .gold { color: var(--gold); }
+        .block p.body {
+            color: var(--text-body); font-size: 1rem;
+            line-height: 1.7;
+            max-width: 700px;
+        }
+
+        /* OFFER GRID */
+        .offer-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.1rem;
+            margin-top: 2.5rem;
+        }
+        .offer-card {
+            background: rgba(255,255,255,0.025);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 16px;
+            padding: 1.5rem 1.5rem 1.4rem;
+            transition: all 0.25s ease;
+        }
+        .offer-card:hover {
+            border-color: rgba(246,193,101,0.4);
+            background: rgba(246,193,101,0.04);
+            transform: translateY(-3px);
+        }
+        .offer-card .icon-wrap {
+            width: 42px; height: 42px;
+            border-radius: 11px;
+            background: rgba(246,193,101,0.12);
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 1.1rem;
+            color: var(--gold);
+        }
+        .offer-card .icon-wrap svg { width: 22px; height: 22px; }
+        .offer-card h3 {
+            font-family: 'Sora', sans-serif;
+            font-size: 1.05rem; font-weight: 700;
+            color: var(--cream);
+            letter-spacing: -0.3px;
+            margin-bottom: 0.5rem;
+        }
+        .offer-card p {
+            color: var(--text-body);
+            font-size: 0.88rem;
+            line-height: 1.55;
+        }
+
+        /* PATHS */
+        .paths-intro {
+            color: var(--text-body); font-size: 1rem;
+            line-height: 1.65; margin-bottom: 2rem;
+            max-width: 700px;
+        }
+        .paths-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.25rem;
+        }
+        @media (max-width: 760px) { .paths-grid { grid-template-columns: 1fr; } }
+
+        .path-card {
+            background: rgba(255,255,255,0.025);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 18px;
+            overflow: hidden;
+        }
+        .path-card .path-head {
+            background: rgba(246,193,101,0.06);
+            border-bottom: 1px solid rgba(246,193,101,0.18);
+            padding: 0.9rem 1.5rem;
+            font-family: 'Sora', sans-serif;
+            font-size: 0.72rem; font-weight: 700;
+            color: var(--gold);
+            text-transform: uppercase; letter-spacing: 1.8px;
+        }
+        .path-card .path-body {
+            padding: 1.6rem 1.75rem 1.75rem;
+        }
+        .path-card h3 {
+            font-family: 'Sora', sans-serif;
+            font-size: 1.15rem; font-weight: 700;
+            color: var(--cream);
+            letter-spacing: -0.3px;
+            margin-bottom: 0.45rem;
+        }
+        .path-card .path-body p {
+            color: var(--text-body);
+            font-size: 0.92rem;
+            line-height: 1.55;
+            margin-bottom: 1.4rem;
+        }
+        .path-card .path-body p:last-child { margin-bottom: 0; }
+        .path-card .plus {
+            font-family: 'Sora', sans-serif;
+            font-size: 0.85rem; font-weight: 700;
+            color: var(--gold);
+            margin-bottom: 0.45rem;
+            display: block;
+        }
+
+        /* EITHER PATH BULLETS */
+        .either-path {
+            margin-top: 2.5rem;
+            background: rgba(255,255,255,0.025);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 16px;
+            padding: 1.5rem 1.75rem;
+        }
+        .either-path-label {
+            font-family: 'Sora', sans-serif;
+            font-size: 0.72rem; font-weight: 700;
+            color: var(--cream);
+            text-transform: uppercase; letter-spacing: 1.6px;
+            margin-bottom: 1rem;
+        }
+        .either-path ul { list-style: none; display: flex; flex-direction: column; gap: 0.7rem; }
+        .either-path li {
+            display: flex; align-items: flex-start; gap: 12px;
+            color: var(--text-body);
+            font-size: 0.92rem;
+            line-height: 1.55;
+        }
+        .either-path li svg {
+            flex-shrink: 0; width: 18px; height: 18px;
+            color: var(--gold); margin-top: 2px;
+        }
+        .either-path li strong { color: var(--cream); font-weight: 600; }
+
+        /* HOW IT WORKS — STEPS */
+        .steps {
+            display: flex; flex-direction: column;
+            gap: 1rem;
+            margin-top: 2.5rem;
+        }
+        .step {
+            display: grid;
+            grid-template-columns: 56px 1fr;
+            gap: 1.5rem; align-items: flex-start;
+            background: rgba(255,255,255,0.025);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 14px;
+            padding: 1.35rem 1.5rem;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .step:hover {
+            border-color: rgba(246,193,101,0.3);
+            background: rgba(246,193,101,0.03);
+        }
+        .step .num {
+            width: 44px; height: 44px;
+            border-radius: 50%;
+            background: rgba(246,193,101,0.12);
+            border: 1px solid rgba(246,193,101,0.3);
+            color: var(--gold);
+            font-family: 'Sora', sans-serif;
+            font-weight: 800; font-size: 1rem;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .step p { color: var(--text-body); font-size: 0.95rem; line-height: 1.55; }
+        .step p strong { color: var(--cream); font-weight: 600; }
+        @media (max-width: 600px) { .step { grid-template-columns: 44px 1fr; gap: 1rem; } }
+
+        /* SMALL PRINT */
+        .small-print {
+            margin-top: 2.5rem;
+            display: flex; flex-direction: column; gap: 0.85rem;
+        }
+        .small-print .row {
+            display: flex; gap: 14px;
+            color: var(--text-body); font-size: 0.92rem;
+            line-height: 1.55;
+        }
+        .small-print .row::before {
+            content: ''; flex-shrink: 0;
+            width: 4px; height: 4px; border-radius: 50%;
+            background: var(--gold); margin-top: 10px;
+        }
+        .small-print .row strong { color: var(--cream); font-weight: 600; }
+
+        /* WHY US */
+        .why-us {
+            background: rgba(246,193,101,0.04);
+            border: 1px solid rgba(246,193,101,0.18);
+            border-radius: 20px;
+            padding: 2.5rem 2.5rem;
+            margin-top: 1rem;
+        }
+        .why-us p {
+            color: var(--cream);
+            font-size: 1.1rem; line-height: 1.65;
+            font-family: 'Sora', sans-serif;
+            font-weight: 500;
+            letter-spacing: -0.3px;
+        }
+        .why-us p .gold { color: var(--gold); }
+        @media (max-width: 600px) { .why-us { padding: 1.75rem 1.5rem; } }
+
+        /* APPLICATION */
+        .apply-section {
+            background: linear-gradient(175deg, var(--bg-mid) 0%, var(--bg-deep) 100%);
+            border-top: 1px solid rgba(168,179,145,0.08);
+            position: relative; overflow: hidden;
+            padding: 5rem 2rem 6rem;
+        }
+        .apply-section .glow {
+            position: absolute; width: 600px; height: 600px;
+            top: -200px; left: 50%; transform: translateX(-50%);
+            background: radial-gradient(circle, var(--gold-dim), transparent 65%);
+            pointer-events: none;
+        }
+        .apply-inner {
+            max-width: 640px; margin: 0 auto;
+            position: relative; z-index: 2;
+            text-align: center;
+        }
+        .apply-section h2 {
+            font-family: 'Sora', sans-serif;
+            font-weight: 800;
+            font-size: clamp(2rem, 3.5vw, 2.6rem);
+            color: var(--cream); letter-spacing: -1px;
+            margin-bottom: 0.75rem;
+        }
+        .apply-section h2 .gold { color: var(--gold); }
+        .apply-section p.intro {
+            color: var(--text-body); font-size: 1rem;
+            line-height: 1.6; margin-bottom: 2.5rem;
+            max-width: 520px; margin-left: auto; margin-right: auto;
+        }
+
+        .apply-form { display: flex; flex-direction: column; gap: 1rem; text-align: left; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } }
+        .form-field { display: flex; flex-direction: column; gap: 0.4rem; }
+        .form-field label {
+            font-family: 'Sora', sans-serif;
+            font-size: 0.72rem; font-weight: 700;
+            color: var(--sage); text-transform: uppercase;
+            letter-spacing: 1.2px;
+        }
+        .form-field label .opt {
+            color: var(--sage-dim);
+            font-weight: 500; letter-spacing: 0.6px;
+            text-transform: none;
+            margin-left: 6px;
+        }
+        .apply-form input,
+        .apply-form select,
+        .apply-form textarea {
+            width: 100%;
+            padding: 14px 18px;
+            border-radius: 12px;
+            border: 1px solid rgba(168,179,145,0.15);
+            background: rgba(255,255,255,0.04);
+            color: var(--cream);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.92rem;
+            outline: none;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .apply-form input:focus,
+        .apply-form select:focus,
+        .apply-form textarea:focus {
+            border-color: var(--gold);
+            background: rgba(255,255,255,0.06);
+        }
+        .apply-form select {
+            appearance: none; -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23A8B391' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            cursor: pointer;
+        }
+        .apply-form select option { background: var(--bg-deep); color: var(--cream); }
+        .apply-form textarea { min-height: 130px; resize: vertical; }
+        .apply-form ::placeholder { color: var(--sage-dim); }
+
+        .submit-btn {
+            display: inline-flex; align-items: center; gap: 10px;
+            background: var(--gold); color: var(--bg-deep);
+            padding: 16px 36px; border-radius: 14px;
+            border: none; cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            font-weight: 700; font-size: 0.95rem;
+            letter-spacing: -0.2px;
+            align-self: center;
+            margin-top: 1rem;
+            transition: all 0.25s;
+        }
+        .submit-btn:hover {
+            background: var(--gold-bright);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(246,193,101,0.25);
+        }
+        .submit-btn svg { width: 16px; height: 16px; }
+
+        .privacy-note {
+            color: var(--sage-dim); font-size: 0.78rem;
+            margin-top: 1.25rem; text-align: center;
+            line-height: 1.5;
+        }
+
+        /* FOOTER */
+        footer {
+            background: var(--bg-deep);
+            padding: 2rem; text-align: center;
+            border-top: 1px solid rgba(168,179,145,0.06);
+        }
+        footer p { color: rgba(168,179,145,0.25); font-size: 0.75rem; }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="nav-inner">
+        <a href="index.html" class="nav-logo">
+            <img src="assets/logo-lettermark.svg" alt="Radius" style="height:28px;width:auto">
+        </a>
+        <div class="nav-links">
+            <a href="index.html#caddy-ai">Features</a>
+            <a href="tutorials.html">Tutorials</a>
+            <a href="inner-circle.html">Inner Circle</a>
+            <a href="creators.html" class="current">Creators</a>
+            <a href="story.html">Our Story</a>
+            <a href="contact.html">Contact</a>
+            <a href="https://apps.apple.com/us/app/radius-disc-golf/id6760574186" class="nav-cta" target="_blank" rel="noopener">Download</a>
+        </div>
+    </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+    <div class="topo-pattern"></div>
+    <div class="glow"></div>
+    <div class="hero-inner">
+        <div class="eyebrow"><span class="dot"></span>By application</div>
+        <h1>Creator Partner <span class="gold">Program</span></h1>
+        <p class="lead">Get paid to make content about the app built for how you actually throw. We're picky about who we partner with — and that's the point.</p>
+        <a href="#apply" class="hero-cta">
+            Apply now
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </a>
+    </div>
+</section>
+
+<!-- WHY THIS MIGHT BE A FIT -->
+<section class="block">
+    <div class="block-inner">
+        <div class="sec-label">Why this might be a fit</div>
+        <h2>Built around the player, not the <span class="gold">scorecard</span>.</h2>
+        <p class="body">Most apps show you what you did. Radius tells you what to do next — which disc to throw, which line to play, what to practice — based on how you actually throw. We're picky about who we partner with because the program is meant to feel like a real partnership, not a transaction.</p>
+    </div>
+</section>
+
+<!-- THE OFFER -->
+<section class="block alt">
+    <div class="block-inner">
+        <div class="sec-label">The offer</div>
+        <h2>What you get for <span class="gold">partnering</span>.</h2>
+        <div class="offer-grid">
+
+            <div class="offer-card">
+                <div class="icon-wrap">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+                </div>
+                <h3>Flat fee</h3>
+                <p>Cash payment, varies by audience size and fit. Sent via Stripe after your first piece of content goes live.</p>
+            </div>
+
+            <div class="offer-card">
+                <div class="icon-wrap">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-5"/></svg>
+                </div>
+                <h3>Commission</h3>
+                <p>25% of every annual signup that comes through your code. One-time, paid quarterly.</p>
+            </div>
+
+            <div class="offer-card">
+                <div class="icon-wrap">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                </div>
+                <h3>Performance bonus</h3>
+                <p>Hit your signup target within 90 days of your first content drop and we add a bonus on top. Target scales with your audience.</p>
+            </div>
+
+            <div class="offer-card">
+                <div class="icon-wrap">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                </div>
+                <h3>Free year of Radius</h3>
+                <p>Full access to the app, activated immediately so you can use it in your content.</p>
+            </div>
+
+            <div class="offer-card">
+                <div class="icon-wrap">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18a6 6 0 016-6h8a6 6 0 016 6"/><path d="M4 18h16"/><path d="M8 12V8a4 4 0 018 0v4"/></svg>
+                </div>
+                <h3>Radius hat</h3>
+                <p>Shipped same week you sign. Wear it whenever — on or off camera.</p>
+            </div>
+
+            <div class="offer-card">
+                <div class="icon-wrap">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                </div>
+                <h3>Code for your audience</h3>
+                <p>Your audience gets <strong style="color:var(--cream); font-weight:600">25% off the annual plan</strong> using your personal code.</p>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+<!-- WHAT WE ASK -->
+<section class="block">
+    <div class="block-inner">
+        <div class="sec-label">What we ask in return</div>
+        <h2>Pick the path that fits how you <span class="gold">create</span>.</h2>
+        <p class="paths-intro">Both are equivalent effort — we don't have a preference. Choose whichever feels natural for your audience.</p>
+
+        <div class="paths-grid">
+            <div class="path-card">
+                <div class="path-head">Path A — Long-form + shorts</div>
+                <div class="path-body">
+                    <h3>1 long-form video</h3>
+                    <p>6 minutes minimum, Radius featured throughout.</p>
+                    <span class="plus">+ 3 shorts</span>
+                    <h3 style="font-size:1rem;margin-top:-0.2rem">Coordinated companion clips</h3>
+                    <p>Teasers, cut-downs, or standalone shorts that work alongside the long-form.</p>
+                </div>
+            </div>
+
+            <div class="path-card">
+                <div class="path-head">Path B — Shorts only</div>
+                <div class="path-body">
+                    <h3>8 standalone shorts</h3>
+                    <p>Each one features Radius. A mix of demos, tips, and casual mentions is great.</p>
+                    <h3 style="font-size:1rem">Built for Reels / TikTok / Shorts creators</h3>
+                    <p>If short-form is your bread and butter, this path probably fits better.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="either-path">
+            <div class="either-path-label">Either path</div>
+            <ul>
+                <li>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    <span><strong>First piece of content live within 30 days</strong> of signing.</span>
+                </li>
+                <li>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    <span><strong>All content complete within 60 days</strong> of signing.</span>
+                </li>
+                <li>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    <span><strong>Your code in every video description and pinned comment</strong> while content is live.</span>
+                </li>
+                <li>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    <span><strong>FTC disclosure</strong> on every post (#ad or "paid partnership with Radius").</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="block alt">
+    <div class="block-inner">
+        <div class="sec-label">How it works</div>
+        <h2>Five steps, in <span class="gold">order</span>.</h2>
+
+        <div class="steps">
+            <div class="step">
+                <div class="num">1</div>
+                <p><strong>We send you the agreement.</strong> You sign, we activate your free Radius account, we ship the hat.</p>
+            </div>
+            <div class="step">
+                <div class="num">2</div>
+                <p><strong>You get your unique promo code</strong> and a quick brand guide so the Radius story lands right.</p>
+            </div>
+            <div class="step">
+                <div class="num">3</div>
+                <p><strong>You make the content.</strong> First piece live within 30 days, all done within 60.</p>
+            </div>
+            <div class="step">
+                <div class="num">4</div>
+                <p><strong>Flat fee hits your Stripe payout</strong> after the first piece goes live. Your code stays active for 60 days after your final post.</p>
+            </div>
+            <div class="step">
+                <div class="num">5</div>
+                <p><strong>Commission paid quarterly via Stripe.</strong> Bonus paid out if you hit your target within 90 days of your first content drop.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- SMALL PRINT -->
+<section class="block">
+    <div class="block-inner">
+        <div class="sec-label">The small print</div>
+        <h2>Worth saying <span class="gold">out loud</span>.</h2>
+
+        <div class="small-print">
+            <div class="row"><span><strong>You own your content.</strong> We get a perpetual license to repost it on Radius channels with credit.</span></div>
+            <div class="row"><span><strong>No exclusivity.</strong> Work with whoever you want, whenever you want.</span></div>
+            <div class="row"><span><strong>No trial subscriptions.</strong> Code applies to the annual plan only.</span></div>
+            <div class="row"><span><strong>Commission is one-time</strong> per signup. No recurring trail.</span></div>
+            <div class="row"><span><strong>We reserve the right to pull the offer</strong> if content is low-effort or off-brand — rare, but worth saying.</span></div>
+        </div>
+    </div>
+</section>
+
+<!-- WHY THIS WORKS -->
+<section class="block alt">
+    <div class="block-inner">
+        <div class="sec-label">Why this works for both of us</div>
+        <div class="why-us">
+            <p>You get paid up front. Your audience gets a real discount on a tool we built for them. And we get to put Radius in front of people who already trust your judgment. The disc golf community is small, and the players who lead it matter more than ad spend ever will. <span class="gold">That's the whole pitch.</span></p>
+        </div>
+    </div>
+</section>
+
+<!-- APPLICATION FORM -->
+<section class="apply-section" id="apply">
+    <div class="glow"></div>
+    <div class="apply-inner">
+        <h2>Ready to <span class="gold">talk specifics?</span></h2>
+        <p class="intro">Tell us a bit about you and your channel. If it's a fit, we'll be in touch within a few days to line up an offer for your audience.</p>
+
+        <form class="apply-form" action="https://formsubmit.co/info@radiusdiscgolf.com" method="POST">
+            <input type="hidden" name="_subject" value="New Creator Partner Application">
+            <input type="hidden" name="_captcha" value="false">
+            <input type="hidden" name="_template" value="table">
+            <input type="hidden" name="_next" value="https://radiusdiscgolf.com/creators.html?submitted=1">
+
+            <div class="form-row">
+                <div class="form-field">
+                    <label for="name">Name</label>
+                    <input id="name" type="text" name="Name" placeholder="Your name" required>
+                </div>
+                <div class="form-field">
+                    <label for="email">Email</label>
+                    <input id="email" type="email" name="Email" placeholder="you@example.com" required>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-field">
+                    <label for="platform">Primary platform</label>
+                    <select id="platform" name="Primary Platform" required>
+                        <option value="" disabled selected>Choose one</option>
+                        <option>YouTube</option>
+                        <option>Instagram</option>
+                        <option>TikTok</option>
+                        <option>Mix of platforms</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label for="audience">Audience size</label>
+                    <select id="audience" name="Audience Size" required>
+                        <option value="" disabled selected>Choose a range</option>
+                        <option>Under 5,000</option>
+                        <option>5,000 – 25,000</option>
+                        <option>25,000 – 100,000</option>
+                        <option>100,000 – 500,000</option>
+                        <option>500,000+</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-field">
+                <label for="channel">Channel link or @handle</label>
+                <input id="channel" type="text" name="Channel" placeholder="https://youtube.com/@yourchannel or @yourhandle" required>
+            </div>
+
+            <div class="form-row">
+                <div class="form-field">
+                    <label for="path">Path preference</label>
+                    <select id="path" name="Path Preference" required>
+                        <option value="" disabled selected>Choose a path</option>
+                        <option>Path A — Long-form + shorts</option>
+                        <option>Path B — Shorts only</option>
+                        <option>Not sure yet — open to either</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label for="pdga">PDGA number <span class="opt">(optional)</span></label>
+                    <input id="pdga" type="text" name="PDGA Number" placeholder="e.g. 123456">
+                </div>
+            </div>
+
+            <div class="form-field">
+                <label for="why">Why Radius?</label>
+                <textarea id="why" name="Why Radius" placeholder="Tell us why you think this is a fit — your audience, your style, what you'd want to make." required></textarea>
+            </div>
+
+            <button type="submit" class="submit-btn">
+                Send application
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
+            </button>
+
+            <p class="privacy-note">We'll only use this to evaluate the partnership. No newsletters, no spam.</p>
+        </form>
+    </div>
+</section>
+
+<footer>
+    <p>&copy; 2026 Radius Disc Golf. All rights reserved.</p>
+</footer>
+
+<script>
+    // Show a subtle confirmation if redirected back after submission
+    if (new URLSearchParams(window.location.search).get('submitted') === '1') {
+        const apply = document.getElementById('apply');
+        if (apply) {
+            const inner = apply.querySelector('.apply-inner');
+            inner.innerHTML = `
+                <div style="text-align:center; padding: 1.5rem 0 1rem;">
+                    <div style="width:64px;height:64px;border-radius:50%;background:rgba(246,193,101,0.12);border:1px solid rgba(246,193,101,0.4);display:inline-flex;align-items:center;justify-content:center;margin-bottom:1.5rem;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#F6C165" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:28px;height:28px;"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                    <h2>Application <span class="gold">received</span>.</h2>
+                    <p class="intro">Thanks for reaching out. If it's a fit, we'll be in touch within a few days.</p>
+                </div>
+            `;
+            apply.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+</script>
+
+</body>
+</html>
