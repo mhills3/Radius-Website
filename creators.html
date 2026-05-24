@@ -322,36 +322,67 @@
         /* HOW IT WORKS — STEPS */
         .steps {
             display: flex; flex-direction: column;
-            gap: 1rem;
-            margin-top: 2.5rem;
+            margin: 2.5rem auto 0;
+            max-width: 760px;
+            position: relative;
         }
         .step {
             display: grid;
-            grid-template-columns: 56px 1fr;
-            gap: 1.5rem; align-items: flex-start;
-            background: rgba(255,255,255,0.025);
-            border: 1px solid rgba(255,255,255,0.06);
-            border-radius: 14px;
-            padding: 1.35rem 1.5rem;
-            transition: border-color 0.2s, background 0.2s;
+            grid-template-columns: 44px 1fr auto;
+            gap: 1.25rem 1.5rem;
+            align-items: center;
+            padding: 1.5rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            position: relative;
         }
-        .step:hover {
-            border-color: rgba(246,193,101,0.3);
-            background: rgba(246,193,101,0.03);
+        .step:last-child { border-bottom: none; }
+        /* vertical line that connects the number circles */
+        .step::before {
+            content: '';
+            position: absolute;
+            left: 21.5px; /* center of the 44px circle */
+            top: 0; bottom: 0;
+            width: 1px;
+            background: rgba(246,193,101,0.18);
+            z-index: 0;
         }
+        .step:first-child::before { top: 50%; }
+        .step:last-child::before { bottom: 50%; }
         .step .num {
             width: 44px; height: 44px;
             border-radius: 50%;
-            background: rgba(246,193,101,0.12);
-            border: 1px solid rgba(246,193,101,0.3);
+            background: var(--bg-deep);
+            border: 1px solid rgba(246,193,101,0.4);
             color: var(--gold);
             font-family: 'Sora', sans-serif;
             font-weight: 800; font-size: 1rem;
             display: flex; align-items: center; justify-content: center;
+            position: relative; z-index: 1;
         }
         .step p { color: var(--text-body); font-size: 0.95rem; line-height: 1.55; }
         .step p strong { color: var(--cream); font-weight: 600; }
-        @media (max-width: 600px) { .step { grid-template-columns: 44px 1fr; gap: 1rem; } }
+        .step .when {
+            font-family: 'Sora', sans-serif;
+            font-size: 0.68rem; font-weight: 700;
+            color: var(--gold);
+            letter-spacing: 1.4px;
+            text-transform: uppercase;
+            background: rgba(246,193,101,0.08);
+            border: 1px solid rgba(246,193,101,0.22);
+            border-radius: 100px;
+            padding: 5px 11px 4px;
+            white-space: nowrap;
+        }
+        @media (max-width: 720px) {
+            .step {
+                grid-template-columns: 44px 1fr;
+                gap: 0.75rem 1.25rem;
+            }
+            .step .when {
+                grid-column: 2;
+                justify-self: start;
+            }
+        }
 
         /* SMALL PRINT */
         .small-print {
@@ -592,6 +623,14 @@
                 <p>Your audience gets <strong style="color:var(--cream); font-weight:600">25% off the annual plan</strong> using your personal code.</p>
             </div>
 
+            <div class="offer-card">
+                <div class="icon-wrap">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
+                </div>
+                <h3>Direct line to the team</h3>
+                <p>DM us anytime. Feature requests, content ideas, deal questions — straight to the team.</p>
+            </div>
+
         </div>
     </div>
 </section>
@@ -660,22 +699,27 @@
             <div class="step">
                 <div class="num">1</div>
                 <p><strong>We send you the agreement.</strong> You sign, we activate your free Radius account, we ship the hat.</p>
+                <span class="when">Day 0</span>
             </div>
             <div class="step">
                 <div class="num">2</div>
                 <p><strong>You get your unique promo code</strong> and a quick brand guide so the Radius story lands right.</p>
+                <span class="when">Week 1</span>
             </div>
             <div class="step">
                 <div class="num">3</div>
                 <p><strong>You make the content.</strong> First piece live within 30 days, all done within 60.</p>
+                <span class="when">30–60 Days</span>
             </div>
             <div class="step">
                 <div class="num">4</div>
                 <p><strong>Flat fee hits your Stripe payout</strong> after the first piece goes live. Your code stays active for 60 days after your final post.</p>
+                <span class="when">On First Drop</span>
             </div>
             <div class="step">
                 <div class="num">5</div>
-                <p><strong>Commission paid quarterly via Stripe.</strong></p>
+                <p><strong>Commission paid quarterly via Stripe.</strong> One payout covering every annual signup your code drove that quarter.</p>
+                <span class="when">Quarterly</span>
             </div>
         </div>
     </div>
