@@ -3,6 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-GMRDWK3DLM"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-GMRDWK3DLM');
+
+      // Track every click on interactive elements (links, buttons, role=button, [data-track])
+      document.addEventListener('click', function(e) {
+        var el = e.target.closest('a, button, [role="button"], [data-track]');
+        if (!el) return;
+        var text = (el.innerText || el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 100);
+        gtag('event', 'click', {
+          element_type: el.tagName.toLowerCase(),
+          element_text: text,
+          element_id: el.id || undefined,
+          element_classes: (typeof el.className === 'string' ? el.className : '') || undefined,
+          link_url: el.href || undefined,
+          page_path: location.pathname
+        });
+      }, true);
+    </script>
     <title>Creator Partner Program — Radius Disc Golf</title>
     <meta name="description" content="Get paid to make content about the app built for how you actually throw. Apply to the Radius Creator Partner Program.">
     <meta name="theme-color" content="#1a2821">
