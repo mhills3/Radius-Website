@@ -681,7 +681,7 @@
         .app-store-btn:hover { transform: scale(1.05); opacity: 0.9; }
         .app-store-btn img { display: block; }
 
-        .play-soon-btn {
+        .play-store-btn {
             position: relative;
             display: inline-flex;
             align-items: center;
@@ -695,38 +695,33 @@
             font-family: 'Inter', -apple-system, sans-serif;
             height: 56px;
             box-sizing: border-box;
-            cursor: default;
-            box-shadow: 0 0 0 0 rgba(246,193,101,0.55), 0 8px 28px rgba(246,193,101,0.25), inset 0 1px 0 rgba(255,255,255,0.1);
-            transition: all 0.25s;
-            animation: pulse-soon 2.4s ease-in-out infinite;
+            box-shadow: 0 8px 28px rgba(246,193,101,0.25), inset 0 1px 0 rgba(255,255,255,0.1);
+            transition: transform 0.2s ease, border-color 0.25s, background 0.25s;
         }
-        @keyframes pulse-soon {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(246,193,101,0.55), 0 8px 28px rgba(246,193,101,0.25), inset 0 1px 0 rgba(255,255,255,0.1); }
-            50% { box-shadow: 0 0 0 6px rgba(246,193,101,0), 0 10px 34px rgba(246,193,101,0.4), inset 0 1px 0 rgba(255,255,255,0.15); }
-        }
-        .play-soon-btn:hover {
+        .play-store-btn:hover {
+            transform: scale(1.05);
             border-color: var(--gold-bright, #f8cf80);
             background: linear-gradient(180deg, rgba(246,193,101,0.3) 0%, rgba(246,193,101,0.12) 100%);
         }
-        .play-soon-btn.lg { height: 64px; padding: 10px 22px; border-radius: 14px; }
-        .play-soon-btn svg { width: 26px; height: 26px; flex-shrink: 0; filter: drop-shadow(0 0 8px rgba(246,193,101,0.45)); }
-        .play-soon-btn .txt { display: flex; flex-direction: column; line-height: 1.15; text-align: left; }
-        .play-soon-btn .txt small {
+        .play-store-btn.lg { height: 64px; padding: 10px 22px; border-radius: 14px; }
+        .play-store-btn svg { width: 26px; height: 26px; flex-shrink: 0; filter: drop-shadow(0 0 8px rgba(246,193,101,0.45)); }
+        .play-store-btn .txt { display: flex; flex-direction: column; line-height: 1.15; text-align: left; }
+        .play-store-btn .txt small {
             font-size: 0.6rem;
             font-weight: 700;
             color: var(--gold);
             letter-spacing: 1.4px;
             text-transform: uppercase;
         }
-        .play-soon-btn.lg .txt small { font-size: 0.66rem; }
-        .play-soon-btn .txt span {
+        .play-store-btn.lg .txt small { font-size: 0.66rem; }
+        .play-store-btn .txt span {
             font-size: 1.05rem;
             font-weight: 700;
             font-family: 'Sora', sans-serif;
             color: var(--cream);
             letter-spacing: -0.2px;
         }
-        .play-soon-btn.lg .txt span { font-size: 1.2rem; }
+        .play-store-btn.lg .txt span { font-size: 1.2rem; }
         .hero-buttons { flex-wrap: wrap; }
 
         .signup-form .btn-gold {
@@ -884,7 +879,7 @@
             <a href="/creators">Creators</a>
             <a href="/story">Our Story</a>
             <a href="/contact">Contact</a>
-            <a href="https://apps.apple.com/us/app/radius-disc-golf/id6760574186" class="nav-cta" target="_blank" rel="noopener">Download</a>
+            <a href="#signup-bottom" class="nav-cta">Download</a>
         </div>
         <button class="mobile-toggle" id="mobileToggle" aria-label="Menu">
             <span></span><span></span><span></span>
@@ -913,10 +908,10 @@
                 <a href="https://apps.apple.com/us/app/radius-disc-golf/id6760574186" class="app-store-btn" target="_blank" rel="noopener" aria-label="Download on the App Store">
                     <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" height="56">
                 </a>
-                <span class="play-soon-btn" aria-label="Coming soon to Google Play">
+                <a href="https://play.google.com/store/apps/details?id=com.michaelhills.radiusandroid" class="play-store-btn" target="_blank" rel="noopener" aria-label="Get it on Google Play">
                     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3.5 2.5v19l15-9.5-15-9.5z" fill="#f6c165"/><path d="M3.5 2.5l10.5 6.5 4.5-3-15-3.5z" fill="#fff" opacity="0.9"/></svg>
-                    <span class="txt"><small>COMING SOON TO</small><span>Google Play</span></span>
-                </span>
+                    <span class="txt"><small>GET IT ON</small><span>Google Play</span></span>
+                </a>
                 <a href="#caddy-ai" class="btn-ghost">
                     See features
                     <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 2l5 5-5 5"/></svg>
@@ -1429,15 +1424,15 @@
     <div class="signup-inner reveal">
         <img src="assets/logo.svg" alt="Radius" style="width:72px;height:72px;border-radius:14px;margin-bottom:1.5rem">
         <h2>Ready to play<br><span class="gold">smarter?</span></h2>
-        <p>Radius is now available on the App Store. Download today.</p>
+        <p>Radius is now available on the App Store and Google Play. Download today.</p>
         <div style="display:inline-flex;gap:1rem;flex-wrap:wrap;justify-content:center;align-items:center">
             <a href="https://apps.apple.com/us/app/radius-disc-golf/id6760574186" class="app-store-btn" target="_blank" rel="noopener" aria-label="Download on the App Store">
                 <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" height="64">
             </a>
-            <span class="play-soon-btn lg" aria-label="Coming soon to Google Play">
+            <a href="https://play.google.com/store/apps/details?id=com.michaelhills.radiusandroid" class="play-store-btn lg" target="_blank" rel="noopener" aria-label="Get it on Google Play">
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3.5 2.5v19l15-9.5-15-9.5z" fill="#f6c165"/><path d="M3.5 2.5l10.5 6.5 4.5-3-15-3.5z" fill="#fff" opacity="0.9"/></svg>
-                <span class="txt"><small>COMING SOON TO</small><span>Google Play</span></span>
-            </span>
+                <span class="txt"><small>GET IT ON</small><span>Google Play</span></span>
+            </a>
         </div>
     </div>
 </section>
