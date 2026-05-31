@@ -530,6 +530,54 @@
             border-top: 1px solid rgba(168,179,145,0.06);
         }
         footer p { color: rgba(168,179,145,0.25); font-size: 0.75rem; }
+    
+        /* ===== Download dropdown (App Store + Google Play) ===== */
+        .nav-download { position: relative; display: inline-block; }
+        .nav-download > summary {
+            list-style: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+        }
+        .nav-download > summary::-webkit-details-marker { display: none; }
+        .nav-download > summary::marker { content: ''; }
+        .nav-download > summary .chev { width: 11px; height: 11px; transition: transform 0.2s; }
+        .nav-download[open] > summary .chev { transform: rotate(180deg); }
+        .nav-download-menu {
+            position: absolute;
+            top: calc(100% + 10px);
+            right: 0;
+            min-width: 198px;
+            background: rgba(26,40,33,0.98);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(168,179,145,0.16);
+            border-radius: 14px;
+            padding: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            box-shadow: 0 18px 44px rgba(0,0,0,0.45);
+            z-index: 200;
+        }
+        .nav-download-menu a {
+            display: flex !important;
+            align-items: center;
+            gap: 11px;
+            padding: 10px 12px !important;
+            border-radius: 10px;
+            color: #F5EDE1 !important;
+            text-decoration: none;
+            transition: background 0.18s, color 0.18s;
+        }
+        .nav-download-menu a:hover { background: rgba(246,193,101,0.12); }
+        .nav-download-menu a svg { width: 20px; height: 20px; flex-shrink: 0; }
+        .nav-download-menu a .store-txt { display: flex; flex-direction: column; line-height: 1.18; text-align: left; }
+        .nav-download-menu a .store-txt small { font-size: 0.62rem; font-weight: 600; color: rgba(168,179,145,0.85); letter-spacing: 0.3px; }
+        .nav-download-menu a .store-txt b { font-size: 0.92rem; font-weight: 700; font-family: 'Sora', sans-serif; color: #F5EDE1; }
+        .nav-download-menu a:hover .store-txt b { color: #F6C165; }
+
     </style>
 </head>
 <body>
@@ -547,7 +595,21 @@
             <a href="/creators" class="current">Creators</a>
             <a href="/story">Our Story</a>
             <a href="/contact">Contact</a>
-            <a href="https://apps.apple.com/us/app/radius-disc-golf/id6760574186" class="nav-cta" target="_blank" rel="noopener">Download</a>
+            <details class="nav-download">
+                <summary class="nav-cta">Download
+                    <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                </summary>
+                <div class="nav-download-menu">
+                    <a href="https://apps.apple.com/us/app/radius-disc-golf/id6760574186" target="_blank" rel="noopener">
+                        <svg viewBox="0 0 24 24" fill="#F5EDE1"><path d="M17.05 12.04c-.03-2.77 2.26-4.1 2.36-4.16-1.29-1.88-3.29-2.14-4-2.17-1.7-.17-3.32.99-4.18.99-.86 0-2.19-.97-3.6-.94-1.85.03-3.56 1.08-4.5 2.73-1.92 3.33-.49 8.26 1.38 10.96.91 1.32 2 2.81 3.42 2.76 1.37-.05 1.89-.89 3.55-.89 1.65 0 2.12.89 3.57.86 1.47-.03 2.41-1.35 3.31-2.68 1.04-1.54 1.47-3.03 1.49-3.11-.03-.01-2.86-1.1-2.89-4.35M14.28 4.16c.76-.92 1.27-2.2 1.13-3.47-1.09.04-2.41.73-3.19 1.64-.7.81-1.31 2.11-1.15 3.35 1.21.09 2.45-.62 3.21-1.52"/></svg>
+                        <span class="store-txt"><small>Download on the</small><b>App Store</b></span>
+                    </a>
+                    <a href="https://play.google.com/store/apps/details?id=com.michaelhills.radiusandroid" target="_blank" rel="noopener">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M3.5 2.5v19l15-9.5-15-9.5z" fill="#F6C165"/><path d="M3.5 2.5l10.5 6.5 4.5-3-15-3.5z" fill="#fff" opacity="0.9"/></svg>
+                        <span class="store-txt"><small>Get it on</small><b>Google Play</b></span>
+                    </a>
+                </div>
+            </details>
         </div>
     </div>
 </nav>
