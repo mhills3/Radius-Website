@@ -559,6 +559,136 @@
             max-width: 540px;
         }
 
+        /* ========== COURSE BUILDER REWARDS ========== */
+        .cbr-section { background: var(--bg-deep); }
+        .cbr-section .gold-glow { width: 760px; height: 760px; top: -260px; left: 50%; transform: translateX(-50%); }
+
+        .cbr-mechanics {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 2.25rem;
+        }
+        .cbr-mech {
+            background: linear-gradient(180deg, rgba(168,179,145,0.05) 0%, rgba(168,179,145,0.02) 100%);
+            border: 1px solid rgba(168,179,145,0.14);
+            border-radius: 16px;
+            padding: 1.25rem 1.35rem;
+        }
+        .cbr-mech .label {
+            display: block;
+            font-size: 0.64rem; font-weight: 700;
+            letter-spacing: 1.6px; text-transform: uppercase;
+            color: var(--sage); margin-bottom: 0.55rem;
+        }
+        .cbr-mech .val {
+            font-family: 'Sora', sans-serif;
+            font-size: 1.06rem; font-weight: 700;
+            color: var(--cream); line-height: 1.25;
+        }
+        .cbr-mech .val .gold { color: var(--gold); }
+
+        .cbr-ladder { display: flex; flex-direction: column; gap: 1.1rem; }
+        .cbr-rung {
+            position: relative;
+            display: flex; align-items: center; gap: 1.75rem;
+            background: linear-gradient(180deg, rgba(168,179,145,0.05) 0%, rgba(168,179,145,0.02) 100%);
+            border: 1px solid rgba(168,179,145,0.14);
+            border-radius: 22px;
+            padding: 1.75rem 2.25rem;
+            transition: all 0.35s;
+        }
+        .cbr-rung:hover {
+            transform: translateY(-4px);
+            border-color: rgba(246,193,101,0.45);
+            box-shadow: 0 22px 50px rgba(0,0,0,0.4), 0 0 50px rgba(246,193,101,0.08);
+        }
+        .cbr-rung.warm {
+            background: linear-gradient(110deg, rgba(246,193,101,0.10) 0%, rgba(246,193,101,0.03) 60%);
+            border-color: rgba(246,193,101,0.3);
+        }
+        .cbr-rung.legend {
+            background: linear-gradient(110deg, rgba(246,193,101,0.22) 0%, rgba(246,193,101,0.06) 65%);
+            border-color: rgba(246,193,101,0.5);
+            box-shadow: 0 0 50px rgba(246,193,101,0.12);
+        }
+        .cbr-rung.legend:hover {
+            border-color: rgba(246,193,101,0.75);
+            box-shadow: 0 24px 60px rgba(0,0,0,0.5), 0 0 80px rgba(246,193,101,0.2);
+        }
+        .cbr-count {
+            flex-shrink: 0;
+            width: 96px; text-align: center;
+        }
+        .cbr-count .n {
+            display: block;
+            font-family: 'Sora', sans-serif;
+            font-size: 3.1rem; font-weight: 800;
+            line-height: 0.95; color: var(--cream);
+            letter-spacing: -1px;
+        }
+        .cbr-rung.warm .cbr-count .n, .cbr-rung.legend .cbr-count .n { color: var(--gold); }
+        .cbr-count .lbl {
+            display: block;
+            font-size: 0.6rem; font-weight: 700;
+            letter-spacing: 2px; text-transform: uppercase;
+            color: var(--sage-dim); margin-top: 0.35rem;
+        }
+        .cbr-body { flex: 1; }
+        .cbr-body .tier-name {
+            display: block;
+            font-size: 0.68rem; font-weight: 700;
+            letter-spacing: 2px; text-transform: uppercase;
+            color: var(--gold); margin-bottom: 0.4rem;
+        }
+        .cbr-body .reward {
+            font-family: 'Sora', sans-serif;
+            font-size: 1.45rem; font-weight: 700;
+            color: var(--cream); margin-bottom: 0.4rem;
+            line-height: 1.15;
+        }
+        .cbr-body .desc { color: var(--text-body); font-size: 0.97rem; max-width: 560px; }
+        .cbr-gate {
+            display: inline-block;
+            margin-top: 0.9rem;
+            font-size: 0.66rem; font-weight: 700;
+            letter-spacing: 1.4px; text-transform: uppercase;
+            color: var(--gold);
+            border: 1px solid rgba(246,193,101,0.45);
+            border-radius: 999px;
+            padding: 0.4rem 0.85rem;
+        }
+        .cbr-topbadge {
+            position: absolute; top: 1.35rem; right: 1.5rem;
+            font-size: 0.62rem; font-weight: 700;
+            letter-spacing: 1.6px; text-transform: uppercase;
+            color: var(--gold);
+            border: 1px solid rgba(246,193,101,0.55);
+            border-radius: 999px;
+            padding: 0.35rem 0.8rem;
+            background: rgba(19,30,24,0.4);
+        }
+        .cbr-finefoot {
+            margin-top: 2.5rem;
+            max-width: 760px;
+            color: var(--sage-dim);
+            font-size: 0.84rem;
+            line-height: 1.6;
+            text-align: center;
+            margin-left: auto; margin-right: auto;
+        }
+        @media (max-width: 860px) {
+            .cbr-mechanics { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 600px) {
+            .cbr-rung { flex-direction: column; align-items: flex-start; gap: 1rem; padding: 1.5rem 1.5rem; }
+            .cbr-count { display: flex; align-items: baseline; gap: 0.6rem; width: auto; text-align: left; }
+            .cbr-count .n { font-size: 2.6rem; }
+            .cbr-count .lbl { margin-top: 0; }
+            .cbr-topbadge { position: static; display: inline-block; margin-bottom: 0.5rem; }
+            .cbr-body .reward { font-size: 1.25rem; }
+        }
+
         /* ========== FINAL CTA ========== */
         .final-cta {
             position: relative;
@@ -730,6 +860,91 @@
                 </ul>
             </div>
         </div>
+    </div>
+</section>
+
+<!-- COURSE BUILDER REWARDS -->
+<section class="ic-section cbr-section" id="rewards">
+    <div class="topo-pattern"></div>
+    <div class="noise"></div>
+    <div class="gold-glow"></div>
+    <div class="section-inner">
+        <div class="section-head">
+            <div class="section-label">Course Builder Rewards</div>
+            <h2>Build the map. <span class="gold">Get rewarded.</span></h2>
+            <p>Every course you add makes Radius sharper for the whole community — so we're giving back to the builders who power it. Map courses, climb the ladder, earn real rewards. It all stacks on top of your Inner Circle seat.</p>
+        </div>
+
+        <div class="cbr-mechanics">
+            <div class="cbr-mech">
+                <span class="label">Full Course</span>
+                <div class="val">New course = <span class="gold">1</span></div>
+            </div>
+            <div class="cbr-mech">
+                <span class="label">Layout</span>
+                <div class="val">Any layout = <span class="gold">½</span></div>
+            </div>
+            <div class="cbr-mech">
+                <span class="label">The Fine Print</span>
+                <div class="val">Verified courses only</div>
+            </div>
+            <div class="cbr-mech">
+                <span class="label">How It Stacks</span>
+                <div class="val">Rewards are cumulative</div>
+            </div>
+        </div>
+
+        <div class="cbr-ladder">
+            <div class="cbr-rung">
+                <div class="cbr-count"><span class="n">5</span><span class="lbl">Courses</span></div>
+                <div class="cbr-body">
+                    <span class="tier-name">Starter</span>
+                    <div class="reward">1 Year of Radius Pro</div>
+                    <p class="desc">A full year of Caddy's Picks, Game IQ, and insights — on the house.</p>
+                </div>
+            </div>
+
+            <div class="cbr-rung">
+                <div class="cbr-count"><span class="n">10</span><span class="lbl">Courses</span></div>
+                <div class="cbr-body">
+                    <span class="tier-name">Builder</span>
+                    <div class="reward">2 Years of Radius Pro</div>
+                    <p class="desc">Double up — two full years of everything Pro has to offer.</p>
+                </div>
+            </div>
+
+            <div class="cbr-rung">
+                <div class="cbr-count"><span class="n">25</span><span class="lbl">Courses</span></div>
+                <div class="cbr-body">
+                    <span class="tier-name">Craftsman</span>
+                    <div class="reward">Radius Gear Bundle</div>
+                    <p class="desc">Custom Radius kit — hat, sticker, bag patch, and a branded disc.</p>
+                </div>
+            </div>
+
+            <div class="cbr-rung warm">
+                <div class="cbr-count"><span class="n">50</span><span class="lbl">Courses</span></div>
+                <div class="cbr-body">
+                    <span class="tier-name">Architect</span>
+                    <div class="reward">Premium Tournament Bag</div>
+                    <p class="desc">A premium tournament bag of your pick, up to $200 — Squatch-tier quality.</p>
+                    <span class="cbr-gate">Requires courses in 2+ states</span>
+                </div>
+            </div>
+
+            <div class="cbr-rung legend">
+                <span class="cbr-topbadge">Top Tier</span>
+                <div class="cbr-count"><span class="n">100</span><span class="lbl">Courses</span></div>
+                <div class="cbr-body">
+                    <span class="tier-name">Legend</span>
+                    <div class="reward">Lifetime Radius Pro</div>
+                    <p class="desc">Pro features for life, plus founding Course Architect status in the app.</p>
+                    <span class="cbr-gate">Requires courses in 5+ states</span>
+                </div>
+            </div>
+        </div>
+
+        <p class="cbr-finefoot">A brand-new course earns 1 credit; an alternate layout of an existing course earns ½-course credit, regardless of hole count. Rewards are cumulative and yours to keep. Courses must be approved before they count — program terms may change.</p>
     </div>
 </section>
 

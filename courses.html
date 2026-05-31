@@ -90,6 +90,30 @@
         .list-header { padding: 1.25rem 1.5rem 0; flex-shrink: 0; }
         .list-header h1 { font-size: 1.5rem; font-weight: 800; }
         .list-header p { color: var(--text-body); font-size: 0.82rem; margin-top: 0.25rem; }
+        .cbr-promo {
+            display: flex; align-items: center; gap: 0.85rem;
+            margin: 1rem 1.5rem 0;
+            padding: 0.85rem 1rem;
+            background: linear-gradient(110deg, rgba(246,193,101,0.14) 0%, rgba(246,193,101,0.04) 70%);
+            border: 1px solid rgba(246,193,101,0.32);
+            border-radius: 14px;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .cbr-promo:hover { border-color: rgba(246,193,101,0.6); transform: translateY(-1px); }
+        .cbr-promo .ico {
+            flex-shrink: 0; width: 30px; height: 30px;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--gold);
+        }
+        .cbr-promo .ico svg { width: 22px; height: 22px; }
+        .cbr-promo .copy { flex: 1; line-height: 1.25; }
+        .cbr-promo .copy strong {
+            display: block; color: var(--cream);
+            font-family: 'Sora', sans-serif; font-weight: 700; font-size: 0.9rem;
+        }
+        .cbr-promo .copy span { color: var(--text-body); font-size: 0.76rem; }
+        .cbr-promo .arr { flex-shrink: 0; color: var(--gold); }
         .filters { padding: 1rem 1.5rem; display: flex; flex-wrap: wrap; gap: 0.5rem; flex-shrink: 0; }
         .filters input, .filters select {
             background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
@@ -477,6 +501,11 @@
             <div class="list-header">
                 <h1>Disc Golf <span class="gold">Courses</span></h1>
                 <p>Browse courses mapped by the Radius community.</p>
+                <a href="/inner-circle#rewards" class="cbr-promo">
+                    <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 010-5C6 4 7 5 8 7m10 2h1.5a2.5 2.5 0 000-5C18 4 17 5 16 7M8 7h8M8 7c0 4 .5 7 4 7s4-3 4-7M8 21h8M12 14v7M9 21h6"/></svg></span>
+                    <span class="copy"><strong>Build the map. Get rewarded.</strong><span>Earn Pro, gear &amp; more for the courses you map.</span></span>
+                    <svg class="arr" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 3l5 5-5 5"/></svg>
+                </a>
             </div>
             <div class="filters">
                 <input type="text" id="searchInput" placeholder="Search by name or city...">
