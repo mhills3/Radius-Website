@@ -9,6 +9,9 @@ import DiscGraphic from "@/components/bag/DiscGraphic";
 import AddDiscModal from "@/components/bag/AddDiscModal";
 import { CountUp } from "@/components/dashboard/charts";
 
+// Adding discs from the web is hidden for now — flip back to true to re-enable.
+const SHOW_ADD_DISC = false;
+
 type SortKey = "speed" | "stability" | "throws" | "name";
 const SORTS: { key: SortKey; label: string }[] = [
   { key: "speed", label: "Speed" },
@@ -362,10 +365,12 @@ export default function BagView({ bag, uid }: { bag: Bag; uid: string }) {
                 </button>
               ))}
             </div>
-            <button onClick={() => setShowAdd(true)} className="inline-flex items-center gap-1.5 rounded-full bg-[var(--gold)] px-4 py-2 text-xs font-bold text-[#16221b] transition-colors hover:bg-[var(--gold-bright)]">
-              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
-              Add disc
-            </button>
+            {SHOW_ADD_DISC && (
+              <button onClick={() => setShowAdd(true)} className="inline-flex items-center gap-1.5 rounded-full bg-[var(--gold)] px-4 py-2 text-xs font-bold text-[#16221b] transition-colors hover:bg-[var(--gold-bright)]">
+                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+                Add disc
+              </button>
+            )}
           </div>
         </div>
 
