@@ -183,6 +183,11 @@ export default function CommunityPage() {
     <div className="min-h-screen bg-[var(--bg-deep)] text-[var(--cream)]">
       {/* hero band */}
       <div className="relative overflow-hidden border-b border-white/[0.06]">
+        <div
+          className="pointer-events-none absolute inset-0"
+          aria-hidden
+          style={{ maskImage: "url(/topo.png)", WebkitMaskImage: "url(/topo.png)", maskSize: "cover", WebkitMaskSize: "cover", maskPosition: "center", WebkitMaskPosition: "center", backgroundColor: "var(--cream)", opacity: 0.08 }}
+        />
         <div className="pointer-events-none absolute -right-32 -top-40 h-96 w-96 rounded-full bg-[radial-gradient(circle,rgba(246,193,101,0.12),transparent_70%)]" />
         <div className="relative mx-auto max-w-7xl px-6 pb-5 pt-10">
           <div>

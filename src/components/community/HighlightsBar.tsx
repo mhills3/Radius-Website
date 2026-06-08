@@ -26,7 +26,7 @@ function Card({ v, onClick }: { v: Highlight; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className={`group relative w-[264px] shrink-0 overflow-hidden rounded-2xl text-left transition-all duration-300 hover:-translate-y-1 ${
+      className={`group relative w-[316px] shrink-0 overflow-hidden rounded-2xl text-left transition-all duration-300 hover:-translate-y-1 ${
         f
           ? "ring-[3px] ring-[var(--gold)] shadow-[0_0_20px_-2px_rgba(246,193,101,0.6),0_18px_42px_-18px_rgba(246,193,101,0.65)]"
           : "bg-white/[0.02] ring-1 ring-white/[0.08] hover:bg-white/[0.05] hover:ring-white/20 hover:shadow-[0_18px_40px_-22px_rgba(0,0,0,0.8)]"
