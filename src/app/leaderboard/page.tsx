@@ -124,12 +124,12 @@ export default function LeaderboardPage() {
           {loading ? (
             Array.from({ length: 10 }).map((_, i) => <div key={i} className="h-[68px] animate-pulse border-b border-white/[0.06] bg-white/[0.01]" />)
           ) : rows.length === 0 ? (
-            <p className="p-12 text-center text-sm text-[var(--sage-dim)]">No ranked players in {scopeLabel} yet. Players appear here once they set a home course in the app.</p>
+            <p className="p-12 text-center text-sm text-[var(--sage-dim)]">No ranked players in {scopeLabel} yet. Players are placed by their home course, or where they play most.</p>
           ) : (
             rows.map((r, i) => <Row key={r.id} row={r} rank={i + 1} />)
           )}
         </div>
-        {scope !== "world" && <p className="mt-3 text-center text-xs text-[var(--sage-dim)]">Regional ranks are based on each player&apos;s home course. Set yours in the Radius app to appear here.</p>}
+        {scope !== "world" && <p className="mt-3 text-center text-xs text-[var(--sage-dim)]">Regional ranks use each player&apos;s home course, or the course they play most. Set a home course in the Radius app to fine-tune yours.</p>}
       </div>
     </div>
   );

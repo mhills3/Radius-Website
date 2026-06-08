@@ -114,7 +114,18 @@ export async function getLeaderboard(max = 60): Promise<LeaderRow[]> {
 
 export interface GeoLeaderRow extends LeaderRow { state?: string; country?: string }
 
-/** Region-aware leaderboard: each player's region is derived from their HOME COURSE's location. */
+type Region = { state?: string; country?: string };
+const regionOfCourse = (c: { state?: string; latitude?: number; longitude?: number }): Region => ({
+  state: isUSState(c.state) ? c.state : undefined,
+  country: countryOf({ state: c.state, latitude: c.latitude, longitude: c.longitude }),
+});
+const hasRegion = (r?: Region) => !!(r && (r.state || r.country));
+
+/**
+ * Region-aware leaderboard. A player's region comes from their HOME COURSE; if they haven't set one
+ * (most haven't), we fall back to their MOST-PLAYED course (from recentRounds). Without this fallback
+ * the State/Country views only showed the handful of players with a home course set.
+ */
 export async function getLeaderboardWithRegion(max = 250): Promise<GeoLeaderRow[]> {
   try {
     const [snap, aliases] = await Promise.all([
@@ -123,27 +134,34 @@ export async function getLeaderboardWithRegion(max = 250): Promise<GeoLeaderRow[
     ]);
     const base = snap.docs
       .filter((d) => !aliases.has(d.id)) // drop duplicate alias accounts
-      .map((d) => { const u = d.data(); return { id: d.id, name: (u.name as string) || "", username: (u.username as string) || undefined, photo: safeHttp(u.profileImageUrl), gameIQ: Number(u.gameIQ) || 0, hidden: u.hideWebProfile === true, homeCourseId: (u.homeCourseId as string)?.trim() || "" }; })
+      .map((d) => {
+        const u = d.data();
+        const rounds = Array.isArray(u.recentRounds) ? (u.recentRounds as { courseName?: string }[]) : [];
+        const freq = new Map<string, number>();
+        for (const r of rounds) { const n = ((r?.courseName || "") + "").trim(); if (n) freq.set(n, (freq.get(n) || 0) + 1); }
+        const playedCourse = [...freq.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || "";
+        return { id: d.id, name: (u.name as string) || "", username: (u.username as string) || undefined, photo: safeHttp(u.profileImageUrl), gameIQ: Number(u.gameIQ) || 0, hidden: u.hideWebProfile === true, homeCourseId: (u.homeCourseId as string)?.trim() || "", playedCourse };
+      })
       .filter((r) => r.gameIQ > 0 && r.name && !r.hidden && validHandle(r.username));
     const deduped = dedupeByHandle(base).slice(0, max);
 
-    // resolve unique home courses → { state, country }
-    const ids = [...new Set(deduped.map((r) => r.homeCourseId).filter(Boolean))];
-    const regionMap = new Map<string, { state?: string; country?: string }>();
-    await Promise.all(ids.map(async (cid) => {
-      try {
-        const cs = await getDoc(doc(db, "courses", cid));
-        if (!cs.exists()) return;
-        const c = cs.data();
-        const state = isUSState(c.state as string) ? (c.state as string) : undefined;
-        const country = countryOf({ state: c.state as string, latitude: c.latitude as number, longitude: c.longitude as number });
-        regionMap.set(cid, { state, country });
-      } catch { /* skip */ }
+    // 1) resolve each player's home course (by id) → region
+    const byId = new Map<string, Region>();
+    await Promise.all([...new Set(deduped.map((r) => r.homeCourseId).filter(Boolean))].map(async (cid) => {
+      try { const cs = await getDoc(doc(db, "courses", cid)); if (cs.exists()) byId.set(cid, regionOfCourse(cs.data() as { state?: string; latitude?: number; longitude?: number })); } catch { /* skip */ }
+    }));
+
+    // 2) fallback: for players still unplaced, resolve their most-played course by name → region
+    const needName = [...new Set(deduped.filter((r) => !hasRegion(r.homeCourseId ? byId.get(r.homeCourseId) : undefined) && r.playedCourse).map((r) => r.playedCourse))];
+    const byName = new Map<string, Region>();
+    await Promise.all(needName.map(async (name) => {
+      try { const q = await getDocs(query(collection(db, "courses"), where("name", "==", name), limit(1))); const d = q.docs[0]; if (d) byName.set(name, regionOfCourse(d.data() as { state?: string; latitude?: number; longitude?: number })); } catch { /* skip */ }
     }));
 
     return deduped.map((r) => {
       const rk = rankForIQ(r.gameIQ);
-      const reg = r.homeCourseId ? regionMap.get(r.homeCourseId) : undefined;
+      const homeReg = r.homeCourseId ? byId.get(r.homeCourseId) : undefined;
+      const reg = hasRegion(homeReg) ? homeReg : (r.playedCourse ? byName.get(r.playedCourse) : undefined);
       return { id: r.id, name: r.name, username: r.username, photo: r.photo, gameIQ: r.gameIQ, tier: rk.tier, color: rk.color, level: rk.level, state: reg?.state, country: reg?.country };
     });
   } catch {
