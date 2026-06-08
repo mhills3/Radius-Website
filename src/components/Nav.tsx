@@ -199,15 +199,7 @@ export default function Nav() {
                     {l.label}
                   </Link>
                 ))}
-                {!user && (
-                  <Link
-                    href="/login"
-                    onClick={() => setMobileOpen(false)}
-                    className="border-b border-black/5 py-3.5 text-base font-semibold text-[#16221b]"
-                  >
-                    Log in
-                  </Link>
-                )}
+                {/* Login is desktop-only — no Log in entry in the mobile menu. */}
               </div>
               {user ? (
                 <button onClick={() => { signOut(); setMobileOpen(false); }} className="mt-4 w-full rounded-full bg-[var(--gold)] py-3 text-sm font-bold text-[#16221b]">

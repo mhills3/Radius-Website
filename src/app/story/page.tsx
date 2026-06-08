@@ -25,8 +25,8 @@ const JOURNEY = [
 ];
 const TEAM = [
   { name: "Mikey Hills", role: "Founder", img: "/team/mikey.png", size: "125%", pos: "center 26%" },
-  { name: "Nick", role: "Co-founder", img: "/team/nick.png", size: "125%", pos: "center 26%" },
-  { name: "Ben", role: "Co-founder", img: "/team/ben.png", size: "125%", pos: "center 26%" },
+  { name: "Nick Harshaw", role: "Co-founder", img: "/team/nick.png", size: "125%", pos: "center 26%" },
+  { name: "Ben Richardson", role: "Co-founder", img: "/team/ben.png", size: "125%", pos: "center 26%" },
 ];
 
 export default function StoryPage() {

@@ -120,7 +120,18 @@ export default function LoginPage() {
 
       {/* ---- Form panel ---- */}
       <div className="flex items-center justify-center bg-[#faf8f3] px-6 py-16 text-[#16221b]">
-        <div className="w-full max-w-sm">
+        {/* Mobile: sign-in is desktop-only — show a friendly notice + app links instead of the form */}
+        <div className="w-full max-w-sm text-center md:hidden">
+          <Link href="/" className="mb-8 block font-[family-name:var(--font-heading)] text-2xl font-bold tracking-[-0.03em] text-[#16221b]">Radius</Link>
+          <h1 className="font-[family-name:var(--font-heading)] text-2xl font-bold tracking-[-0.02em]">Sign in on desktop</h1>
+          <p className="mt-3 text-sm text-[#46554c]">Account sign-in is available on the desktop site for now. On the go, get the full Radius experience in the app.</p>
+          <div className="mt-7 flex flex-col gap-3">
+            <a href="https://apps.apple.com/us/app/radius-disc-golf/id6760574186" target="_blank" rel="noopener" className="rounded-full border border-black/15 px-5 py-3 text-sm font-bold text-[#16221b] transition-colors hover:border-black/40">Download on the App Store</a>
+            <a href="https://play.google.com/store/apps/details?id=com.michaelhills.radiusandroid" target="_blank" rel="noopener" className="rounded-full border border-black/15 px-5 py-3 text-sm font-bold text-[#16221b] transition-colors hover:border-black/40">Get it on Google Play</a>
+            <Link href="/" className="mt-1 text-sm font-bold text-[#9a7a3a] hover:underline">← Back to home</Link>
+          </div>
+        </div>
+        <div className="hidden w-full max-w-sm md:block">
           <Link href="/" className="mb-8 block font-[family-name:var(--font-heading)] text-2xl font-bold tracking-[-0.03em] text-[#16221b] lg:hidden">Radius</Link>
           <h1 className="font-[family-name:var(--font-heading)] text-3xl font-bold tracking-[-0.02em]">{copy.title}</h1>
           <p className="mt-2 text-sm text-[#46554c]">{copy.sub}</p>
