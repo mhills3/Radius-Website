@@ -4,6 +4,23 @@ import { rankForIQ } from "./rank";
 import { resolveCanonicalId } from "./account";
 import { isUSState, countryOf } from "./courses";
 
+// Set of non-canonical alias account ids (a user with multiple un-unified accounts). User docs
+// whose id is an alias are duplicates and must be excluded from rankings so a stale duplicate
+// (e.g. an old account with a higher cached Game IQ) doesn't outrank the real, canonical account.
+let _aliasIds: Promise<Set<string>> | null = null;
+function getAliasIds(): Promise<Set<string>> {
+  if (!_aliasIds) {
+    _aliasIds = getDocs(collection(db, "canonicalIds"))
+      .then((s) => {
+        const set = new Set<string>();
+        s.forEach((d) => { const c = d.data().canonicalId as string | undefined; if (c && c !== d.id) set.add(d.id); });
+        return set;
+      })
+      .catch(() => new Set<string>());
+  }
+  return _aliasIds;
+}
+
 /** Whether the user has hidden their public web profile. */
 export async function getProfileHidden(uid: string): Promise<boolean> {
   try {
@@ -75,8 +92,12 @@ export interface LeaderRow {
 
 export async function getLeaderboard(max = 60): Promise<LeaderRow[]> {
   try {
-    const snap = await getDocs(query(collection(db, "users"), orderBy("gameIQ", "desc"), limit(max * 3)));
+    const [snap, aliases] = await Promise.all([
+      getDocs(query(collection(db, "users"), orderBy("gameIQ", "desc"), limit(Math.max(max * 3, 40)))),
+      getAliasIds(),
+    ]);
     const rows = snap.docs
+      .filter((d) => !aliases.has(d.id)) // drop duplicate alias accounts
       .map((d) => {
         const u = d.data();
         return { id: d.id, name: (u.name as string) || "", username: (u.username as string) || undefined, photo: safeHttp(u.profileImageUrl), gameIQ: Number(u.gameIQ) || 0, hidden: u.hideWebProfile === true };
@@ -96,8 +117,12 @@ export interface GeoLeaderRow extends LeaderRow { state?: string; country?: stri
 /** Region-aware leaderboard: each player's region is derived from their HOME COURSE's location. */
 export async function getLeaderboardWithRegion(max = 250): Promise<GeoLeaderRow[]> {
   try {
-    const snap = await getDocs(query(collection(db, "users"), orderBy("gameIQ", "desc"), limit(max + 150)));
+    const [snap, aliases] = await Promise.all([
+      getDocs(query(collection(db, "users"), orderBy("gameIQ", "desc"), limit(max + 150))),
+      getAliasIds(),
+    ]);
     const base = snap.docs
+      .filter((d) => !aliases.has(d.id)) // drop duplicate alias accounts
       .map((d) => { const u = d.data(); return { id: d.id, name: (u.name as string) || "", username: (u.username as string) || undefined, photo: safeHttp(u.profileImageUrl), gameIQ: Number(u.gameIQ) || 0, hidden: u.hideWebProfile === true, homeCourseId: (u.homeCourseId as string)?.trim() || "" }; })
       .filter((r) => r.gameIQ > 0 && r.name && !r.hidden && validHandle(r.username));
     const deduped = dedupeByHandle(base).slice(0, max);
