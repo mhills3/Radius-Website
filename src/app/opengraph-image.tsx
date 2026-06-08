@@ -25,9 +25,9 @@ export default function Image() {
       <div style={{ position: "relative", width: "100%", height: "100%", display: "flex", fontFamily: "Sora" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={hero} width={1200} height={630} style={{ position: "absolute", inset: 0, width: 1200, height: 630, objectFit: "cover", objectPosition: "center 35%" }} alt="" />
-        {/* legibility scrim — strong forest fade anchored on the left, easing to clear past the middle so the thrower stays bright */}
-        <div style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "flex", background: "linear-gradient(90deg, rgba(11,17,13,0.96) 0%, rgba(11,17,13,0.9) 30%, rgba(11,17,13,0.6) 48%, rgba(11,17,13,0) 66%)" }} />
-        <div style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "flex", background: "linear-gradient(0deg, rgba(11,17,13,0.92) 0%, rgba(11,17,13,0.2) 38%, rgba(11,17,13,0) 52%)" }} />
+        {/* legibility scrim — exact replica of the home hero: dark forest-green fade, light and aggressive */}
+        <div style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "flex", background: "linear-gradient(105deg, rgba(15,24,19,0.86) 0%, rgba(15,24,19,0.55) 42%, rgba(15,24,19,0.12) 72%, transparent 100%)" }} />
+        <div style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "flex", background: "linear-gradient(0deg, rgba(15,24,19,0.6) 0%, transparent 25%)" }} />
 
         <div style={{ position: "relative", width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: 72, color: "#F5EDE1" }}>
           {/* top bar: wordmark + domain */}
