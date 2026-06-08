@@ -25,9 +25,9 @@ export default function Image() {
       <div style={{ position: "relative", width: "100%", height: "100%", display: "flex", fontFamily: "Sora" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={hero} width={1200} height={630} style={{ position: "absolute", inset: 0, width: 1200, height: 630, objectFit: "cover", objectPosition: "center 35%" }} alt="" />
-        {/* legibility scrim — soft forest fade anchored on the left, fully clear by ~halfway so the thrower stays bright */}
-        <div style={{ position: "absolute", inset: 0, display: "flex", background: "linear-gradient(90deg, rgba(13,20,16,0.97) 0%, rgba(13,20,16,0.82) 22%, rgba(13,20,16,0.45) 40%, rgba(13,20,16,0) 56%)" }} />
-        <div style={{ position: "absolute", inset: 0, display: "flex", background: "linear-gradient(0deg, rgba(13,20,16,0.88) 0%, rgba(13,20,16,0) 42%)" }} />
+        {/* legibility scrim — strong forest fade anchored on the left, easing to clear past the middle so the thrower stays bright */}
+        <div style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "flex", background: "linear-gradient(90deg, rgba(11,17,13,0.96) 0%, rgba(11,17,13,0.9) 30%, rgba(11,17,13,0.6) 48%, rgba(11,17,13,0) 66%)" }} />
+        <div style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "flex", background: "linear-gradient(0deg, rgba(11,17,13,0.92) 0%, rgba(11,17,13,0.2) 38%, rgba(11,17,13,0) 52%)" }} />
 
         <div style={{ position: "relative", width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: 72, color: "#F5EDE1" }}>
           {/* top bar: wordmark + domain */}
@@ -41,8 +41,8 @@ export default function Image() {
           <div style={{ display: "flex", flexDirection: "column" }}>
             <div style={{ display: "flex", fontSize: 24, fontWeight: 700, color: "#F6C165", textTransform: "uppercase", letterSpacing: 7 }}>The home of disc golf</div>
             <div style={{ display: "flex", flexDirection: "column", marginTop: 18 }}>
-              <div style={{ display: "flex", fontSize: 86, fontWeight: 800, letterSpacing: -3, lineHeight: 1.0 }}>Play Smarter,</div>
-              <div style={{ display: "flex", fontSize: 86, fontWeight: 800, letterSpacing: -3, lineHeight: 1.0 }}>Not Harder.</div>
+              <div style={{ display: "flex", fontSize: 78, fontWeight: 800, letterSpacing: -2, lineHeight: 1.04 }}>Find your people.</div>
+              <div style={{ display: "flex", fontSize: 78, fontWeight: 800, letterSpacing: -2, lineHeight: 1.04 }}>Master your game.</div>
             </div>
             <div style={{ display: "flex", fontSize: 30, fontWeight: 600, color: "rgba(245,237,225,0.85)", marginTop: 24 }}>Courses · Stats · Your bag · The community — everywhere you play.</div>
           </div>
