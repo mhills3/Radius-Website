@@ -1,34 +1,20 @@
-"use client";
-
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { db } from "@/lib/firebase";
-import { collection, getCountFromServer } from "firebase/firestore";
+import { getCourseCountServer, getPlayerCountServer } from "@/lib/stats";
+import StatValue from "./StatValue";
 
-function CountUp({ value, suffix = "" }: { value: number; suffix?: string }) {
-  const [n, setN] = useState(0);
-  useEffect(() => {
-    let raf = 0; const start = performance.now(); const dur = 1100;
-    const tick = (t: number) => { const p = Math.min(1, (t - start) / dur); setN(Math.round((1 - Math.pow(1 - p, 3)) * value)); if (p < 1) raf = requestAnimationFrame(tick); };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [value]);
-  return <>{n.toLocaleString()}{suffix}</>;
-}
-
-export default function HubStats() {
-  const [courses, setCourses] = useState<number | null>(null);
-  const [players, setPlayers] = useState<number | null>(null);
-
-  useEffect(() => {
-    getCountFromServer(collection(db, "courses")).then((s) => setCourses(s.data().count)).catch(() => {});
-    getCountFromServer(collection(db, "users")).then((s) => setPlayers(s.data().count)).catch(() => {});
-  }, []);
+// Server component: counts are fetched server-side (reliable long-polling transport) and baked
+// into the HTML, so the real numbers show on every device — including mobile Safari, where the
+// client-side Firestore aggregation transport was silently failing and falling back to "—"/"630+".
+export default async function HubStats() {
+  const [courses, players] = await Promise.all([
+    getCourseCountServer(),
+    getPlayerCountServer(),
+  ]);
 
   const items = [
-    { value: courses, fallback: "630+", suffix: "", label: "Courses mapped", href: "/courses" },
+    { value: courses || null, fallback: "630+", suffix: "", label: "Courses mapped", href: "/courses" },
     { value: 1210, fallback: "1,210", suffix: "", label: "Discs in the database", href: "/discs" },
-    { value: players, fallback: "—", suffix: "+", label: "Disc golfers", href: "/leaderboard" },
+    { value: players || null, fallback: "—", suffix: "+", label: "Disc golfers", href: "/leaderboard" },
     { value: 50, fallback: "50", suffix: "", label: "States & countries", href: "/courses" },
   ];
 
@@ -44,7 +30,7 @@ export default function HubStats() {
           {items.map((it) => (
             <Link key={it.label} href={it.href} className="group text-center transition-transform hover:-translate-y-1">
               <div className="font-[family-name:var(--font-heading)] text-4xl font-extrabold text-[var(--cream)] md:text-5xl">
-                {it.value != null ? <CountUp value={it.value} suffix={it.suffix} /> : it.fallback}
+                <StatValue value={it.value} suffix={it.suffix} fallback={it.fallback} />
               </div>
               <div className="mt-2 text-sm text-[var(--sage)] group-hover:text-[var(--cream)]">{it.label}</div>
             </Link>
