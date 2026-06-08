@@ -112,8 +112,8 @@ export default function HighlightsBar() {
             </div>
             <div className="mt-3 flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  {active.featured && <span className="rounded-full bg-[var(--gold)] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#16221b]">★ Partner</span>}
+                <div className="flex min-w-0 items-center gap-2">
+                  {active.featured && <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-[var(--gold)] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#16221b]">★ Partner</span>}
                   <div className="truncate text-sm font-bold text-[var(--cream)]">{active.title}</div>
                 </div>
                 <div className="mt-0.5 text-xs text-[var(--sage-dim)]">{active.channel} · {timeAgo(active.published)}{fmtViews(active.views) ? ` · ${fmtViews(active.views)}` : ""}</div>
