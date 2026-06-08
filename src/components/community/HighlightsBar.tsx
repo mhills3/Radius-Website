@@ -28,7 +28,7 @@ function Card({ v, onClick }: { v: Highlight; onClick: () => void }) {
       onClick={onClick}
       className={`group relative w-[264px] shrink-0 overflow-hidden rounded-2xl text-left transition-all duration-300 hover:-translate-y-1 ${
         f
-          ? "ring-2 ring-[var(--gold)] shadow-[0_0_0_1px_rgba(246,193,101,0.25),0_22px_48px_-20px_rgba(246,193,101,0.55)]"
+          ? "ring-[3px] ring-[var(--gold)] shadow-[0_0_20px_-2px_rgba(246,193,101,0.6),0_18px_42px_-18px_rgba(246,193,101,0.65)]"
           : "bg-white/[0.02] ring-1 ring-white/[0.08] hover:bg-white/[0.05] hover:ring-white/20 hover:shadow-[0_18px_40px_-22px_rgba(0,0,0,0.8)]"
       }`}
       style={f ? { background: "linear-gradient(180deg, rgba(246,193,101,0.12), rgba(246,193,101,0.02))" } : undefined}
@@ -94,7 +94,7 @@ export default function HighlightsBar() {
         </a>
       </div>
 
-      <div className="-mx-1 flex gap-4 overflow-x-auto px-1 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="-mx-2 flex gap-4 overflow-x-auto px-2 pb-4 pt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {videos.map((v) => <Card key={v.id} v={v} onClick={() => setActive(v)} />)}
       </div>
 
