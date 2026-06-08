@@ -200,7 +200,7 @@ export default function CommunityPage() {
       </div>
 
       <div className="mx-auto max-w-7xl px-6 py-7">
-        <HighlightsBar />
+        {tab === "feed" && <HighlightsBar />}
         <div className="grid gap-5 lg:grid-cols-[230px_1fr_300px]">
           {/* LEFT RAIL */}
           <aside className="hidden lg:block">

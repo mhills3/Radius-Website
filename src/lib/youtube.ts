@@ -68,19 +68,46 @@ async function fetchChannel(id: string, name: string): Promise<Highlight[]> {
   }
 }
 
-/** Newest disc-golf videos, Urban Disc Golf featured first, then the rest by recency. */
+// A video's Short/long-form status never changes, so cache it per id for the process lifetime.
+const longFormCache = new Map<string, Promise<boolean>>();
+function isLongForm(id: string): Promise<boolean> {
+  let p = longFormCache.get(id);
+  if (!p) {
+    // /shorts/{id} stays 200 for an actual Short, but 3xx-redirects to /watch for a long-form.
+    p = fetch(`https://www.youtube.com/shorts/${id}`, {
+      method: "GET",
+      redirect: "manual",
+      headers: { "User-Agent": "Mozilla/5.0" },
+      next: { revalidate: 86400 },
+    })
+      .then((r) => r.status !== 200) // redirect → long-form
+      .catch(() => true); // on error keep it rather than hide content
+    longFormCache.set(id, p);
+  }
+  return p;
+}
+
+const isUDG = (v: Highlight) => v.channelId === UDG_ID || v.channel === "Urban Disc Golf";
+
+/** Newest long-form disc-golf videos (Shorts excluded), Urban Disc Golf featured first. */
 export async function getHighlights(limit = 12): Promise<Highlight[]> {
   const all = (await Promise.all(CHANNELS.map((c) => fetchChannel(c.id, c.name)))).flat();
   if (all.length === 0) return [];
 
-  // Featured = UDG's newest upload.
-  const udg = all
-    .filter((v) => v.channelId === UDG_ID || v.channel === "Urban Disc Golf")
-    .sort((a, b) => b.published - a.published)[0];
+  // Always consider ALL of UDG's videos (low-volume partner) plus the most recent from everyone
+  // else — otherwise the high-volume pro channels crowd UDG out before we filter Shorts.
+  const udgVids = all.filter(isUDG).sort((a, b) => b.published - a.published);
+  const others = all.filter((v) => !isUDG(v)).sort((a, b) => b.published - a.published).slice(0, 28);
+  const candidates = [...udgVids, ...others];
 
-  const rest = all
-    .filter((v) => v.id !== udg?.id)
-    .sort((a, b) => b.published - a.published);
+  // Drop Shorts — feed is long-form only.
+  const flags = await Promise.all(candidates.map((v) => isLongForm(v.id)));
+  const longs = candidates.filter((_, i) => flags[i]);
+  if (longs.length === 0) return [];
+
+  // Featured = Urban Disc Golf's newest long-form (udgVids is already newest-first).
+  const udg = longs.find(isUDG);
+  const rest = longs.filter((v) => v.id !== udg?.id).sort((a, b) => b.published - a.published);
 
   const list = udg ? [{ ...udg, featured: true }, ...rest] : rest;
   return list.slice(0, limit);
