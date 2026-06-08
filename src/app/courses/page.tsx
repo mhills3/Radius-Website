@@ -40,7 +40,7 @@ export default function CoursesPage() {
 
   useEffect(() => {
     getAllCourses().then(setCourses).catch(() => setCourses([])).finally(() => setLoading(false));
-    getTopBuilders(6).then((b) => { setBuilders(b); getRanksFor(b.map((x) => x.id).filter(Boolean)).then(setBuilderRanks).catch(() => {}); }).catch(() => {});
+    getTopBuilders(10).then((b) => { setBuilders(b); getRanksFor(b.map((x) => x.id).filter(Boolean)).then(setBuilderRanks).catch(() => {}); }).catch(() => {});
     // Support the sitelinks search box / shareable search URLs: /courses?search=term
     const q = new URLSearchParams(window.location.search).get("search");
     if (q) setSearch(q);

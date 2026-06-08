@@ -238,24 +238,55 @@ export interface Builder {
   count: number;
 }
 /** Users who have built the most courses (merged across cross-platform accounts by name). */
-export async function getTopBuilders(max = 6): Promise<Builder[]> {
+export async function getTopBuilders(max = 10): Promise<Builder[]> {
   const snap = await getDocs(collection(db, "courses"));
-  const byName = new Map<string, { ids: Map<string, number>; count: number; name: string }>();
+  // Credit by builder ACCOUNT (createdById), the same way the app does. A builder's courses are
+  // often saved to the shared pool under the name "Community", so grouping by display name (the
+  // old behaviour) silently dropped those and undercounted — e.g. 64 instead of 85.
+  const byId = new Map<string, { count: number; names: Map<string, number> }>();
   snap.forEach((d) => {
     const c = d.data();
+    const id = ((c.createdById as string) || "").trim();
+    if (!id) return; // unattributed courses aren't credited to any builder
     const name = ((c.createdBy as string) || "").trim();
-    if (!name || name.toLowerCase() === "community") return;
-    const id = (c.createdById as string) || "";
-    const key = name.toLowerCase();
-    const e = byName.get(key) || { ids: new Map<string, number>(), count: 0, name };
+    const e = byId.get(id) || { count: 0, names: new Map<string, number>() };
     e.count++;
-    if (id) e.ids.set(id, (e.ids.get(id) || 0) + 1);
-    byName.set(key, e);
+    if (name && name.toLowerCase() !== "community") e.names.set(name, (e.names.get(name) || 0) + 1);
+    byId.set(id, e);
   });
-  return [...byName.values()]
-    .map((e) => ({ name: e.name, count: e.count, id: [...e.ids.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || "" }))
+  // Merge accounts that resolve to the same builder name — handles a builder having multiple
+  // un-unified account IDs (e.g. cross-platform). Accounts with no derived name stay keyed by id.
+  const merged = new Map<string, { id: string; count: number; name: string; topIdCount: number }>();
+  for (const [id, e] of byId) {
+    const name = [...e.names.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || "";
+    const key = name ? name.toLowerCase() : id;
+    const m = merged.get(key);
+    if (!m) {
+      merged.set(key, { id, count: e.count, name, topIdCount: e.count });
+    } else {
+      m.count += e.count;
+      if (e.count > m.topIdCount) { m.topIdCount = e.count; m.id = id; } // keep the account with most courses (best avatar)
+      if (name && !m.name) m.name = name;
+    }
+  }
+  const top = [...merged.values()]
+    .map((m) => ({ id: m.id, count: m.count, name: m.name }))
     .sort((a, b) => b.count - a.count)
     .slice(0, max);
+  // Resolve any display name we couldn't derive from courses (account only ever posted as "Community").
+  await Promise.all(
+    top.map(async (b) => {
+      if (b.name) return;
+      try {
+        const u = await getDoc(doc(db, "users", b.id));
+        const data = u.data();
+        b.name = (((data?.name || data?.displayName || data?.username || "") as string).trim()) || "Course builder";
+      } catch {
+        b.name = "Course builder";
+      }
+    })
+  );
+  return top;
 }
 
 /** Courses (and layouts) the signed-in user built, newest first. */
