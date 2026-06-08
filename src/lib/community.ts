@@ -195,7 +195,7 @@ export async function getMeetups(max = 30): Promise<Meetup[]> {
           distanceMiles: typeof m.distanceMiles === "number" ? m.distanceMiles : undefined,
         };
       })
-      .sort((a, b) => a.dateMillis - b.dateMillis);
+      .sort((a, b) => b.dateMillis - a.dateMillis); // most recent first, oldest at the bottom
   } catch {
     return [];
   }

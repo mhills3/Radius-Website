@@ -133,7 +133,15 @@ export default function CommunityPage() {
     else a.sort((x, y) => hotScore(y) - hotScore(x));
     return a;
   }, [posts, sort]);
-  const featured = useMemo(() => (posts.length ? [...posts].sort((a, b) => b.likeCount + b.commentCount * 2 - (a.likeCount + a.commentCount * 2))[0] : null), [posts]);
+  // Featured post rotates on a rhythm (every 6h) through the most-engaging posts, so the
+  // spotlight isn't always the same post visit-to-visit.
+  const featured = useMemo(() => {
+    if (!posts.length) return null;
+    const ranked = [...posts].sort((a, b) => (b.likeCount + b.commentCount * 2) - (a.likeCount + a.commentCount * 2));
+    const pool = ranked.slice(0, Math.min(5, ranked.length));
+    const bucket = Math.floor(Date.now() / (6 * 60 * 60 * 1000));
+    return pool[bucket % pool.length];
+  }, [posts]);
   const feedList = useMemo(() => {
     if (sort === "following") return sortedPosts.filter((p) => p.authorId && following.has(p.authorId));
     return sortedPosts.filter((p) => !featured || p.id !== featured.id);
