@@ -18,6 +18,7 @@ import PostDetail from "@/components/community/PostDetail";
 import ThreadCard from "@/components/community/ThreadCard";
 import ThreadDetail from "@/components/community/ThreadDetail";
 import MeetupCard from "@/components/community/MeetupCard";
+import HighlightsBar from "@/components/community/HighlightsBar";
 import NewThreadModal from "@/components/community/NewThreadModal";
 import NewMeetupModal from "@/components/community/NewMeetupModal";
 
@@ -199,6 +200,7 @@ export default function CommunityPage() {
       </div>
 
       <div className="mx-auto max-w-7xl px-6 py-7">
+        <HighlightsBar />
         <div className="grid gap-5 lg:grid-cols-[230px_1fr_300px]">
           {/* LEFT RAIL */}
           <aside className="hidden lg:block">
