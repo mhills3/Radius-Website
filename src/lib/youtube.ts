@@ -10,6 +10,7 @@ export interface Highlight {
   published: number;     // epoch ms
   url: string;
   thumb: string;
+  views?: number;
   featured?: boolean;    // Urban Disc Golf partner card
 }
 
@@ -40,6 +41,7 @@ function parseFeed(xml: string, channelName: string): Highlight[] {
     const title = block.match(/<title>([\s\S]*?)<\/title>/)?.[1];
     const published = block.match(/<published>([^<]+)<\/published>/)?.[1];
     if (!id || !title || !published) continue;
+    const views = block.match(/<media:statistics views="(\d+)"/)?.[1];
     out.push({
       id,
       title: decode(title.trim()),
@@ -48,6 +50,7 @@ function parseFeed(xml: string, channelName: string): Highlight[] {
       published: new Date(published).getTime(),
       url: `https://www.youtube.com/watch?v=${id}`,
       thumb: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+      views: views ? Number(views) : undefined,
     });
   }
   return out;
