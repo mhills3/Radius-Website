@@ -1,0 +1,21 @@
+const APP_STORE = "https://apps.apple.com/us/app/radius-disc-golf/id6760574186";
+const GOOGLE_PLAY = "https://play.google.com/store/apps/details?id=com.michaelhills.radiusandroid";
+
+export default function StoreBadges({ variant = "dark" }: { variant?: "dark" | "light" }) {
+  const cls =
+    variant === "dark"
+      ? "border-white/20 bg-white/10 text-[var(--cream)] hover:border-white/50 backdrop-blur"
+      : "border-black/10 bg-[#16221b] text-[var(--cream)] hover:bg-[#22332a]";
+  return (
+    <div className="flex flex-wrap gap-3">
+      <a href={APP_STORE} target="_blank" rel="noopener" className={`inline-flex items-center gap-2.5 rounded-xl border px-5 py-3 text-sm font-semibold transition-colors ${cls}`}>
+        <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5"><path d="M17.05 12.04c-.03-2.6 2.12-3.85 2.22-3.91-1.21-1.77-3.09-2.01-3.76-2.04-1.6-.16-3.12.94-3.93.94-.81 0-2.06-.92-3.39-.89-1.74.03-3.35 1.01-4.25 2.57-1.81 3.14-.46 7.79 1.3 10.34.86 1.25 1.89 2.65 3.23 2.6 1.3-.05 1.79-.84 3.36-.84 1.57 0 2.01.84 3.39.81 1.4-.02 2.29-1.27 3.15-2.53.99-1.45 1.4-2.85 1.42-2.92-.03-.01-2.72-1.04-2.75-4.13ZM14.6 4.59c.72-.87 1.2-2.08 1.07-3.29-1.03.04-2.28.69-3.02 1.56-.66.77-1.24 2-1.08 3.18 1.15.09 2.32-.58 3.03-1.45Z" /></svg>
+        <span><span className="block text-[10px] font-normal leading-none opacity-70">Download on the</span>App Store</span>
+      </a>
+      <a href={GOOGLE_PLAY} target="_blank" rel="noopener" className={`inline-flex items-center gap-2.5 rounded-xl border px-5 py-3 text-sm font-semibold transition-colors ${cls}`}>
+        <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5"><path d="M3.6 2.4 13 12 3.6 21.6c-.3-.2-.5-.6-.5-1V3.4c0-.4.2-.8.5-1ZM14.2 13.2l2.6 2.6-9.7 5.5 7.1-8.1ZM17.9 9.4l2.7 1.5c.6.4.6 1.3 0 1.7l-2.8 1.6-2.8-2.8 2.9-2ZM7.1 2.4l9.7 5.5-2.6 2.6L7.1 2.4Z" /></svg>
+        <span><span className="block text-[10px] font-normal leading-none opacity-70">Get it on</span>Google Play</span>
+      </a>
+    </div>
+  );
+}
