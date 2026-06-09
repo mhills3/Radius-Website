@@ -77,7 +77,8 @@ function isLongForm(id: string): Promise<boolean> {
     p = fetch(`https://www.youtube.com/shorts/${id}`, {
       method: "GET",
       redirect: "manual",
-      headers: { "User-Agent": "Mozilla/5.0" },
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Accept-Language": "en-US,en;q=0.9", Cookie: "CONSENT=YES+1" },
+      signal: AbortSignal.timeout(4000),
       next: { revalidate: 86400 },
     })
       .then((r) => r.status !== 200) // redirect → long-form
@@ -100,14 +101,19 @@ export async function getHighlights(limit = 12): Promise<Highlight[]> {
   const others = all.filter((v) => !isUDG(v)).sort((a, b) => b.published - a.published).slice(0, 28);
   const candidates = [...udgVids, ...others];
 
-  // Drop Shorts — feed is long-form only.
-  const flags = await Promise.all(candidates.map((v) => isLongForm(v.id)));
-  const longs = candidates.filter((_, i) => flags[i]);
-  if (longs.length === 0) return [];
+  // Best-effort Shorts filter. The /shorts/ probe is unreliable from some server IPs (it can
+  // report everything as a Short), so only trust it when it leaves a sane number of videos —
+  // otherwise fall back to the unfiltered list so the feed never goes empty.
+  let pool = candidates;
+  try {
+    const flags = await Promise.all(candidates.map((v) => isLongForm(v.id)));
+    const longs = candidates.filter((_, i) => flags[i]);
+    if (longs.length >= 4) pool = longs;
+  } catch { /* keep unfiltered */ }
 
-  // Featured = Urban Disc Golf's newest long-form (udgVids is already newest-first).
-  const udg = longs.find(isUDG);
-  const rest = longs.filter((v) => v.id !== udg?.id).sort((a, b) => b.published - a.published);
+  // Featured = Urban Disc Golf's newest (long-form when the filter applied).
+  const udg = pool.find(isUDG);
+  const rest = pool.filter((v) => v.id !== udg?.id).sort((a, b) => b.published - a.published);
 
   const list = udg ? [{ ...udg, featured: true }, ...rest] : rest;
   return list.slice(0, limit);
