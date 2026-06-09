@@ -71,7 +71,7 @@ export async function getFeed(max = 40, before?: number): Promise<FeedPost[]> {
         const p = d.data();
         if (p.isDeleted) return null;
         return {
-          id: (p.id ?? d.id) as string,
+          id: d.id as string, // the Firestore doc id — comments/likes/reactions all live under this path
           text: (p.text ?? "") as string,
           authorName: (p.authorName ?? "Radius player") as string,
           authorHandle: (p.authorHandle as string | undefined)?.replace(/^@+/, "") || undefined,
@@ -264,7 +264,7 @@ export async function getPostsTaggingDisc(slug: string, max = 20): Promise<FeedP
     const snap = await getDocs(query(collection(db, "posts"), where("taggedDiscSlug", "==", slug), limit(max)));
     return snap.docs
       .map((d) => { const p = d.data(); if (p.isDeleted) return null; return {
-        id: (p.id ?? d.id) as string, text: (p.text ?? "") as string,
+        id: d.id as string, text: (p.text ?? "") as string,
         authorName: (p.authorName ?? "Radius player") as string,
         authorHandle: (p.authorHandle as string | undefined)?.replace(/^@+/, "") || undefined,
         authorPhotoUrl: safeHttp(p.authorPhotoUrl), authorId: (p.createdById ?? p.authorId) as string | undefined,
@@ -286,7 +286,7 @@ export async function getPostsTaggingCourse(courseId: string, max = 20): Promise
     const snap = await getDocs(query(collection(db, "posts"), where("taggedCourseId", "==", courseId), limit(max)));
     return snap.docs
       .map((d) => { const p = d.data(); if (p.isDeleted) return null; return {
-        id: (p.id ?? d.id) as string, text: (p.text ?? "") as string,
+        id: d.id as string, text: (p.text ?? "") as string,
         authorName: (p.authorName ?? "Radius player") as string,
         authorHandle: (p.authorHandle as string | undefined)?.replace(/^@+/, "") || undefined,
         authorPhotoUrl: safeHttp(p.authorPhotoUrl), authorId: (p.createdById ?? p.authorId) as string | undefined,

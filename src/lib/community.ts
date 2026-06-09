@@ -67,7 +67,7 @@ export async function getThreads(max = 50): Promise<Thread[]> {
       .map((d) => {
         const t = d.data();
         return {
-          id: (t.id ?? d.id) as string,
+          id: d.id as string, // doc id — replies live under threads/{docId}/replies
           title: (t.title ?? "") as string,
           preview: (t.preview ?? t.body ?? "") as string,
           body: (t.body ?? t.preview ?? "") as string,
