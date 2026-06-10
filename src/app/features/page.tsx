@@ -59,11 +59,15 @@ const FEATURES: Feature[] = [
   },
 ];
 
+function PIcon({ children }: { children: React.ReactNode }) {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">{children}</svg>;
+}
+
 const PERSONAS = [
-  { icon: "🌱", who: "New to the game", line: "Learn what to throw and why, with simple guidance that grows as you do." },
-  { icon: "☀️", who: "Weekend casual", line: "Track rounds with friends, run fun game modes, and watch yourself get better." },
-  { icon: "🎯", who: "League competitor", line: "Dial in your bag, study courses before you play, and climb the rankings." },
-  { icon: "🏆", who: "Touring pro", line: "Deep stats and a Game IQ that scales all the way to MPO to sharpen every shot." },
+  { icon: <PIcon><path d="M12 21v-8" /><path d="M12 13c-3.3 0-6-2.4-6-5.5C9.3 7.5 12 9.9 12 13Z" /><path d="M12 11c0-2.8 2.4-5 5.5-5C17.5 8.8 15.1 11 12 11Z" /></PIcon>, who: "New to the game", line: "Learn what to throw and why, with simple guidance that grows as you do." },
+  { icon: <PIcon><circle cx="12" cy="12" r="4" /><path d="M12 2v2.4M12 19.6V22M22 12h-2.4M4.4 12H2M19.07 4.93l-1.7 1.7M6.63 17.37l-1.7 1.7M19.07 19.07l-1.7-1.7M6.63 6.63l-1.7-1.7" /></PIcon>, who: "Weekend casual", line: "Track rounds with friends, run fun game modes, and watch yourself get better." },
+  { icon: <PIcon><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1.5" /></PIcon>, who: "League competitor", line: "Dial in your bag, study courses before you play, and climb the rankings." },
+  { icon: <PIcon><path d="M8 21h8" /><path d="M12 17.5V21" /><path d="M7 4.5h10V9a5 5 0 0 1-10 0V4.5Z" /><path d="M7 6.5H5a2 2 0 0 0-2 2c0 1.8 1.6 3.3 4 3.5" /><path d="M17 6.5h2a2 2 0 0 1 2 2c0 1.8-1.6 3.3-4 3.5" /></PIcon>, who: "Touring pro", line: "Deep stats and a Game IQ that scales all the way to MPO to sharpen every shot." },
 ];
 
 const TIERS = [
@@ -249,7 +253,7 @@ export default function FeaturesPage() {
           <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {PERSONAS.map((p) => (
               <div key={p.who} className="rounded-3xl border border-black/8 bg-white p-7 shadow-sm transition-all hover:-translate-y-1 hover:shadow-[0_18px_40px_-18px_rgba(0,0,0,0.3)]">
-                <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[var(--gold)]/12 text-2xl">{p.icon}</div>
+                <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[var(--gold)]/12 text-[#9a7a3a]">{p.icon}</div>
                 <h3 className="mt-4 font-[family-name:var(--font-heading)] text-lg font-bold tracking-tight">{p.who}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-[#46554c]">{p.line}</p>
               </div>
