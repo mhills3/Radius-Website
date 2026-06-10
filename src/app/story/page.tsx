@@ -1,6 +1,5 @@
 import Link from "next/link";
 import Image from "next/image";
-import StoryConverge from "@/components/story/StoryConverge";
 
 export const metadata = {
   title: "Our Story",
@@ -33,30 +32,52 @@ const TEAM = [
 export default function StoryPage() {
   return (
     <div className="bg-[#faf8f3] text-[#16221b]">
-      {/* ===== HERO — illustration led ===== */}
+      {/* ===== HERO — personal + mission, real photo ===== */}
       <section className="relative isolate overflow-hidden bg-[var(--bg-deep)] text-[var(--cream)]">
-        <div className="pointer-events-none absolute inset-0" style={{ maskImage: "url(/topo.png)", WebkitMaskImage: "url(/topo.png)", maskSize: "cover", WebkitMaskSize: "cover", backgroundColor: "#fff", opacity: 0.05 }} />
-        <div className="relative z-10 mx-auto grid max-w-7xl items-center gap-10 px-6 pb-16 pt-32 md:pt-36 lg:grid-cols-[1fr_1.05fr] lg:gap-6 lg:pb-24">
+        <div className="pointer-events-none absolute inset-0" aria-hidden style={{ maskImage: "url(/topo.png)", WebkitMaskImage: "url(/topo.png)", maskSize: "cover", WebkitMaskSize: "cover", backgroundColor: "#fff", opacity: 0.05 }} />
+        <div className="pointer-events-none absolute -right-24 top-0 h-[560px] w-[560px] rounded-full bg-[radial-gradient(circle,rgba(246,193,101,0.13),transparent_64%)]" />
+        <div className="relative z-10 mx-auto grid max-w-7xl items-center gap-12 px-6 pb-20 pt-32 md:pt-36 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16 lg:pb-28">
           <div className="text-center lg:text-left">
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--gold)] backdrop-blur">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold)] backdrop-blur">
               <span className="h-1.5 w-1.5 rounded-full bg-[var(--gold)] shadow-[0_0_8px_var(--gold)]" /> Our story
             </div>
-            <h1 className="font-[family-name:var(--font-heading)] text-5xl font-extrabold leading-[0.98] tracking-[-0.03em] md:text-[5rem]">
+            <h1 className="font-[family-name:var(--font-heading)] text-5xl font-extrabold leading-[0.95] tracking-[-0.035em] md:text-[4.75rem]">
               Why Radius<br />exists.
             </h1>
-            <p className="mx-auto mt-6 max-w-md text-lg leading-relaxed text-[rgba(245,237,225,0.85)] lg:mx-0">
+            <p className="mx-auto mt-7 max-w-md text-lg leading-relaxed text-[rgba(245,237,225,0.82)] lg:mx-0">
               The sport is incredible — but it lives in pieces. Your community, your stats, coaching, learning: all in different rooms. We&apos;re pulling them into one.
             </p>
+            <div className="mt-9 flex items-center justify-center gap-3.5 lg:justify-start">
+              <span className="h-12 w-12 shrink-0 rounded-full bg-[var(--bg-mid)] bg-no-repeat ring-2 ring-[var(--gold)]/40" role="img" aria-label="Mikey Hills" style={{ backgroundImage: "url(/team/mikey.png)", backgroundSize: "125%", backgroundPosition: "center 26%" }} />
+              <div className="text-left">
+                <div className="font-[family-name:var(--font-heading)] text-sm font-bold text-[var(--cream)]">Mikey Hills</div>
+                <div className="text-xs text-[var(--sage-dim)]">Founder, Radius</div>
+              </div>
+            </div>
           </div>
-          <div className="mx-auto w-full max-w-[520px]"><StoryConverge /></div>
+
+          <div className="relative mx-auto w-full max-w-[480px]">
+            <div className="pointer-events-none absolute -inset-6 rounded-[2.4rem] bg-[radial-gradient(circle,rgba(246,193,101,0.16),transparent_70%)]" />
+            <div className="relative overflow-hidden rounded-[2rem] ring-1 ring-white/15 shadow-[0_40px_90px_-30px_rgba(0,0,0,0.8)]">
+              <div className="relative aspect-[4/5]">
+                <Image src="/course/greeting.jpg" alt="Two players sharing a moment on the course" fill priority sizes="(max-width:1024px) 90vw, 480px" quality={90} className="object-cover object-center" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[rgba(15,24,19,0.78)] via-transparent to-transparent" />
+                <div className="absolute inset-x-5 bottom-5">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">The heart of it</div>
+                  <div className="mt-1 font-[family-name:var(--font-heading)] text-lg font-bold leading-tight text-[var(--cream)]">Belonging, first.</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* ===== belief — CREAM for contrast ===== */}
+      {/* ===== THE BELIEF ===== */}
       <section className="bg-[#faf8f3]">
         <div className="mx-auto max-w-4xl px-6 py-20 text-center md:py-28">
-          <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-[#9a7a3a]">The belief</div>
-          <h2 className="font-[family-name:var(--font-heading)] text-4xl font-extrabold leading-[1.08] tracking-[-0.03em] md:text-[3.25rem]">
+          <div className="mx-auto mb-6 h-px w-10 bg-[var(--gold)]/60" />
+          <div className="mb-4 text-[11px] font-bold uppercase tracking-[0.2em] text-[#9a7a3a]">The belief</div>
+          <h2 className="font-[family-name:var(--font-heading)] text-4xl font-extrabold leading-[1.08] tracking-[-0.03em] md:text-[3.4rem]">
             Disc golf deserves{" "}
             <span className="bg-gradient-to-br from-[#e0a23a] to-[#b5832f] bg-clip-text text-transparent">integration.</span>
           </h2>
@@ -66,72 +87,73 @@ export default function StoryPage() {
         </div>
       </section>
 
-      {/* ===== article — editorial w/ sticky founder ===== */}
+      {/* ===== A LETTER FROM THE FOUNDER ===== */}
       <section className="border-y border-black/[0.06] bg-white">
-        <div className="mx-auto grid max-w-5xl gap-12 px-6 py-20 md:py-24 lg:grid-cols-[260px_1fr]">
-          <aside className="lg:sticky lg:top-24 lg:self-start">
-            <div className="flex items-center gap-3 lg:flex-col lg:items-start">
-              <div className="h-16 w-16 shrink-0 rounded-full bg-[var(--bg-mid)] bg-no-repeat ring-2 ring-[var(--gold)]/40" role="img" aria-label="Mikey Hills" style={{ backgroundImage: "url(/team/mikey.png)", backgroundSize: "125%", backgroundPosition: "center 26%" }} />
+        <div className="mx-auto grid max-w-5xl gap-x-14 gap-y-10 px-6 py-20 md:py-28 lg:grid-cols-[260px_1fr]">
+          <aside className="lg:sticky lg:top-28 lg:self-start">
+            <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#9a7a3a]">A letter from the founder</div>
+            <div className="mt-5 flex items-center gap-3.5 lg:flex-col lg:items-start lg:gap-4">
+              <div className="h-20 w-20 shrink-0 rounded-2xl bg-[var(--bg-mid)] bg-no-repeat ring-1 ring-black/10" role="img" aria-label="Mikey Hills" style={{ backgroundImage: "url(/team/mikey.png)", backgroundSize: "125%", backgroundPosition: "center 26%" }} />
               <div>
                 <div className="font-[family-name:var(--font-heading)] text-lg font-bold">Mikey Hills</div>
                 <div className="text-sm text-[#8a968d]">Founder, Radius</div>
               </div>
             </div>
-            <p className="mt-4 hidden text-sm leading-relaxed text-[#8a968d] lg:block">In his words — how a disc-picker became the home of disc golf.</p>
+            <p className="mt-5 hidden text-sm leading-relaxed text-[#8a968d] lg:block">How a disc-picker became the home of disc golf — in his words.</p>
           </aside>
 
-          <div>
-            <p className="mb-6 text-lg leading-relaxed text-[#2c3a32] first-letter:float-left first-letter:mr-3 first-letter:mt-1 first-letter:font-[family-name:var(--font-heading)] first-letter:text-6xl first-letter:font-extrabold first-letter:leading-[0.8] first-letter:text-[#9a7a3a]">{ARTICLE[0]}</p>
-            {ARTICLE.slice(1).map((p) => <p key={p} className="mb-6 text-lg leading-relaxed text-[#2c3a32]">{p}</p>)}
+          <div className="max-w-2xl">
+            <p className="mb-6 text-lg leading-[1.75] text-[#2c3a32] first-letter:float-left first-letter:mr-3 first-letter:mt-1.5 first-letter:font-[family-name:var(--font-heading)] first-letter:text-[4.5rem] first-letter:font-extrabold first-letter:leading-[0.72] first-letter:text-[#9a7a3a]">{ARTICLE[0]}</p>
+            {ARTICLE.slice(1).map((p) => <p key={p} className="mb-6 text-lg leading-[1.75] text-[#2c3a32]">{p}</p>)}
             <blockquote className="my-10 border-l-[3px] border-[var(--gold)] pl-6">
-              <p className="font-[family-name:var(--font-heading)] text-2xl font-bold leading-snug tracking-[-0.02em] text-[#16221b]">There was no system. No feedback loop. No real way to get better with intention.</p>
+              <p className="font-[family-name:var(--font-heading)] text-2xl font-bold leading-snug tracking-[-0.02em] text-[#16221b] md:text-[1.65rem]">There was no system. No feedback loop. No real way to get better with intention.</p>
             </blockquote>
-            {ARTICLE_CONT.map((p) => <p key={p} className="mb-6 text-lg leading-relaxed text-[#2c3a32]">{p}</p>)}
+            {ARTICLE_CONT.map((p) => <p key={p} className="mb-6 text-lg leading-[1.75] text-[#2c3a32]">{p}</p>)}
             <p className="mt-8 font-[family-name:var(--font-heading)] text-2xl font-extrabold tracking-[-0.02em] text-[#9a7a3a]">That&apos;s why Radius exists.</p>
           </div>
         </div>
       </section>
 
-      {/* ===== journey timeline — DARK (separated, contrast) ===== */}
+      {/* ===== THE JOURNEY — dark timeline ===== */}
       <section className="relative overflow-hidden bg-[var(--bg-deep)] text-[var(--cream)]">
-        <div className="pointer-events-none absolute inset-0" style={{ maskImage: "url(/topo.png)", WebkitMaskImage: "url(/topo.png)", maskSize: "cover", WebkitMaskSize: "cover", backgroundColor: "#fff", opacity: 0.04 }} />
+        <div className="pointer-events-none absolute inset-0" aria-hidden style={{ maskImage: "url(/topo.png)", WebkitMaskImage: "url(/topo.png)", maskSize: "cover", WebkitMaskSize: "cover", backgroundColor: "#fff", opacity: 0.04 }} />
         <div className="relative mx-auto max-w-6xl px-6 py-20 md:py-28">
           <div className="text-center">
-            <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--gold)]">The build</div>
+            <div className="mb-4 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">The build</div>
             <h2 className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-[-0.03em] md:text-[2.75rem]">From training wheels to a network</h2>
           </div>
-          <div className="relative mt-14 grid gap-6 md:grid-cols-4">
-            <div className="pointer-events-none absolute left-0 right-0 top-7 hidden h-px bg-gradient-to-r from-transparent via-[var(--gold)]/40 to-transparent md:block" />
+          <div className="relative mt-16 grid gap-8 md:grid-cols-4 md:gap-6">
+            <div className="pointer-events-none absolute left-0 right-0 top-7 hidden h-px bg-gradient-to-r from-transparent via-[var(--gold)]/35 to-transparent md:block" />
             {JOURNEY.map((s) => (
               <div key={s.n} className="relative text-center md:text-left">
-                <div className="mx-auto grid h-14 w-14 place-items-center rounded-full border border-[var(--gold)]/40 bg-[var(--bg-deep)] font-[family-name:var(--font-heading)] text-lg font-extrabold text-[var(--gold)] md:mx-0">{s.n}</div>
-                <h3 className="mt-4 font-[family-name:var(--font-heading)] text-lg font-bold">{s.t}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-[var(--text-body)]">{s.d}</p>
+                <div className="mx-auto grid h-14 w-14 place-items-center rounded-full border border-[var(--gold)]/40 bg-[var(--bg-deep)] font-[family-name:var(--font-heading)] text-lg font-extrabold text-[var(--gold)] shadow-[0_0_0_6px_var(--bg-deep)] md:mx-0">{s.n}</div>
+                <h3 className="mt-5 font-[family-name:var(--font-heading)] text-lg font-bold">{s.t}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-[var(--text-body)]">{s.d}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ===== team — CREAM ===== */}
+      {/* ===== THE TEAM ===== */}
       <section className="bg-[#faf8f3]">
-        <div className="mx-auto max-w-4xl px-6 py-20 text-center">
-          <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-[#9a7a3a]">The team</div>
-          <h2 className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-[-0.03em]">The people behind Radius</h2>
+        <div className="mx-auto max-w-4xl px-6 py-20 text-center md:py-24">
+          <div className="mb-4 text-[11px] font-bold uppercase tracking-[0.2em] text-[#9a7a3a]">The team</div>
+          <h2 className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-[-0.03em] md:text-[2.5rem]">The people behind Radius</h2>
           <p className="mx-auto mt-4 max-w-xl text-[#46554c]">Nick and Ben saw the same potential in what disc golf could become — and have been part of this from the beginning.</p>
           <div className="mt-12 grid gap-8 sm:grid-cols-3">
             {TEAM.map((m) => (
-              <div key={m.name} className="group flex flex-col items-center rounded-3xl border border-black/8 bg-white p-7 shadow-sm transition-all hover:-translate-y-1 hover:shadow-[0_18px_40px_-18px_rgba(0,0,0,0.3)]">
+              <div key={m.name} className="group flex flex-col items-center rounded-3xl border border-black/8 bg-white p-8 shadow-sm transition-all hover:-translate-y-1.5 hover:shadow-[0_22px_48px_-18px_rgba(0,0,0,0.3)]">
                 <div role="img" aria-label={m.name} className="h-28 w-28 rounded-full bg-[var(--bg-mid)] bg-no-repeat ring-2 ring-[var(--gold)]/40 transition-transform duration-300 group-hover:scale-105" style={{ backgroundImage: `url(${m.img})`, backgroundSize: m.size, backgroundPosition: m.pos }} />
-                <div className="mt-4 font-[family-name:var(--font-heading)] text-lg font-bold">{m.name}</div>
-                <div className="mt-1 rounded-full bg-[var(--gold)]/15 px-3 py-0.5 text-xs font-bold text-[#9a7a3a]">{m.role}</div>
+                <div className="mt-5 font-[family-name:var(--font-heading)] text-lg font-bold">{m.name}</div>
+                <div className="mt-1.5 rounded-full bg-[var(--gold)]/15 px-3 py-0.5 text-xs font-bold text-[#9a7a3a]">{m.role}</div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ===== faith — verse + the heart behind it (condensed) ===== */}
+      {/* ===== FAITH — verse + the heart behind it ===== */}
       <section className="relative overflow-hidden bg-[var(--bg-deep)] text-[var(--cream)]">
         <div className="pointer-events-none absolute inset-0" aria-hidden style={{ maskImage: "url(/topo.png)", WebkitMaskImage: "url(/topo.png)", maskSize: "cover", WebkitMaskSize: "cover", backgroundColor: "#fff", opacity: 0.04 }} />
         <div className="pointer-events-none absolute left-1/2 top-1/2 h-[420px] w-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(246,193,101,0.1),transparent_66%)]" />
@@ -142,7 +164,8 @@ export default function StoryPage() {
               Whom have I in heaven but You? And there is none upon earth that I desire besides You. My flesh and my heart fail; but God is the strength of my heart and my portion forever.
             </p>
           </blockquote>
-          <div className="mx-auto my-7 h-px w-16 bg-gradient-to-r from-transparent via-[var(--gold)]/40 to-transparent" />
+          <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.22em] text-[var(--gold)]">Psalm 73:25–26</p>
+          <div className="mx-auto my-9 h-px w-16 bg-gradient-to-r from-transparent via-[var(--gold)]/40 to-transparent" />
           <p className="mx-auto max-w-md font-[family-name:var(--font-heading)] text-base font-bold leading-[1.7] tracking-[-0.01em] md:text-lg">
             Even if Radius succeeds, <span className="text-[var(--gold)]">Christ is better.</span><br />
             Even if Radius fails, <span className="text-[var(--gold)]">Christ is enough.</span>
