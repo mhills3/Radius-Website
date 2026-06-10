@@ -21,7 +21,7 @@ async function countCollection(collectionId: string): Promise<number> {
             aggregations: [{ alias: "count", count: {} }],
           },
         }),
-        next: { revalidate: 86400 },
+        next: { revalidate: 3600 },
       }
     );
     if (!res.ok) return 0;
