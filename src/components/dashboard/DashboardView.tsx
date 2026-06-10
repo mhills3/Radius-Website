@@ -266,7 +266,7 @@ export default function DashboardView({ data, uid }: { data: Dashboard; uid: str
               <div className="space-y-3">
                 {topCourses.map((c) => (
                   <div key={c.name} className="flex items-center gap-3">
-                    <div className="w-24 shrink-0">
+                    <div className="w-40 shrink-0 sm:w-52">
                       <div className="truncate text-sm text-[var(--text-body)]" title={c.name}>{c.name}</div>
                       {c.best != null && <div className="text-[11px] font-semibold" style={{ color: c.best < 0 ? "#5fcf80" : c.best === 0 ? "var(--sage)" : "#f08c8c" }}>best {fmtScore(c.best)}</div>}
                     </div>
