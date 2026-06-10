@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import StoryConverge from "@/components/story/StoryConverge";
 
 export const metadata = {
@@ -130,40 +131,33 @@ export default function StoryPage() {
         </div>
       </section>
 
-      {/* ===== CTA — DARK ===== */}
+      {/* ===== faith — verse + the heart behind it (condensed) ===== */}
       <section className="relative overflow-hidden bg-[var(--bg-deep)] text-[var(--cream)]">
-        <svg className="pointer-events-none absolute left-1/2 top-1/2 h-[640px] w-[640px] -translate-x-1/2 -translate-y-1/2 opacity-50" viewBox="0 0 640 640" fill="none" aria-hidden="true">
-          {[90, 170, 250, 320].map((r) => <circle key={r} cx="320" cy="320" r={r} stroke="rgba(246,193,101,0.12)" strokeWidth="1" />)}
-        </svg>
-        <div className="relative mx-auto max-w-3xl px-6 py-24 text-center">
-          <h2 className="font-[family-name:var(--font-heading)] text-4xl font-extrabold tracking-[-0.03em] md:text-5xl">Come be part of it.</h2>
-          <p className="mx-auto mt-3 max-w-md text-[var(--text-body)]">Track your game, find your people, and help push the sport forward.</p>
-          <Link href="/login" className="mt-7 inline-block rounded-full bg-[var(--gold)] px-8 py-4 text-sm font-bold text-[#16221b] shadow-[0_10px_30px_rgba(246,193,101,0.3)] transition-all hover:-translate-y-0.5 hover:bg-[var(--gold-bright)]">Join Free</Link>
-        </div>
-      </section>
-
-      {/* ===== faith finale — the verse + the heart behind it ===== */}
-      <section className="relative overflow-hidden border-t border-white/[0.06] bg-gradient-to-b from-[var(--bg-deep)] to-[#0a120d] text-[var(--cream)]">
         <div className="pointer-events-none absolute inset-0" aria-hidden style={{ maskImage: "url(/topo.png)", WebkitMaskImage: "url(/topo.png)", maskSize: "cover", WebkitMaskSize: "cover", backgroundColor: "#fff", opacity: 0.04 }} />
-        <div className="pointer-events-none absolute left-1/2 top-0 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/3 rounded-full bg-[radial-gradient(circle,rgba(246,193,101,0.12),transparent_64%)]" />
-        <div className="relative mx-auto max-w-3xl px-6 py-24 text-center md:py-28">
-          <div className="mx-auto mb-9 h-px w-12 bg-[var(--gold)]/50" />
+        <div className="pointer-events-none absolute left-1/2 top-1/2 h-[420px] w-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(246,193,101,0.1),transparent_66%)]" />
+        <div className="relative mx-auto max-w-2xl px-6 py-16 text-center md:py-20">
+          <div className="mx-auto mb-6 h-px w-10 bg-[var(--gold)]/50" />
           <blockquote>
-            <p className="font-[family-name:var(--font-heading)] text-[1.5rem] font-semibold leading-[1.5] tracking-[-0.01em] text-[rgba(245,237,225,0.96)] md:text-[2rem] md:leading-[1.45]">
-              Whom have I in heaven but You?<br />
-              And there is none upon earth that I desire besides You.<br />
-              My flesh and my heart fail;<br />
-              But God is the strength of my heart and my portion forever.
+            <p className="font-[family-name:var(--font-heading)] text-base font-medium leading-[1.6] tracking-[-0.01em] text-[rgba(245,237,225,0.9)] md:text-xl md:leading-[1.55]">
+              Whom have I in heaven but You? And there is none upon earth that I desire besides You. My flesh and my heart fail; but God is the strength of my heart and my portion forever.
             </p>
           </blockquote>
-          <p className="mt-7 text-[11px] font-bold uppercase tracking-[0.22em] text-[var(--gold)]">Book of Psalms 73:25–26</p>
-
-          <div className="mx-auto my-12 h-px w-24 bg-gradient-to-r from-transparent via-[var(--gold)]/45 to-transparent" />
-
-          <p className="mx-auto max-w-xl font-[family-name:var(--font-heading)] text-xl font-bold leading-[1.7] tracking-[-0.01em] text-[var(--cream)] md:text-[1.6rem]">
+          <div className="mx-auto my-7 h-px w-16 bg-gradient-to-r from-transparent via-[var(--gold)]/40 to-transparent" />
+          <p className="mx-auto max-w-md font-[family-name:var(--font-heading)] text-base font-bold leading-[1.7] tracking-[-0.01em] md:text-lg">
             Even if Radius succeeds, <span className="text-[var(--gold)]">Christ is better.</span><br />
             Even if Radius fails, <span className="text-[var(--gold)]">Christ is enough.</span>
           </p>
+        </div>
+      </section>
+
+      {/* ===== CTA — photo finale ===== */}
+      <section className="relative isolate overflow-hidden bg-[var(--bg-deep)] text-[var(--cream)]">
+        <Image src="/course/bag-walk.jpg" alt="" fill sizes="100vw" quality={90} className="-z-10 object-cover object-[center_30%]" />
+        <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_bottom,rgba(15,24,19,0.62),rgba(15,24,19,0.55)_40%,rgba(15,24,19,0.82))]" />
+        <div className="relative mx-auto max-w-3xl px-6 py-28 text-center md:py-32">
+          <h2 className="font-[family-name:var(--font-heading)] text-4xl font-extrabold tracking-[-0.03em] drop-shadow md:text-5xl">Come be part of it.</h2>
+          <p className="mx-auto mt-3 max-w-md text-[rgba(245,237,225,0.9)]">Track your game, find your people, and help push the sport forward.</p>
+          <Link href="/login" className="mt-7 inline-block rounded-full bg-[var(--gold)] px-8 py-4 text-sm font-bold text-[#16221b] shadow-[0_10px_30px_rgba(246,193,101,0.4)] transition-all hover:-translate-y-0.5 hover:bg-[var(--gold-bright)]">Join Free</Link>
         </div>
       </section>
     </div>
