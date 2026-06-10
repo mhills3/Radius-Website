@@ -61,7 +61,7 @@ export default function LeaderboardPage() {
   const rows = useMemo(() => {
     if (scope === "country") return all.filter((r) => r.country === country);
     if (scope === "state") return all.filter((r) => r.state === usState);
-    return all;
+    return all.slice(0, 20); // World: top 20 only
   }, [all, scope, country, usState]);
 
   const podium = rows.slice(0, 3);

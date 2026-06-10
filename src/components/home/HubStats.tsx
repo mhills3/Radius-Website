@@ -1,21 +1,22 @@
 import Link from "next/link";
-import { getCourseCountServer, getPlayerCountServer } from "@/lib/stats";
+import { getCourseCountServer, getPlayerCountServer, getRegionCountServer } from "@/lib/stats";
 import StatValue from "./StatValue";
 
 // Server component: counts are fetched server-side (reliable long-polling transport) and baked
 // into the HTML, so the real numbers show on every device — including mobile Safari, where the
 // client-side Firestore aggregation transport was silently failing and falling back to "—"/"630+".
 export default async function HubStats() {
-  const [courses, players] = await Promise.all([
+  const [courses, players, regions] = await Promise.all([
     getCourseCountServer(),
     getPlayerCountServer(),
+    getRegionCountServer(),
   ]);
 
   const items = [
     { value: courses || null, fallback: "630+", suffix: "", label: "Courses mapped", href: "/courses" },
     { value: 1210, fallback: "1,210", suffix: "", label: "Discs in the database", href: "/discs" },
     { value: players || null, fallback: "—", suffix: "+", label: "Disc golfers", href: "/leaderboard" },
-    { value: 50, fallback: "50", suffix: "", label: "States & countries", href: "/courses" },
+    { value: regions || null, fallback: "50+", suffix: "", label: "States & countries", href: "/courses" },
   ];
 
   return (
