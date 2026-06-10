@@ -221,9 +221,19 @@ const COUNTRY_BOXES: [string, number, number, number, number][] = [
   ["Estonia", 21.7, 57.5, 28.2, 59.7], ["Germany", 5.8, 47.2, 15.1, 55.1], ["Netherlands", 3.3, 50.7, 7.2, 53.6],
   ["France", -5.2, 41.3, 9.6, 51.1], ["Czechia", 12, 48.5, 18.9, 51.1], ["Denmark", 8, 54.5, 15.2, 57.8],
   ["Australia", 113, -43.7, 154, -10.6], ["New Zealand", 166, -47.3, 178.6, -34], ["Japan", 129, 30.9, 146, 45.6],
+  // Appended after the broad boxes above: these only catch courses the others miss (no regressions),
+  // resolving region-name fallbacks (e.g. Carinthia → Austria, Nitra → Slovakia) to real countries.
+  ["Austria", 9.5, 46.4, 16.95, 49.1], ["Slovakia", 16.85, 47.7, 22.6, 49.6], ["Switzerland", 5.95, 45.8, 10.5, 47.85],
+  ["Slovenia", 13.3, 45.4, 16.6, 46.9], ["Hungary", 16.1, 45.7, 22.9, 48.6], ["Belgium", 2.5, 49.5, 6.4, 51.55],
+  ["Poland", 14.2, 49.0, 24.2, 54.9], ["Lithuania", 20.9, 53.9, 26.9, 56.45], ["Latvia", 20.9, 55.7, 28.3, 58.1],
+  ["Italy", 6.6, 36.6, 18.6, 47.1], ["Spain", -9.4, 36.0, 3.4, 43.9], ["Portugal", -9.6, 36.9, -6.2, 42.2],
 ];
+// Canadian provinces/territories — recognized by name so southern courses (Toronto, Ottawa…)
+// resolve to "Canada" instead of leaking the province string.
+const CA_PROVINCES = new Set(["ON", "QC", "BC", "AB", "MB", "SK", "NS", "NB", "NL", "PE", "NT", "YT", "NU", "ONTARIO", "QUEBEC", "QUÉBEC", "BRITISH COLUMBIA", "ALBERTA", "MANITOBA", "SASKATCHEWAN", "NOVA SCOTIA", "NEW BRUNSWICK", "NEWFOUNDLAND AND LABRADOR", "NEWFOUNDLAND", "PRINCE EDWARD ISLAND", "NORTHWEST TERRITORIES", "YUKON", "NUNAVUT"]);
 export function countryOf(c: { state?: string; latitude?: number; longitude?: number }): string {
   if (isUSState(c.state)) return "United States";
+  if (c.state && CA_PROVINCES.has(c.state.trim().toUpperCase())) return "Canada";
   const lat = c.latitude, lng = c.longitude;
   if (typeof lat === "number" && typeof lng === "number") {
     for (const [name, w, s, e, n] of COUNTRY_BOXES) if (lng >= w && lng <= e && lat >= s && lat <= n) return name;
