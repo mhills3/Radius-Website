@@ -42,11 +42,20 @@ function buildFlight(hole: CourseHole | undefined, throws?: FlightThrow[]) {
   return { type: "FeatureCollection" as const, features };
 }
 
+function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
 export default function CourseHoleMap({ holes, highlightHole, flight, onHole, className }: { holes: CourseHole[]; highlightHole?: number | null; flight?: FlightThrow[]; onHole?: (n: number | null) => void; className?: string }) {
   const elRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapRef = useRef<any>(null);
-  const teeMarkersRef = useRef<Map<number, HTMLDivElement>>(new Map());
   const onHoleRef = useRef(onHole);
   onHoleRef.current = onHole;
 
@@ -70,34 +79,76 @@ export default function CourseHoleMap({ holes, highlightHole, flight, onHole, cl
       mapRef.current = map;
       map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
 
-      map.on("load", () => {
+      // Branded basket pin (same as the courses map) loaded as a map image.
+      const loadPin = () => new Promise<void>((res) => {
+        if (map.hasImage("basket-pin")) return res();
+        const img = new Image();
+        img.onload = () => {
+          try {
+            const scale = 2, w = 32 * scale, h = 40 * scale;
+            const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+            const ctx = cv.getContext("2d");
+            if (ctx) { ctx.drawImage(img, 0, 0, w, h); if (!map.hasImage("basket-pin")) map.addImage("basket-pin", ctx.getImageData(0, 0, w, h), { pixelRatio: 2 }); }
+          } catch {}
+          res();
+        };
+        img.onerror = () => res();
+        img.src = "/basket-pin.svg";
+      });
+
+      // Pre-render each tee's numbered gold marker as a map image (GPU symbols → no zoom lag).
+      const loadTeeIcons = () => {
+        const scale = 2, w = 30 * scale, h = 30 * scale, pad = 3 * scale, r = 7 * scale;
+        for (const hole of playable) {
+          const id = `tee-${hole.holeNumber}`;
+          if (map.hasImage(id)) continue;
+          const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+          const ctx = cv.getContext("2d"); if (!ctx) continue;
+          ctx.clearRect(0, 0, w, h);
+          roundRectPath(ctx, pad, pad, w - 2 * pad, h - 2 * pad, r);
+          ctx.fillStyle = "#F6C165"; ctx.fill();
+          ctx.lineWidth = 2 * scale; ctx.strokeStyle = "#ffffff"; ctx.stroke();
+          ctx.fillStyle = "#16221b"; ctx.font = `bold ${13 * scale}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.fillText(String(hole.holeNumber), w / 2, h / 2 + scale * 0.5);
+          map.addImage(id, ctx.getImageData(0, 0, w, h), { pixelRatio: 2 });
+        }
+      };
+
+      map.on("load", async () => {
         if (cancelled) return;
         map.resize();
+        await loadPin();
+        loadTeeIcons();
+        if (cancelled) return;
+
+        // hole lines (tee → basket)
         map.addSource("holes", { type: "geojson", data: lineCollection(playable) });
         map.addLayer({ id: "hole-casing", type: "line", source: "holes", layout: { "line-cap": "round" }, paint: { "line-color": "#0f1813", "line-width": 5, "line-opacity": 0.6 } });
         map.addLayer({ id: "hole-line", type: "line", source: "holes", layout: { "line-cap": "round" }, paint: { "line-color": "#F6C165", "line-width": 2.5, "line-dasharray": [2, 1.4] } });
         map.addLayer({ id: "hole-hl", type: "line", source: "holes", layout: { "line-cap": "round" }, paint: { "line-color": "#ffffff", "line-width": 5 }, filter: ["==", ["get", "hole"], -1] });
+
         // flight overlay (real shots projected onto the hole)
         map.addSource("flight", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
         map.addLayer({ id: "flight-seg", type: "line", source: "flight", filter: ["==", ["geometry-type"], "LineString"], layout: { "line-cap": "round" }, paint: { "line-color": ["get", "color"], "line-width": 4 } });
         map.addLayer({ id: "flight-pt", type: "circle", source: "flight", filter: ["==", ["geometry-type"], "Point"], paint: { "circle-color": ["get", "color"], "circle-radius": 5, "circle-stroke-width": 2, "circle-stroke-color": "#fff" } });
-        map.on("click", "hole-line", (e) => onHoleRef.current?.((e.features?.[0]?.properties as { hole?: number } | undefined)?.hole ?? null));
-        map.on("mouseenter", "hole-line", () => (map.getCanvas().style.cursor = "pointer"));
-        map.on("mouseleave", "hole-line", () => (map.getCanvas().style.cursor = ""));
 
-        playable.forEach((h) => {
-          // tee number pin
-          const tee = document.createElement("div");
-          tee.style.cssText = "min-width:26px;height:26px;padding:0 6px;border-radius:7px;background:#F6C165;color:#16221b;font:700 13px Sora,sans-serif;display:grid;place-items:center;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.55);cursor:pointer;transition:transform .15s";
-          tee.textContent = String(h.holeNumber);
-          tee.addEventListener("click", () => onHoleRef.current?.(h.holeNumber));
-          teeMarkersRef.current.set(h.holeNumber, tee);
-          new mapboxgl.Marker({ element: tee }).setLngLat([h.teeLng!, h.teeLat!]).addTo(map);
-          // basket dot
-          const basket = document.createElement("div");
-          basket.style.cssText = "width:12px;height:12px;border-radius:50%;background:#16221b;border:2px solid #5fcf80;box-shadow:0 1px 4px rgba(0,0,0,0.5)";
-          new mapboxgl.Marker({ element: basket }).setLngLat([h.basketLng!, h.basketLat!]).addTo(map);
-        });
+        // baskets — branded basket pin
+        map.addSource("baskets", { type: "geojson", data: pointCollection(playable, "basket") });
+        map.addLayer({ id: "baskets", type: "symbol", source: "baskets", layout: { "icon-image": "basket-pin", "icon-size": 0.62, "icon-anchor": "bottom", "icon-allow-overlap": true } });
+
+        // tees — numbered gold markers (with a larger highlight overlay)
+        map.addSource("tees", { type: "geojson", data: pointCollection(playable, "tee") });
+        map.addLayer({ id: "tees", type: "symbol", source: "tees", layout: { "icon-image": ["get", "icon"], "icon-size": 0.9, "icon-allow-overlap": true } });
+        map.addLayer({ id: "tee-hl", type: "symbol", source: "tees", filter: ["==", ["get", "hole"], -1], layout: { "icon-image": ["get", "icon"], "icon-size": 1.3, "icon-allow-overlap": true } });
+
+        // interactions
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const click = (e: any) => onHoleRef.current?.((e.features?.[0]?.properties as { hole?: number } | undefined)?.hole ?? null);
+        for (const lyr of ["hole-line", "tees", "baskets"]) {
+          map.on("click", lyr, click);
+          map.on("mouseenter", lyr, () => (map.getCanvas().style.cursor = "pointer"));
+          map.on("mouseleave", lyr, () => (map.getCanvas().style.cursor = ""));
+        }
       });
     })();
     return () => { cancelled = true; if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } };
@@ -107,10 +158,11 @@ export default function CourseHoleMap({ holes, highlightHole, flight, onHole, cl
   // highlight
   useEffect(() => {
     const map = mapRef.current;
-    if (map && map.getLayer && map.getLayer("hole-hl")) {
-      try { map.setFilter("hole-hl", ["==", ["get", "hole"], highlightHole ?? -1]); } catch {}
-    }
-    teeMarkersRef.current.forEach((el, n) => { el.style.transform = n === highlightHole ? "scale(1.4)" : "scale(1)"; el.style.zIndex = n === highlightHole ? "10" : "1"; });
+    if (!map || !map.getLayer) return;
+    try {
+      if (map.getLayer("hole-hl")) map.setFilter("hole-hl", ["==", ["get", "hole"], highlightHole ?? -1]);
+      if (map.getLayer("tee-hl")) map.setFilter("tee-hl", ["==", ["get", "hole"], highlightHole ?? -1]);
+    } catch {}
   }, [highlightHole]);
 
   // flight overlay for the highlighted hole
@@ -144,6 +196,17 @@ function lineCollection(holes: CourseHole[]) {
       type: "Feature" as const,
       properties: { hole: h.holeNumber },
       geometry: { type: "LineString" as const, coordinates: [[h.teeLng!, h.teeLat!], [h.basketLng!, h.basketLat!]] },
+    })),
+  };
+}
+
+function pointCollection(holes: CourseHole[], kind: "tee" | "basket") {
+  return {
+    type: "FeatureCollection" as const,
+    features: holes.map((h) => ({
+      type: "Feature" as const,
+      properties: { hole: h.holeNumber, icon: `tee-${h.holeNumber}` },
+      geometry: { type: "Point" as const, coordinates: kind === "tee" ? [h.teeLng!, h.teeLat!] : [h.basketLng!, h.basketLat!] },
     })),
   };
 }
