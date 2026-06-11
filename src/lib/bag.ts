@@ -150,6 +150,18 @@ export async function getDiscCatalog(): Promise<DbDisc[]> {
   return (await loadDiscDb()).list;
 }
 
+// Decode a base64 string as UTF-8. `atob` alone yields a Latin-1 "binary string", which
+// corrupts multibyte UTF-8 (accents/diacritics → mojibake like "bílý" → "bÃ­lÃ½"); reinterpret
+// the decoded bytes through TextDecoder so disc names/nicknames keep their real characters.
+function b64ToUtf8(b64: string): string {
+  if (typeof atob !== "undefined") {
+    const bin = atob(b64);
+    const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+    return new TextDecoder("utf-8").decode(bytes);
+  }
+  return Buffer.from(b64, "base64").toString("utf8");
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function asArray(v: unknown): any[] {
   if (Array.isArray(v)) return v;
@@ -157,7 +169,7 @@ function asArray(v: unknown): any[] {
     const dec = (s: string) => {
       try { return JSON.parse(s); } catch { return null; }
     };
-    const a = dec(v) ?? dec(typeof atob !== "undefined" ? atob(v) : Buffer.from(v, "base64").toString("utf8"));
+    const a = dec(v) ?? dec(b64ToUtf8(v));
     if (Array.isArray(a)) return a;
   }
   return [];
