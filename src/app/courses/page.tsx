@@ -251,7 +251,7 @@ export default function CoursesPage() {
             )}
             <div className="absolute left-4 top-4 z-10 inline-flex rounded-full bg-white/95 p-1 shadow-[0_6px_20px_-4px_rgba(0,0,0,0.3)] ring-1 ring-black/5 backdrop-blur">
               {(["pins", "heat", "coverage"] as const).map((m) => (
-                <button key={m} onClick={() => setMapMode(m)} className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors ${mapMode === m ? "bg-[#16221b] text-white" : "text-[#46554c] hover:text-[#16221b]"}`}>{m === "pins" ? "Pins" : m === "heat" ? "Heatmap" : "Coverage"}</button>
+                <button key={m} onClick={() => setMapMode(m)} className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors ${mapMode === m ? "bg-[#16221b] text-white" : "text-[#46554c] hover:text-[#16221b]"}`}>{m === "pins" ? "📍 Pins" : m === "heat" ? "🔥 Heatmap" : "🗺️ Coverage"}</button>
               ))}
             </div>
           </div>
