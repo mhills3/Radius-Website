@@ -36,6 +36,20 @@ async function countCollection(collectionId: string): Promise<number> {
 export const getCourseCountServer = () => countCollection("courses");
 export const getPlayerCountServer = () => countCollection("users");
 
+import { readFileSync } from "fs";
+import { join } from "path";
+
+/** Disc count straight from the disc database file (public/discs.json) so the homepage
+ * stat always matches the disc database page instead of a hard-coded number. */
+export function getDiscCount(): number {
+  try {
+    const j = JSON.parse(readFileSync(join(process.cwd(), "public/discs.json"), "utf8"));
+    return Array.isArray(j.discs) ? j.discs.length : 0;
+  } catch {
+    return 0;
+  }
+}
+
 import { isUSState, countryOf } from "./courses";
 
 const fnum = (f?: { doubleValue?: number; integerValue?: string }): number | undefined => {

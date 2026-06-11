@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getCourseCountServer, getPlayerCountServer, getRegionCountServer } from "@/lib/stats";
+import { getCourseCountServer, getPlayerCountServer, getRegionCountServer, getDiscCount } from "@/lib/stats";
 import StatValue from "./StatValue";
 
 // Server component: counts are fetched server-side (reliable long-polling transport) and baked
@@ -14,7 +14,7 @@ export default async function HubStats() {
 
   const items = [
     { value: courses || null, fallback: "630+", suffix: "", label: "Courses mapped", href: "/courses" },
-    { value: 1210, fallback: "1,210", suffix: "", label: "Discs in the database", href: "/discs" },
+    { value: getDiscCount() || null, fallback: "1,200+", suffix: "", label: "Discs in the database", href: "/discs" },
     { value: players || null, fallback: "—", suffix: "+", label: "Disc golfers", href: "/leaderboard" },
     { value: regions || null, fallback: "50+", suffix: "", label: "States & countries", href: "/courses" },
   ];
