@@ -9,6 +9,7 @@ import { getDiscReviewCounts, type DiscBuzz } from "@/lib/discReviews";
 import DiscCard from "@/components/discs/DiscCard";
 import DiscCompare from "@/components/discs/DiscCompare";
 import DiscGraphic from "@/components/bag/DiscGraphic";
+import ReportMissingDisc from "@/components/discs/ReportMissingDisc";
 
 const CATS = [{ key: "ALL", label: "All" }, { key: "PUTTER", label: "Putters" }, { key: "MIDRANGE", label: "Midranges" }, { key: "FAIRWAY", label: "Fairway" }, { key: "DISTANCE", label: "Distance" }];
 const STABS = [{ key: "ALL", label: "Any" }, { key: "US", label: "Understable" }, { key: "ST", label: "Stable" }, { key: "OS", label: "Overstable" }];
@@ -154,6 +155,7 @@ export default function DiscsPage() {
                 {limit < filtered.length && <div className="mt-8 text-center"><button onClick={() => setLimit((l) => l + 48)} className="rounded-full border border-black/10 bg-white px-6 py-3 text-sm font-bold text-[#16221b] shadow-sm hover:border-[var(--gold)]">Show more ({(filtered.length - limit).toLocaleString()} more)</button></div>}
               </>
             )}
+            <div className="mt-8 flex justify-center border-t border-black/[0.06] pt-6"><ReportMissingDisc /></div>
           </div>
 
           <aside className="mt-10 lg:mt-0">
@@ -197,6 +199,7 @@ export default function DiscsPage() {
                   {[["beginners", "Best for beginners"], ["overstable", "Most overstable"], ["understable", "Most understable"], ["putters", "All putters"], ["midranges", "All midranges"], ["distance-drivers", "Distance drivers"]].map(([slug, label]) => (
                     <Link key={slug} href={`/discs/best/${slug}`} className="font-semibold text-[#46554c] hover:text-[#9a7a3a]">{label} →</Link>
                   ))}
+                  <div className="mt-1.5 border-t border-black/[0.06] pt-2"><ReportMissingDisc compact /></div>
                 </div>
               </div>
               <div className="rounded-2xl border border-black/8 bg-white p-4 shadow-sm">
