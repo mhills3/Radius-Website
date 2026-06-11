@@ -145,7 +145,7 @@ export default function CoursesPage() {
   return (
     <div className="min-h-screen bg-[#faf8f3] text-[#16221b]">
       {/* hero — photo backed (DSC_8535 basket) */}
-      <div className="relative isolate overflow-hidden bg-[var(--bg-deep)] text-[var(--cream)]">
+      <div className="relative isolate z-10 overflow-hidden bg-[var(--bg-deep)] text-[var(--cream)] shadow-[0_12px_30px_-14px_rgba(15,24,19,0.6)]">
         <Image src="/course/courses-hero.jpg" alt="" fill sizes="100vw" quality={88} className="-z-10 object-cover object-center" />
         <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_bottom,rgba(15,24,19,0.8),rgba(15,24,19,0.72))]" />
         <div className="relative mx-auto max-w-7xl px-6 pb-7 pt-16">
@@ -193,23 +193,15 @@ export default function CoursesPage() {
 
       {view === "map" ? (
         /* ===== Split discovery (AllTrails/Zillow style) ===== */
-        <>
-          {/* context toolbar — meshes the hero into the map split */}
-          <div className="border-b border-white/[0.06] bg-[var(--bg-deep)] text-[var(--cream)]">
-            <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-3 px-5 py-2.5">
-              <div className="flex items-baseline gap-2">
-                <span className="font-[family-name:var(--font-heading)] text-base font-extrabold">{filtered.length.toLocaleString()}</span>
-                <span className="text-sm text-[var(--sage)]">{filtered.length === 1 ? "course" : "courses"}{stateFilter ? ` in ${stateFilter}` : userLoc ? " near you" : " on the map"}</span>
-              </div>
-              <div className="inline-flex rounded-full border border-white/10 bg-white/[0.06] p-1">
-                {(["pins", "heat", "coverage"] as const).map((m) => (
-                  <button key={m} onClick={() => setMapMode(m)} className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors ${mapMode === m ? "bg-[var(--gold)] text-[#16221b]" : "text-[var(--sage)] hover:text-[var(--cream)]"}`}>{m === "pins" ? "📍 Pins" : m === "heat" ? "🔥 Heatmap" : "🗺️ Coverage"}</button>
-                ))}
+        <div className="mx-auto grid max-w-[1600px] grid-cols-1 lg:h-[calc(100vh-205px)] lg:grid-cols-[400px_1fr]">
+          <div className="order-2 flex min-h-0 flex-col border-r border-black/[0.06] bg-[#faf8f3] lg:order-1">
+            <div className="flex items-center justify-between gap-2 border-b border-black/[0.06] px-4 py-3">
+              <div className="flex items-baseline gap-1.5">
+                <span className="font-[family-name:var(--font-heading)] text-base font-extrabold text-[#16221b]">{filtered.length.toLocaleString()}</span>
+                <span className="text-sm text-[#8a968d]">{filtered.length === 1 ? "course" : "courses"}{stateFilter ? ` in ${stateFilter}` : userLoc ? " near you" : ""}</span>
               </div>
             </div>
-          </div>
-          <div className="mx-auto grid max-w-[1600px] grid-cols-1 lg:h-[calc(100vh-251px)] lg:grid-cols-[400px_1fr]">
-          <div className="order-2 overflow-y-auto border-r border-black/[0.06] bg-[#faf8f3] lg:order-1">
+            <div className="min-h-0 flex-1 overflow-y-auto">
             {loading ? (
               <div className="space-y-2 p-3">{[0, 1, 2, 3, 4].map((i) => <div key={i} className="h-20 animate-pulse rounded-xl bg-black/5" />)}</div>
             ) : (
@@ -249,6 +241,7 @@ export default function CoursesPage() {
                 {filtered.length === 0 && <p className="p-8 text-center text-sm text-[#6b7a70]">No courses match.</p>}
               </div>
             )}
+            </div>
           </div>
           <div className="relative order-1 h-[60vh] lg:order-2 lg:h-full">
             {mapMode === "coverage" ? (
@@ -256,9 +249,13 @@ export default function CoursesPage() {
             ) : (
               <CourseMap courses={filtered} filterActive={anyFilter} highlightId={highlightId} flyTo={flyTo} userLoc={userLoc} onSelect={setHighlightId} onLocate={setUserLoc} mode={mapMode} className="h-full w-full" />
             )}
+            <div className="absolute left-4 top-4 z-10 inline-flex rounded-full bg-white/95 p-1 shadow-[0_6px_20px_-4px_rgba(0,0,0,0.3)] ring-1 ring-black/5 backdrop-blur">
+              {(["pins", "heat", "coverage"] as const).map((m) => (
+                <button key={m} onClick={() => setMapMode(m)} className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors ${mapMode === m ? "bg-[#16221b] text-white" : "text-[#46554c] hover:text-[#16221b]"}`}>{m === "pins" ? "Pins" : m === "heat" ? "Heatmap" : "Coverage"}</button>
+              ))}
+            </div>
           </div>
         </div>
-        </>
       ) : (
         <div className="mx-auto max-w-7xl px-6 py-8">
           <div className="lg:grid lg:grid-cols-[1fr_290px] lg:gap-8 lg:items-start">
