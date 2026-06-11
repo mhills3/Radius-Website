@@ -146,9 +146,15 @@ export default function CoursesPage() {
     <div className="min-h-screen bg-[#faf8f3] text-[#16221b]">
       {/* hero — photo backed (DSC_8535 basket) */}
       <div className="relative isolate overflow-hidden border-b border-white/[0.06] bg-[var(--bg-deep)] text-[var(--cream)]">
-        <Image src="/course/courses-hero.jpg" alt="" fill sizes="100vw" quality={88} className="-z-10 object-cover object-center" />
-        <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_bottom,rgba(15,24,19,0.8),rgba(15,24,19,0.72))]" />
-        <div className="relative mx-auto max-w-7xl px-6 pb-7 pt-16">
+        {view === "map" ? (
+          <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden style={{ maskImage: "url(/topo.png)", WebkitMaskImage: "url(/topo.png)", maskSize: "cover", WebkitMaskSize: "cover", backgroundColor: "#fff", opacity: 0.04 }} />
+        ) : (
+          <>
+            <Image src="/course/courses-hero.jpg" alt="" fill sizes="100vw" quality={88} className="-z-10 object-cover object-center" />
+            <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_bottom,rgba(15,24,19,0.8),rgba(15,24,19,0.72))]" />
+          </>
+        )}
+        <div className={`relative mx-auto max-w-7xl px-6 ${view === "map" ? "pb-5 pt-7" : "pb-7 pt-16"}`}>
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">Find your next round</div>
@@ -193,7 +199,7 @@ export default function CoursesPage() {
 
       {view === "map" ? (
         /* ===== Split discovery (AllTrails/Zillow style) ===== */
-        <div className="mx-auto grid max-w-[1600px] grid-cols-1 lg:h-[calc(100vh-205px)] lg:grid-cols-[400px_1fr]">
+        <div className="mx-auto grid max-w-[1600px] grid-cols-1 lg:h-[calc(100vh-162px)] lg:grid-cols-[400px_1fr]">
           <div className="order-2 overflow-y-auto border-r border-black/[0.06] bg-[#faf8f3] lg:order-1">
             {loading ? (
               <div className="space-y-2 p-3">{[0, 1, 2, 3, 4].map((i) => <div key={i} className="h-20 animate-pulse rounded-xl bg-black/5" />)}</div>
