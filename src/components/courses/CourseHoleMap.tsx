@@ -134,12 +134,12 @@ export default function CourseHoleMap({ holes, highlightHole, flight, onHole, cl
 
         // baskets — branded basket pin
         map.addSource("baskets", { type: "geojson", data: pointCollection(playable, "basket") });
-        map.addLayer({ id: "baskets", type: "symbol", source: "baskets", layout: { "icon-image": "basket-pin", "icon-size": 0.62, "icon-anchor": "bottom", "icon-allow-overlap": true } });
+        map.addLayer({ id: "baskets", type: "symbol", source: "baskets", layout: { "icon-image": "basket-pin", "icon-size": 0.87, "icon-anchor": "bottom", "icon-allow-overlap": true } });
 
         // tees — numbered gold markers (with a larger highlight overlay)
         map.addSource("tees", { type: "geojson", data: pointCollection(playable, "tee") });
-        map.addLayer({ id: "tees", type: "symbol", source: "tees", layout: { "icon-image": ["get", "icon"], "icon-size": 0.9, "icon-allow-overlap": true } });
-        map.addLayer({ id: "tee-hl", type: "symbol", source: "tees", filter: ["==", ["get", "hole"], -1], layout: { "icon-image": ["get", "icon"], "icon-size": 1.3, "icon-allow-overlap": true } });
+        map.addLayer({ id: "tees", type: "symbol", source: "tees", layout: { "icon-image": ["get", "icon"], "icon-size": 1.26, "icon-allow-overlap": true } });
+        map.addLayer({ id: "tee-hl", type: "symbol", source: "tees", filter: ["==", ["get", "hole"], -1], layout: { "icon-image": ["get", "icon"], "icon-size": 1.82, "icon-allow-overlap": true } });
 
         // interactions
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
