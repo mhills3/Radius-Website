@@ -39,20 +39,12 @@ export default function ReportMissingDisc({ compact }: { compact?: boolean }) {
   }
 
   const trigger = compact ? (
-    <button onClick={() => setOpen(true)} className="font-semibold text-[#46554c] hover:text-[#9a7a3a]">Report a missing disc →</button>
+    <button onClick={() => setOpen(true)} className="font-semibold text-[#46554c] hover:text-[#9a7a3a]">🥏 Report a missing disc →</button>
   ) : (
-    <button onClick={() => setOpen(true)} className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#8a968d] transition-colors hover:text-[#9a7a3a]">
-      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+    <button onClick={() => setOpen(true)} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--gold)]/40 bg-[var(--gold)]/10 px-4 py-2 text-sm font-bold text-[#9a7a3a] transition-colors hover:border-[var(--gold)] hover:bg-[var(--gold)]/20">
+      <span className="text-base leading-none">🥏</span>
       Missing a disc? Add it
     </button>
-  );
-
-  const Field = ({ label, k, placeholder, half }: { label: string; k: keyof typeof form; placeholder?: string; half?: boolean }) => (
-    <label className={half ? "block" : "col-span-2 block"}>
-      <span className="mb-1 block text-xs font-semibold text-[#46554c]">{label}</span>
-      <input value={form[k]} onChange={set(k)} placeholder={placeholder} inputMode={half ? "decimal" : undefined}
-        className="w-full rounded-xl border border-black/10 bg-[#faf8f3] px-3 py-2 text-sm text-[#16221b] outline-none placeholder-[#b3bbb2] focus:border-[var(--gold)]" />
-    </label>
   );
 
   return (
@@ -89,8 +81,8 @@ export default function ReportMissingDisc({ compact }: { compact?: boolean }) {
                 {/* honeypot — hidden from users, catches bots */}
                 <input value={form.website} onChange={set("website")} name="website" tabIndex={-1} autoComplete="off" aria-hidden className="absolute left-[-9999px] h-0 w-0 opacity-0" />
                 <div className="grid grid-cols-2 gap-3">
-                  <Field label="Disc name *" k="name" placeholder="e.g. Zone OS" />
-                  <Field label="Manufacturer" k="manufacturer" placeholder="e.g. Discraft" />
+                  <Field label="Disc name *" value={form.name} onChange={set("name")} placeholder="e.g. Zone OS" />
+                  <Field label="Manufacturer" value={form.manufacturer} onChange={set("manufacturer")} placeholder="e.g. Discraft" />
                   <label className="col-span-2 block">
                     <span className="mb-1 block text-xs font-semibold text-[#46554c]">Type</span>
                     <select value={form.type} onChange={set("type")} className="w-full rounded-xl border border-black/10 bg-[#faf8f3] px-3 py-2 text-sm text-[#16221b] outline-none focus:border-[var(--gold)]">
@@ -98,10 +90,10 @@ export default function ReportMissingDisc({ compact }: { compact?: boolean }) {
                       {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </label>
-                  <Field label="Speed" k="speed" placeholder="1–14" half />
-                  <Field label="Glide" k="glide" placeholder="1–7" half />
-                  <Field label="Turn" k="turn" placeholder="-5–1" half />
-                  <Field label="Fade" k="fade" placeholder="0–5" half />
+                  <Field label="Speed" value={form.speed} onChange={set("speed")} placeholder="1–14" half />
+                  <Field label="Glide" value={form.glide} onChange={set("glide")} placeholder="1–7" half />
+                  <Field label="Turn" value={form.turn} onChange={set("turn")} placeholder="-5–1" half />
+                  <Field label="Fade" value={form.fade} onChange={set("fade")} placeholder="0–5" half />
                 </div>
                 {error && <p className="mt-3 text-sm font-medium text-[#d9473f]">{error}</p>}
                 <button type="submit" disabled={status === "sending"} className="mt-5 w-full rounded-full bg-[var(--gold)] px-5 py-3 text-sm font-bold text-[#16221b] transition-colors hover:bg-[var(--gold-bright)] disabled:opacity-60">
@@ -114,5 +106,17 @@ export default function ReportMissingDisc({ compact }: { compact?: boolean }) {
         </div>
       )}
     </>
+  );
+}
+
+// Module-level (stable identity) so inputs aren't remounted on every keystroke — defining this
+// inside the component would give it a new identity each render, dropping focus after one letter.
+function Field({ label, value, onChange, placeholder, half }: { label: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; placeholder?: string; half?: boolean }) {
+  return (
+    <label className={half ? "block" : "col-span-2 block"}>
+      <span className="mb-1 block text-xs font-semibold text-[#46554c]">{label}</span>
+      <input value={value} onChange={onChange} placeholder={placeholder} inputMode={half ? "decimal" : undefined}
+        className="w-full rounded-xl border border-black/10 bg-[#faf8f3] px-3 py-2 text-sm text-[#16221b] outline-none placeholder-[#b3bbb2] focus:border-[var(--gold)]" />
+    </label>
   );
 }
