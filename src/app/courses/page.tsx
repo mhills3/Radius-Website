@@ -3,12 +3,13 @@
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { getAllCourses, getTopBuilders, slugify, isUSState, countryOf, type Course, type Builder } from "@/lib/courses";
+import { getAllCourses, getTopBuilders, slugify, isUSState, countryOf, STATE_NAMES, type Course, type Builder } from "@/lib/courses";
 import { getRanksFor, type RankInfo } from "@/lib/community";
 import { getPlayedCourses, type PlayedStat } from "@/lib/rounds";
 import { useAuth } from "@/components/AuthProvider";
 import CourseCard from "@/components/courses/CourseCard";
 import CourseMap from "@/components/CourseMap";
+import CoverageMap from "@/components/courses/CoverageMap";
 
 function miles(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
   const R = 3958.8;
@@ -34,7 +35,7 @@ export default function CoursesPage() {
   const [locating, setLocating] = useState(false);
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [flyTo, setFlyTo] = useState<{ lng: number; lat: number; zoom?: number } | null>(null);
-  const [mapMode, setMapMode] = useState<"pins" | "heat">("pins");
+  const [mapMode, setMapMode] = useState<"pins" | "heat" | "coverage">("pins");
   const [builders, setBuilders] = useState<Builder[]>([]);
   const [builderRanks, setBuilderRanks] = useState<Map<string, RankInfo>>(new Map());
 
@@ -73,6 +74,29 @@ export default function CoursesPage() {
   // cap at a realistic ceiling — a few courses carry corrupt distanceFt values.
   const longest = useMemo(() => courses.reduce<Course | null>((a, c) => (c.distanceFt > (a?.distanceFt || 0) && c.distanceFt < 60000 ? c : a), null), [courses]);
   const maxStateCount = topStates[0]?.[1] || 1;
+  // Coverage choropleth counts, keyed by the geo dataset's UPPERCASE names.
+  const stateCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    courses.forEach((c) => {
+      if (!isUSState(c.state)) return;
+      const up = c.state!.trim().toUpperCase();
+      let name = (STATE_NAMES[up] || c.state!.trim()).toUpperCase();
+      if (name === "WASHINGTON DC") name = "DISTRICT OF COLUMBIA";
+      m.set(name, (m.get(name) || 0) + 1);
+    });
+    return m;
+  }, [courses]);
+  const countryCounts = useMemo(() => {
+    const ALIAS: Record<string, string> = { "UNITED STATES": "UNITED STATES OF AMERICA", US: "UNITED STATES OF AMERICA", USA: "UNITED STATES OF AMERICA" };
+    const m = new Map<string, number>();
+    courses.forEach((c) => {
+      const co = countryOf(c);
+      if (!co || co === "International") return;
+      const key = ALIAS[co.toUpperCase()] || co.toUpperCase();
+      m.set(key, (m.get(key) || 0) + 1);
+    });
+    return m;
+  }, [courses]);
 
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
@@ -212,10 +236,14 @@ export default function CoursesPage() {
             )}
           </div>
           <div className="relative order-1 h-[60vh] lg:order-2 lg:h-full">
-            <CourseMap courses={filtered} filterActive={anyFilter} highlightId={highlightId} flyTo={flyTo} userLoc={userLoc} onSelect={setHighlightId} onLocate={setUserLoc} mode={mapMode} className="h-full w-full" />
+            {mapMode === "coverage" ? (
+              <CoverageMap stateCounts={stateCounts} countryCounts={countryCounts} />
+            ) : (
+              <CourseMap courses={filtered} filterActive={anyFilter} highlightId={highlightId} flyTo={flyTo} userLoc={userLoc} onSelect={setHighlightId} onLocate={setUserLoc} mode={mapMode} className="h-full w-full" />
+            )}
             <div className="absolute left-3 top-3 z-10 inline-flex rounded-full border border-black/10 bg-white/95 p-1 shadow-lg backdrop-blur">
-              {(["pins", "heat"] as const).map((m) => (
-                <button key={m} onClick={() => setMapMode(m)} className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors ${mapMode === m ? "bg-[#16221b] text-white" : "text-[#46554c] hover:text-[#16221b]"}`}>{m === "pins" ? "📍 Pins" : "🔥 Heatmap"}</button>
+              {(["pins", "heat", "coverage"] as const).map((m) => (
+                <button key={m} onClick={() => setMapMode(m)} className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors ${mapMode === m ? "bg-[#16221b] text-white" : "text-[#46554c] hover:text-[#16221b]"}`}>{m === "pins" ? "📍 Pins" : m === "heat" ? "🔥 Heatmap" : "🗺️ Coverage"}</button>
               ))}
             </div>
           </div>

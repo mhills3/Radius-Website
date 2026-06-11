@@ -9,20 +9,24 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "d3-geo": "^3.1.1",
     "firebase": "^12.12.1",
     "mapbox-gl": "^3.24.0",
     "next": "16.2.4",
     "qrcode": "^1.5.4",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "topojson-client": "^3.1.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@tailwindcss/typography": "^0.5.19",
+    "@types/d3-geo": "^3.1.0",
     "@types/mapbox-gl": "^3.4.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/topojson-client": "^3.1.5",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "tailwindcss": "^4",
