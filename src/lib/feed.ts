@@ -309,7 +309,7 @@ export interface TrendingDisc {
 const SKIP_TREND = new Set(["score", "tap in", "tap-in", ""]);
 export async function getTrendingDiscs(max = 8): Promise<TrendingDisc[]> {
   try {
-    const snap = await getDocs(query(collection(db, "discTrends"), limit(400)));
+    const snap = await getDocs(query(collection(db, "discTrends"), limit(4000))); // all-time: aggregate every throw-log doc
     const agg = new Map<string, number>();
     snap.forEach((d) => {
       const tc = (d.data().throwCounts as Record<string, number>) ?? {};

@@ -37,10 +37,11 @@ export default function DiscsPage() {
   const [cat, setCat] = useState("ALL");
   const [stab, setStab] = useState("ALL");
   const [limit, setLimit] = useState(48);
+  const [thrownCat, setThrownCat] = useState<"all" | "PUTTER" | "MIDRANGE" | "DRIVER">("all");
 
   useEffect(() => {
     getDiscCatalog().then((rows) => setDiscs(buildDiscs(rows))).catch(() => setDiscs([])).finally(() => setLoading(false));
-    getTrendingDiscs(12).then(setTrending).catch(() => {});
+    getTrendingDiscs(60).then(setTrending).catch(() => {});
     getDiscReviewCounts().then(setBuzz).catch(() => {});
   }, []);
 
@@ -68,7 +69,17 @@ export default function DiscsPage() {
   const avgSpeed = useMemo(() => (discs.length ? (discs.reduce((s, d) => s + d.speed, 0) / discs.length).toFixed(1) : "—"), [discs]);
   const catCounts = useMemo(() => { const m: Record<string, number> = {}; discs.forEach((d) => { const c = normCat(d.category); m[c] = (m[c] ?? 0) + 1; }); return m; }, [discs]);
   const discByName = useMemo(() => new Map(discs.map((d) => [d.name.toLowerCase(), d] as const)), [discs]);
-  const maxThrows = trending[0]?.throws || 1;
+  const thrownList = useMemo(() => {
+    const rows = trending.filter((t) => {
+      if (thrownCat === "all") return true;
+      const d = discByName.get(t.name.toLowerCase());
+      if (!d) return false;
+      const c = normCat(d.category);
+      return thrownCat === "DRIVER" ? c === "FAIRWAY" || c === "DISTANCE" : c === thrownCat;
+    });
+    return rows.slice(0, 8);
+  }, [trending, thrownCat, discByName]);
+  const maxThrown = thrownList[0]?.throws || 1;
 
   return (
     <div className="min-h-screen bg-[#faf8f3] text-[#16221b]">
@@ -150,25 +161,34 @@ export default function DiscsPage() {
               {trending.length > 0 && (
                 <div className="rounded-2xl border border-black/8 bg-white p-4 shadow-sm">
                   <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-[#9a7a3a]">Most thrown on Radius</div>
-                  <div className="mb-3 text-[11px] text-[#8a968d]">By throws logged across the community</div>
-                  <div className="space-y-2.5">
-                    {trending.slice(0, 8).map((t, i) => {
-                      const d = discByName.get(t.name.toLowerCase());
-                      const inner = (
-                        <>
-                          <span className="w-3 shrink-0 text-[11px] font-bold text-[#9a7a3a]">{i + 1}</span>
-                          <span className="w-[66px] shrink-0 truncate text-left font-semibold text-[#16221b] group-hover:text-[#9a7a3a]">{t.name}</span>
-                          <div className="h-2 flex-1 overflow-hidden rounded-full bg-black/[0.06]"><div className="h-full rounded-full bg-gradient-to-r from-[#d4a04a] to-[#f8cf80]" style={{ width: `${Math.max(8, (t.throws / maxThrows) * 100)}%` }} /></div>
-                          <span className="w-9 shrink-0 text-right text-[11px] font-semibold text-[#6b7a70]">{t.throws.toLocaleString()}</span>
-                        </>
-                      );
-                      return d ? (
-                        <Link key={t.name} href={`/discs/${discSlug(d)}`} className="group flex items-center gap-2 text-sm">{inner}</Link>
-                      ) : (
-                        <div key={t.name} className="flex items-center gap-2 text-sm">{inner}</div>
-                      );
-                    })}
+                  <div className="mb-3 text-[11px] text-[#8a968d]">All-time throws logged by the community</div>
+                  <div className="mb-3 inline-flex rounded-full border border-black/10 bg-[#faf8f3] p-0.5 text-[11px] font-semibold">
+                    {([["all", "All"], ["PUTTER", "Putters"], ["MIDRANGE", "Mids"], ["DRIVER", "Drivers"]] as const).map(([k, l]) => (
+                      <button key={k} onClick={() => setThrownCat(k)} className={`rounded-full px-2.5 py-1 transition-colors ${thrownCat === k ? "bg-[#16221b] text-white" : "text-[#46554c] hover:text-[#16221b]"}`}>{l}</button>
+                    ))}
                   </div>
+                  {thrownList.length === 0 ? (
+                    <p className="py-2 text-xs text-[#8a968d]">No throws logged for this type yet.</p>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {thrownList.map((t, i) => {
+                        const d = discByName.get(t.name.toLowerCase());
+                        const inner = (
+                          <>
+                            <span className="w-3 shrink-0 text-[11px] font-bold text-[#9a7a3a]">{i + 1}</span>
+                            <span className="w-[66px] shrink-0 truncate text-left font-semibold text-[#16221b] group-hover:text-[#9a7a3a]">{t.name}</span>
+                            <div className="h-2 flex-1 overflow-hidden rounded-full bg-black/[0.06]"><div className="h-full rounded-full bg-gradient-to-r from-[#d4a04a] to-[#f8cf80]" style={{ width: `${Math.max(8, (t.throws / maxThrown) * 100)}%` }} /></div>
+                            <span className="w-9 shrink-0 text-right text-[11px] font-semibold text-[#6b7a70]">{t.throws.toLocaleString()}</span>
+                          </>
+                        );
+                        return d ? (
+                          <Link key={t.name} href={`/discs/${discSlug(d)}`} className="group flex items-center gap-2 text-sm">{inner}</Link>
+                        ) : (
+                          <div key={t.name} className="flex items-center gap-2 text-sm">{inner}</div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
               <div className="rounded-2xl border border-black/8 bg-white p-4 shadow-sm">
