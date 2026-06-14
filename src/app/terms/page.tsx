@@ -84,12 +84,12 @@ const HTML = `
 <p>We may update these Terms from time to time. When we make changes, we will update the "Last updated" date at the top of this page. Your continued use of the Services after changes are posted constitutes your acceptance of the revised Terms.</p>
 
 <h2>Governing Law</h2>
-<p>These Terms shall be governed by and construed in accordance with the laws of the United States, without regard to conflict of law principles.</p>
+<p>These Terms shall be governed by and construed in accordance with the laws of the Commonwealth of Massachusetts, United States, without regard to its conflict-of-law principles. You agree that any dispute arising out of or relating to these Terms or the Services shall be brought exclusively in the state or federal courts located in the Commonwealth of Massachusetts, and you consent to the personal jurisdiction of those courts, except where applicable law gives you the right to bring proceedings in your country of residence.</p>
 
 <h2>Contact Us</h2>
 <p>If you have any questions about these Terms, please contact us at:</p>
 <p><strong>Radius Disc Golf</strong><br>
-Email: <a href="mailto:mikey@radiusdiscgolf.com">mikey@radiusdiscgolf.com</a></p>
+Email: <a href="mailto:info@radiusdiscgolf.com">info@radiusdiscgolf.com</a></p>
 `;
 
 export default function TermsPage() {
