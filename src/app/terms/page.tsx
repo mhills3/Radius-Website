@@ -2,12 +2,12 @@ import LegalLayout from "@/components/LegalLayout";
 
 export const metadata = {
   title: "Terms of Service",
-  description: "The terms that govern your use of the Radius Disc Golf app.",
+  description: "The terms that govern your use of the Radius Disc Golf apps and website.",
 };
 
 const HTML = `
 <h2>Agreement to Terms</h2>
-<p>By downloading, installing, or using the Radius Disc Golf mobile application (the "App"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, do not use the App.</p>
+<p>By downloading, installing, or using the Radius Disc Golf mobile application on Apple iOS (from the Apple App Store) or Android (from the Google Play Store), or by using our website at radiusdiscgolf.com (together, the "Services," and the mobile applications, the "App"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, do not use the Services.</p>
 
 <h2>Eligibility</h2>
 <p>You must be at least 13 years of age to use the App. By using the App, you represent and warrant that you meet this age requirement.</p>
@@ -26,8 +26,18 @@ const HTML = `
   <li>Upload or share content that is illegal, harmful, threatening, abusive, defamatory, or otherwise objectionable</li>
 </ul>
 
-<h2>AI-Powered Features</h2>
-<p>The App includes AI-powered features such as CaddyAI disc recommendations, Game IQ scoring, the Disc Scanner, and personalized Learn content. These features provide suggestions and analysis based on available data and are intended for informational and entertainment purposes only. Radius does not guarantee the accuracy or completeness of any AI-generated recommendation. You use these features at your own discretion.</p>
+<h2>Subscriptions and Payments</h2>
+<p>Radius offers an optional paid subscription, Radius Pro, which unlocks additional features. The following terms apply to all subscriptions:</p>
+<ul>
+  <li><strong>Billing through the app store.</strong> Subscriptions purchased in the App are billed through, and managed by, the app store you purchased from — the Apple App Store on iOS or Google Play on Android. Payment is charged to your store account at confirmation of purchase.</li>
+  <li><strong>Auto-renewal.</strong> Subscriptions automatically renew for the same period at the then-current price unless you cancel at least 24 hours before the end of the current period. Your store account is charged for renewal within 24 hours prior to the end of the current period.</li>
+  <li><strong>Managing and canceling.</strong> You can manage or cancel your subscription at any time in your app store account settings (Apple ID subscription settings on iOS, or Google Play subscriptions on Android). Deleting the App does not cancel a subscription.</li>
+  <li><strong>Price changes.</strong> We may change subscription prices. Where required, the relevant app store will notify you and seek your consent before a price increase takes effect.</li>
+  <li><strong>Refunds.</strong> Except where required by law or by the applicable app store's policies, payments are non-refundable. Refund requests are handled by Apple or Google in accordance with their policies.</li>
+</ul>
+
+<h2>Automated and Machine-Learning Features</h2>
+<p>The App includes automated features such as Caddy disc recommendations, Game IQ scoring, the Disc Scanner, and personalized Learn content. These features provide suggestions and analysis based on available data and are intended for informational and entertainment purposes only. Radius does not guarantee the accuracy or completeness of any recommendation or result. You use these features at your own discretion.</p>
 
 <h2>User-Generated Content</h2>
 <p>You retain ownership of content you create and share through the App (posts, comments, forum threads, etc.). By posting content, you grant Radius a worldwide, non-exclusive, royalty-free license to use, display, reproduce, and distribute that content within the App and for promotional purposes. You are solely responsible for the content you post and must not post content that infringes on the intellectual property rights of others.</p>
@@ -46,7 +56,20 @@ const HTML = `
 <p>The App and its original content (excluding user-generated content), features, and functionality are owned by Radius Disc Golf and are protected by copyright, trademark, and other intellectual property laws. The Radius name, logo, and all related marks are trademarks of Radius Disc Golf.</p>
 
 <h2>Third-Party Services</h2>
-<p>The App may integrate with or link to third-party services (e.g., Apple Maps, weather data providers). Your use of these services is subject to their respective terms and privacy policies. Radius is not responsible for the content or practices of any third-party services.</p>
+<p>The App may integrate with or link to third-party services (e.g., mapping and satellite imagery, weather data providers, and cloud infrastructure such as Google Firebase). Your use of these services is subject to their respective terms and privacy policies. Radius is not responsible for the content or practices of any third-party services.</p>
+
+<h2>App Stores</h2>
+<p>You obtain the App from, and your use of the App is also subject to the rules of, the app store from which you downloaded it.</p>
+<p><strong>Apple App Store (iOS).</strong> If you downloaded the App from the Apple App Store, you acknowledge and agree that:</p>
+<ul>
+  <li>These Terms are between you and Radius only, not with Apple, and Apple is not responsible for the App or its content.</li>
+  <li>Apple has no obligation to furnish any maintenance or support services for the App.</li>
+  <li>In the event the App fails to conform to any applicable warranty, you may notify Apple, and Apple may refund the purchase price (if any); to the maximum extent permitted by law, Apple has no other warranty obligation with respect to the App.</li>
+  <li>Apple is not responsible for addressing any claims by you or a third party relating to the App, including product-liability, legal/regulatory, or intellectual-property claims.</li>
+  <li>Your use of the App must comply with the Apple Media Services Terms and Conditions and the App Store Usage Rules.</li>
+  <li>Apple and its subsidiaries are third-party beneficiaries of these Terms and, upon your acceptance, have the right to enforce these Terms against you.</li>
+</ul>
+<p><strong>Google Play (Android).</strong> If you downloaded the App from Google Play, your use of the App is also subject to the Google Play Terms of Service. Google is not a party to these Terms and is not responsible for the App or its content.</p>
 
 <h2>Disclaimer of Warranties</h2>
 <p>The App is provided on an "as is" and "as available" basis without warranties of any kind, whether express or implied. Radius does not warrant that the App will be uninterrupted, error-free, or free of harmful components. Disc golf involves physical activity and inherent risks — always exercise caution and good judgment on the course regardless of any recommendations provided by the App.</p>
@@ -55,10 +78,10 @@ const HTML = `
 <p>To the fullest extent permitted by law, Radius Disc Golf shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including but not limited to loss of data, profits, or goodwill, arising out of or related to your use of the App.</p>
 
 <h2>Termination</h2>
-<p>We may suspend or terminate your access to the App at any time, with or without cause and with or without notice. Upon termination, your right to use the App will immediately cease. You may delete your account at any time by contacting us.</p>
+<p>We may suspend or terminate your access to the Services at any time, with or without cause and with or without notice. Upon termination, your right to use the Services will immediately cease. You may delete your account and associated data at any time directly within the App (in your Profile settings) on both iOS and Android, or by contacting us.</p>
 
 <h2>Changes to These Terms</h2>
-<p>We may update these Terms from time to time. When we make changes, we will update the "Last updated" date at the top of this page. Your continued use of the App after changes are posted constitutes your acceptance of the revised Terms.</p>
+<p>We may update these Terms from time to time. When we make changes, we will update the "Last updated" date at the top of this page. Your continued use of the Services after changes are posted constitutes your acceptance of the revised Terms.</p>
 
 <h2>Governing Law</h2>
 <p>These Terms shall be governed by and construed in accordance with the laws of the United States, without regard to conflict of law principles.</p>
@@ -70,5 +93,5 @@ Email: <a href="mailto:mikey@radiusdiscgolf.com">mikey@radiusdiscgolf.com</a></p
 `;
 
 export default function TermsPage() {
-  return <LegalLayout title="Terms of Service" updated="Last updated: March 16, 2026" html={HTML} />;
+  return <LegalLayout title="Terms of Service" updated="Last updated: June 13, 2026" html={HTML} />;
 }
