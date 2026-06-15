@@ -162,6 +162,17 @@ export default function BagView({ bag, uid }: { bag: Bag; uid: string }) {
     saveBag(uid, nextRaw).catch(() => { setDiscs(discs); setRawDiscs(rawDiscs); });
   };
 
+  const removeDisc = (d: FlightDisc) => {
+    // Drop the disc, preserving every other raw disc object losslessly, then merge-write the bag.
+    const nextDiscs = discs.filter((x) => x.id !== d.id);
+    const nextRaw = rawDiscs.filter((r) => r.id !== d.id);
+    setDiscs(nextDiscs);
+    setRawDiscs(nextRaw);
+    setSelected(null);
+    // Tombstone the id so iOS/Android honor the deletion instead of re-adding it from their local bag.
+    saveBag(uid, nextRaw, [d.id]).catch(() => { setDiscs(discs); setRawDiscs(rawDiscs); });
+  };
+
   const onAdd = (dbDisc: DbDisc) => {
     const raw = newDisc(dbDisc.name);
     const stab = dbDisc.turn + dbDisc.fade;
@@ -407,7 +418,7 @@ export default function BagView({ bag, uid }: { bag: Bag; uid: string }) {
         )}
       </div>
 
-      {selected && <DiscDetail disc={selected} onClose={() => setSelected(null)} onToggleFav={() => toggleFav(selected)} onSave={(patch) => saveDisc(selected, patch)} />}
+      {selected && <DiscDetail disc={selected} onClose={() => setSelected(null)} onToggleFav={() => toggleFav(selected)} onSave={(patch) => saveDisc(selected, patch)} onRemove={() => removeDisc(selected)} />}
       {showAdd && <AddDiscModal existing={new Set(discs.map((d) => d.name.toLowerCase()))} onAdd={onAdd} onClose={() => setShowAdd(false)} />}
     </div>
   );

@@ -33,10 +33,11 @@ function Num({ label, v }: { label: string; v?: number }) {
   );
 }
 
-export default function DiscDetail({ disc, onClose, onToggleFav, onSave }: { disc: FlightDisc; onClose: () => void; onToggleFav?: () => void; onSave?: (patch: { nickname: string; condition: string }) => void }) {
+export default function DiscDetail({ disc, onClose, onToggleFav, onSave, onRemove }: { disc: FlightDisc; onClose: () => void; onToggleFav?: () => void; onSave?: (patch: { nickname: string; condition: string }) => void; onRemove?: () => void }) {
   const [editing, setEditing] = useState(false);
   const [nick, setNick] = useState(disc.nickname || "");
   const [cond, setCond] = useState(disc.condition || "Brand New");
+  const [confirmRemove, setConfirmRemove] = useState(false);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && (editing ? setEditing(false) : onClose());
     window.addEventListener("keydown", onKey);
@@ -107,6 +108,24 @@ export default function DiscDetail({ disc, onClose, onToggleFav, onSave }: { dis
               <button onClick={save} className="flex-1 rounded-full bg-[var(--gold)] py-2.5 text-sm font-bold text-[#16221b] transition-colors hover:bg-[var(--gold-bright)]">Save</button>
               <button onClick={() => { setNick(disc.nickname || ""); setCond(disc.condition || "Brand New"); setEditing(false); }} className="rounded-full border border-white/10 px-5 py-2.5 text-sm font-semibold text-[var(--sage)] transition-colors hover:text-[var(--cream)]">Cancel</button>
             </div>
+            {onRemove && (
+              <div className="mt-4 border-t border-white/10 pt-3">
+                {!confirmRemove ? (
+                  <button onClick={() => setConfirmRemove(true)} className="flex w-full items-center justify-center gap-2 rounded-full py-2 text-sm font-semibold text-[#e0857d] transition-colors hover:bg-[#d9473f]/10">
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /></svg>
+                    Remove from bag
+                  </button>
+                ) : (
+                  <div className="text-center">
+                    <p className="mb-2.5 text-sm text-[var(--cream)]">Remove <span className="font-semibold">{disc.nickname || disc.name}</span> from your bag?</p>
+                    <div className="flex gap-2">
+                      <button onClick={() => onRemove()} className="flex-1 rounded-full bg-[#d9473f] py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#e0574f]">Remove</button>
+                      <button onClick={() => setConfirmRemove(false)} className="rounded-full border border-white/10 px-5 py-2.5 text-sm font-semibold text-[var(--sage)] transition-colors hover:text-[var(--cream)]">Cancel</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

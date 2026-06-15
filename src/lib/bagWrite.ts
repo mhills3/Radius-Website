@@ -1,5 +1,5 @@
 import { db } from "./firebase";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, arrayUnion } from "firebase/firestore";
 import { resolveCanonicalId } from "./account";
 import { type RawDisc } from "./bag";
 
@@ -16,10 +16,18 @@ export async function setFavorites(uid: string, favoriteIds: string[]): Promise<
   await setDoc(doc(db, `userBackups/${cid}/data/current`), { favoriteDiscs: favoriteIds, lastUpdated: Date.now() }, { merge: true });
 }
 
-/** Merge-write ONLY myBagJSON + lastUpdated. Pass the full raw disc array (lossless). */
-export async function saveBag(uid: string, discs: RawDisc[]): Promise<void> {
+/**
+ * Merge-write ONLY myBagJSON + lastUpdated (+ deletedBagDiscIds tombstones). Pass the full raw
+ * disc array (lossless). When discs are removed, pass their ids as `removedIds` so they are added
+ * to the shared `deletedBagDiscIds` tombstone list (via arrayUnion) — REQUIRED for the deletion to
+ * propagate: iOS/Android merge the bag by id and re-add any disc the cloud is missing UNLESS its id
+ * is tombstoned. arrayUnion preserves tombstones written by other devices.
+ */
+export async function saveBag(uid: string, discs: RawDisc[], removedIds?: string[]): Promise<void> {
   const cid = await resolveCanonicalId(uid);
-  await setDoc(doc(db, `userBackups/${cid}/data/current`), { myBagJSON: encodeBag(discs), lastUpdated: Date.now() }, { merge: true });
+  const payload: Record<string, unknown> = { myBagJSON: encodeBag(discs), lastUpdated: Date.now() };
+  if (removedIds && removedIds.length) payload.deletedBagDiscIds = arrayUnion(...removedIds);
+  await setDoc(doc(db, `userBackups/${cid}/data/current`), payload, { merge: true });
 }
 
 /** Build a fresh bag-disc object in the exact iOS/Android shape. */
