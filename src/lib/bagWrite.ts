@@ -30,11 +30,14 @@ export async function saveBag(uid: string, discs: RawDisc[], removedIds?: string
   await setDoc(doc(db, `userBackups/${cid}/data/current`), payload, { merge: true });
 }
 
+/** Fresh uppercase-UUID bag-entry id (matches the iOS/Android id shape). */
+export function freshId(): string {
+  return typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID().toUpperCase()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`.toUpperCase();
+}
+
 /** Build a fresh bag-disc object in the exact iOS/Android shape. */
 export function newDisc(discName: string): RawDisc {
-  const id =
-    typeof crypto !== "undefined" && crypto.randomUUID
-      ? crypto.randomUUID().toUpperCase()
-      : `${Date.now()}-${Math.random().toString(36).slice(2)}`.toUpperCase();
-  return { id, discName, wear: { condition: "Brand New" } };
+  return { id: freshId(), discName, wear: { condition: "Brand New" } };
 }

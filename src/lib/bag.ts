@@ -59,6 +59,11 @@ export interface FlightDisc {
   stability?: number;
   tier?: Tier;
   condition?: string;
+  // Per-disc custom flight overrides (wear.custom*) — factory numbers stay in speed/glide/turn/fade.
+  customSpeed?: number;
+  customGlide?: number;
+  customTurn?: number;
+  customFade?: number;
   color: string;
   throwCount: number;
   known: boolean;
@@ -71,7 +76,7 @@ export interface FlightDisc {
 export interface RawDisc {
   id: string;
   discName: string;
-  wear?: { condition?: string };
+  wear?: { condition?: string; customSpeed?: number; customGlide?: number; customTurn?: number; customFade?: number };
   nickname?: string;
 }
 
@@ -240,6 +245,10 @@ export async function getBag(uid: string): Promise<Bag> {
       stability,
       tier: stability != null ? tierFor(stability) : undefined,
       condition: d?.wear?.condition || undefined,
+      customSpeed: typeof d?.wear?.customSpeed === "number" ? d.wear.customSpeed : undefined,
+      customGlide: typeof d?.wear?.customGlide === "number" ? d.wear.customGlide : undefined,
+      customTurn: typeof d?.wear?.customTurn === "number" ? d.wear.customTurn : undefined,
+      customFade: typeof d?.wear?.customFade === "number" ? d.wear.customFade : undefined,
       color: plasticColor(src?.color),
       throwCount: Number(throwCounts[name]) || 0,
       known,

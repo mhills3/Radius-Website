@@ -5,7 +5,8 @@ import { type FlightDisc, CAT_META, TIER_META, buildFlightPath } from "@/lib/bag
 import { RESULTS } from "@/lib/rounds";
 import DiscGraphic from "@/components/bag/DiscGraphic";
 
-const CONDITIONS = ["Brand New", "Good", "Used", "Worn", "Beat In"];
+// Exact wear values the iOS/Android apps use (DiscCondition enum) — must match for cross-platform sync.
+const CONDITIONS = ["Brand New", "Slightly Used", "Seasoned", "Beat In", "Very Beat In"];
 
 const W = 230;
 const H = 280;
@@ -33,10 +34,22 @@ function Num({ label, v }: { label: string; v?: number }) {
   );
 }
 
-export default function DiscDetail({ disc, onClose, onToggleFav, onSave, onRemove }: { disc: FlightDisc; onClose: () => void; onToggleFav?: () => void; onSave?: (patch: { nickname: string; condition: string }) => void; onRemove?: () => void }) {
+export type DiscPatch = { nickname: string; condition: string; custom: { speed?: number; glide?: number; turn?: number; fade?: number } };
+
+const numOrUndef = (s: string): number | undefined => {
+  const n = parseFloat(s);
+  return s.trim() === "" || Number.isNaN(n) ? undefined : n;
+};
+
+export default function DiscDetail({ disc, onClose, onToggleFav, onSave, onRemove }: { disc: FlightDisc; onClose: () => void; onToggleFav?: () => void; onSave?: (patch: DiscPatch) => void; onRemove?: () => void }) {
   const [editing, setEditing] = useState(false);
   const [nick, setNick] = useState(disc.nickname || "");
   const [cond, setCond] = useState(disc.condition || "Brand New");
+  // Custom flight inputs — blank means "use factory" for that axis (mirrors iOS wear.custom* ?? factory).
+  const [cs, setCs] = useState(disc.customSpeed?.toString() ?? "");
+  const [cg, setCg] = useState(disc.customGlide?.toString() ?? "");
+  const [ct, setCt] = useState(disc.customTurn?.toString() ?? "");
+  const [cf, setCf] = useState(disc.customFade?.toString() ?? "");
   const [confirmRemove, setConfirmRemove] = useState(false);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && (editing ? setEditing(false) : onClose());
@@ -44,12 +57,25 @@ export default function DiscDetail({ disc, onClose, onToggleFav, onSave, onRemov
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose, editing]);
 
-  const save = () => { onSave?.({ nickname: nick.trim(), condition: cond }); setEditing(false); };
+  const save = () => {
+    onSave?.({ nickname: nick.trim(), condition: cond, custom: { speed: numOrUndef(cs), glide: numOrUndef(cg), turn: numOrUndef(ct), fade: numOrUndef(cf) } });
+    setEditing(false);
+  };
+  const resetCustom = () => { setCs(""); setCg(""); setCt(""); setCf(""); };
   const condOptions = CONDITIONS.includes(cond) ? CONDITIONS : [cond, ...CONDITIONS];
 
-  const color = disc.tier ? TIER_META[disc.tier].color : "#8a968d";
+  // Effective flight numbers = custom override ?? factory (what the apps display & fly).
+  const eS = disc.customSpeed ?? disc.speed;
+  const eG = disc.customGlide ?? disc.glide;
+  const eT = disc.customTurn ?? disc.turn;
+  const eF = disc.customFade ?? disc.fade;
+  const eStab = typeof eT === "number" && typeof eF === "number" ? eT + eF : disc.stability;
+  const effTier = eStab == null ? disc.tier : eStab < -0.5 ? "US" : eStab <= 1.5 ? "ST" : "OS";
+  const hasCustom = disc.customSpeed != null || disc.customGlide != null || disc.customTurn != null || disc.customFade != null;
+
+  const color = effTier ? TIER_META[effTier].color : "#8a968d";
   const cat = CAT_META[disc.category];
-  const p = buildFlightPath(disc, W, H, PAD);
+  const p = buildFlightPath({ speed: eS, turn: eT, fade: eF }, W, H, PAD);
 
   return (
     <div className="fixed inset-0 z-[60]">
@@ -104,9 +130,26 @@ export default function DiscDetail({ disc, onClose, onToggleFav, onSave, onRemov
             <select value={cond} onChange={(e) => setCond(e.target.value)} className="mb-4 w-full rounded-xl border border-white/10 bg-[var(--bg-mid)] px-3 py-2 text-sm text-[var(--cream)] outline-none focus:border-[var(--gold)]">
               {condOptions.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
+            {disc.known && (
+              <div className="mb-4">
+                <div className="mb-1 flex items-center justify-between">
+                  <label className="block text-xs font-semibold text-[var(--sage)]">Custom flight numbers</label>
+                  {(cs || cg || ct || cf) && <button type="button" onClick={resetCustom} className="text-[11px] font-semibold text-[var(--gold)] hover:underline">Reset to factory</button>}
+                </div>
+                <p className="mb-2 text-[11px] text-[var(--sage-dim)]">Leave blank to use factory numbers. Adjust if your disc flies differently.</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {([["Speed", cs, setCs, disc.speed], ["Glide", cg, setCg, disc.glide], ["Turn", ct, setCt, disc.turn], ["Fade", cf, setCf, disc.fade]] as const).map(([label, val, setter, factory]) => (
+                    <label key={label} className="block">
+                      <span className="mb-1 block text-center text-[10px] uppercase tracking-wide text-[var(--sage-dim)]">{label}</span>
+                      <input value={val} onChange={(e) => setter(e.target.value)} inputMode="decimal" placeholder={factory != null ? String(factory) : "—"} className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-2 text-center text-sm text-[var(--cream)] placeholder-[var(--sage-dim)] outline-none focus:border-[var(--gold)]" />
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="flex gap-2">
               <button onClick={save} className="flex-1 rounded-full bg-[var(--gold)] py-2.5 text-sm font-bold text-[#16221b] transition-colors hover:bg-[var(--gold-bright)]">Save</button>
-              <button onClick={() => { setNick(disc.nickname || ""); setCond(disc.condition || "Brand New"); setEditing(false); }} className="rounded-full border border-white/10 px-5 py-2.5 text-sm font-semibold text-[var(--sage)] transition-colors hover:text-[var(--cream)]">Cancel</button>
+              <button onClick={() => { setNick(disc.nickname || ""); setCond(disc.condition || "Brand New"); setCs(disc.customSpeed?.toString() ?? ""); setCg(disc.customGlide?.toString() ?? ""); setCt(disc.customTurn?.toString() ?? ""); setCf(disc.customFade?.toString() ?? ""); setEditing(false); }} className="rounded-full border border-white/10 px-5 py-2.5 text-sm font-semibold text-[var(--sage)] transition-colors hover:text-[var(--cream)]">Cancel</button>
             </div>
             {onRemove && (
               <div className="mt-4 border-t border-white/10 pt-3">
@@ -131,23 +174,27 @@ export default function DiscDetail({ disc, onClose, onToggleFav, onSave, onRemov
 
         {disc.known ? (
           <>
-            {/* flight numbers */}
-            <div className="grid grid-cols-4 gap-2 px-6 pt-5">
-              <Num label="Speed" v={disc.speed} />
-              <Num label="Glide" v={disc.glide} />
-              <Num label="Turn" v={disc.turn} />
-              <Num label="Fade" v={disc.fade} />
+            {/* flight numbers (effective: custom override ?? factory) */}
+            <div className="flex items-center justify-between px-6 pt-5">
+              <span className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--sage-dim)]">Flight numbers</span>
+              {hasCustom && <span className="rounded-full bg-[var(--gold)]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[var(--gold)]">Custom</span>}
+            </div>
+            <div className="grid grid-cols-4 gap-2 px-6 pt-2">
+              <Num label="Speed" v={eS} />
+              <Num label="Glide" v={eG} />
+              <Num label="Turn" v={eT} />
+              <Num label="Fade" v={eF} />
             </div>
 
             {/* stability spectrum */}
             <div className="px-6 pt-6">
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--sage-dim)]">Stability</span>
-                <span className="text-sm font-semibold" style={{ color }}>{stabilityLabel(disc.stability)}{disc.stability != null ? ` · ${disc.stability > 0 ? `+${disc.stability}` : disc.stability}` : ""}</span>
+                <span className="text-sm font-semibold" style={{ color }}>{stabilityLabel(eStab)}{eStab != null ? ` · ${eStab > 0 ? `+${eStab}` : eStab}` : ""}</span>
               </div>
               <div className="relative h-2.5 rounded-full" style={{ background: "linear-gradient(90deg, #4d94fa 0%, #5fb87a 50%, #d9473f 100%)" }}>
-                {disc.stability != null && (
-                  <div className="absolute top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-[var(--bg-mid)] bg-[var(--cream)] shadow" style={{ left: `${stabilityPct(disc.stability)}%` }} />
+                {eStab != null && (
+                  <div className="absolute top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-[var(--bg-mid)] bg-[var(--cream)] shadow" style={{ left: `${stabilityPct(eStab)}%` }} />
                 )}
               </div>
               <div className="mt-1.5 flex justify-between text-[10px] uppercase tracking-wide text-[var(--sage-dim)]">

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { type Bag, type Cat, type Tier, type FlightDisc, type RawDisc, type DbDisc, CAT_META, TIER_META, tierFor, normCat, plasticColor } from "@/lib/bag";
-import { setFavorites, saveBag, newDisc } from "@/lib/bagWrite";
+import { setFavorites, saveBag, newDisc, freshId } from "@/lib/bagWrite";
 import FlightChart from "@/components/bag/FlightChart";
 import DiscDetail from "@/components/bag/DiscDetail";
 import DiscGraphic from "@/components/bag/DiscGraphic";
@@ -101,7 +101,7 @@ function DiscToken({ d, onClick, onFav }: { d: FlightDisc; onClick: () => void; 
         </div>
         <div className="w-[104px]">
           <div className="truncate text-sm font-semibold text-[var(--cream)]">{d.nickname || d.name}</div>
-          <div className="truncate font-mono text-[11px] text-[var(--sage-dim)]">{d.known ? `${d.speed}/${d.glide}/${d.turn}/${d.fade}` : "—"}</div>
+          <div className="truncate font-mono text-[11px] text-[var(--sage-dim)]">{d.known ? `${d.customSpeed ?? d.speed}/${d.customGlide ?? d.glide}/${d.customTurn ?? d.turn}/${d.customFade ?? d.fade}` : "—"}</div>
           {d.throwCount > 0 && <div className="text-[10px] text-[var(--sage-dim)]">{d.throwCount} throws</div>}
         </div>
       </button>
@@ -124,8 +124,8 @@ function DiscListRow({ d, onClick }: { d: FlightDisc; onClick: () => void }) {
           <div className="truncate text-xs text-[var(--sage-dim)]">{d.brand || (d.known ? "" : "Unknown")}</div>
         </div>
       </div>
-      <Cell v={d.speed} /><Cell v={d.glide} /><Cell v={d.turn} /><Cell v={d.fade} />
-      <div className="text-center text-sm font-semibold" style={{ color: d.tier ? TIER_META[d.tier].color : "var(--sage-dim)" }}>{d.stability != null ? (d.stability > 0 ? `+${d.stability}` : d.stability) : "—"}</div>
+      <Cell v={d.customSpeed ?? d.speed} /><Cell v={d.customGlide ?? d.glide} /><Cell v={d.customTurn ?? d.turn} /><Cell v={d.customFade ?? d.fade} />
+      <div className="text-center text-sm font-semibold" style={{ color: d.tier ? TIER_META[d.tier].color : "var(--sage-dim)" }}>{(() => { const s = (typeof (d.customTurn ?? d.turn) === "number" && typeof (d.customFade ?? d.fade) === "number") ? (d.customTurn ?? d.turn)! + (d.customFade ?? d.fade)! : d.stability; return s != null ? (s > 0 ? `+${s}` : s) : "—"; })()}</div>
       <div className="text-right text-sm font-semibold text-[var(--cream)]">{d.throwCount || "—"}</div>
     </button>
   );
@@ -151,15 +151,25 @@ export default function BagView({ bag, uid }: { bag: Bag; uid: string }) {
     setFavorites(uid, favIds).catch(() => setDiscs(discs));
   };
 
-  const saveDisc = (d: FlightDisc, patch: { nickname: string; condition: string }) => {
+  const saveDisc = (d: FlightDisc, patch: { nickname: string; condition: string; custom: { speed?: number; glide?: number; turn?: number; fade?: number } }) => {
     const nickname = patch.nickname || undefined;
-    const nextDiscs = discs.map((x) => (x.id === d.id ? { ...x, nickname, condition: patch.condition } : x));
-    // preserve every other field on the raw disc — only touch nickname + wear.condition
-    const nextRaw = rawDiscs.map((r) => (r.id === d.id ? { ...r, nickname: patch.nickname || undefined, wear: { ...(r.wear || {}), condition: patch.condition } } : r));
+    const c = patch.custom;
+    const customPatch = { customSpeed: c.speed, customGlide: c.glide, customTurn: c.turn, customFade: c.fade };
+    // Edit-as-REPLACE: the apps' bag merge is "local wins" on a same-id conflict, so an in-place
+    // field edit (nickname/condition/custom flight) won't reliably reach iOS. Instead we tombstone
+    // the old id and re-add the disc under a NEW id carrying the edits — the two operations the apps
+    // apply UNCONDITIONALLY (tombstone removes, new cloud id appends). Throw stats are keyed by disc
+    // NAME, so nothing is lost. Every other raw field is preserved.
+    const newId = freshId();
+    const nextDiscs = discs.map((x) => (x.id === d.id ? { ...x, id: newId, nickname, condition: patch.condition, ...customPatch } : x));
+    const nextRaw = rawDiscs.map((r) => (r.id === d.id ? { ...r, id: newId, nickname, wear: { ...(r.wear || {}), condition: patch.condition, customSpeed: c.speed, customGlide: c.glide, customTurn: c.turn, customFade: c.fade } } : r));
     setDiscs(nextDiscs);
     setRawDiscs(nextRaw);
-    if (selected?.id === d.id) setSelected({ ...selected, nickname, condition: patch.condition });
-    saveBag(uid, nextRaw).catch(() => { setDiscs(discs); setRawDiscs(rawDiscs); });
+    if (selected?.id === d.id) setSelected({ ...selected, id: newId, nickname, condition: patch.condition, ...customPatch });
+    // Single atomic write: new bag (with new id) + tombstone the old id.
+    saveBag(uid, nextRaw, [d.id]).catch(() => { setDiscs(discs); setRawDiscs(rawDiscs); });
+    // Carry a favorite over to the new id (web/Android favorite by id) so editing doesn't unfavorite it.
+    if (d.isFavorite) setFavorites(uid, nextDiscs.filter((x) => x.isFavorite).map((x) => x.id)).catch(() => {});
   };
 
   const removeDisc = (d: FlightDisc) => {
