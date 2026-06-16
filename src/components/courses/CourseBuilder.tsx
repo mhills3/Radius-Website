@@ -399,7 +399,7 @@ export default function CourseBuilder({ uid }: { uid: string }) {
         {/* RIGHT — map. Direct, explicit-height container (mirrors the working CourseMap/CourseHoleMap;
             an absolute-inset-0 container makes Mapbox build a 0-size canvas → blank map). */}
         <div className="relative lg:sticky lg:top-24">
-          <div ref={elRef} className="h-[460px] w-full overflow-hidden rounded-3xl border border-black/[0.07] bg-[#e9e4d8] shadow-[0_18px_50px_-26px_rgba(15,24,19,0.32)] lg:h-[calc(100vh-8rem)]" />
+          <div ref={elRef} className="h-[460px] w-full overflow-hidden rounded-3xl border border-black/[0.07] bg-[#e9e4d8] shadow-[0_18px_50px_-26px_rgba(15,24,19,0.32)] lg:h-[640px]" />
           <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl">
             {step === 0 && (
               <>
