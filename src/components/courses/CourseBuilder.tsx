@@ -22,30 +22,39 @@ function diffStyle(label: string, on: boolean): React.CSSProperties {
 }
 const AMENITIES = ["Parking", "Restrooms", "Water", "Lighting", "Picnic Area", "Camping", "Pro Shop", "Food"];
 const STEPS = ["Details", "Map holes", "Review"];
+// Exact 9 alt-basket presets (hex WITHOUT #, matching AltBasketColor). Default = Blue.
+const ALT_COLORS: { name: string; hex: string }[] = [
+  { name: "Red", hex: "E74C3C" }, { name: "Orange", hex: "E67E22" }, { name: "Yellow", hex: "F1C40F" },
+  { name: "Green", hex: "2ECC71" }, { name: "Teal", hex: "1ABC9C" }, { name: "Blue", hex: "3498DB" },
+  { name: "Purple", hex: "9B59B6" }, { name: "Pink", hex: "E91E63" }, { name: "White", hex: "FFFFFF" },
+];
+const DEFAULT_COLOR = "3498DB";
+const MAX_ALT = 3, MAX_MANDO = 4;
 
-// elbows are [lng,lat] pairs internally (Mapbox order); written to Firestore as [lat,lng].
-type Hole = { par: number; teeLat?: number; teeLng?: number; basketLat?: number; basketLng?: number; elbows: [number, number][]; notes: string };
-const blankHole = (): Hole => ({ par: 3, elbows: [], notes: "" });
+type Dir = "Left" | "Right" | "Down";
+type AltTee = { id: string; label: string; lat: number; lng: number };
+type AltBasket = { id: string; label: string; lat: number; lng: number; colorHex: string };
+type Mando = { id: string; lat: number; lng: number; direction: Dir; label: string };
+// elbows are [lng,lat] internally (Mapbox); alt/mando store lat,lng (app shape).
+type Hole = { par: number; teeLat?: number; teeLng?: number; basketLat?: number; basketLng?: number; elbows: [number, number][]; altTees: AltTee[]; altBaskets: AltBasket[]; mandos: Mando[]; notes: string };
+const blankHole = (): Hole => ({ par: 3, elbows: [], altTees: [], altBaskets: [], mandos: [], notes: "" });
 const mapped = (h: Hole) => h.teeLat != null && h.basketLat != null;
-type Mode = "tee" | "basket" | "elbow";
+type Mode = "tee" | "basket" | "elbow" | "altTee" | "altBasket" | "mando";
+const newId = () => (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID().toUpperCase() : `${Date.now()}-${Math.random().toString(36).slice(2)}`.toUpperCase());
+// Mando labels: single = "M", multiple = "M1","M2"… (matches the apps).
+const renumberMandos = (ms: Mando[]): Mando[] => (ms.length === 1 ? [{ ...ms[0], label: "M" }] : ms.map((m, i) => ({ ...m, label: `M${i + 1}` })));
 
-// great-circle bearing a->b in degrees (0=N, clockwise)
 function bearing(aLat: number, aLng: number, bLat: number, bLng: number): number {
   const toR = (d: number) => (d * Math.PI) / 180, toDg = (r: number) => (r * 180) / Math.PI;
   const y = Math.sin(toR(bLng - aLng)) * Math.cos(toR(bLat));
   const x = Math.cos(toR(aLat)) * Math.sin(toR(bLat)) - Math.sin(toR(aLat)) * Math.cos(toR(bLat)) * Math.cos(toR(bLng - aLng));
   return (toDg(Math.atan2(y, x)) + 360) % 360;
 }
-// polygon ring (GeoJSON [lng,lat] coords) of radiusFt around center, for C1/C2 putting circles
 function ringCoords(lng: number, lat: number, radiusFt: number, pts = 64): number[][] {
   const radM = radiusFt * 0.3048, R = 6378137, out: number[][] = [];
-  for (let i = 0; i <= pts; i++) {
-    const a = (i / pts) * 2 * Math.PI, dx = radM * Math.cos(a), dy = radM * Math.sin(a);
-    out.push([lng + (dx / (R * Math.cos((lat * Math.PI) / 180))) * (180 / Math.PI), lat + (dy / R) * (180 / Math.PI)]);
-  }
+  for (let i = 0; i <= pts; i++) { const a = (i / pts) * 2 * Math.PI, dx = radM * Math.cos(a), dy = radM * Math.sin(a); out.push([lng + (dx / (R * Math.cos((lat * Math.PI) / 180))) * (180 / Math.PI), lat + (dy / R) * (180 / Math.PI)]); }
   return out;
 }
-// fairway path [lng,lat]: tee -> elbows -> basket (whichever exist)
 function fairway(h: Hole): number[][] {
   const p: number[][] = [];
   if (h.teeLat != null) p.push([h.teeLng!, h.teeLat!]);
@@ -54,10 +63,14 @@ function fairway(h: Hole): number[][] {
   return p;
 }
 function holeDistFt(h: Hole): number {
-  const p = fairway(h);
-  let d = 0;
+  const p = fairway(h); let d = 0;
   for (let i = 1; i < p.length; i++) d += distanceFt(p[i - 1][1], p[i - 1][0], p[i][1], p[i][0]);
   return Math.round(d);
+}
+function teeBearing(h: Hole): number {
+  if (h.teeLat == null) return 0;
+  const t = h.elbows[0] ?? (h.basketLat != null ? [h.basketLng!, h.basketLat!] : null);
+  return t ? bearing(h.teeLat, h.teeLng!, t[1], t[0]) - 90 : 0;
 }
 
 function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
@@ -76,7 +89,7 @@ export default function CourseBuilder({ uid }: { uid: string }) {
   const mapRef = useRef<any>(null);
   const [mapReady, setMapReady] = useState(false);
   const [mapErr, setMapErr] = useState("");
-  const [courseId] = useState(() => (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID().toUpperCase() : `${Date.now()}-${Math.random().toString(36).slice(2)}`.toUpperCase()));
+  const [courseId] = useState(() => newId());
   const DRAFT_KEY = `radius_course_draft_${uid}`;
 
   const [step, setStep] = useState(0);
@@ -97,6 +110,7 @@ export default function CourseBuilder({ uid }: { uid: string }) {
   const [cur, setCur] = useState(0);
   const [mode, setMode] = useState<Mode>("tee");
   const [undo, setUndo] = useState<Hole[][]>([]);
+  const [pending, setPending] = useState<null | { mode: "altTee" | "altBasket" | "mando"; lng: number; lat: number; label: string; colorHex: string; direction: Dir }>(null);
 
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
   const [error, setError] = useState("");
@@ -107,25 +121,25 @@ export default function CourseBuilder({ uid }: { uid: string }) {
   const stepRef = useRef(step); stepRef.current = step;
   const modeRef = useRef(mode); modeRef.current = mode;
   const curRef = useRef(cur); curRef.current = cur;
+  const holesRef = useRef(holes); holesRef.current = holes;
   const hydrated = useRef(false);
 
   const holeCount = Math.max(0, Math.min(27, parseInt(holeCountText, 10) || 0));
 
-  // ---------- draft autosave / resume (localStorage) ----------
+  const snapshot = (hs: Hole[]) => hs.map((h) => ({ ...h, elbows: [...h.elbows], altTees: [...h.altTees], altBaskets: [...h.altBaskets], mandos: [...h.mandos] }));
+
+  // ---------- draft autosave / resume ----------
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(DRAFT_KEY);
-      if (!raw) return;
-      const d = JSON.parse(raw);
-      if (!d || (!d.name && !(d.holes?.length))) return;
+      const raw = localStorage.getItem(DRAFT_KEY); if (!raw) return;
+      const d = JSON.parse(raw); if (!d || (!d.name && !(d.holes?.length))) return;
       setResume(() => () => {
         setName(d.name || ""); setHoleCountText(d.holeCountText || "18"); setDescription(d.description || "");
         setCourseType(d.courseType || "Public"); setTerrain(d.terrain || "Mixed"); setDifficulty(d.difficulty || "");
         setIsFree(d.isFree ?? true); setFeeAmount(d.feeAmount || 0); setAmenities(new Set(d.amenities || []));
         setCoverPhotoUrl(d.coverPhotoUrl || ""); setLoc(d.loc || null);
-        setHoles(Array.isArray(d.holes) ? d.holes.map((h: Hole) => ({ par: h.par ?? 3, teeLat: h.teeLat, teeLng: h.teeLng, basketLat: h.basketLat, basketLng: h.basketLng, elbows: h.elbows || [], notes: h.notes || "" })) : []);
-        setStep(d.step || 0); setCur(d.cur || 0);
-        hydrated.current = true; setResume(null);
+        setHoles(Array.isArray(d.holes) ? d.holes.map((h: Partial<Hole>) => ({ par: h.par ?? 3, teeLat: h.teeLat, teeLng: h.teeLng, basketLat: h.basketLat, basketLng: h.basketLng, elbows: h.elbows || [], altTees: h.altTees || [], altBaskets: h.altBaskets || [], mandos: h.mandos || [], notes: h.notes || "" })) : []);
+        setStep(d.step || 0); setCur(d.cur || 0); hydrated.current = true; setResume(null);
         if (d.loc) setTimeout(() => mapRef.current?.flyTo({ center: [d.loc.lng, d.loc.lat], zoom: 16 }), 300);
       });
     } catch {}
@@ -133,12 +147,9 @@ export default function CourseBuilder({ uid }: { uid: string }) {
   }, []);
 
   useEffect(() => {
-    if (resume) return; // don't overwrite an unaccepted draft
+    if (resume) return;
     const t = setTimeout(() => {
-      try {
-        if (!name && holes.length === 0) return;
-        localStorage.setItem(DRAFT_KEY, JSON.stringify({ name, holeCountText, description, courseType, terrain, difficulty, isFree, feeAmount, amenities: [...amenities], coverPhotoUrl, loc, holes, step, cur, ts: Date.now() }));
-      } catch {}
+      try { if (!name && holes.length === 0) return; localStorage.setItem(DRAFT_KEY, JSON.stringify({ name, holeCountText, description, courseType, terrain, difficulty, isFree, feeAmount, amenities: [...amenities], coverPhotoUrl, loc, holes, step, cur, ts: Date.now() })); } catch {}
     }, 800);
     return () => clearTimeout(t);
   }, [name, holeCountText, description, courseType, terrain, difficulty, isFree, feeAmount, amenities, coverPhotoUrl, loc, holes, step, cur, resume, DRAFT_KEY]);
@@ -165,54 +176,55 @@ export default function CourseBuilder({ uid }: { uid: string }) {
         if (cancelled) return;
         map.resize();
         if (!hydrated.current && typeof navigator !== "undefined" && navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            (pos) => { if (!cancelled && !hydrated.current) map.flyTo({ center: [pos.coords.longitude, pos.coords.latitude], zoom: 16, duration: 1200 }); },
-            () => {}, { enableHighAccuracy: true, timeout: 8000 },
-          );
+          navigator.geolocation.getCurrentPosition((pos) => { if (!cancelled && !hydrated.current) map.flyTo({ center: [pos.coords.longitude, pos.coords.latitude], zoom: 16, duration: 1200 }); }, () => {}, { enableHighAccuracy: true, timeout: 8000 });
         }
-        // basket pin image
         const img = new Image();
         img.onload = () => { try { const s = 2, w = 32 * s, h = 40 * s; const cv = document.createElement("canvas"); cv.width = w; cv.height = h; const c = cv.getContext("2d"); if (c) { c.drawImage(img, 0, 0, w, h); if (!map.hasImage("basket-pin")) map.addImage("basket-pin", c.getImageData(0, 0, w, h), { pixelRatio: 2 }); } } catch {} };
         img.src = "/basket-pin.svg";
 
         const empty: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
-        for (const id of ["rings", "fairway", "tees", "baskets", "elbows"]) map.addSource(id, { type: "geojson", data: empty });
-        // C1/C2 putting rings (current hole basket)
+        for (const id of ["rings", "fairway", "tees", "baskets", "elbows", "altTees", "altBaskets", "mandos", "pending"]) map.addSource(id, { type: "geojson", data: empty });
+        const TF = ["DIN Pro Medium", "Arial Unicode MS Regular"];
         map.addLayer({ id: "rings-fill", type: "fill", source: "rings", paint: { "fill-color": "#ffffff", "fill-opacity": ["case", ["==", ["get", "c"], 1], 0.08, 0.04] } });
         map.addLayer({ id: "rings-line", type: "line", source: "rings", paint: { "line-color": "#ffffff", "line-opacity": ["case", ["==", ["get", "c"], 1], 0.35, 0.18], "line-width": 1 } });
-        // fairway line tee->elbows->basket
         map.addLayer({ id: "fairway-casing", type: "line", source: "fairway", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#0f1813", "line-width": 5, "line-opacity": ["case", ["get", "cur"], 0.55, 0.2] } });
         map.addLayer({ id: "fairway", type: "line", source: "fairway", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#F6C165", "line-width": ["case", ["get", "cur"], 3, 1.5], "line-opacity": ["case", ["get", "cur"], 1, 0.35] } });
-        // baskets (brand pin) + elbows + tee pads
+        map.addLayer({ id: "altBaskets", type: "symbol", source: "altBaskets", layout: { "icon-image": ["concat", "altbasket-", ["get", "colorHex"]], "icon-size": ["case", ["get", "cur"], 0.9, 0.6], "icon-allow-overlap": true, "text-field": ["get", "label"], "text-font": TF, "text-size": 10, "text-offset": [0, 1.1], "text-anchor": "top", "text-optional": true }, paint: { "icon-opacity": ["case", ["get", "cur"], 1, 0.45], "text-color": "#fff", "text-halo-color": "#0f1813", "text-halo-width": 1.4 } });
         map.addLayer({ id: "baskets", type: "symbol", source: "baskets", layout: { "icon-image": "basket-pin", "icon-size": ["case", ["get", "cur"], 0.85, 0.55], "icon-anchor": "bottom", "icon-allow-overlap": true }, paint: { "icon-opacity": ["case", ["get", "cur"], 1, 0.5] } });
+        map.addLayer({ id: "mandos", type: "symbol", source: "mandos", layout: { "icon-image": ["concat", "mando-", ["get", "dir"]], "icon-size": 0.9, "icon-allow-overlap": true, "text-field": ["get", "label"], "text-font": TF, "text-size": 10, "text-offset": [0, -1.3], "text-anchor": "bottom", "text-optional": true }, paint: { "icon-opacity": ["case", ["get", "cur"], 1, 0.45], "text-color": "#F1C40F", "text-halo-color": "#0f1813", "text-halo-width": 1.4 } });
         map.addLayer({ id: "elbows", type: "symbol", source: "elbows", layout: { "icon-image": ["get", "icon"], "icon-size": 0.9, "icon-allow-overlap": true }, paint: { "icon-opacity": ["case", ["get", "cur"], 1, 0.4] } });
+        map.addLayer({ id: "altTees", type: "symbol", source: "altTees", layout: { "icon-image": "altpad", "icon-rotate": ["get", "rot"], "icon-rotation-alignment": "map", "icon-size": ["case", ["get", "cur"], 0.85, 0.6], "icon-allow-overlap": true, "text-field": ["get", "label"], "text-font": TF, "text-size": 10, "text-offset": [0, 1.2], "text-anchor": "top", "text-optional": true }, paint: { "icon-opacity": ["case", ["get", "cur"], 1, 0.5], "text-color": "#cfe8d6", "text-halo-color": "#0f1813", "text-halo-width": 1.4 } });
         map.addLayer({ id: "tees", type: "symbol", source: "tees", layout: { "icon-image": ["get", "icon"], "icon-rotate": ["get", "rot"], "icon-rotation-alignment": "map", "icon-size": ["case", ["get", "cur"], 1, 0.7], "icon-allow-overlap": true }, paint: { "icon-opacity": ["case", ["get", "cur"], 1, 0.5] } });
+        map.addLayer({ id: "pending", type: "circle", source: "pending", paint: { "circle-radius": 8, "circle-color": "#F6C165", "circle-stroke-width": 2.5, "circle-stroke-color": "#fff", "circle-opacity": 0.85 } });
         setMapReady(true);
       });
 
       map.on("click", (e: { lngLat: { lng: number; lat: number } }) => {
         if (stepRef.current !== 1) return;
-        const i = curRef.current;
-        const pt = { lat: e.lngLat.lat, lng: e.lngLat.lng };
-        setHoles((hs) => {
-          setUndo((u) => [...u.slice(-29), hs.map((h) => ({ ...h, elbows: [...h.elbows] }))]);
-          const next = hs.map((h) => ({ ...h, elbows: [...h.elbows] }));
-          if (!next[i]) return hs;
-          if (modeRef.current === "tee") { next[i].teeLat = pt.lat; next[i].teeLng = pt.lng; }
-          else if (modeRef.current === "basket") { next[i].basketLat = pt.lat; next[i].basketLng = pt.lng; }
-          else { next[i].elbows.push([pt.lng, pt.lat]); }
-          return next;
-        });
-        if (modeRef.current === "tee") setMode("basket");
-        else if (modeRef.current === "basket") {
-          // auto-advance to next unmapped/next hole
-          setMode("tee");
-          setCur((c) => (c + 1 < holeCount ? c + 1 : c));
+        const i = curRef.current; const pt = { lat: e.lngLat.lat, lng: e.lngLat.lng };
+        const m = modeRef.current;
+        if (m === "tee" || m === "basket" || m === "elbow") {
+          setHoles((hs) => {
+            setUndo((u) => [...u.slice(-29), snapshot(hs)]);
+            const next = snapshot(hs); if (!next[i]) return hs;
+            if (m === "tee") { next[i].teeLat = pt.lat; next[i].teeLng = pt.lng; }
+            else if (m === "basket") { next[i].basketLat = pt.lat; next[i].basketLng = pt.lng; }
+            else next[i].elbows.push([pt.lng, pt.lat]);
+            return next;
+          });
+          if (m === "tee") setMode("basket");
+          else if (m === "basket") { setMode("tee"); setCur((c) => (c + 1 < holeCount ? c + 1 : c)); }
+        } else {
+          // alt tee / alt basket / mando — capture point, confirm details in the panel
+          const h = holesRef.current[i];
+          if (m === "altTee" && (h?.teeLat == null || h.altTees.length >= MAX_ALT)) { setError(h?.teeLat == null ? "Place the primary tee first." : "Max 3 alternate tees."); return; }
+          if (m === "altBasket" && (h?.basketLat == null || h.altBaskets.length >= MAX_ALT)) { setError(h?.basketLat == null ? "Place the primary basket first." : "Max 3 alternate baskets."); return; }
+          if (m === "mando" && (h?.mandos.length ?? 0) >= MAX_MANDO) { setError("Max 4 mandos."); return; }
+          setError("");
+          setPending({ mode: m, lng: pt.lng, lat: pt.lat, label: "", colorHex: DEFAULT_COLOR, direction: "Left" });
         }
       });
-     } catch (err) {
-      setMapErr(err instanceof Error ? err.message : String(err));
-     }
+     } catch (err) { setMapErr(err instanceof Error ? err.message : String(err)); }
     })();
     return () => { cancelled = true; ro?.disconnect(); if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -225,82 +237,55 @@ export default function CourseBuilder({ uid }: { uid: string }) {
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady || !map.getSource) return;
-    // tee pad icons (dark-green pad, hole number)
+    const ensure = (id: string, draw: (c: CanvasRenderingContext2D, s: number, sz: number) => void, sz = 30) => {
+      if (map.hasImage(id)) return; const s = 2, w = sz * s; const cv = document.createElement("canvas"); cv.width = w; cv.height = w; const c = cv.getContext("2d"); if (!c) return; draw(c, s, w); map.addImage(id, c.getImageData(0, 0, w, w), { pixelRatio: 2 });
+    };
+    // tee pads (numbered) + alt pad + elbows + colored alt baskets + mando arrows
     for (let n = 1; n <= Math.max(holes.length, 1); n++) {
       const id = `teepad-${n}`;
-      if (map.hasImage(id)) continue;
-      const s = 2, w = 30 * s, h = 16 * s;
-      const cv = document.createElement("canvas"); cv.width = w; cv.height = h; const c = cv.getContext("2d"); if (!c) continue;
-      roundRectPath(c, 1 * s, 1 * s, w - 2 * s, h - 2 * s, 3 * s); c.fillStyle = "#16331f"; c.fill();
-      c.lineWidth = 1.5 * s; c.strokeStyle = "rgba(255,255,255,0.55)"; c.stroke();
-      c.fillStyle = "#fff"; c.font = `bold ${10 * s}px sans-serif`; c.textAlign = "center"; c.textBaseline = "middle";
-      c.fillText(String(n), w / 2, h / 2 + s * 0.5);
-      map.addImage(id, c.getImageData(0, 0, w, h), { pixelRatio: 2 });
+      if (!map.hasImage(id)) { const s = 2, w = 30 * s, h = 16 * s; const cv = document.createElement("canvas"); cv.width = w; cv.height = h; const c = cv.getContext("2d"); if (c) { roundRectPath(c, s, s, w - 2 * s, h - 2 * s, 3 * s); c.fillStyle = "#16331f"; c.fill(); c.lineWidth = 1.5 * s; c.strokeStyle = "rgba(255,255,255,0.55)"; c.stroke(); c.fillStyle = "#fff"; c.font = `bold ${10 * s}px sans-serif`; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(String(n), w / 2, h / 2 + s * 0.5); map.addImage(id, c.getImageData(0, 0, w, h), { pixelRatio: 2 }); } }
     }
-    // elbow diamond icons
-    for (let n = 1; n <= 12; n++) {
-      const id = `elbow-${n}`;
-      if (map.hasImage(id)) continue;
-      const s = 2, sz = 18 * s;
-      const cv = document.createElement("canvas"); cv.width = sz; cv.height = sz; const c = cv.getContext("2d"); if (!c) continue;
-      c.translate(sz / 2, sz / 2); c.rotate(Math.PI / 4);
-      roundRectPath(c, -6 * s, -6 * s, 12 * s, 12 * s, 2 * s); c.fillStyle = "#E0752A"; c.fill();
-      c.rotate(-Math.PI / 4);
-      c.fillStyle = "#fff"; c.font = `bold ${9 * s}px sans-serif`; c.textAlign = "center"; c.textBaseline = "middle";
-      c.fillText(String(n), 0, s * 0.5);
-      map.addImage(id, c.getImageData(0, 0, sz, sz), { pixelRatio: 2 });
-    }
+    if (!map.hasImage("altpad")) { const s = 2, w = 24 * s, h = 13 * s; const cv = document.createElement("canvas"); cv.width = w; cv.height = h; const c = cv.getContext("2d"); if (c) { roundRectPath(c, s, s, w - 2 * s, h - 2 * s, 3 * s); c.fillStyle = "rgba(22,51,31,0.9)"; c.fill(); c.lineWidth = 1.5 * s; c.strokeStyle = "#fff"; c.stroke(); map.addImage("altpad", c.getImageData(0, 0, w, h), { pixelRatio: 2 }); } }
+    for (let n = 1; n <= 12; n++) ensure(`elbow-${n}`, (c, s, sz) => { c.translate(sz / 2, sz / 2); c.rotate(Math.PI / 4); roundRectPath(c, -6 * s, -6 * s, 12 * s, 12 * s, 2 * s); c.fillStyle = "#E0752A"; c.fill(); c.rotate(-Math.PI / 4); c.fillStyle = "#fff"; c.font = `bold ${9 * s}px sans-serif`; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(String(n), 0, s * 0.5); }, 18);
+    for (const col of ALT_COLORS) ensure(`altbasket-${col.hex}`, (c, s, sz) => { c.beginPath(); c.arc(sz / 2, sz / 2, sz / 2 - 2 * s, 0, 2 * Math.PI); c.fillStyle = `#${col.hex}`; c.fill(); c.lineWidth = 2 * s; c.strokeStyle = "#fff"; c.stroke(); }, 18);
+    for (const d of ["Left", "Right", "Down"]) ensure(`mando-${d}`, (c, s, sz) => { roundRectPath(c, sz * 0.2, sz * 0.12, sz * 0.6, sz * 0.76, 4 * s); c.fillStyle = "#F1C40F"; c.fill(); c.lineWidth = 1.5 * s; c.strokeStyle = "#0f1813"; c.stroke(); c.fillStyle = "#0f1813"; c.font = `bold ${13 * s}px sans-serif`; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(d === "Left" ? "←" : d === "Right" ? "→" : "↓", sz / 2, sz / 2 + s); }, 26);
+
     const fc = (features: unknown[]) => ({ type: "FeatureCollection", features } as unknown as GeoJSON.FeatureCollection);
-    const rings: unknown[] = [], fairwayF: unknown[] = [], tees: unknown[] = [], baskets: unknown[] = [], elbowsF: unknown[] = [];
+    const rings: unknown[] = [], fairwayF: unknown[] = [], tees: unknown[] = [], baskets: unknown[] = [], elbowsF: unknown[] = [], altTeesF: unknown[] = [], altBasketsF: unknown[] = [], mandosF: unknown[] = [];
     holes.forEach((h, i) => {
-      const isCur = i === cur;
+      const isCur = i === cur; const tb = teeBearing(h);
       const path = fairway(h);
       if (path.length >= 2) fairwayF.push({ type: "Feature", properties: { cur: isCur }, geometry: { type: "LineString", coordinates: path } });
-      if (h.teeLat != null) {
-        const target = h.elbows[0] ?? (h.basketLat != null ? [h.basketLng!, h.basketLat!] : null);
-        const rot = target ? bearing(h.teeLat, h.teeLng!, target[1], target[0]) - 90 : 0;
-        tees.push({ type: "Feature", properties: { icon: `teepad-${i + 1}`, rot, cur: isCur }, geometry: { type: "Point", coordinates: [h.teeLng, h.teeLat] } });
-      }
+      if (h.teeLat != null) tees.push({ type: "Feature", properties: { icon: `teepad-${i + 1}`, rot: tb, cur: isCur }, geometry: { type: "Point", coordinates: [h.teeLng, h.teeLat] } });
       if (h.basketLat != null) {
         baskets.push({ type: "Feature", properties: { cur: isCur }, geometry: { type: "Point", coordinates: [h.basketLng, h.basketLat] } });
-        if (isCur) {
-          rings.push({ type: "Feature", properties: { c: 2 }, geometry: { type: "Polygon", coordinates: [ringCoords(h.basketLng!, h.basketLat!, 66)] } });
-          rings.push({ type: "Feature", properties: { c: 1 }, geometry: { type: "Polygon", coordinates: [ringCoords(h.basketLng!, h.basketLat!, 33)] } });
-        }
+        if (isCur) { rings.push({ type: "Feature", properties: { c: 2 }, geometry: { type: "Polygon", coordinates: [ringCoords(h.basketLng!, h.basketLat!, 66)] } }); rings.push({ type: "Feature", properties: { c: 1 }, geometry: { type: "Polygon", coordinates: [ringCoords(h.basketLng!, h.basketLat!, 33)] } }); }
       }
       h.elbows.forEach((e, ei) => elbowsF.push({ type: "Feature", properties: { icon: `elbow-${Math.min(ei + 1, 12)}`, cur: isCur }, geometry: { type: "Point", coordinates: e } }));
+      h.altTees.forEach((t) => altTeesF.push({ type: "Feature", properties: { label: t.label, rot: tb, cur: isCur }, geometry: { type: "Point", coordinates: [t.lng, t.lat] } }));
+      h.altBaskets.forEach((b) => altBasketsF.push({ type: "Feature", properties: { label: b.label, colorHex: b.colorHex, cur: isCur }, geometry: { type: "Point", coordinates: [b.lng, b.lat] } }));
+      h.mandos.forEach((mn) => mandosF.push({ type: "Feature", properties: { label: mn.label, dir: mn.direction, cur: isCur }, geometry: { type: "Point", coordinates: [mn.lng, mn.lat] } }));
     });
     map.getSource("rings").setData(fc(rings));
     map.getSource("fairway").setData(fc(fairwayF));
     map.getSource("tees").setData(fc(tees));
     map.getSource("baskets").setData(fc(baskets));
     map.getSource("elbows").setData(fc(elbowsF));
-  }, [holes, cur, mapReady]);
+    map.getSource("altTees").setData(fc(altTeesF));
+    map.getSource("altBaskets").setData(fc(altBasketsF));
+    map.getSource("mandos").setData(fc(mandosF));
+    map.getSource("pending").setData(fc(pending ? [{ type: "Feature", properties: {}, geometry: { type: "Point", coordinates: [pending.lng, pending.lat] } }] : []));
+  }, [holes, cur, mapReady, pending]);
 
   async function geocode(e: React.FormEvent) {
-    e.preventDefault();
-    const q = search.trim(); if (!q) return;
-    try {
-      const r = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?access_token=${TOKEN}&limit=1&types=place,locality,address,poi,region`);
-      const f = (await r.json()).features?.[0];
-      if (f?.center) mapRef.current?.flyTo({ center: f.center, zoom: 16 });
-    } catch {}
+    e.preventDefault(); const q = search.trim(); if (!q) return;
+    try { const r = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?access_token=${TOKEN}&limit=1&types=place,locality,address,poi,region`); const f = (await r.json()).features?.[0]; if (f?.center) mapRef.current?.flyTo({ center: f.center, zoom: 16 }); } catch {}
   }
-
   async function setLocationToCenter() {
-    const map = mapRef.current; if (!map) return;
-    const c = map.getCenter();
-    let city = "", state = "";
-    try {
-      const r = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${c.lng},${c.lat}.json?access_token=${TOKEN}&types=place,region&limit=1`);
-      const feats = (await r.json()).features || [];
+    const map = mapRef.current; if (!map) return; const c = map.getCenter(); let city = "", state = "";
+    try { const r = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${c.lng},${c.lat}.json?access_token=${TOKEN}&types=place,region&limit=1`); const feats = (await r.json()).features || [];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      for (const f of feats as any[]) {
-        if (f.id?.startsWith("place")) city = city || f.text;
-        const region = (f.context || []).find((x: { id: string }) => x.id.startsWith("region"));
-        if (region) state = state || region.text;
-        if (f.id?.startsWith("region")) state = state || f.text;
-      }
+      for (const f of feats as any[]) { if (f.id?.startsWith("place")) city = city || f.text; const region = (f.context || []).find((x: { id: string }) => x.id.startsWith("region")); if (region) state = state || region.text; if (f.id?.startsWith("region")) state = state || f.text; }
     } catch {}
     setLoc({ lat: c.lat, lng: c.lng, city, state });
   }
@@ -309,53 +294,48 @@ export default function CourseBuilder({ uid }: { uid: string }) {
     if (!name.trim()) return setError("Add a course name.");
     if (holeCount < 1) return setError("Enter how many holes (1–27).");
     if (!description.trim()) return setError("Add a short description.");
-    if (!loc) return setError("Set the course location (search, center the map, then Set location).");
-    setError("");
-    setHoles((hs) => { const n = [...hs]; while (n.length < holeCount) n.push(blankHole()); n.length = holeCount; return n; });
-    setCur(0); setMode("tee"); setStep(1);
-    if (loc) mapRef.current?.flyTo({ center: [loc.lng, loc.lat], zoom: 16 });
+    if (!loc) return setError("Set the course location.");
+    setError(""); setHoles((hs) => { const n = [...hs]; while (n.length < holeCount) n.push(blankHole()); n.length = holeCount; return n; });
+    setCur(0); setMode("tee"); setStep(1); if (loc) mapRef.current?.flyTo({ center: [loc.lng, loc.lat], zoom: 16 });
   };
   const allMapped = holes.length === holeCount && holes.every(mapped);
-
-  const focusHole = (i: number) => {
-    setCur(i); setMode(holes[i] && holes[i].teeLat == null ? "tee" : holes[i].basketLat == null ? "basket" : "tee");
-    const h = holes[i];
-    if (h?.teeLat != null) mapRef.current?.flyTo({ center: [h.teeLng, h.teeLat], zoom: 17 });
-  };
-  const doUndo = () => setUndo((u) => { if (!u.length) return u; const prev = u[u.length - 1]; setHoles(prev.map((h) => ({ ...h, elbows: [...h.elbows] }))); return u.slice(0, -1); });
-  const clearHole = () => { setUndo((u) => [...u.slice(-29), holes.map((h) => ({ ...h, elbows: [...h.elbows] }))]); setHoles((hs) => hs.map((h, i) => (i === cur ? { ...h, teeLat: undefined, teeLng: undefined, basketLat: undefined, basketLng: undefined, elbows: [] } : h))); setMode("tee"); };
+  const focusHole = (i: number) => { setPending(null); setCur(i); setMode(holes[i] && holes[i].teeLat == null ? "tee" : holes[i].basketLat == null ? "basket" : "tee"); const h = holes[i]; if (h?.teeLat != null) mapRef.current?.flyTo({ center: [h.teeLng, h.teeLat], zoom: 17 }); };
+  const doUndo = () => setUndo((u) => { if (!u.length) return u; setHoles(snapshot(u[u.length - 1])); return u.slice(0, -1); });
+  const clearHole = () => { setUndo((u) => [...u.slice(-29), snapshot(holes)]); setHoles((hs) => hs.map((h, i) => (i === cur ? { ...blankHole(), par: h.par, notes: h.notes } : h))); setMode("tee"); setPending(null); };
   const setPar = (p: number) => setHoles((hs) => hs.map((h, i) => (i === cur ? { ...h, par: p } : h)));
   const setNotes = (v: string) => setHoles((hs) => hs.map((h, i) => (i === cur ? { ...h, notes: v } : h)));
+  const mutateCur = (fn: (h: Hole) => Hole) => { setUndo((u) => [...u.slice(-29), snapshot(holes)]); setHoles((hs) => hs.map((h, i) => (i === cur ? fn(h) : h))); };
+
+  const confirmPending = () => {
+    if (!pending) return; const p = pending;
+    mutateCur((h) => {
+      if (p.mode === "altTee") return { ...h, altTees: [...h.altTees, { id: newId(), label: p.label.trim() || `Alt ${h.altTees.length + 1}`, lat: p.lat, lng: p.lng }] };
+      if (p.mode === "altBasket") return { ...h, altBaskets: [...h.altBaskets, { id: newId(), label: p.label.trim() || `Alt ${h.altBaskets.length + 1}`, lat: p.lat, lng: p.lng, colorHex: p.colorHex }] };
+      return { ...h, mandos: renumberMandos([...h.mandos, { id: newId(), lat: p.lat, lng: p.lng, direction: p.direction, label: "" }]) };
+    });
+    setPending(null);
+  };
+  const removeAltTee = (id: string) => mutateCur((h) => ({ ...h, altTees: h.altTees.filter((t) => t.id !== id) }));
+  const removeAltBasket = (id: string) => mutateCur((h) => ({ ...h, altBaskets: h.altBaskets.filter((b) => b.id !== id) }));
+  const removeMando = (id: string) => mutateCur((h) => ({ ...h, mandos: renumberMandos(h.mandos.filter((m) => m.id !== id)) }));
+  const renameAltTee = (id: string, v: string) => setHoles((hs) => hs.map((h, i) => (i === cur ? { ...h, altTees: h.altTees.map((t) => (t.id === id ? { ...t, label: v } : t)) } : h)));
+  const editAltBasket = (id: string, patch: Partial<AltBasket>) => setHoles((hs) => hs.map((h, i) => (i === cur ? { ...h, altBaskets: h.altBaskets.map((b) => (b.id === id ? { ...b, ...patch } : b)) } : h)));
+  const setMandoDir = (id: string, d: Dir) => setHoles((hs) => hs.map((h, i) => (i === cur ? { ...h, mandos: h.mandos.map((m) => (m.id === id ? { ...m, direction: d } : m)) } : h)));
 
   async function onCoverFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]; if (!file) return;
-    setUploading(true); setError("");
-    try {
-      const r = storageRef(storage, `courses/${uid}/${courseId}/cover.jpg`);
-      await uploadBytes(r, file, { contentType: file.type || "image/jpeg" });
-      setCoverPhotoUrl(await getDownloadURL(r));
-    } catch (err) {
-      const er = err as { code?: string; message?: string };
-      setError(`Photo upload failed: ${er.code || er.message || "unknown error"}`);
-    }
+    const file = e.target.files?.[0]; if (!file) return; setUploading(true); setError("");
+    try { const r = storageRef(storage, `courses/${uid}/${courseId}/cover.jpg`); await uploadBytes(r, file, { contentType: file.type || "image/jpeg" }); setCoverPhotoUrl(await getDownloadURL(r)); }
+    catch (err) { const er = err as { code?: string; message?: string }; setError(`Photo upload failed: ${er.code || er.message || "unknown error"}`); }
     setUploading(false);
   }
 
   async function submit() {
     setError("");
-    const built: HoleDraft[] = holes.filter(mapped).map((h) => ({ par: h.par, teeLat: h.teeLat!, teeLng: h.teeLng!, basketLat: h.basketLat!, basketLng: h.basketLng!, notes: h.notes, elbows: h.elbows.map(([lng, lat]) => [lat, lng] as [number, number]) }));
+    const built: HoleDraft[] = holes.filter(mapped).map((h) => ({ par: h.par, teeLat: h.teeLat!, teeLng: h.teeLng!, basketLat: h.basketLat!, basketLng: h.basketLng!, notes: h.notes, elbows: h.elbows.map(([lng, lat]) => ({ lat, lng })), alternateTees: h.altTees, alternateBaskets: h.altBaskets, mandos: h.mandos }));
     if (built.length === 0) { setError("Map at least one hole."); return; }
-    if (dupes === null && loc) {
-      const near = await findNearbyCourses(loc.lat, loc.lng, name);
-      if (near.length > 0) { setDupes(near); return; }
-      setDupes([]);
-    }
+    if (dupes === null && loc) { const near = await findNearbyCourses(loc.lat, loc.lng, name); if (near.length > 0) { setDupes(near); return; } setDupes([]); }
     setStatus("saving");
-    const id = await createCourse(uid, {
-      name, city: loc?.city, state: loc?.state, latitude: loc?.lat, longitude: loc?.lng, description,
-      courseType, terrain, manualDifficulty: difficulty, amenities: [...amenities],
-      isFree, courseFeeAmount: isFree ? 0 : Number(feeAmount) || 0, coverPhotoUrl, holes: built,
-    }, courseId);
+    const id = await createCourse(uid, { name, city: loc?.city, state: loc?.state, latitude: loc?.lat, longitude: loc?.lng, description, courseType, terrain, manualDifficulty: difficulty, amenities: [...amenities], isFree, courseFeeAmount: isFree ? 0 : Number(feeAmount) || 0, coverPhotoUrl, holes: built }, courseId);
     if (!id) { setStatus("error"); setError("Couldn't save the course. Please try again."); return; }
     try { localStorage.removeItem(DRAFT_KEY); } catch {}
     router.push(`/courses/${slugify(name, id)}`);
@@ -364,10 +344,13 @@ export default function CourseBuilder({ uid }: { uid: string }) {
   const curHole = holes[cur];
   const mappedCount = holes.filter(mapped).length;
   const totalPar = holes.reduce((s, h) => s + (h.par || 0), 0);
-  const MODES: { k: Mode; label: string; color: string }[] = [
-    { k: "tee", label: curHole?.teeLat != null ? "✓ Tee" : "Tee", color: "#16331f" },
-    { k: "basket", label: curHole?.basketLat != null ? "✓ Basket" : "Basket", color: "#F6C165" },
-    { k: "elbow", label: `Dogleg${curHole?.elbows.length ? ` (${curHole.elbows.length})` : ""}`, color: "#E0752A" },
+  const MODES: { k: Mode; label: string; color: string; on: boolean }[] = [
+    { k: "tee", label: curHole?.teeLat != null ? "✓ Tee" : "Tee", color: "#16331f", on: true },
+    { k: "basket", label: curHole?.basketLat != null ? "✓ Basket" : "Basket", color: "#F6C165", on: true },
+    { k: "elbow", label: `Dogleg${curHole?.elbows.length ? ` (${curHole.elbows.length})` : ""}`, color: "#E0752A", on: true },
+    { k: "altTee", label: `Alt tee${curHole?.altTees.length ? ` (${curHole.altTees.length})` : ""}`, color: "#16331f", on: !!curHole?.teeLat },
+    { k: "altBasket", label: `Alt basket${curHole?.altBaskets.length ? ` (${curHole.altBaskets.length})` : ""}`, color: "#3498DB", on: !!curHole?.basketLat },
+    { k: "mando", label: `Mando${curHole?.mandos.length ? ` (${curHole.mandos.length})` : ""}`, color: "#caa106", on: true },
   ];
 
   return (
@@ -465,12 +448,34 @@ export default function CourseBuilder({ uid }: { uid: string }) {
               <div className="rounded-2xl border border-black/[0.07] bg-[#faf9f5] p-4">
                 <div className="mb-3 flex items-center justify-between"><span className="font-[family-name:var(--font-heading)] text-lg font-extrabold text-[#16221b]">Hole {cur + 1}</span>{curHole && mapped(curHole) && <span className="rounded-full bg-[var(--gold)]/20 px-2.5 py-1 text-xs font-bold text-[#9a7a3a]">{holeDistFt(curHole)} ft</span>}</div>
                 <div className="mb-3 grid grid-cols-3 gap-2">
-                  {MODES.map((m) => <button key={m.k} onClick={() => setMode(m.k)} className={`rounded-full py-2 text-xs font-bold transition-all ${mode === m.k ? "text-white shadow" : "border border-black/[0.08] bg-white text-[#46554c]"}`} style={mode === m.k ? { background: m.color } : undefined}>{m.label}</button>)}
+                  {MODES.map((m) => <button key={m.k} disabled={!m.on} onClick={() => { setMode(m.k); setPending(null); }} className={`rounded-full py-2 text-[11px] font-bold transition-all disabled:opacity-35 ${mode === m.k ? "text-white shadow" : "border border-black/[0.08] bg-white text-[#46554c]"}`} style={mode === m.k ? { background: m.color } : undefined}>{m.label}</button>)}
                 </div>
-                <p className="mb-3 text-xs text-[#6b7a70]">{mode === "tee" ? "Click the map to drop the TEE." : mode === "basket" ? "Click the map to drop the BASKET." : "Click to add a dogleg/bend point along the fairway."}</p>
+                <p className="mb-3 text-xs text-[#6b7a70]">{pending ? "Set the details below, then Add." : mode === "tee" ? "Click the map to drop the TEE." : mode === "basket" ? "Click the map to drop the BASKET." : mode === "elbow" ? "Click to add a dogleg bend along the fairway." : mode === "altTee" ? "Click to place an alternate tee (max 3)." : mode === "altBasket" ? "Click to place an alternate basket (max 3)." : "Click to place a mando (max 4)."}</p>
+
+                {pending && (
+                  <div className="mb-3 rounded-xl border border-[var(--gold)]/40 bg-[var(--gold)]/10 p-3">
+                    {pending.mode === "altTee" && <input autoFocus value={pending.label} onChange={(e) => setPending({ ...pending, label: e.target.value })} maxLength={15} placeholder="Tee label (e.g. Pro, Back)" className={FIELD.replace("bg-[#faf9f5]", "bg-white")} />}
+                    {pending.mode === "altBasket" && (<>
+                      <input autoFocus value={pending.label} onChange={(e) => setPending({ ...pending, label: e.target.value })} maxLength={15} placeholder="Basket label (e.g. A, Long)" className={FIELD.replace("bg-[#faf9f5]", "bg-white")} />
+                      <div className="mt-2 flex flex-wrap gap-1.5">{ALT_COLORS.map((c) => <button key={c.hex} onClick={() => setPending({ ...pending, colorHex: c.hex })} title={c.name} className={`h-7 w-7 rounded-full border-2 ${pending.colorHex === c.hex ? "border-[#16221b]" : "border-white"} shadow`} style={{ background: `#${c.hex}` }} />)}</div>
+                    </>)}
+                    {pending.mode === "mando" && <div className="flex gap-2">{(["Left", "Right", "Down"] as Dir[]).map((d) => <button key={d} onClick={() => setPending({ ...pending, direction: d })} className={`flex-1 rounded-lg border py-2 text-sm font-bold ${pending.direction === d ? "border-[var(--gold)] bg-[var(--gold)] text-[#16221b]" : "border-black/10 bg-white text-[#46554c]"}`}>{d === "Left" ? "← Left" : d === "Right" ? "Right →" : "↓ Under"}</button>)}</div>}
+                    <div className="mt-2 flex gap-2"><button onClick={confirmPending} className="flex-1 rounded-full bg-[#16221b] py-2 text-xs font-bold text-[var(--cream)] hover:bg-[#22332a]">Add</button><button onClick={() => setPending(null)} className="rounded-full border border-black/10 bg-white px-4 py-2 text-xs font-bold text-[#46554c]">Cancel</button></div>
+                  </div>
+                )}
+
+                {/* placed alt tees / baskets / mandos */}
+                {curHole && (curHole.altTees.length > 0 || curHole.altBaskets.length > 0 || curHole.mandos.length > 0) && (
+                  <div className="mb-3 space-y-1.5">
+                    {curHole.altTees.map((t) => <div key={t.id} className="flex items-center gap-2 rounded-lg bg-white px-2 py-1.5"><span className="h-3 w-4 rounded-sm bg-[#16331f]" /><input value={t.label} onChange={(e) => renameAltTee(t.id, e.target.value)} className="min-w-0 flex-1 bg-transparent text-xs font-semibold text-[#16221b] outline-none" /><button onClick={() => removeAltTee(t.id)} className="text-[#b3bbb2] hover:text-[#d9473f]">✕</button></div>)}
+                    {curHole.altBaskets.map((b) => <div key={b.id} className="flex items-center gap-2 rounded-lg bg-white px-2 py-1.5"><span className="h-3.5 w-3.5 shrink-0 rounded-full border border-white shadow" style={{ background: `#${b.colorHex}` }} /><input value={b.label} onChange={(e) => editAltBasket(b.id, { label: e.target.value })} className="min-w-0 flex-1 bg-transparent text-xs font-semibold text-[#16221b] outline-none" /><div className="flex gap-0.5">{ALT_COLORS.map((c) => <button key={c.hex} onClick={() => editAltBasket(b.id, { colorHex: c.hex })} className={`h-3.5 w-3.5 rounded-full ${b.colorHex === c.hex ? "ring-2 ring-[#16221b]" : ""}`} style={{ background: `#${c.hex}` }} />)}</div><button onClick={() => removeAltBasket(b.id)} className="text-[#b3bbb2] hover:text-[#d9473f]">✕</button></div>)}
+                    {curHole.mandos.map((m) => <div key={m.id} className="flex items-center gap-2 rounded-lg bg-white px-2 py-1.5"><span className="grid h-4 w-4 place-items-center rounded bg-[#F1C40F] text-[9px] font-bold text-black">{m.direction === "Left" ? "←" : m.direction === "Right" ? "→" : "↓"}</span><span className="flex-1 text-xs font-semibold text-[#16221b]">{m.label}</span><div className="flex gap-1">{(["Left", "Right", "Down"] as Dir[]).map((d) => <button key={d} onClick={() => setMandoDir(m.id, d)} className={`rounded px-1.5 text-xs font-bold ${m.direction === d ? "bg-[#F1C40F] text-black" : "text-[#8a968d]"}`}>{d === "Left" ? "←" : d === "Right" ? "→" : "↓"}</button>)}</div><button onClick={() => removeMando(m.id)} className="text-[#b3bbb2] hover:text-[#d9473f]">✕</button></div>)}
+                  </div>
+                )}
+
                 <div className="mb-3"><span className={LABEL}>Par</span><div className="flex gap-2">{[2, 3, 4, 5].map((p) => <button key={p} onClick={() => setPar(p)} className={pill(curHole?.par === p) + " py-2"}>{p}</button>)}</div></div>
-                <label className="block"><span className={LABEL}>Notes</span><input value={curHole?.notes ?? ""} onChange={(e) => setNotes(e.target.value)} placeholder="Optional — OB, mando, tips…" className={FIELD.replace("bg-[#faf9f5]", "bg-white")} /></label>
-                {curHole && (curHole.teeLat != null || curHole.basketLat != null || curHole.elbows.length > 0) && <button onClick={clearHole} className="mt-3 text-xs font-bold text-[#e0857d] hover:underline">Clear this hole</button>}
+                <label className="block"><span className={LABEL}>Notes</span><input value={curHole?.notes ?? ""} onChange={(e) => setNotes(e.target.value)} placeholder="Optional — OB, tips…" className={FIELD.replace("bg-[#faf9f5]", "bg-white")} /></label>
+                {curHole && (curHole.teeLat != null || curHole.basketLat != null || curHole.elbows.length > 0 || curHole.altTees.length > 0 || curHole.altBaskets.length > 0 || curHole.mandos.length > 0) && <button onClick={clearHole} className="mt-3 text-xs font-bold text-[#e0857d] hover:underline">Clear this hole</button>}
               </div>
               {error && <p className="text-sm font-medium text-[#d9473f]">{error}</p>}
               <div className="flex gap-2">
@@ -518,7 +523,7 @@ export default function CourseBuilder({ uid }: { uid: string }) {
           <div className="relative">
             <div ref={elRef} className="h-[460px] w-full overflow-hidden rounded-3xl border border-black/[0.07] bg-[#e9e4d8] shadow-[0_18px_50px_-26px_rgba(15,24,19,0.32)] lg:h-[640px]" />
             <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl">
-              {step === 1 && <div className="absolute left-3 top-3 whitespace-nowrap rounded-xl bg-[var(--bg-deep)]/85 px-3 py-2 text-xs font-bold text-[var(--cream)] backdrop-blur">Hole {cur + 1} · placing {mode === "elbow" ? "dogleg" : mode}</div>}
+              {step === 1 && <div className="absolute left-3 top-3 whitespace-nowrap rounded-xl bg-[var(--bg-deep)]/85 px-3 py-2 text-xs font-bold text-[var(--cream)] backdrop-blur">Hole {cur + 1} · {pending ? "confirm in panel" : `placing ${mode === "elbow" ? "dogleg" : mode === "altTee" ? "alt tee" : mode === "altBasket" ? "alt basket" : mode}`}</div>}
               {mapErr && <div className="absolute inset-x-3 bottom-3 rounded-xl bg-[#d9473f] px-3 py-2 text-xs font-semibold text-white shadow-lg">Map error: {mapErr}</div>}
             </div>
           </div>

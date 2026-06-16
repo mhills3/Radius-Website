@@ -448,7 +448,16 @@ export function distanceFt(aLat: number, aLng: number, bLat: number, bLng: numbe
   return Math.round(metres * 3.28084);
 }
 
-export interface HoleDraft { par: number; teeLat: number; teeLng: number; basketLat: number; basketLng: number; notes?: string; elbows?: [number, number][] }
+export interface AltTeeWrite { id: string; label: string; lat: number; lng: number }
+export interface AltBasketWrite { id: string; label: string; lat: number; lng: number; colorHex: string }
+export interface MandoWrite { id: string; lat: number; lng: number; direction: "Left" | "Right" | "Down"; label: string }
+export interface HoleDraft {
+  par: number; teeLat: number; teeLng: number; basketLat: number; basketLng: number; notes?: string;
+  elbows?: { lat: number; lng: number }[];
+  alternateTees?: AltTeeWrite[];
+  alternateBaskets?: AltBasketWrite[];
+  mandos?: MandoWrite[];
+}
 export interface CourseDraft {
   name: string;
   city?: string;
@@ -482,19 +491,25 @@ export async function createCourse(uid: string, draft: CourseDraft, presetId?: s
     const now = Date.now();
 
     const holes = draft.holes.map((h, i) => {
-      const elbows = h.elbows ?? []; // [lat,lng] pairs
+      const elbows = h.elbows ?? []; // {lat,lng} objects (app contract)
       // Distance walks the fairway: tee -> elbows -> basket.
-      let dist = 0; let pa: [number, number] = [h.teeLat, h.teeLng];
-      for (const e of elbows) { dist += distanceFt(pa[0], pa[1], e[0], e[1]); pa = e; }
-      dist += distanceFt(pa[0], pa[1], h.basketLat, h.basketLng);
-      return {
+      let dist = 0; let pa = { lat: h.teeLat, lng: h.teeLng };
+      for (const e of elbows) { dist += distanceFt(pa.lat, pa.lng, e.lat, e.lng); pa = e; }
+      dist += distanceFt(pa.lat, pa.lng, h.basketLat, h.basketLng);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const hole: Record<string, any> = {
         id: uuidUpper(),
         holeNumber: i + 1,
         par: h.par > 0 ? h.par : 3,
         distance: Math.round(dist),
         teeLat: h.teeLat, teeLng: h.teeLng, basketLat: h.basketLat, basketLng: h.basketLng,
-        elbows, notes: h.notes?.trim() || "",
+        elbows: elbows.map((e) => ({ lat: e.lat, lng: e.lng })),
+        notes: h.notes?.trim() || "",
       };
+      if (h.alternateTees?.length) hole.alternateTees = h.alternateTees.map((t) => ({ id: t.id, label: t.label, lat: t.lat, lng: t.lng }));
+      if (h.alternateBaskets?.length) hole.alternateBaskets = h.alternateBaskets.map((b) => ({ id: b.id, label: b.label, lat: b.lat, lng: b.lng, colorHex: b.colorHex }));
+      if (h.mandos?.length) hole.mandos = h.mandos.map((m) => ({ id: m.id, lat: m.lat, lng: m.lng, direction: m.direction, label: m.label }));
+      return hole;
     });
     const par = holes.reduce((s, h) => s + h.par, 0);
     const totalDist = holes.reduce((s, h) => s + h.distance, 0);
