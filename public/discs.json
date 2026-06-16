@@ -12080,6 +12080,66 @@
       "glide": 5.0,
       "turn": -1.0,
       "fade": 2.0
+    },
+    {
+      "name": "Chemtrail",
+      "manufacturer": "Doomsday Discs",
+      "category": "fairwayDriver",
+      "speed": 7,
+      "glide": 6,
+      "turn": 2,
+      "fade": 1,
+      "color": "cyan"
+    },
+    {
+      "name": "Impa",
+      "manufacturer": "Kastaplast",
+      "category": "distanceDriver",
+      "speed": 11,
+      "glide": 6,
+      "turn": -4,
+      "fade": 1,
+      "color": "teal"
+    },
+    {
+      "name": "Älva",
+      "manufacturer": "Kastaplast",
+      "category": "distanceDriver",
+      "speed": 11,
+      "glide": 6,
+      "turn": -2,
+      "fade": 2,
+      "color": "purple"
+    },
+    {
+      "name": "Stasis",
+      "manufacturer": "MVP",
+      "category": "putter",
+      "speed": 2,
+      "glide": 1,
+      "turn": 0,
+      "fade": 2.5,
+      "color": "blue"
+    },
+    {
+      "name": "Swarm",
+      "manufacturer": "Discraft",
+      "category": "midrange",
+      "speed": 5,
+      "glide": 3,
+      "turn": 0,
+      "fade": 4,
+      "color": "yellow"
+    },
+    {
+      "name": "Cataclysm",
+      "manufacturer": "Doomsday Discs",
+      "category": "distanceDriver",
+      "speed": 11,
+      "glide": 5,
+      "turn": -1,
+      "fade": 2,
+      "color": "red"
     }
   ]
 }
