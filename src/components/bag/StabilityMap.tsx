@@ -138,7 +138,7 @@ function BigChart({ pts }: { pts: Pt[] }) {
   const placed = w > 0 && h > 0 ? plot(pts, r, gx, gy, gw, gh, cell * 0.5) : [];
   const tx = (v: number) => gx + ((r.xHi - v) / (r.xHi - r.xLo)) * gw;
   const ty = (v: number) => gy + ((r.yHi - v) / (r.yHi - r.yLo)) * gh;
-  const R = Math.min(cell * 0.4, 26);
+  const R = Math.min(cell * 0.34, 22);
   const ring = Math.max(2, R * 0.12);
   const nameFont = Math.max(10, Math.min(15, R * 0.78));
   const tickFont = Math.max(10, Math.min(14, cell * 0.26));
