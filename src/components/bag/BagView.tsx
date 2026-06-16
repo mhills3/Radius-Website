@@ -9,8 +9,8 @@ import DiscGraphic from "@/components/bag/DiscGraphic";
 import AddDiscModal from "@/components/bag/AddDiscModal";
 import { CountUp } from "@/components/dashboard/charts";
 
-// Adding discs from the web is hidden for now — flip back to true to re-enable.
-const SHOW_ADD_DISC = false;
+// Add disc from the web (catalog search modal -> saveBag merge). Verified cross-platform.
+const SHOW_ADD_DISC = true;
 
 type SortKey = "speed" | "stability" | "throws" | "name";
 const SORTS: { key: SortKey; label: string }[] = [
