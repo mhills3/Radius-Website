@@ -523,6 +523,13 @@ export default function CourseBuilder({ uid }: { uid: string }) {
           <div className="relative">
             <div ref={elRef} className="h-[460px] w-full overflow-hidden rounded-3xl border border-black/[0.07] bg-[#e9e4d8] shadow-[0_18px_50px_-26px_rgba(15,24,19,0.32)] lg:h-[640px]" />
             <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl">
+              {step === 0 && (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/basket-pin.svg" alt="" className="absolute left-1/2 top-1/2 h-12 w-12 -translate-x-1/2 -translate-y-full drop-shadow-[0_6px_10px_rgba(0,0,0,0.45)]" />
+                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[var(--bg-deep)]/85 px-4 py-1.5 text-xs font-semibold text-[var(--cream)] backdrop-blur">Center the map, then “Set location”</div>
+                </>
+              )}
               {step === 1 && <div className="absolute left-3 top-3 whitespace-nowrap rounded-xl bg-[var(--bg-deep)]/85 px-3 py-2 text-xs font-bold text-[var(--cream)] backdrop-blur">Hole {cur + 1} · {pending ? "confirm in panel" : `placing ${mode === "elbow" ? "dogleg" : mode === "altTee" ? "alt tee" : mode === "altBasket" ? "alt basket" : mode}`}</div>}
               {mapErr && <div className="absolute inset-x-3 bottom-3 rounded-xl bg-[#d9473f] px-3 py-2 text-xs font-semibold text-white shadow-lg">Map error: {mapErr}</div>}
             </div>
