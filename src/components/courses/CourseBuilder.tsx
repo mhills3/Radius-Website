@@ -43,6 +43,7 @@ export default function CourseBuilder({ uid }: { uid: string }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapRef = useRef<any>(null);
   const [mapReady, setMapReady] = useState(false);
+  const [mapErr, setMapErr] = useState("");
 
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
@@ -98,6 +99,11 @@ export default function CourseBuilder({ uid }: { uid: string }) {
       const map = new mapboxgl.Map({ container: elRef.current, style: "mapbox://styles/mapbox/satellite-v9", projection: "mercator", center: [-98.5, 39.5], zoom: 3.4, attributionControl: false });
       mapRef.current = map;
       map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
+      // Surface the real Mapbox failure (token 403, WebGL, etc.) instead of a silent blank map.
+      map.on("error", (e: { error?: { message?: string; status?: number } }) => {
+        const m = e?.error?.message || (e?.error?.status ? `HTTP ${e.error.status}` : "");
+        if (m) setMapErr(m);
+      });
       map.on("load", () => {
         if (cancelled) return;
         const img = new Image();
@@ -380,6 +386,7 @@ export default function CourseBuilder({ uid }: { uid: string }) {
             </>
           )}
           {step === 1 && <div className="pointer-events-none absolute left-3 top-3 rounded-xl bg-[var(--bg-deep)]/85 px-3 py-2 text-xs font-bold text-[var(--cream)] backdrop-blur">Hole {cur + 1} · placing {mode}</div>}
+          {mapErr && <div className="absolute inset-x-3 bottom-3 rounded-xl bg-[#d9473f] px-3 py-2 text-xs font-semibold text-white shadow-lg">Map error: {mapErr}</div>}
         </div>
       </div>
     </div>
