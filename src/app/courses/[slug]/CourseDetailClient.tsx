@@ -6,6 +6,7 @@ import { getCourseByShortId, getCourseScores, idFromSlug, slugify, type Course, 
 import { getRanksFor, type RankInfo } from "@/lib/community";
 import CourseHoleMap, { holesWithGeo } from "@/components/courses/CourseHoleMap";
 import CourseCommunity from "@/components/courses/CourseCommunity";
+import CourseReviews from "@/components/courses/CourseReviews";
 import { getCourseRoundsForUser, type DecodedRound } from "@/lib/rounds";
 import { getCourseRecords, type CourseRecords as CourseRecordsData } from "@/lib/courseRecords";
 import CourseRecords from "@/components/courses/CourseRecords";
@@ -157,7 +158,7 @@ export default function CourseDetailClient({ slug }: { slug: string }) {
     { id: "records", label: "Records", show: true },
     { id: "leaderboard", label: "Leaderboard", show: true },
     { id: "photos", label: "Photos", show: !!course.galleryPhotoUrls?.some((u) => /^https?:\/\//.test(u)) },
-    { id: "reviews", label: "Reviews", show: !!course.reviews?.length },
+    { id: "reviews", label: "Reviews", show: true },
     { id: "community", label: "Community", show: true },
   ].filter((s) => s.show);
 
@@ -421,52 +422,8 @@ export default function CourseDetailClient({ slug }: { slug: string }) {
             </section>
           )}
 
-          {/* REVIEWS */}
-          {course.reviews && course.reviews.length > 0 && (
-            <section id="reviews" className="scroll-mt-32">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="font-[family-name:var(--font-heading)] text-xl font-bold tracking-tight">Reviews</h2>
-                {course.rating != null && course.rating > 0 && (
-                  <span className="flex items-center gap-1.5 text-sm"><span className="text-[var(--gold)]">★</span><span className="font-bold text-[#16221b]">{course.rating.toFixed(1)}</span><span className="text-[#8a968d]">({course.reviewCount ?? course.reviews.length})</span></span>
-                )}
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {course.reviews.slice(0, 6).map((r, i) => {
-                  const stars = Math.round(r.rating);
-                  return (
-                    <div key={i} className="rounded-2xl border border-black/8 bg-white p-5 shadow-sm">
-                      <div className="mb-2 flex items-center justify-between gap-3">
-                        <span className="truncate font-bold text-[#16221b]">{r.author}</span>
-                        <span className="shrink-0 text-sm tracking-tight"><span className="text-[var(--gold)]">{"★".repeat(stars)}</span><span className="text-black/15">{"★".repeat(Math.max(0, 5 - stars))}</span></span>
-                      </div>
-                      {r.text && <p className="text-sm leading-relaxed text-[#46554c]">{r.text}</p>}
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          )}
-
-          {/* REVIEWS */}
-          {course.reviews && course.reviews.length > 0 && (
-            <section className="scroll-mt-32">
-              <div className="mb-4 flex items-center gap-3">
-                <h2 className="font-[family-name:var(--font-heading)] text-xl font-bold tracking-tight">Reviews</h2>
-                {course.rating ? <span className="rounded-full bg-[var(--gold)]/15 px-3 py-1 text-sm font-bold text-[#9a7a3a]">★ {course.rating.toFixed(1)} · {course.reviews.length}</span> : null}
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {course.reviews.slice(0, 6).map((r, i) => (
-                  <div key={i} className="rounded-2xl border border-black/8 bg-white p-5 shadow-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-[#16221b]">{r.author}</span>
-                      {r.rating > 0 && <span className="text-sm font-bold text-[#9a7a3a]">{"★".repeat(Math.round(r.rating))}<span className="text-black/15">{"★".repeat(Math.max(0, 5 - Math.round(r.rating)))}</span></span>}
-                    </div>
-                    {r.text && <p className="mt-2 text-sm leading-relaxed text-[#46554c]">{r.text}</p>}
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
+          {/* REVIEWS — live from courses/{id}/reviews subcollection (cross-platform with the apps) */}
+          <CourseReviews courseId={course.id} />
 
           {/* COMMUNITY */}
           <section id="community" className="scroll-mt-32"><CourseCommunity courseId={course.id} courseName={course.name} /></section>

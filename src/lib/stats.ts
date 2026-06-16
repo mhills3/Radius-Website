@@ -33,7 +33,6 @@ async function countCollection(collectionId: string): Promise<number> {
   }
 }
 
-export const getCourseCountServer = () => countCollection("courses");
 export const getPlayerCountServer = () => countCollection("users");
 
 import { readFileSync } from "fs";
@@ -50,7 +49,7 @@ export function getDiscCount(): number {
   }
 }
 
-import { isUSState, countryOf } from "./courses";
+import { isUSState, countryOf, isPubliclyListed } from "./courses";
 
 const fnum = (f?: { doubleValue?: number; integerValue?: string }): number | undefined => {
   if (!f) return undefined;
@@ -60,21 +59,26 @@ const fnum = (f?: { doubleValue?: number; integerValue?: string }): number | und
 };
 
 /**
- * Distinct geographic reach: US states + international countries the courses span.
- * Pulls only state/lat/lng for every course (field-masked REST list) and de-dupes —
- * replaces the old hard-coded "50" so the stat stays accurate as courses are added.
+ * SINGLE SOURCE OF TRUTH for the public course stats shown anywhere on the site.
+ *
+ * Paginates the courses collection once (field-masked REST list) and counts ONLY the
+ * courses the public Courses page lists — i.e. `name && isPubliclyListed` (hides drafts,
+ * pending, rejected, and unnamed). Returns both the headline course count and the distinct
+ * geographic reach from the SAME pass, so the homepage banner and /courses can never disagree
+ * (previously the banner counted every raw doc incl. drafts → 889 vs the page's 814).
+ *
+ * Cached for an hour; mirrors getAllCourses()'s `name && isPubliclyListed` filter exactly.
  */
-export async function getRegionCountServer(): Promise<number> {
+export async function getCourseStatsServer(): Promise<{ count: number; regions: number }> {
   try {
+    let count = 0;
     const states = new Set<string>();
     const countries = new Set<string>();
     let pageToken = "";
-    for (let page = 0; page < 12; page++) {
+    for (let page = 0; page < 20; page++) {
       const url = new URL(`https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/courses`);
       url.searchParams.set("pageSize", "300");
-      url.searchParams.append("mask.fieldPaths", "state");
-      url.searchParams.append("mask.fieldPaths", "latitude");
-      url.searchParams.append("mask.fieldPaths", "longitude");
+      for (const fp of ["name", "reviewStatus", "isDraft", "state", "latitude", "longitude"]) url.searchParams.append("mask.fieldPaths", fp);
       url.searchParams.set("key", API_KEY);
       if (pageToken) url.searchParams.set("pageToken", pageToken);
       const res = await fetch(url.toString(), { next: { revalidate: 3600 } });
@@ -82,6 +86,12 @@ export async function getRegionCountServer(): Promise<number> {
       const data = await res.json();
       for (const doc of data.documents ?? []) {
         const f = doc.fields ?? {};
+        const name = f.name?.stringValue as string | undefined;
+        const reviewStatus = f.reviewStatus?.stringValue as string | undefined;
+        const isDraft = f.isDraft?.booleanValue === true;
+        // EXACT same gate as getAllCourses() so the count matches what the page renders.
+        if (!name || !isPubliclyListed({ reviewStatus, isDraft })) continue;
+        count++;
         const state = f.state?.stringValue as string | undefined;
         const latitude = fnum(f.latitude);
         const longitude = fnum(f.longitude);
@@ -93,8 +103,11 @@ export async function getRegionCountServer(): Promise<number> {
       pageToken = data.nextPageToken ?? "";
       if (!pageToken) break;
     }
-    return states.size + countries.size;
+    return { count, regions: states.size + countries.size };
   } catch {
-    return 0;
+    return { count: 0, regions: 0 };
   }
 }
+
+export const getCourseCountServer = async () => (await getCourseStatsServer()).count;
+export const getRegionCountServer = async () => (await getCourseStatsServer()).regions;
