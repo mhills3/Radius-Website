@@ -1,14 +1,15 @@
 import Link from "next/link";
-import { getCourseStatsServer, getPlayerCountServer, getDiscCount } from "@/lib/stats";
+import { getCourseCountServer, getPlayerCountServer, getRegionCountServer, getDiscCount } from "@/lib/stats";
 import StatValue from "./StatValue";
 
 // Server component: counts are fetched server-side (reliable long-polling transport) and baked
 // into the HTML, so the real numbers show on every device — including mobile Safari, where the
 // client-side Firestore aggregation transport was silently failing and falling back to "—"/"630+".
 export default async function HubStats() {
-  const [{ count: courses, regions }, players] = await Promise.all([
-    getCourseStatsServer(),
+  const [courses, players, regions] = await Promise.all([
+    getCourseCountServer(),
     getPlayerCountServer(),
+    getRegionCountServer(),
   ]);
 
   const items = [
