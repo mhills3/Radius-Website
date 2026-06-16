@@ -6,7 +6,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { getNotifications, markAllRead, notifHref, notifVerb, type AppNotification } from "@/lib/notifications";
 import { timeAgo } from "@/lib/feed";
 
-const ICON: Record<string, string> = { mention: "@", follow: "+", comment: "💬", reply: "↩", like: "❤" };
+const ICON: Record<string, string> = { mention: "@", follow: "+", followRequest: "+", comment: "💬", reply: "↩", commentReply: "↩", threadReply: "↩", like: "❤", postLikeMilestone: "🏆", threadUpvoteMilestone: "🏆", replyUpvoteMilestone: "🏆", meetupJoin: "📅", meetupMessage: "💬" };
 
 export default function NotificationsPage() {
   const { user, loading } = useAuth();
