@@ -385,18 +385,21 @@ export default function CourseBuilder({ uid }: { uid: string }) {
           </div>
         </div>
 
-        {/* RIGHT — persistent map */}
-        <div className="relative min-h-[460px] overflow-hidden rounded-3xl border border-black/[0.07] shadow-[0_18px_50px_-26px_rgba(15,24,19,0.32)] lg:sticky lg:top-24 lg:h-[calc(100vh-8rem)]">
-          <div ref={elRef} className="absolute inset-0 bg-[#e9e4d8]" />
-          {step === 0 && (
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/basket-pin.svg" alt="" className="pointer-events-none absolute left-1/2 top-1/2 h-12 w-12 -translate-x-1/2 -translate-y-full drop-shadow-[0_6px_10px_rgba(0,0,0,0.45)]" />
-              <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-[var(--bg-deep)]/85 px-3.5 py-1.5 text-xs font-semibold text-[var(--cream)] backdrop-blur">Center the map on your course, then “Set location”</div>
-            </>
-          )}
-          {step === 1 && <div className="pointer-events-none absolute left-3 top-3 rounded-xl bg-[var(--bg-deep)]/85 px-3 py-2 text-xs font-bold text-[var(--cream)] backdrop-blur">Hole {cur + 1} · placing {mode}</div>}
-          {mapErr && <div className="absolute inset-x-3 bottom-3 rounded-xl bg-[#d9473f] px-3 py-2 text-xs font-semibold text-white shadow-lg">Map error: {mapErr}</div>}
+        {/* RIGHT — map. Direct, explicit-height container (mirrors the working CourseMap/CourseHoleMap;
+            an absolute-inset-0 container makes Mapbox build a 0-size canvas → blank map). */}
+        <div className="relative lg:sticky lg:top-24">
+          <div ref={elRef} className="h-[460px] w-full overflow-hidden rounded-3xl border border-black/[0.07] bg-[#e9e4d8] shadow-[0_18px_50px_-26px_rgba(15,24,19,0.32)] lg:h-[calc(100vh-8rem)]" />
+          <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl">
+            {step === 0 && (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/basket-pin.svg" alt="" className="absolute left-1/2 top-1/2 h-12 w-12 -translate-x-1/2 -translate-y-full drop-shadow-[0_6px_10px_rgba(0,0,0,0.45)]" />
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-[var(--bg-deep)]/85 px-3.5 py-1.5 text-xs font-semibold text-[var(--cream)] backdrop-blur">Center the map on your course, then “Set location”</div>
+              </>
+            )}
+            {step === 1 && <div className="absolute left-3 top-3 rounded-xl bg-[var(--bg-deep)]/85 px-3 py-2 text-xs font-bold text-[var(--cream)] backdrop-blur">Hole {cur + 1} · placing {mode}</div>}
+            {mapErr && <div className="absolute inset-x-3 bottom-3 rounded-xl bg-[#d9473f] px-3 py-2 text-xs font-semibold text-white shadow-lg">Map error: {mapErr}</div>}
+          </div>
         </div>
       </div>
     </div>
