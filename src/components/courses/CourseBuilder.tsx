@@ -99,9 +99,12 @@ export default function CourseBuilder({ uid }: { uid: string }) {
       if (cancelled) return;
       if (!elRef.current) { setMapErr("Map container didn't mount."); return; }
       mapboxgl.accessToken = TOKEN;
-      const map = new mapboxgl.Map({ container: elRef.current, style: "mapbox://styles/mapbox/satellite-v9", projection: "mercator", center: [-98.5, 39.5], zoom: 3.4, attributionControl: false });
+      // satellite-streets shows roads + town/state boundaries & labels over the imagery (helps
+      // place pins accurately) vs plain satellite.
+      const map = new mapboxgl.Map({ container: elRef.current, style: "mapbox://styles/mapbox/satellite-streets-v12", projection: "mercator", center: [-98.5, 39.5], zoom: 3.4, attributionControl: false });
       mapRef.current = map;
       map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
+      map.addControl(new mapboxgl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: false, showUserLocation: true }), "top-right");
       // Keep the canvas sized to its container (fixes a map rendered into a 0-size box).
       ro = new ResizeObserver(() => { try { map.resize(); } catch {} });
       ro.observe(elRef.current);
@@ -113,6 +116,14 @@ export default function CourseBuilder({ uid }: { uid: string }) {
       map.on("load", () => {
         if (cancelled) return;
         map.resize();
+        // Default to the user's current location, zoomed in (they can pan/zoom from there).
+        if (typeof navigator !== "undefined" && navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => { if (!cancelled) map.flyTo({ center: [pos.coords.longitude, pos.coords.latitude], zoom: 16, duration: 1200 }); },
+            () => {},
+            { enableHighAccuracy: true, timeout: 8000 },
+          );
+        }
         const img = new Image();
         img.onload = () => { try { const s = 2, w = 32 * s, h = 40 * s; const cv = document.createElement("canvas"); cv.width = w; cv.height = h; const c = cv.getContext("2d"); if (c) { c.drawImage(img, 0, 0, w, h); if (!map.hasImage("basket-pin")) map.addImage("basket-pin", c.getImageData(0, 0, w, h), { pixelRatio: 2 }); } } catch {} };
         img.src = "/basket-pin.svg";
