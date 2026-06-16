@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CAT_META, type Cat, type FlightDisc } from "@/lib/bag";
+import { type Cat, type FlightDisc } from "@/lib/bag";
 
 // Brand hex (literal, not CSS vars — the PNG export rasterizes the SVG and can't resolve vars).
 const BG = "#131e18";
@@ -13,11 +13,10 @@ const DIM = "rgba(168,179,145,0.62)";
 const BODY = "rgba(245,237,225,0.74)";
 const FONT = "'Sora', system-ui, -apple-system, sans-serif";
 
-// Radius round "R" mark (from public/logo-lettermark.svg), viewBox ~40.88 — inlined so it bakes
-// into the exported PNG.
+// Radius round "R" mark (from public/logo-lettermark.svg) — inlined so it bakes into the PNG.
 const MARK = "M20.44,0C9.15,0,0,9.15,0,20.44s9.15,20.44,20.44,20.44,20.44-9.15,20.44-20.44S31.72,0,20.44,0ZM16.18,31.04h-4.26c-.06,0-.1-.05-.09-.11l.94-5.78.63-3.72c.02-.1.16-.11.19,0,.57,2.09,1.65,4,3.26,5.62.02.02.03.05.03.08l-.68,3.92h-.02ZM13.48,16.41c1.38,7.26,7.2,12.53,13.91,14.63-7.24-.03-14.33-7.1-13.91-14.63ZM31.25,27.61c-.64,1.16-1.41,2.67-2.7,2.91-6.36-1.31-12.96-7.4-14.21-14.06-.02-.16-.06-.4.13-.42,1-.01,3.58-.04,4.79-.02.1.02.14.1.14.2-2.05,5.65,5.87.6,6.28-2.98.02-.18-.14-.66-.26-.79-3.09-3.34-13.91,2.22-19.18,4.42l.83-1.15c13.52-15.52,37.55-3.48,14.44,5.5-.13.08-.28.2-.28.35,2.15,2.98,5.79,5.5,9.48,5.68.27.01.71-.03.53.37h.01Z";
 
-type Pt = { name: string; speed: number; stab: number; glide?: number; turn?: number; fade?: number; cat: Cat; color: string; photoUrl?: string };
+type Pt = { name: string; speed: number; stab: number; glide?: number; turn?: number; fade?: number; cat: Cat; color: string };
 
 function toPoints(discs: FlightDisc[]): Pt[] {
   return discs
@@ -26,7 +25,8 @@ function toPoints(discs: FlightDisc[]): Pt[] {
       const turn = d.customTurn ?? d.turn;
       const fade = d.customFade ?? d.fade;
       if (speed == null || turn == null || fade == null) return null;
-      return { name: d.nickname || d.name, speed, stab: turn + fade, glide: d.customGlide ?? d.glide, turn, fade, cat: d.category, color: CAT_META[d.category].color, photoUrl: d.photoUrl };
+      // d.color is the plastic color used by the in-bag DiscGraphic — match it exactly.
+      return { name: d.nickname || d.name, speed, stab: turn + fade, glide: d.customGlide ?? d.glide, turn, fade, cat: d.category, color: d.color };
     })
     .filter(Boolean) as Pt[];
 }
@@ -68,10 +68,10 @@ function plot(pts: Pt[], r: Ranges, gx: number, gy: number, gw: number, gh: numb
 const ticksDown = (hi: number, lo: number) => { const a: number[] = []; for (let v = hi; v >= lo; v--) a.push(v); return a; };
 const fmtNum = (n?: number) => (n == null ? "—" : n);
 const trunc = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
-const CATS: Cat[] = ["DISTANCE", "FAIRWAY", "MIDRANGE", "PUTTER"];
+const cidOf = (color: string) => color.replace(/[^a-z0-9]/gi, "");
 
-/** Shared gradient + clip defs (namespaced so two charts can co-exist in the DOM). */
-function Defs({ ns, cats, placed, R, glow = true }: { ns: string; cats: Cat[]; placed: Placed[]; R: number; glow?: boolean }) {
+/** Shared gradient defs (namespaced so two charts can co-exist in the DOM). */
+function Defs({ ns, colors }: { ns: string; colors: string[] }) {
   return (
     <defs>
       <linearGradient id={`${ns}-bg`} x1="0" y1="0" x2="0" y2="1">
@@ -92,50 +92,43 @@ function Defs({ ns, cats, placed, R, glow = true }: { ns: string; cats: Cat[]; p
         <stop offset="50%" stopColor="rgba(246,193,101,0.45)" />
         <stop offset="100%" stopColor="rgba(246,193,101,0)" />
       </linearGradient>
-      {cats.map((c) => {
-        const col = CAT_META[c].color;
+      {colors.map((col) => {
+        const cid = cidOf(col);
         return (
-          <radialGradient key={`sph${c}`} id={`${ns}-sph-${c}`} cx="34%" cy="27%" r="82%">
-            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.6" />
-            <stop offset="42%" stopColor={col} />
-            <stop offset="100%" stopColor={col} />
-          </radialGradient>
+          <g key={cid}>
+            {/* rim sheen — identical recipe to the in-bag DiscGraphic */}
+            <radialGradient id={`${ns}-rim-${cid}`} cx="36%" cy="30%" r="80%">
+              <stop offset="0%" stopColor="#ffffff" stopOpacity="0.45" />
+              <stop offset="40%" stopColor={col} stopOpacity="1" />
+              <stop offset="100%" stopColor={col} stopOpacity="0.92" />
+            </radialGradient>
+            <radialGradient id={`${ns}-glow-${cid}`} cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor={col} stopOpacity="0.42" />
+              <stop offset="58%" stopColor={col} stopOpacity="0.1" />
+              <stop offset="100%" stopColor={col} stopOpacity="0" />
+            </radialGradient>
+          </g>
         );
       })}
-      {glow && cats.map((c) => {
-        const col = CAT_META[c].color;
-        return (
-          <radialGradient key={`gl${c}`} id={`${ns}-glow-${c}`} cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor={col} stopOpacity="0.5" />
-            <stop offset="55%" stopColor={col} stopOpacity="0.13" />
-            <stop offset="100%" stopColor={col} stopOpacity="0" />
-          </radialGradient>
-        );
-      })}
-      {placed.map((pl, i) => (
-        <clipPath key={i} id={`${ns}c${i}`}><circle cx={pl.x} cy={pl.y} r={R} /></clipPath>
-      ))}
     </defs>
   );
 }
 
-/** One premium disc marker (glow + glossy sphere or photo + ring + outlined name). */
-function DiscMark({ ns, i, x, y, R, p, on, ring, nameFont, gi, gn, photo, glow = true }: {
-  ns: string; i: number; x: number; y: number; R: number; p: Pt; on: boolean; ring: number; nameFont: number; gi: number; gn: number; photo?: string; glow?: boolean;
+/** A disc marker that mirrors the in-bag DiscGraphic (rim sheen + recessed flight plate + inner
+ * ring) — minus the speed number, since the chart's Y-axis already encodes speed. */
+function DiscMark({ ns, x, y, R, p, on, nameFont, gi, gn }: {
+  ns: string; x: number; y: number; R: number; p: Pt; on: boolean; nameFont: number; gi: number; gn: number;
 }) {
+  const cid = cidOf(p.color);
+  const sw = Math.max(0.8, R * 0.026);
   return (
-    <g style={{ cursor: "pointer" }}>
-      {glow && <circle cx={x} cy={y} r={R * 1.7} fill={`url(#${ns}-glow-${p.cat})`} />}
-      {photo ? (
-        <>
-          <circle cx={x} cy={y} r={R} fill="#0c1410" />
-          <image href={photo} x={x - R} y={y - R} width={2 * R} height={2 * R} clipPath={`url(#${ns}c${i})`} preserveAspectRatio="xMidYMid slice" />
-        </>
-      ) : (
-        <circle cx={x} cy={y} r={R} fill={`url(#${ns}-sph-${p.cat})`} />
-      )}
-      <ellipse cx={x - R * 0.3} cy={y - R * 0.36} rx={R * 0.52} ry={R * 0.32} fill="#ffffff" opacity={photo ? 0.1 : 0.18} clipPath={`url(#${ns}c${i})`} />
-      <circle cx={x} cy={y} r={R} fill="none" stroke={on ? GOLD : p.color} strokeWidth={on ? ring + 1.5 : ring} />
+    <g>
+      <circle cx={x} cy={y} r={R * 1.5} fill={`url(#${ns}-glow-${cid})`} />
+      <circle cx={x} cy={y} r={R} fill={`url(#${ns}-rim-${cid})`} stroke="rgba(0,0,0,0.28)" strokeWidth={Math.max(1, R * 0.026)} />
+      <circle cx={x} cy={y} r={R * 0.72} fill="rgba(0,0,0,0.30)" />
+      <circle cx={x} cy={y} r={R * 0.72} fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth={sw} />
+      <circle cx={x} cy={y} r={R * 0.58} fill="none" stroke="rgba(0,0,0,0.12)" strokeWidth={sw} />
+      {on && <circle cx={x} cy={y} r={R + R * 0.13} fill="none" stroke={GOLD} strokeWidth={Math.max(2, R * 0.1)} />}
       <text x={x} y={y - R - 7 - (gn > 1 ? (gi % 2) * (nameFont + 2) : 0)} fill={CREAM} fontSize={nameFont} fontWeight={700} textAnchor="middle" paintOrder="stroke" stroke="#0b120e" strokeWidth={Math.max(2.5, nameFont * 0.3)} strokeLinejoin="round">{trunc(p.name, 13)}</text>
     </g>
   );
@@ -214,10 +207,9 @@ function BigChart({ pts }: { pts: Pt[] }) {
   const tx = (v: number) => gx + ((r.xHi - v) / (r.xHi - r.xLo)) * gw;
   const ty = (v: number) => gy + ((r.yHi - v) / (r.yHi - r.yLo)) * gh;
   const R = Math.min(cell * 0.34, 22);
-  const ring = Math.max(2, R * 0.12);
   const nameFont = Math.max(10, Math.min(15, R * 0.82));
   const tickFont = Math.max(10, Math.min(14, cell * 0.26));
-  const cats = CATS.filter((c) => pts.some((p) => p.cat === c));
+  const colors = [...new Set(pts.map((p) => p.color))];
   const ht = hover != null ? placed[hover] : null;
 
   return (
@@ -225,7 +217,7 @@ function BigChart({ pts }: { pts: Pt[] }) {
       {w > 0 && h > 0 && (
         <>
           <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ display: "block", fontFamily: FONT }}>
-            <Defs ns="s" cats={cats} placed={placed} R={R} />
+            <Defs ns="s" colors={colors} />
             <rect x={gx} y={gy} width={gw} height={gh} rx={14} fill="rgba(255,255,255,0.018)" />
             <rect x={gx} y={gy} width={gw} height={gh} rx={14} fill="url(#s-region)" />
             {ticksDown(r.xHi, r.xLo).map((v) => (
@@ -245,9 +237,9 @@ function BigChart({ pts }: { pts: Pt[] }) {
             <text x={gx + gw - 2} y={gy - 30} fill={DIM} fontSize={tickFont} fontWeight={700} letterSpacing={1.2} textAnchor="end">UNDERSTABLE</text>
 
             {placed.map((pl, i) => (
-              <g key={i} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover((cur) => (cur === i ? null : cur))} opacity={hover != null && hover !== i ? 0.4 : 1}>
+              <g key={i} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover((cur) => (cur === i ? null : cur))} style={{ cursor: "pointer" }} opacity={hover != null && hover !== i ? 0.4 : 1}>
                 <circle cx={pl.x} cy={pl.y} r={R + 8} fill="transparent" />
-                <DiscMark ns="s" i={i} x={pl.x} y={pl.y} R={R} p={pl.p} on={hover === i} ring={ring} nameFont={nameFont} gi={pl.gi} gn={pl.gn} photo={pl.p.photoUrl} />
+                <DiscMark ns="s" x={pl.x} y={pl.y} R={R} p={pl.p} on={hover === i} nameFont={nameFont} gi={pl.gi} gn={pl.gn} />
               </g>
             ))}
           </svg>
@@ -264,7 +256,7 @@ function BigChart({ pts }: { pts: Pt[] }) {
 }
 
 /* ----------------------------- Branded export SVG (premium poster) ----------------------------- */
-function BrandedChart({ pts, discCount, svgRef, photoMap }: { pts: Pt[]; discCount: number; svgRef: React.Ref<SVGSVGElement>; photoMap: Record<string, string> }) {
+function BrandedChart({ pts, discCount, svgRef }: { pts: Pt[]; discCount: number; svgRef: React.Ref<SVGSVGElement> }) {
   const Wd = 1120;
   const r = ranges(pts);
   const cols = r.xHi - r.xLo, rows = r.yHi - r.yLo;
@@ -275,39 +267,34 @@ function BrandedChart({ pts, discCount, svgRef, photoMap }: { pts: Pt[]; discCou
   const gx = gxBase + Math.max(0, (availW - gw) / 2);
   const gy = 268;
   const footerY = gy + gh + 84;
-  const Hd = footerY + 92;
+  const Hd = footerY + 84;
   const placed = plot(pts, r, gx, gy, gw, gh, cell * 0.5);
   const tx = (v: number) => gx + ((r.xHi - v) / (r.xHi - r.xLo)) * gw;
   const ty = (v: number) => gy + ((r.yHi - v) / (r.yHi - r.yLo)) * gh;
   const R = Math.min(cell * 0.38, 46);
-  const ring = Math.max(2.5, R * 0.11);
   const nameFont = Math.max(15, Math.min(22, R * 0.7));
-  const cats = CATS.filter((c) => pts.some((p) => p.cat === c));
+  const colors = [...new Set(pts.map((p) => p.color))];
   const cx = (gx + gx + gw) / 2;
 
   return (
     <svg ref={svgRef} viewBox={`0 0 ${Wd} ${Hd}`} width={Wd} height={Hd} style={{ display: "block", fontFamily: FONT }} xmlns="http://www.w3.org/2000/svg">
-      <Defs ns="b" cats={cats} placed={placed} R={R} />
+      <Defs ns="b" colors={colors} />
       <rect x={0} y={0} width={Wd} height={Hd} fill={`url(#b-bg)`} />
       <rect x={0} y={0} width={Wd} height={Hd} fill={`url(#b-gold)`} />
 
-      {/* brand lockup */}
       <g transform="translate(60,40) scale(0.92)"><path d={MARK} fill={GOLD} /></g>
       <text x={108} y={71} fill={CREAM} fontSize={40} fontWeight={700} letterSpacing={-1.4}>Radius</text>
       <text x={Wd - 60} y={70} fill={GOLD} fontSize={22} fontWeight={600} letterSpacing={0.3} textAnchor="end">Play Smarter, Not Harder</text>
 
-      {/* title */}
       <text x={60} y={156} fill={CREAM} fontSize={58} fontWeight={800} letterSpacing={-1.8}>Bag Stability Map</text>
       <text x={60} y={192} fill={BODY} fontSize={23} fontWeight={500}>Speed × Turn + Fade · {discCount} discs</text>
       <line x1={60} y1={216} x2={Wd - 60} y2={216} stroke={`url(#b-rule)`} strokeWidth={2} />
 
-      {/* axis titles */}
       <text x={cx} y={246} fill={BODY} fontSize={24} fontWeight={700} textAnchor="middle" letterSpacing={0.2}>Stability (Turn + Fade)</text>
       <text x={gx} y={gy - 30} fill={DIM} fontSize={18} fontWeight={700} letterSpacing={1.6}>OVERSTABLE</text>
       <text x={gx + gw} y={gy - 30} fill={DIM} fontSize={18} fontWeight={700} letterSpacing={1.6} textAnchor="end">UNDERSTABLE</text>
       <text x={44} y={gy + gh / 2} fill={BODY} fontSize={22} fontWeight={700} textAnchor="middle" transform={`rotate(-90 44 ${gy + gh / 2})`}>Speed</text>
 
-      {/* grid */}
       <rect x={gx} y={gy} width={gw} height={gh} rx={18} fill="rgba(255,255,255,0.02)" />
       <rect x={gx} y={gy} width={gw} height={gh} rx={18} fill={`url(#b-region)`} />
       {ticksDown(r.xHi, r.xLo).map((v) => (
@@ -325,39 +312,17 @@ function BrandedChart({ pts, discCount, svgRef, photoMap }: { pts: Pt[]; discCou
       <rect x={gx} y={gy} width={gw} height={gh} rx={18} fill="none" stroke={GRID_STRONG} strokeWidth={1.5} />
 
       {placed.map((pl, i) => (
-        <DiscMark key={i} ns="b" i={i} x={pl.x} y={pl.y} R={R} p={pl.p} on={false} ring={ring} nameFont={nameFont} gi={pl.gi} gn={pl.gn} photo={pl.p.photoUrl ? photoMap[pl.p.photoUrl] : undefined} />
+        <DiscMark key={i} ns="b" x={pl.x} y={pl.y} R={R} p={pl.p} on={false} nameFont={nameFont} gi={pl.gi} gn={pl.gn} />
       ))}
 
-      {/* footer */}
       <line x1={60} y1={footerY} x2={Wd - 60} y2={footerY} stroke="rgba(245,237,225,0.08)" strokeWidth={1} />
-      {cats.map((c, i) => (
-        <g key={c} transform={`translate(${60 + i * 188}, ${footerY + 42})`}>
-          <circle cx={9} cy={-6} r={9} fill={CAT_META[c].color} />
-          <text x={28} y={0} fill={BODY} fontSize={20} fontWeight={600}>{CAT_META[c].short}</text>
-        </g>
-      ))}
-      <text x={Wd - 60} y={footerY + 38} fill={DIM} fontSize={19} fontWeight={500} textAnchor="end">radiusdiscgolf.com</text>
+      <text x={60} y={footerY + 40} fill={DIM} fontSize={19} fontWeight={500}>Mapped in the Radius app</text>
+      <text x={Wd - 60} y={footerY + 40} fill={DIM} fontSize={19} fontWeight={500} textAnchor="end">radiusdiscgolf.com</text>
     </svg>
   );
 }
 
 /* ----------------------------- PNG export ----------------------------- */
-async function urlToDataUri(url: string): Promise<string | null> {
-  try {
-    const res = await fetch(url, { mode: "cors" });
-    if (!res.ok) return null;
-    const blob = await res.blob();
-    return await new Promise((resolve) => {
-      const fr = new FileReader();
-      fr.onload = () => resolve(fr.result as string);
-      fr.onerror = () => resolve(null);
-      fr.readAsDataURL(blob);
-    });
-  } catch {
-    return null;
-  }
-}
-
 function downloadPng(svg: SVGSVGElement, filename: string, scale = 2) {
   const vb = svg.viewBox.baseVal;
   const w = vb && vb.width ? vb.width : svg.clientWidth || 1120;
@@ -374,19 +339,15 @@ function downloadPng(svg: SVGSVGElement, filename: string, scale = 2) {
     ctx.fillStyle = BG;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    try {
-      canvas.toBlob((blob) => {
-        if (!blob) return;
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename;
-        a.click();
-        URL.revokeObjectURL(url);
-      }, "image/png");
-    } catch {
-      /* tainted canvas (a disc photo without CORS) — silently skip */
-    }
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }, "image/png");
   };
   img.src = src;
 }
@@ -395,8 +356,6 @@ function downloadPng(svg: SVGSVGElement, filename: string, scale = 2) {
 export default function StabilityMap({ discs, className = "" }: { discs: FlightDisc[]; className?: string }) {
   const pts = useMemo(() => toPoints(discs), [discs]);
   const [open, setOpen] = useState(false);
-  const [photoMap, setPhotoMap] = useState<Record<string, string>>({});
-  const [exporting, setExporting] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
@@ -407,20 +366,6 @@ export default function StabilityMap({ discs, className = "" }: { discs: FlightD
   }, [open]);
 
   if (pts.length === 0) return null;
-  const cats = CATS.filter((c) => pts.some((p) => p.cat === c));
-
-  async function handleDownload() {
-    setExporting(true);
-    const urls = [...new Set(pts.map((p) => p.photoUrl).filter(Boolean))] as string[];
-    const entries = await Promise.all(urls.map(async (u) => [u, await urlToDataUri(u)] as const));
-    const map: Record<string, string> = {};
-    for (const [u, d] of entries) if (d) map[u] = d;
-    setPhotoMap(map);
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      if (svgRef.current) downloadPng(svgRef.current, "radius-stability-map.png");
-      setExporting(false);
-    }));
-  }
 
   return (
     <>
@@ -451,7 +396,6 @@ export default function StabilityMap({ discs, className = "" }: { discs: FlightD
             <div className="relative mb-3 flex items-start justify-between gap-4">
               <div>
                 <div className="mb-1 flex items-center gap-2">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <span className="grid h-6 w-6 place-items-center rounded-full bg-[var(--gold)]/15"><span className="text-[11px] font-extrabold text-[var(--gold)]">R</span></span>
                   <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[var(--gold)]">Radius · My Bag</span>
                 </div>
@@ -467,19 +411,14 @@ export default function StabilityMap({ discs, className = "" }: { discs: FlightD
               <BigChart pts={pts} />
             </div>
 
-            <div className="relative mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.08] pt-3">
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[var(--text-body)]">
-                {cats.map((c) => (
-                  <span key={c} className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: CAT_META[c].color }} />{CAT_META[c].short}</span>
-                ))}
-              </div>
+            <div className="relative mt-3 flex items-center justify-between gap-3 border-t border-white/[0.08] pt-3">
+              <p className="text-xs text-[var(--text-body)]">Hover a disc for its flight numbers.</p>
               <button
-                onClick={handleDownload}
-                disabled={exporting}
-                className="inline-flex shrink-0 items-center gap-2 rounded-full bg-gradient-to-b from-[var(--gold-bright)] to-[var(--gold)] px-5 py-2.5 text-sm font-bold text-[#16221b] shadow-[0_6px_18px_-6px_rgba(246,193,101,0.6)] transition-opacity hover:opacity-90 disabled:opacity-60"
+                onClick={() => svgRef.current && downloadPng(svgRef.current, "radius-stability-map.png")}
+                className="inline-flex shrink-0 items-center gap-2 rounded-full bg-gradient-to-b from-[var(--gold-bright)] to-[var(--gold)] px-5 py-2.5 text-sm font-bold text-[#16221b] shadow-[0_6px_18px_-6px_rgba(246,193,101,0.6)] transition-opacity hover:opacity-90"
               >
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" /></svg>
-                {exporting ? "Preparing…" : "Download PNG"}
+                Download PNG
               </button>
             </div>
           </div>
@@ -488,7 +427,7 @@ export default function StabilityMap({ discs, className = "" }: { discs: FlightD
 
       {open && (
         <div aria-hidden className="pointer-events-none fixed left-[-99999px] top-0 opacity-0">
-          <BrandedChart pts={pts} discCount={discs.length} svgRef={svgRef} photoMap={photoMap} />
+          <BrandedChart pts={pts} discCount={discs.length} svgRef={svgRef} />
         </div>
       )}
     </>
