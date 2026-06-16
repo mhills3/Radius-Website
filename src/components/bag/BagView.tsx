@@ -7,6 +7,7 @@ import FlightChart from "@/components/bag/FlightChart";
 import DiscDetail from "@/components/bag/DiscDetail";
 import DiscGraphic from "@/components/bag/DiscGraphic";
 import AddDiscModal from "@/components/bag/AddDiscModal";
+import StabilityMap from "@/components/bag/StabilityMap";
 import { CountUp } from "@/components/dashboard/charts";
 
 // Add disc from the web (catalog search modal -> saveBag merge). Verified cross-platform.
@@ -353,6 +354,9 @@ export default function BagView({ bag, uid }: { bag: Bag; uid: string }) {
                 <div><span className="text-[var(--sage-dim)]">Arm </span><span className="font-bold text-[var(--cream)]">≤ speed {rating.ceiling}</span></div>
               </div>
             </div>
+
+            {/* Stability Map — fills the gap; click to open the full, shareable branded version. */}
+            <StabilityMap discs={discs} className="fade-up min-h-[260px] flex-1" />
           </div>
         </div>
 
