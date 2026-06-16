@@ -305,18 +305,20 @@ export default function CoursesPage() {
             <aside className="mt-10 lg:mt-0">
               <div className="space-y-4 lg:sticky lg:top-24">
                 {user && (
-                  <Link href="/courses/mine" className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--gold)]/30 bg-[var(--gold)]/[0.08] p-4 shadow-sm transition-colors hover:bg-[var(--gold)]/[0.14]">
-                    <div className="flex items-center gap-2.5">
-                      <span className="relative grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-xl" style={{ background: "linear-gradient(135deg,#e0a23a,#16221b)" }}>
-                        <span className="absolute inset-0" style={{ maskImage: "url(/topo.png)", WebkitMaskImage: "url(/topo.png)", maskSize: "cover", WebkitMaskSize: "cover", backgroundColor: "#fff", opacity: 0.2 }} />
-                        <svg className="relative h-4 w-4 text-[var(--cream)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10" /></svg>
+                  <Link href="/courses/mine" className="group relative block overflow-hidden rounded-2xl shadow-[0_12px_30px_-14px_rgba(15,24,19,0.6)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_44px_-14px_rgba(15,24,19,0.85)]">
+                    <span className="pointer-events-none absolute -inset-x-12 inset-y-0 z-10 bg-[linear-gradient(110deg,transparent_32%,rgba(246,193,101,0.4),transparent_68%)] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+                    <div className="relative flex items-center gap-3.5 bg-gradient-to-br from-[#243a2e] to-[#16221b] p-4 ring-1 ring-[var(--gold)]/25 transition-colors group-hover:ring-[var(--gold)]/55">
+                      <span className="pointer-events-none absolute inset-0 opacity-[0.06]" style={{ maskImage: "url(/topo.png)", WebkitMaskImage: "url(/topo.png)", maskSize: "cover", WebkitMaskSize: "cover", backgroundColor: "#fff" }} />
+                      <span className="relative grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-[var(--gold-bright)] to-[var(--gold)] shadow-[inset_0_1px_2px_rgba(255,255,255,0.45)]">
+                        <span className="h-6 w-6 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: "url(/basket-icon.svg)" }} />
                       </span>
-                      <div>
-                        <div className="text-sm font-bold text-[#16221b]">My courses</div>
-                        <div className="text-xs text-[#8a968d]">Manage courses & layouts you built</div>
+                      <div className="relative min-w-0 flex-1">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--gold)]">Your builds</div>
+                        <div className="font-[family-name:var(--font-heading)] text-base font-extrabold leading-tight tracking-tight text-[var(--cream)]">My courses &amp; layouts</div>
+                        <div className="mt-0.5 text-xs text-[var(--sage)]">Manage everything you&apos;ve mapped</div>
                       </div>
+                      <svg className="relative h-4 w-4 shrink-0 text-[var(--gold)] transition-transform duration-300 group-hover:translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>
                     </div>
-                    <svg className="h-4 w-4 shrink-0 text-[#9a7a3a]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>
                   </Link>
                 )}
                 <div className="rounded-2xl border border-black/8 bg-white p-4 shadow-sm">
