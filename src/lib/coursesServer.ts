@@ -2,6 +2,7 @@
 // The gRPC client SDK can't reach Firestore from the Next server runtime, so these use
 // plain fetch against the REST endpoint instead. Only called from server code.
 import { cache } from "react";
+import { isPubliclyListed, isPrivateCourse } from "./courses";
 
 const PROJECT = "radius-dg";
 const KEY = "AIzaSyCVjfvMNwy5sLFjONGZFfPpPsnqO79IiPE";
@@ -40,6 +41,7 @@ export interface CourseMeta {
   rating?: number;
   reviewCount?: number;
   dateCreated?: number;
+  courseType?: string;
 }
 
 // cache() dedupes the call so generateMetadata + the page body share one fetch per request.
@@ -51,7 +53,7 @@ export const getCourseMetaByShortId = cache(async (shortId: string): Promise<Cou
         { fieldFilter: { field: { fieldPath: "__name__" }, op: "GREATER_THAN_OR_EQUAL", value: { referenceValue: ref(shortId) } } },
         { fieldFilter: { field: { fieldPath: "__name__" }, op: "LESS_THAN", value: { referenceValue: ref(shortId + "") } } },
       ] } },
-      select: { fields: ["name", "city", "state", "holeCount", "par", "description", "coverPhotoUrl", "latitude", "longitude", "rating", "reviewCount"].map((fieldPath) => ({ fieldPath })) },
+      select: { fields: ["name", "city", "state", "holeCount", "par", "description", "coverPhotoUrl", "latitude", "longitude", "rating", "reviewCount", "courseType"].map((fieldPath) => ({ fieldPath })) },
       limit: 1,
     },
   };
@@ -73,7 +75,7 @@ export async function listCoursesLite(): Promise<CourseMeta[]> {
   let token = "";
   try {
     do {
-      const mask = ["name", "state", "dateCreated", "lastModified"].map((m) => `&mask.fieldPaths=${m}`).join("");
+      const mask = ["name", "state", "dateCreated", "lastModified", "reviewStatus", "isDraft", "courseType"].map((m) => `&mask.fieldPaths=${m}`).join("");
       const url = `${BASE}/courses?pageSize=300&key=${KEY}${token ? `&pageToken=${token}` : ""}${mask}`;
       const r = await fetch(url, { next: { revalidate: 86400 } });
       if (!r.ok) break;
@@ -82,7 +84,10 @@ export async function listCoursesLite(): Promise<CourseMeta[]> {
         const o = parseDoc(d) as Record<string, unknown>;
         const raw = (o.dateCreated as number) || (o.lastModified as number) || 0;
         const dc = raw > 1e12 ? raw : raw > 1e9 ? raw * 1000 : raw > 1e7 ? (raw + 978307200) * 1000 : 0;
-        if (o.name) out.push({ id: o.id as string, name: o.name as string, state: o.state as string | undefined, dateCreated: dc });
+        // Never list drafts/pending/rejected or PRIVATE courses in the sitemap — they must stay
+        // out of search engines, matching the apps' visibility rules.
+        const c = { reviewStatus: o.reviewStatus as string | undefined, isDraft: o.isDraft as boolean | undefined, courseType: o.courseType as string | undefined };
+        if (o.name && isPubliclyListed(c) && !isPrivateCourse(c)) out.push({ id: o.id as string, name: o.name as string, state: o.state as string | undefined, dateCreated: dc });
       }
       token = j.nextPageToken || "";
     } while (token);

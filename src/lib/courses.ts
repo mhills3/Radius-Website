@@ -13,19 +13,15 @@ import {
   documentId,
   updateDoc,
   setDoc,
-  getCountFromServer,
   DocumentData,
 } from "firebase/firestore";
 import { resolveCanonicalId, getProfileLite, getOwnedIds } from "./account";
 
-/** Lightweight count of all courses (server-side aggregation — one cheap read). */
+/** Total mapped-course count. Delegates to getTotalCourseCount (reliable REST aggregation) so every
+ * "Courses mapped" figure across the site shows the SAME number, even on mobile Safari where the
+ * client SDK aggregation transport silently fails. */
 export async function getCourseCount(): Promise<number> {
-  try {
-    const s = await getCountFromServer(collection(db, "courses"));
-    return s.data().count;
-  } catch {
-    return 0;
-  }
+  return getTotalCourseCount();
 }
 
 export interface CourseHole {
@@ -105,6 +101,21 @@ export function isPubliclyListed(c: { reviewStatus?: string; isDraft?: boolean }
   if (c.isDraft === true) return false;
   const rs = (c.reviewStatus || "").trim().toLowerCase();
   return rs !== "draft" && rs !== "pending" && rs !== "rejected";
+}
+
+/**
+ * A PRIVATE course (courseType == "Private") is discoverable ONLY by its creator — it must never
+ * appear in the public directory, on the map, or in the sitemap for anyone else. This mirrors the
+ * apps exactly: iOS fetchAllCourseLocations and Android refreshAllUserCourses both drop courses
+ * where courseType == "Private" unless the viewer owns them.
+ */
+export function isPrivateCourse(c: { courseType?: string }): boolean {
+  return (c.courseType || "").trim().toLowerCase() === "private";
+}
+
+/** Whether `ownerIds` (a user's linked ids from getOwnedIds) includes this course's creator. */
+export function isOwnedBy(c: { createdById?: string }, ownerIds?: Set<string> | null): boolean {
+  return !!ownerIds && !!c.createdById && ownerIds.has(c.createdById);
 }
 
 export interface CourseScore {
@@ -213,11 +224,42 @@ function normMs(v: unknown): number {
   return 0;
 }
 
-export async function getAllCourses(): Promise<Course[]> {
+export async function getAllCourses(ownerIds?: Set<string> | null): Promise<Course[]> {
   // Public directory: every named course EXCEPT drafts/pending/rejected (matches both apps' hide
-  // rules). Owners still see their own drafts via getMyCourses (a separate createdById query).
+  // rules) and EXCEPT private courses — which are shown only to their creator. Pass the viewer's
+  // linked ids (getOwnedIds) to include the private courses THEY own; omit it for anonymous/public
+  // contexts so no private course ever leaks. Owners also see their own drafts via getMyCourses.
   const snap = await getDocs(collection(db, "courses"));
-  return snap.docs.map((d) => docToCourse(d.id, d.data())).filter((c) => c.name && isPubliclyListed(c));
+  return snap.docs
+    .map((d) => docToCourse(d.id, d.data()))
+    .filter((c) => c.name && isPubliclyListed(c) && (!isPrivateCourse(c) || isOwnedBy(c, ownerIds)));
+}
+
+const COUNT_KEY = "AIzaSyCVjfvMNwy5sLFjONGZFfPpPsnqO79IiPE"; // public Firebase web key
+/**
+ * The total mapped-course count (every course doc, incl. drafts/pending/private) via the Firestore
+ * REST aggregation endpoint — works in the browser AND on the server (plain fetch, no SDK
+ * transport that flakes on mobile Safari). This is the single "Courses mapped" headline number used
+ * everywhere on the site, so the homepage, hero, strip, and /courses page never disagree. Returns 0
+ * on failure so callers can fall back.
+ */
+export async function getTotalCourseCount(): Promise<number> {
+  try {
+    const res = await fetch(
+      `https://firestore.googleapis.com/v1/projects/radius-dg/databases/(default)/documents:runAggregationQuery?key=${COUNT_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ structuredAggregationQuery: { structuredQuery: { from: [{ collectionId: "courses" }] }, aggregations: [{ alias: "count", count: {} }] } }),
+      }
+    );
+    if (!res.ok) return 0;
+    const data = await res.json();
+    const n = data?.[0]?.result?.aggregateFields?.count?.integerValue;
+    return n ? parseInt(n, 10) : 0;
+  } catch {
+    return 0;
+  }
 }
 
 // ---- Geo classification (US states + countries) ----

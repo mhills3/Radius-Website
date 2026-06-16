@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { idFromSlug, isUSState } from "@/lib/courses";
+import { idFromSlug, isUSState, isPrivateCourse } from "@/lib/courses";
 import { getCourseMetaByShortId, type CourseMeta } from "@/lib/coursesServer";
 import CourseDetailClient from "./CourseDetailClient";
 
@@ -37,10 +37,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description = course?.description?.trim()
     ? course.description.trim().slice(0, 155)
     : `${name} disc golf course${loc ? ` in ${loc}` : ""}${bits ? ` — ${bits}` : ""}. Hole-by-hole layout, satellite map, ratings and leaderboards on Radius.`;
+  // Private courses must never be indexed — they're viewable only by their creator.
+  const isPrivate = !!course && isPrivateCourse(course);
   return {
     title,
     description,
     alternates: { canonical: `/courses/${slug}` },
+    ...(isPrivate ? { robots: { index: false, follow: false } } : {}),
     openGraph: { title: ogTitle, description, type: "website", images: course?.coverPhotoUrl ? [course.coverPhotoUrl] : undefined },
     twitter: { card: "summary_large_image", title: ogTitle, description, images: course?.coverPhotoUrl ? [course.coverPhotoUrl] : undefined },
   };
@@ -50,7 +53,8 @@ export default async function Page({ params }: Props) {
   const { slug } = await params;
   const shortId = idFromSlug(slug);
   const course = shortId ? await getCourseMetaByShortId(shortId).catch(() => null) : null;
-  const jsonLd = course ? buildJsonLd(course, slug) : null;
+  // No structured data for private courses — keep them out of search results entirely.
+  const jsonLd = course && !isPrivateCourse(course) ? buildJsonLd(course, slug) : null;
   return (
     <>
       {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />}

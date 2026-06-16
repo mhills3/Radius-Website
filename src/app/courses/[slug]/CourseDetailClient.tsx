@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getCourseByShortId, getCourseScores, idFromSlug, slugify, type Course, type CourseScore } from "@/lib/courses";
+import { getCourseByShortId, getCourseScores, idFromSlug, slugify, isPrivateCourse, type Course, type CourseScore } from "@/lib/courses";
+import { getOwnedIds } from "@/lib/account";
 import { getRanksFor, type RankInfo } from "@/lib/community";
 import CourseHoleMap, { holesWithGeo } from "@/components/courses/CourseHoleMap";
 import CourseCommunity from "@/components/courses/CourseCommunity";
@@ -39,6 +40,8 @@ export default function CourseDetailClient({ slug }: { slug: string }) {
   const [records, setRecords] = useState<CourseRecordsData>({ aces: [], drives: [], loaded: false });
   const [layoutId, setLayoutId] = useState("default");
   const [activeSection, setActiveSection] = useState("overview");
+  // Private courses are viewable ONLY by their creator. null = n/a (public course), true/false = checked.
+  const [ownerOfPrivate, setOwnerOfPrivate] = useState<boolean | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -60,6 +63,18 @@ export default function CourseDetailClient({ slug }: { slug: string }) {
     if (user && course) getCourseRoundsForUser(user.uid, course.name).then((r) => { setMyRounds(r); setRoundIdx(0); }).catch(() => {});
     else setMyRounds([]);
   }, [user, course]);
+
+  // Gate private courses: only the creator (across their linked ids) may view one.
+  useEffect(() => {
+    if (!course || !isPrivateCourse(course)) { setOwnerOfPrivate(null); return; }
+    let live = true;
+    (async () => {
+      if (!user) { if (live) setOwnerOfPrivate(false); return; }
+      const owned = await getOwnedIds(user.uid).catch(() => null);
+      if (live) setOwnerOfPrivate(!!owned && !!course.createdById && owned.has(course.createdById));
+    })();
+    return () => { live = false; };
+  }, [course, user]);
 
   // Records (aces + long drives) are derived from leaderboard players' submitted rounds.
   useEffect(() => {
@@ -94,6 +109,17 @@ export default function CourseDetailClient({ slug }: { slug: string }) {
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#faf8f3] text-[#16221b]">
         <h1 className="font-[family-name:var(--font-heading)] text-2xl font-bold">Course not found</h1>
         <Link href="/courses" className="text-sm font-bold text-[#9a7a3a] hover:underline">← Back to all courses</Link>
+      </div>
+    );
+  }
+  // Private course: anyone who isn't the creator (incl. signed-out visitors) is blocked.
+  if (isPrivateCourse(course) && ownerOfPrivate !== true) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-[#faf8f3] px-6 text-center text-[#16221b]">
+        <div className="text-3xl">🔒</div>
+        <h1 className="font-[family-name:var(--font-heading)] text-2xl font-bold tracking-[-0.02em]">This course is private</h1>
+        <p className="mx-auto max-w-sm text-sm text-[#46554c]">Only the player who built it can view this course.</p>
+        <Link href="/courses" className="mt-4 rounded-full bg-[var(--gold)] px-7 py-3 text-sm font-bold text-[#16221b]">Browse public courses</Link>
       </div>
     );
   }

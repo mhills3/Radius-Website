@@ -3,7 +3,8 @@
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { getAllCourses, getTopBuilders, slugify, isUSState, countryOf, STATE_NAMES, type Course, type Builder } from "@/lib/courses";
+import { getAllCourses, getTotalCourseCount, getTopBuilders, slugify, isUSState, countryOf, STATE_NAMES, type Course, type Builder } from "@/lib/courses";
+import { getOwnedIds } from "@/lib/account";
 import { getRanksFor, type RankInfo } from "@/lib/community";
 import { getPlayedCourses, type PlayedStat } from "@/lib/rounds";
 import { useAuth } from "@/components/AuthProvider";
@@ -24,6 +25,7 @@ function miles(a: { lat: number; lng: number }, b: { lat: number; lng: number })
 export default function CoursesPage() {
   const { user } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [played, setPlayed] = useState<Map<string, PlayedStat>>(new Map());
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -40,15 +42,26 @@ export default function CoursesPage() {
   const [builderRanks, setBuilderRanks] = useState<Map<string, RankInfo>>(new Map());
 
   useEffect(() => {
-    getAllCourses().then(setCourses).catch(() => setCourses([])).finally(() => setLoading(false));
     getTopBuilders(10).then((b) => { setBuilders(b); getRanksFor(b.map((x) => x.id).filter(Boolean)).then(setBuilderRanks).catch(() => {}); }).catch(() => {});
+    // Headline "courses" stat = the full mapped-course total (matches the homepage banner exactly).
+    getTotalCourseCount().then(setTotalCount).catch(() => {});
     // Support the sitelinks search box / shareable search URLs: /courses?search=term
     const q = new URLSearchParams(window.location.search).get("search");
     if (q) setSearch(q);
   }, []);
   useEffect(() => {
+    let live = true;
+    // Load the public directory — and, for a signed-in user, include the PRIVATE courses they own
+    // (their linked ids) so a builder still sees their own private course on the list/map while it
+    // stays hidden from everyone else.
+    (async () => {
+      const ownerIds = user ? await getOwnedIds(user.uid).catch(() => undefined) : undefined;
+      const cs = await getAllCourses(ownerIds).catch(() => []);
+      if (live) { setCourses(cs); setLoading(false); }
+    })();
     if (user) getPlayedCourses(user.uid).then(setPlayed).catch(() => {});
     else setPlayed(new Map());
+    return () => { live = false; };
   }, [user]);
 
   const playedOf = (c: Course) => played.get(c.name.trim().toLowerCase());
@@ -155,7 +168,7 @@ export default function CoursesPage() {
               <h1 className="font-[family-name:var(--font-heading)] text-4xl font-extrabold tracking-[-0.03em] md:text-5xl">Courses</h1>
             </div>
             <div className="flex gap-7">
-              <div><div className="font-[family-name:var(--font-heading)] text-2xl font-extrabold leading-none">{courses.length}</div><div className="mt-1 text-xs text-[rgba(245,237,225,0.6)]">courses</div></div>
+              <div><div className="font-[family-name:var(--font-heading)] text-2xl font-extrabold leading-none">{(totalCount || courses.length).toLocaleString()}</div><div className="mt-1 text-xs text-[rgba(245,237,225,0.6)]">courses</div></div>
               <div><div className="font-[family-name:var(--font-heading)] text-2xl font-extrabold leading-none">{usStateCount}</div><div className="mt-1 text-xs text-[rgba(245,237,225,0.6)]">US states</div></div>
               <div><div className="font-[family-name:var(--font-heading)] text-2xl font-extrabold leading-none">{countryCount}</div><div className="mt-1 text-xs text-[rgba(245,237,225,0.6)]">countries</div></div>
             </div>

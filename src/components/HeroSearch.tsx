@@ -3,11 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { getAllCourses, slugify, type Course } from "@/lib/courses";
+import { getAllCourses, getTotalCourseCount, slugify, type Course } from "@/lib/courses";
 
 export default function HeroSearch() {
   const router = useRouter();
   const [courses, setCourses] = useState<Course[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
 
@@ -15,6 +16,7 @@ export default function HeroSearch() {
     getAllCourses()
       .then(setCourses)
       .catch(() => setCourses([]));
+    getTotalCourseCount().then(setTotalCount).catch(() => {});
   }, []);
 
   const results = useMemo(() => {
@@ -100,10 +102,10 @@ export default function HeroSearch() {
 
       {/* utility line + quick links */}
       <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-[var(--sage-dim)]">
-        {courses.length > 0 && (
+        {(totalCount || courses.length) > 0 && (
           <span>
             <span className="font-semibold text-[var(--sage)]">
-              {courses.length.toLocaleString()}
+              {(totalCount || courses.length).toLocaleString()}
             </span>{" "}
             courses mapped by the community
           </span>

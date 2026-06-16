@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { getAllCourses, slugify, type Course } from "@/lib/courses";
+import { getAllCourses, getTotalCourseCount, slugify, type Course } from "@/lib/courses";
 
 // Branded cover palette — keeps the home page professional & consistent (no amateur builder photos).
 const TILE_COLORS = ["#2f6f4e", "#9a6b2f", "#3a5a8c", "#6b4a8c", "#2f6f6f", "#8c5a3a", "#4a7a3a"];
@@ -16,11 +16,13 @@ function colorFor(key: string): string {
 export default function CoursesStrip() {
   const router = useRouter();
   const [courses, setCourses] = useState<Course[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
 
   useEffect(() => {
     getAllCourses().then(setCourses).catch(() => setCourses([])).finally(() => setLoading(false));
+    getTotalCourseCount().then(setTotalCount).catch(() => {});
   }, []);
 
   // surface the MOST-REVIEWED courses (most loved by the community), then rating, then size
@@ -44,7 +46,7 @@ export default function CoursesStrip() {
               Find your next round.
             </h2>
             <p className="mt-4 text-lg leading-relaxed text-[#46554c]">
-              <span className="font-bold text-[#16221b]">{loading ? "…" : courses.length.toLocaleString()}</span> courses mapped by players — and counting.
+              <span className="font-bold text-[#16221b]">{loading && !totalCount ? "…" : (totalCount || courses.length).toLocaleString()}</span> courses mapped by players — and counting.
             </p>
             <div className="mt-5 flex flex-wrap gap-2">
               {PERKS.map((p) => (
