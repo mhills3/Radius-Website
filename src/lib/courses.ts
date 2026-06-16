@@ -16,7 +16,7 @@ import {
   getCountFromServer,
   DocumentData,
 } from "firebase/firestore";
-import { resolveCanonicalId, getProfileLite } from "./account";
+import { resolveCanonicalId, getProfileLite, getOwnedIds } from "./account";
 
 /** Lightweight count of all courses (server-side aggregation — one cheap read). */
 export async function getCourseCount(): Promise<number> {
@@ -475,6 +475,31 @@ export interface CourseDraft {
   holes: HoleDraft[];
 }
 
+// Shared hole-doc builder used by BOTH create and edit so the schema never drifts.
+function buildCourseHoles(draft: CourseDraft) {
+  const holes = draft.holes.map((h, i) => {
+    const elbows = h.elbows ?? []; // {lat,lng} objects (app contract)
+    let dist = 0; let pa = { lat: h.teeLat, lng: h.teeLng };
+    for (const e of elbows) { dist += distanceFt(pa.lat, pa.lng, e.lat, e.lng); pa = e; }
+    dist += distanceFt(pa.lat, pa.lng, h.basketLat, h.basketLng);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const hole: Record<string, any> = {
+      id: uuidUpper(), holeNumber: i + 1, par: h.par > 0 ? h.par : 3, distance: Math.round(dist),
+      teeLat: h.teeLat, teeLng: h.teeLng, basketLat: h.basketLat, basketLng: h.basketLng,
+      elbows: elbows.map((e) => ({ lat: e.lat, lng: e.lng })), notes: h.notes?.trim() || "",
+    };
+    if (h.alternateTees?.length) hole.alternateTees = h.alternateTees.map((t) => ({ id: t.id, label: t.label, lat: t.lat, lng: t.lng }));
+    if (h.alternateBaskets?.length) hole.alternateBaskets = h.alternateBaskets.map((b) => ({ id: b.id, label: b.label, lat: b.lat, lng: b.lng, colorHex: b.colorHex }));
+    if (h.mandos?.length) hole.mandos = h.mandos.map((m) => ({ id: m.id, lat: m.lat, lng: m.lng, direction: m.direction, label: m.label }));
+    return hole;
+  });
+  const par = holes.reduce((s, h) => s + h.par, 0);
+  const totalDist = holes.reduce((s, h) => s + h.distance, 0);
+  const latitude = draft.latitude ?? draft.holes.reduce((s, h) => s + h.teeLat, 0) / draft.holes.length;
+  const longitude = draft.longitude ?? draft.holes.reduce((s, h) => s + h.teeLng, 0) / draft.holes.length;
+  return { holes, par, totalDist, latitude, longitude };
+}
+
 /**
  * Create a NEW course from the web. Written as reviewStatus "Draft" + isDraft true so it is HIDDEN
  * in the public directory of BOTH apps (iOS hides reviewStatus=="Draft"; Android hides isDraft) and
@@ -490,32 +515,7 @@ export async function createCourse(uid: string, draft: CourseDraft, presetId?: s
     const id = presetId || uuidUpper();
     const now = Date.now();
 
-    const holes = draft.holes.map((h, i) => {
-      const elbows = h.elbows ?? []; // {lat,lng} objects (app contract)
-      // Distance walks the fairway: tee -> elbows -> basket.
-      let dist = 0; let pa = { lat: h.teeLat, lng: h.teeLng };
-      for (const e of elbows) { dist += distanceFt(pa.lat, pa.lng, e.lat, e.lng); pa = e; }
-      dist += distanceFt(pa.lat, pa.lng, h.basketLat, h.basketLng);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const hole: Record<string, any> = {
-        id: uuidUpper(),
-        holeNumber: i + 1,
-        par: h.par > 0 ? h.par : 3,
-        distance: Math.round(dist),
-        teeLat: h.teeLat, teeLng: h.teeLng, basketLat: h.basketLat, basketLng: h.basketLng,
-        elbows: elbows.map((e) => ({ lat: e.lat, lng: e.lng })),
-        notes: h.notes?.trim() || "",
-      };
-      if (h.alternateTees?.length) hole.alternateTees = h.alternateTees.map((t) => ({ id: t.id, label: t.label, lat: t.lat, lng: t.lng }));
-      if (h.alternateBaskets?.length) hole.alternateBaskets = h.alternateBaskets.map((b) => ({ id: b.id, label: b.label, lat: b.lat, lng: b.lng, colorHex: b.colorHex }));
-      if (h.mandos?.length) hole.mandos = h.mandos.map((m) => ({ id: m.id, lat: m.lat, lng: m.lng, direction: m.direction, label: m.label }));
-      return hole;
-    });
-    const par = holes.reduce((s, h) => s + h.par, 0);
-    const totalDist = holes.reduce((s, h) => s + h.distance, 0);
-    // Course location: the parking/center set in step 1; fall back to the average tee position.
-    const latitude = draft.latitude ?? draft.holes.reduce((s, h) => s + h.teeLat, 0) / draft.holes.length;
-    const longitude = draft.longitude ?? draft.holes.reduce((s, h) => s + h.teeLng, 0) / draft.holes.length;
+    const { holes, par, totalDist, latitude, longitude } = buildCourseHoles(draft);
     const isFree = draft.isFree ?? true;
 
     const docData: Record<string, unknown> = {
@@ -570,4 +570,96 @@ export async function findNearbyCourses(lat: number, lng: number, name: string, 
   } catch {
     return [];
   }
+}
+
+// ---- Edit an existing course (same builder, write back to the same doc) ----
+export interface EditHole {
+  par: number;
+  teeLat?: number; teeLng?: number; basketLat?: number; basketLng?: number;
+  elbows: { lat: number; lng: number }[];
+  alternateTees: AltTeeWrite[];
+  alternateBaskets: AltBasketWrite[];
+  mandos: MandoWrite[];
+  notes: string;
+}
+export interface EditCourse {
+  id: string; name: string; city: string; state: string;
+  latitude?: number; longitude?: number;
+  description: string; courseType: string; terrain: string; manualDifficulty: string;
+  amenities: string[]; isFree: boolean; courseFeeAmount: number; coverPhotoUrl: string;
+  holes: EditHole[];
+}
+
+const numv = (x: unknown): number | undefined => (typeof x === "number" && !Number.isNaN(x) ? x : undefined);
+
+async function ownsCourse(uid: string, data: DocumentData): Promise<boolean> {
+  const owned = await getOwnedIds(uid);
+  const createdById = (data.createdById as string) || "";
+  const adminIds: string[] = Array.isArray(data.adminIds) ? data.adminIds.map(String) : [];
+  return owned.has(createdById) || adminIds.some((a) => owned.has(a));
+}
+
+/** Load a course (owner-only) into the exact shape the builder needs — incl. every hole marker. */
+export async function getCourseForEdit(uid: string, id: string): Promise<EditCourse | null> {
+  try {
+    const snap = await getDoc(doc(db, "courses", id));
+    if (!snap.exists()) return null;
+    const data = snap.data();
+    if (!(await ownsCourse(uid, data))) return null;
+    const rawHoles: DocumentData[] = Array.isArray(data.holes) ? data.holes : [];
+    const holes: EditHole[] = rawHoles.map((h) => ({
+      par: typeof h.par === "number" ? h.par : 3,
+      teeLat: numv(h.teeLat), teeLng: numv(h.teeLng), basketLat: numv(h.basketLat), basketLng: numv(h.basketLng),
+      elbows: (Array.isArray(h.elbows) ? h.elbows : []).map((e: DocumentData) => ({ lat: numv(e.lat), lng: numv(e.lng) })).filter((e) => e.lat != null && e.lng != null) as { lat: number; lng: number }[],
+      alternateTees: (Array.isArray(h.alternateTees) ? h.alternateTees : []).map((t: DocumentData) => ({ id: String(t.id || uuidUpper()), label: String(t.label || ""), lat: numv(t.lat), lng: numv(t.lng) })).filter((t) => t.lat != null && t.lng != null) as AltTeeWrite[],
+      alternateBaskets: (Array.isArray(h.alternateBaskets) ? h.alternateBaskets : []).map((b: DocumentData) => ({ id: String(b.id || uuidUpper()), label: String(b.label || ""), lat: numv(b.lat), lng: numv(b.lng), colorHex: String(b.colorHex || "3498DB") })).filter((b) => b.lat != null && b.lng != null) as AltBasketWrite[],
+      mandos: (Array.isArray(h.mandos) ? h.mandos : []).map((m: DocumentData) => ({ id: String(m.id || uuidUpper()), lat: numv(m.lat), lng: numv(m.lng), direction: (["Left", "Right", "Down"].includes(m.direction) ? m.direction : "Left") as "Left" | "Right" | "Down", label: String(m.label || "") })).filter((m) => m.lat != null && m.lng != null) as MandoWrite[],
+      notes: String(h.notes || ""),
+    }));
+    return {
+      id, name: data.name || "", city: data.city || "", state: data.state || "",
+      latitude: numv(data.latitude), longitude: numv(data.longitude),
+      description: data.description || "", courseType: data.courseType || "Public", terrain: data.terrain || "Mixed",
+      manualDifficulty: data.manualDifficulty || "", amenities: Array.isArray(data.amenities) ? data.amenities.map(String) : [],
+      isFree: data.isFree !== false, courseFeeAmount: typeof data.courseFeeAmount === "number" ? data.courseFeeAmount : 0,
+      coverPhotoUrl: typeof data.coverPhotoUrl === "string" ? data.coverPhotoUrl : "", holes,
+    };
+  } catch { return null; }
+}
+
+/**
+ * Owner-only edit of an existing course. Writes ONLY the builder-managed fields (course details +
+ * full holes incl. all markers) and PRESERVES everything else — createdById, dateCreated,
+ * reviewStatus/isDraft, layouts, adminIds, community ratings/reviews, isFeatured. Never changes
+ * ownership. Same schema as create, so mobile reads the edits identically. Returns success.
+ */
+export async function updateBuiltCourse(uid: string, id: string, draft: CourseDraft): Promise<boolean> {
+  try {
+    if (!draft.name?.trim() || draft.holes.length === 0) return false;
+    const snap = await getDoc(doc(db, "courses", id));
+    if (!snap.exists()) return false;
+    if (!(await ownsCourse(uid, snap.data()))) return false;
+    const { holes, par, totalDist, latitude, longitude } = buildCourseHoles(draft);
+    const isFree = draft.isFree ?? true;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const update: Record<string, any> = {
+      name: draft.name.trim(),
+      city: draft.city?.trim() || "",
+      state: draft.state?.trim() || "",
+      description: draft.description?.trim() || "",
+      courseType: draft.courseType?.trim() || "Public",
+      terrain: draft.terrain?.trim() || "Mixed",
+      amenities: draft.amenities ?? [],
+      isFree,
+      courseFee: isFree ? "Free" : "Pay to Play",
+      courseFeeAmount: isFree ? 0 : (draft.courseFeeAmount ?? 0),
+      latitude, longitude,
+      holes, holeCount: holes.length, par, distanceFt: totalDist,
+      manualDifficulty: draft.manualDifficulty?.trim() || "",
+      lastModified: Date.now(),
+    };
+    if (draft.coverPhotoUrl?.trim()) update.coverPhotoUrl = draft.coverPhotoUrl.trim();
+    await updateDoc(doc(db, "courses", id), update);
+    return true;
+  } catch { return false; }
 }

@@ -100,6 +100,30 @@ export async function resolveCanonicalId(uid: string): Promise<string> {
   return uid;
 }
 
+/**
+ * The full set of ids that belong to this user — raw auth uid, canonical id, and the user doc's
+ * legacy/user id fields. Mirrors the apps' `ownedIds` so edit-ownership checks accept legacy
+ * createdById values, not just the canonical id.
+ */
+export async function getOwnedIds(uid: string): Promise<Set<string>> {
+  const ids = new Set<string>([uid]);
+  try {
+    const canon = await resolveCanonicalId(uid);
+    ids.add(canon);
+    const snap = await getDoc(doc(db, "users", canon));
+    if (snap.exists()) {
+      const u = snap.data();
+      for (const k of ["legacyUserId", "userId", "uid"]) {
+        const v = u[k];
+        if (typeof v === "string" && v) ids.add(v);
+      }
+    }
+  } catch {
+    /* best effort */
+  }
+  return ids;
+}
+
 export async function getProfileLite(uid: string): Promise<ProfileLite | null> {
   const canonicalId = await resolveCanonicalId(uid);
   try {

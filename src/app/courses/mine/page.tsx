@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
 import { getMyCourses, slugify, type Course } from "@/lib/courses";
-import CourseEditForm from "@/components/courses/CourseEditForm";
 import CourseAnalytics from "@/components/courses/CourseAnalytics";
 
 const fmtDate = (ms?: number) => (ms ? new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "");
@@ -16,7 +15,6 @@ function Stat({ label, value }: { label: string; value: string | number }) {
 export default function MyCoursesPage() {
   const { user, loading } = useAuth();
   const [courses, setCourses] = useState<Course[] | null>(null);
-  const [editing, setEditing] = useState<Course | null>(null);
   const [statsOpen, setStatsOpen] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -25,7 +23,6 @@ export default function MyCoursesPage() {
     getMyCourses(user.uid).then(setCourses).catch(() => setCourses([]));
   }, [user, loading]);
 
-  const applyPatch = (id: string, patch: Partial<Course>) => setCourses((prev) => prev?.map((c) => (c.id === id ? { ...c, ...patch } : c)) ?? null);
   const toggleStats = (id: string) => setStatsOpen((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   return (
@@ -105,7 +102,7 @@ export default function MyCoursesPage() {
                 <div className="flex items-center justify-end gap-2 p-3">
                   <button onClick={() => toggleStats(c.id)} className="mr-auto rounded-full px-4 py-2 text-sm font-semibold text-[#9a7a3a] hover:text-[#16221b]">{statsOpen.has(c.id) ? "Hide analytics" : "📊 Analytics"}</button>
                   <Link href={`/courses/${slugify(c.name, c.id)}`} className="rounded-full px-4 py-2 text-sm font-semibold text-[#46554c] hover:text-[#16221b]">View page</Link>
-                  <button onClick={() => setEditing(c)} className="rounded-full bg-[#16221b] px-5 py-2 text-sm font-bold text-[var(--cream)] hover:bg-[#22332a]">Edit details</button>
+                  <Link href={`/courses/${slugify(c.name, c.id)}/edit`} className="rounded-full bg-[#16221b] px-5 py-2 text-sm font-bold text-[var(--cream)] hover:bg-[#22332a]">Edit course</Link>
                 </div>
                 {statsOpen.has(c.id) && <div className="border-t border-black/[0.06] bg-[#faf8f3] p-4"><CourseAnalytics course={c} /></div>}
               </div>
@@ -113,8 +110,6 @@ export default function MyCoursesPage() {
           </div>
         )}
       </div>
-
-      {editing && <CourseEditForm course={editing} onSaved={(patch) => applyPatch(editing.id, patch)} onClose={() => setEditing(null)} />}
     </div>
   );
 }

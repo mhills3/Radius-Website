@@ -2,11 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getCourseByShortId, getCourseScores, idFromSlug, type Course, type CourseScore } from "@/lib/courses";
+import { getCourseByShortId, getCourseScores, idFromSlug, slugify, type Course, type CourseScore } from "@/lib/courses";
 import { getRanksFor, type RankInfo } from "@/lib/community";
 import CourseHoleMap, { holesWithGeo } from "@/components/courses/CourseHoleMap";
 import CourseCommunity from "@/components/courses/CourseCommunity";
-import CourseEditForm from "@/components/courses/CourseEditForm";
 import { getCourseRoundsForUser, type DecodedRound } from "@/lib/rounds";
 import { getCourseRecords, type CourseRecords as CourseRecordsData } from "@/lib/courseRecords";
 import CourseRecords from "@/components/courses/CourseRecords";
@@ -36,7 +35,6 @@ export default function CourseDetailClient({ slug }: { slug: string }) {
   const [activeHole, setActiveHole] = useState<number | null>(null);
   const [myRounds, setMyRounds] = useState<DecodedRound[]>([]);
   const [roundIdx, setRoundIdx] = useState(0);
-  const [editing, setEditing] = useState(false);
   const [records, setRecords] = useState<CourseRecordsData>({ aces: [], drives: [], loaded: false });
   const [layoutId, setLayoutId] = useState("default");
   const [activeSection, setActiveSection] = useState("overview");
@@ -185,7 +183,7 @@ export default function CourseDetailClient({ slug }: { slug: string }) {
               <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M9 12L4 7l5-5" /></svg>All courses
             </Link>
             <div className="flex items-center gap-2">
-              {isOwner && <button onClick={() => setEditing(true)} className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-black/25 px-4 py-2 text-sm font-semibold text-[var(--cream)] backdrop-blur hover:border-white/50"><svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>Edit</button>}
+              {isOwner && <Link href={`/courses/${slugify(course.name, course.id)}/edit`} className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-black/25 px-4 py-2 text-sm font-semibold text-[var(--cream)] backdrop-blur hover:border-white/50"><svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>Edit</Link>}
               {hasGeo && <a href={`https://www.google.com/maps/dir/?api=1&destination=${course.latitude},${course.longitude}`} target="_blank" rel="noopener" className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-black/25 px-4 py-2 text-sm font-semibold text-[var(--cream)] backdrop-blur hover:border-white/50"><svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M12 21s-7-5.2-7-11a7 7 0 0 1 14 0c0 5.8-7 11-7 11z" /><circle cx="12" cy="10" r="2.5" /></svg>Directions</a>}
             </div>
           </div>
@@ -530,7 +528,6 @@ export default function CourseDetailClient({ slug }: { slug: string }) {
         </aside>
       </div>
 
-      {editing && <CourseEditForm course={course} onSaved={(patch) => setCourse((c) => (c ? { ...c, ...patch } : c))} onClose={() => setEditing(false)} />}
     </div>
   );
 }

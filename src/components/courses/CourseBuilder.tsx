@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { createCourse, findNearbyCourses, distanceFt, slugify, type HoleDraft, type Course } from "@/lib/courses";
+import { createCourse, updateBuiltCourse, findNearbyCourses, distanceFt, slugify, type HoleDraft, type Course, type EditCourse } from "@/lib/courses";
 import { storage } from "@/lib/firebase";
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 
@@ -38,6 +38,12 @@ type Mando = { id: string; lat: number; lng: number; direction: Dir; label: stri
 // elbows are [lng,lat] internally (Mapbox); alt/mando store lat,lng (app shape).
 type Hole = { par: number; teeLat?: number; teeLng?: number; basketLat?: number; basketLng?: number; elbows: [number, number][]; altTees: AltTee[]; altBaskets: AltBasket[]; mandos: Mando[]; notes: string };
 const blankHole = (): Hole => ({ par: 3, elbows: [], altTees: [], altBaskets: [], mandos: [], notes: "" });
+// Convert a loaded course's holes (edit mode) into the builder's internal Hole shape.
+const editHolesToBuilder = (init?: EditCourse): Hole[] => (init?.holes ?? []).map((h) => ({
+  par: h.par, teeLat: h.teeLat, teeLng: h.teeLng, basketLat: h.basketLat, basketLng: h.basketLng,
+  elbows: h.elbows.map((e) => [e.lng, e.lat] as [number, number]),
+  altTees: h.alternateTees, altBaskets: h.alternateBaskets, mandos: h.mandos, notes: h.notes,
+}));
 const mapped = (h: Hole) => h.teeLat != null && h.basketLat != null;
 type Mode = "tee" | "basket" | "elbow" | "altTee" | "altBasket" | "mando";
 const newId = () => (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID().toUpperCase() : `${Date.now()}-${Math.random().toString(36).slice(2)}`.toUpperCase());
@@ -82,31 +88,32 @@ const LABEL = "mb-1.5 block text-xs font-semibold text-[#46554c]";
 const pill = (on: boolean) => `rounded-xl border py-2 text-xs font-bold transition-all ${on ? "border-[var(--gold)] bg-[var(--gold)] text-[#16221b] shadow-[0_2px_8px_-2px_rgba(246,193,101,0.6)]" : "border-black/[0.08] bg-white text-[#46554c] hover:border-black/20 hover:text-[#16221b]"}`;
 const seg = (on: boolean) => `flex-1 rounded-xl border py-2.5 text-sm font-bold transition-all ${on ? "border-[var(--gold)] bg-[var(--gold)] text-[#16221b] shadow-[0_2px_8px_-2px_rgba(246,193,101,0.6)]" : "border-black/[0.08] bg-white text-[#46554c] hover:border-black/20"}`;
 
-export default function CourseBuilder({ uid }: { uid: string }) {
+export default function CourseBuilder({ uid, initial }: { uid: string; initial?: EditCourse }) {
   const router = useRouter();
+  const editing = !!initial;
   const elRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapRef = useRef<any>(null);
   const [mapReady, setMapReady] = useState(false);
   const [mapErr, setMapErr] = useState("");
-  const [courseId] = useState(() => newId());
+  const [courseId] = useState(() => initial?.id ?? newId());
   const DRAFT_KEY = `radius_course_draft_${uid}`;
 
   const [step, setStep] = useState(0);
-  const [name, setName] = useState("");
-  const [holeCountText, setHoleCountText] = useState("18");
-  const [description, setDescription] = useState("");
-  const [courseType, setCourseType] = useState("Public");
-  const [terrain, setTerrain] = useState("Mixed");
-  const [difficulty, setDifficulty] = useState("");
-  const [isFree, setIsFree] = useState(true);
-  const [feeAmount, setFeeAmount] = useState(0);
-  const [amenities, setAmenities] = useState<Set<string>>(new Set());
-  const [coverPhotoUrl, setCoverPhotoUrl] = useState("");
-  const [loc, setLoc] = useState<{ lat: number; lng: number; city: string; state: string } | null>(null);
+  const [name, setName] = useState(initial?.name ?? "");
+  const [holeCountText, setHoleCountText] = useState(initial ? String(initial.holes.length) : "18");
+  const [description, setDescription] = useState(initial?.description ?? "");
+  const [courseType, setCourseType] = useState(initial?.courseType || "Public");
+  const [terrain, setTerrain] = useState(initial?.terrain || "Mixed");
+  const [difficulty, setDifficulty] = useState(initial?.manualDifficulty ?? "");
+  const [isFree, setIsFree] = useState(initial?.isFree ?? true);
+  const [feeAmount, setFeeAmount] = useState(initial?.courseFeeAmount ?? 0);
+  const [amenities, setAmenities] = useState<Set<string>>(new Set(initial?.amenities ?? []));
+  const [coverPhotoUrl, setCoverPhotoUrl] = useState(initial?.coverPhotoUrl ?? "");
+  const [loc, setLoc] = useState<{ lat: number; lng: number; city: string; state: string } | null>(initial?.latitude != null && initial?.longitude != null ? { lat: initial.latitude, lng: initial.longitude, city: initial.city, state: initial.state } : null);
   const [search, setSearch] = useState("");
 
-  const [holes, setHoles] = useState<Hole[]>([]);
+  const [holes, setHoles] = useState<Hole[]>(() => editHolesToBuilder(initial));
   const [cur, setCur] = useState(0);
   const [mode, setMode] = useState<Mode>("tee");
   const [undo, setUndo] = useState<Hole[][]>([]);
@@ -123,14 +130,15 @@ export default function CourseBuilder({ uid }: { uid: string }) {
   const modeRef = useRef(mode); modeRef.current = mode;
   const curRef = useRef(cur); curRef.current = cur;
   const holesRef = useRef(holes); holesRef.current = holes;
-  const hydrated = useRef(false);
+  const hydrated = useRef(editing); // edit mode: skip geolocate-on-load, use the course's own location
 
   const holeCount = Math.max(0, Math.min(27, parseInt(holeCountText, 10) || 0));
 
   const snapshot = (hs: Hole[]) => hs.map((h) => ({ ...h, elbows: [...h.elbows], altTees: [...h.altTees], altBaskets: [...h.altBaskets], mandos: [...h.mandos] }));
 
-  // ---------- draft autosave / resume ----------
+  // ---------- draft autosave / resume (create only; edit saves straight to the doc) ----------
   useEffect(() => {
+    if (editing) return;
     try {
       const raw = localStorage.getItem(DRAFT_KEY); if (!raw) return;
       const d = JSON.parse(raw); if (!d || (!d.name && !(d.holes?.length))) return;
@@ -148,7 +156,7 @@ export default function CourseBuilder({ uid }: { uid: string }) {
   }, []);
 
   useEffect(() => {
-    if (resume) return;
+    if (editing || resume) return;
     const t = setTimeout(() => {
       try { if (!name && holes.length === 0) return; localStorage.setItem(DRAFT_KEY, JSON.stringify({ name, holeCountText, description, courseType, terrain, difficulty, isFree, feeAmount, amenities: [...amenities], coverPhotoUrl, loc, holes, step, cur, ts: Date.now() })); } catch {}
     }, 800);
@@ -176,7 +184,9 @@ export default function CourseBuilder({ uid }: { uid: string }) {
       map.on("load", () => {
         if (cancelled) return;
         map.resize();
-        if (!hydrated.current && typeof navigator !== "undefined" && navigator.geolocation) {
+        if (editing && initial?.latitude != null && initial?.longitude != null) {
+          map.flyTo({ center: [initial.longitude, initial.latitude], zoom: 16, duration: 0 });
+        } else if (!hydrated.current && typeof navigator !== "undefined" && navigator.geolocation) {
           navigator.geolocation.getCurrentPosition((pos) => { if (!cancelled && !hydrated.current) map.flyTo({ center: [pos.coords.longitude, pos.coords.latitude], zoom: 16, duration: 1200 }); }, () => {}, { enableHighAccuracy: true, timeout: 8000 });
         }
         // Use the app's real BasketIcon, tinted gold (primary) and into the 9 alt-basket colors.
@@ -351,9 +361,17 @@ export default function CourseBuilder({ uid }: { uid: string }) {
     setError("");
     const built: HoleDraft[] = holes.filter(mapped).map((h) => ({ par: h.par, teeLat: h.teeLat!, teeLng: h.teeLng!, basketLat: h.basketLat!, basketLng: h.basketLng!, notes: h.notes, elbows: h.elbows.map(([lng, lat]) => ({ lat, lng })), alternateTees: h.altTees, alternateBaskets: h.altBaskets, mandos: h.mandos }));
     if (built.length === 0) { setError("Map at least one hole."); return; }
+    const payload = { name, city: loc?.city, state: loc?.state, latitude: loc?.lat, longitude: loc?.lng, description, courseType, terrain, manualDifficulty: difficulty, amenities: [...amenities], isFree, courseFeeAmount: isFree ? 0 : Number(feeAmount) || 0, coverPhotoUrl, holes: built };
+    if (editing && initial) {
+      setStatus("saving");
+      const ok = await updateBuiltCourse(uid, initial.id, payload);
+      if (!ok) { setStatus("error"); setError("Couldn't save changes. Please try again."); return; }
+      router.push(`/courses/${slugify(name, initial.id)}`);
+      return;
+    }
     if (dupes === null && loc) { const near = await findNearbyCourses(loc.lat, loc.lng, name); if (near.length > 0) { setDupes(near); return; } setDupes([]); }
     setStatus("saving");
-    const id = await createCourse(uid, { name, city: loc?.city, state: loc?.state, latitude: loc?.lat, longitude: loc?.lng, description, courseType, terrain, manualDifficulty: difficulty, amenities: [...amenities], isFree, courseFeeAmount: isFree ? 0 : Number(feeAmount) || 0, coverPhotoUrl, holes: built }, courseId);
+    const id = await createCourse(uid, payload, courseId);
     if (!id) { setStatus("error"); setError("Couldn't save the course. Please try again."); return; }
     try { localStorage.removeItem(DRAFT_KEY); } catch {}
     router.push(`/courses/${slugify(name, id)}`);
@@ -386,8 +404,8 @@ export default function CourseBuilder({ uid }: { uid: string }) {
       </Link>
       <div className="mb-7">
         <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#9a7a3a]">Course builder</div>
-        <h1 className="mt-1.5 font-[family-name:var(--font-heading)] text-4xl font-extrabold tracking-[-0.03em] text-[#16221b]">Build a course</h1>
-        <p className="mt-2 max-w-xl text-sm text-[#6b7a70]">Map your local course hole by hole. It auto-saves as a private <span className="font-semibold text-[#46554c]">draft</span> — only you can see it until it&apos;s reviewed and published.</p>
+        <h1 className="mt-1.5 font-[family-name:var(--font-heading)] text-4xl font-extrabold tracking-[-0.03em] text-[#16221b]">{editing ? "Edit course" : "Build a course"}</h1>
+        <p className="mt-2 max-w-xl text-sm text-[#6b7a70]">{editing ? <>Update your course, hole by hole. Changes save back to your course and sync to the apps.</> : <>Map your local course hole by hole. It auto-saves as a private <span className="font-semibold text-[#46554c]">draft</span> — only you can see it until it&apos;s reviewed and published.</>}</p>
         <div className="mt-5 inline-flex items-center gap-1 rounded-2xl border border-black/[0.06] bg-white p-1.5 shadow-sm">
           {STEPS.map((s, i) => (
             <div key={s} className="flex items-center">
@@ -540,7 +558,7 @@ export default function CourseBuilder({ uid }: { uid: string }) {
               {error && <p className="text-sm font-medium text-[#d9473f]">{error}</p>}
               <div className="flex gap-2">
                 <button onClick={() => setStep(1)} className="rounded-full border border-black/[0.08] bg-white px-5 py-3.5 text-sm font-bold text-[#16221b] transition-colors hover:border-[var(--gold)]">← Back</button>
-                <button onClick={submit} disabled={status === "saving"} className="flex-1 rounded-full bg-[#16221b] px-5 py-3.5 text-sm font-bold text-[var(--cream)] transition-colors hover:bg-[#22332a] disabled:opacity-60">{status === "saving" ? "Saving…" : dupes && dupes.length > 0 ? "Create anyway (draft)" : "Create course (draft)"}</button>
+                <button onClick={submit} disabled={status === "saving"} className="flex-1 rounded-full bg-[#16221b] px-5 py-3.5 text-sm font-bold text-[var(--cream)] transition-colors hover:bg-[#22332a] disabled:opacity-60">{status === "saving" ? "Saving…" : editing ? "Save changes" : dupes && dupes.length > 0 ? "Create anyway (draft)" : "Create course (draft)"}</button>
               </div>
             </div>
           )}
