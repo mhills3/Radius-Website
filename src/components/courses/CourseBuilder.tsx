@@ -5,11 +5,22 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { createCourse, findNearbyCourses, distanceFt, slugify, type HoleDraft, type Course } from "@/lib/courses";
+import { storage } from "@/lib/firebase";
+import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "pk.eyJ1IjoibWlrZXkzIiwiYSI6ImNtb3Fra25hZzB6dnIycHB6ZHMxcjIwNHYifQ.tyyS7i-aoR54_l11rW0Khg";
 
 const TERRAINS = ["Mixed", "Open", "Wooded", "Hilly", "Desert", "Coastal"];
-const DIFFICULTIES = ["Beginner", "Intermediate", "Advanced", "Expert"];
+const DIFFICULTIES = ["Beginner", "Intermediate", "Advanced", "Pro"];
+// Mirror the app (radiusDifficultyColor): green / blue / orange, Pro = amber→gold gradient + glow.
+const DIFF_COLOR: Record<string, string> = { Beginner: "#4AA861", Intermediate: "#3385CC", Advanced: "#E0752A", Pro: "#F6C165" };
+const PRO_GRADIENT = "linear-gradient(135deg, #FFD452, #F6C165, #CC6B1A)";
+function diffStyle(label: string, on: boolean): React.CSSProperties {
+  const c = DIFF_COLOR[label] || "#4AA861";
+  const isPro = label === "Pro";
+  if (on) return { background: isPro ? PRO_GRADIENT : c, color: "#fff", border: `1px solid ${isPro ? "rgba(255,255,255,0.45)" : c}`, boxShadow: isPro ? "0 5px 18px rgba(246,193,101,0.6)" : `0 5px 18px ${c}73`, transform: "translateY(-1px)" };
+  return { background: isPro ? "rgba(246,193,101,0.1)" : `${c}14`, color: isPro ? "#9a7a3a" : c, border: `1.5px solid ${isPro ? "rgba(246,193,101,0.5)" : c + "59"}` };
+}
 const AMENITIES = ["Parking", "Restrooms", "Water", "Lighting", "Picnic Area", "Camping", "Pro Shop", "Food"];
 const STEPS = ["Details", "Map holes", "Review"];
 
@@ -55,6 +66,22 @@ export default function CourseBuilder({ uid }: { uid: string }) {
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
   const [error, setError] = useState("");
   const [dupes, setDupes] = useState<Course[] | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  async function onCoverFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true); setError("");
+    try {
+      const safe = file.name.replace(/[^a-zA-Z0-9.]/g, "_");
+      const r = storageRef(storage, `courseCovers/${uid}/${Date.now()}-${safe}`);
+      await uploadBytes(r, file);
+      setCoverPhotoUrl(await getDownloadURL(r));
+    } catch {
+      setError("Photo upload failed — try a smaller image.");
+    }
+    setUploading(false);
+  }
 
   const stepRef = useRef(step); stepRef.current = step;
   const modeRef = useRef(mode); modeRef.current = mode;
@@ -251,10 +278,25 @@ export default function CourseBuilder({ uid }: { uid: string }) {
               </div>
               <label className="block"><span className={LABEL}>Description *</span><textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What makes this course great?" className={`${FIELD} resize-none`} /></label>
               <div><span className={LABEL}>Terrain</span><div className="grid grid-cols-3 gap-2">{TERRAINS.map((t) => <button key={t} onClick={() => setTerrain(t)} className={pill(terrain === t)}>{t}</button>)}</div></div>
-              <div><span className={LABEL}>Difficulty</span><div className="grid grid-cols-3 gap-2"><button onClick={() => setDifficulty("")} className={pill(difficulty === "")}>Auto</button>{DIFFICULTIES.map((dd) => <button key={dd} onClick={() => setDifficulty(dd)} className={pill(difficulty === dd)}>{dd}</button>)}</div></div>
+              <div><span className={LABEL}>Difficulty</span><div className="grid grid-cols-3 gap-2"><button onClick={() => setDifficulty("")} className={pill(difficulty === "")}>Auto</button>{DIFFICULTIES.map((dd) => <button key={dd} onClick={() => setDifficulty(dd)} style={diffStyle(dd, difficulty === dd)} className="rounded-xl py-2 text-xs font-extrabold transition-all">{dd}</button>)}</div></div>
               <div><span className={LABEL}>Cost</span><div className="flex items-center gap-2"><button onClick={() => setIsFree(true)} className={seg(isFree)}>Free</button><button onClick={() => setIsFree(false)} className={seg(!isFree)}>Pay to play</button>{!isFree && <input type="number" value={feeAmount} onChange={(e) => setFeeAmount(Number(e.target.value))} placeholder="$" className="w-20 rounded-xl border border-black/[0.08] bg-[#faf9f5] px-2 py-2.5 text-sm outline-none focus:border-[var(--gold)]" />}</div></div>
               <div><span className={LABEL}>Amenities</span><div className="grid grid-cols-2 gap-2">{AMENITIES.map((a) => { const on = amenities.has(a); return <button key={a} onClick={() => setAmenities((s) => { const n = new Set(s); if (n.has(a)) n.delete(a); else n.add(a); return n; })} className={pill(on)}>{on ? "✓ " : ""}{a}</button>; })}</div></div>
-              <label className="block"><span className={LABEL}>Cover photo URL</span><input value={coverPhotoUrl} onChange={(e) => setCoverPhotoUrl(e.target.value)} placeholder="https://…" className={FIELD} /></label>
+              <div>
+                <span className={LABEL}>Cover photo</span>
+                {coverPhotoUrl ? (
+                  <div className="relative overflow-hidden rounded-xl border border-black/10">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={coverPhotoUrl} alt="Cover" className="h-32 w-full object-cover" />
+                    <button onClick={() => setCoverPhotoUrl("")} className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-black/55 text-white backdrop-blur transition-colors hover:bg-black/75"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg></button>
+                  </div>
+                ) : (
+                  <label className={`flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-black/15 bg-[#faf9f5] py-7 text-sm font-semibold text-[#6b7a70] transition-colors hover:border-[var(--gold)] hover:text-[#16221b] ${uploading ? "pointer-events-none opacity-60" : ""}`}>
+                    <svg className="h-6 w-6 text-[#9a7a3a]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" /></svg>
+                    {uploading ? "Uploading…" : "Upload a cover photo"}
+                    <input type="file" accept="image/*" disabled={uploading} onChange={onCoverFile} className="hidden" />
+                  </label>
+                )}
+              </div>
               {error && <p className="text-sm font-medium text-[#d9473f]">{error}</p>}
               <button onClick={goMap} className="w-full rounded-full bg-[#16221b] px-5 py-3.5 text-sm font-bold text-[var(--cream)] transition-colors hover:bg-[#22332a]">Next: map the holes →</button>
             </div>
