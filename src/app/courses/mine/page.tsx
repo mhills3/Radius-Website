@@ -31,13 +31,31 @@ export default function MyCoursesPage() {
   return (
     <div className="min-h-screen bg-[#faf8f3] text-[#16221b]">
       <div className="mx-auto max-w-4xl px-6 pt-24 pb-16">
+        <Link href="/courses" className="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-[#6b7a70] transition-colors hover:text-[#16221b]">
+          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+          Back to courses
+        </Link>
         <div className="mb-1 text-[11px] font-bold uppercase tracking-[0.2em] text-[#9a7a3a]">Course builder</div>
-        <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-[-0.02em]">My courses & layouts</h1>
             <p className="mt-2 text-sm text-[#46554c]">Every course and layout you&apos;ve built — review their stats and edit the details.</p>
           </div>
-          {user && <Link href="/courses/new" className="hidden shrink-0 items-center gap-1.5 rounded-full bg-[#16221b] px-5 py-2.5 text-sm font-bold text-[var(--cream)] transition-colors hover:bg-[#22332a] md:inline-flex">⛳ Build a course</Link>}
+          {user && (
+            <Link href="/courses/new" className="group relative hidden shrink-0 overflow-hidden rounded-2xl shadow-[0_12px_28px_-12px_rgba(15,24,19,0.65)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_38px_-12px_rgba(15,24,19,0.85)] md:block">
+              <span className="absolute -inset-x-10 inset-y-0 bg-[linear-gradient(110deg,transparent_30%,rgba(246,193,101,0.45),transparent_70%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+              <span className="relative flex items-center gap-3 rounded-2xl bg-gradient-to-br from-[#243a2e] to-[#16221b] px-5 py-3 ring-1 ring-[var(--gold)]/30 transition-colors group-hover:ring-[var(--gold)]/60">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[var(--gold-bright)] to-[var(--gold)] text-[#16221b] shadow-[inset_0_1px_2px_rgba(255,255,255,0.45)]">
+                  <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d="M4 22V4M4 4l11 3-3 4 6 2-14 4" /></svg>
+                </span>
+                <span className="text-left">
+                  <span className="block font-[family-name:var(--font-heading)] text-sm font-extrabold leading-tight tracking-tight text-[var(--cream)]">Build a course</span>
+                  <span className="block text-[11px] leading-tight text-[var(--sage)]">Map it hole by hole</span>
+                </span>
+                <svg className="ml-1 h-4 w-4 text-[var(--gold)] transition-transform duration-300 group-hover:translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+              </span>
+            </Link>
+          )}
         </div>
 
         {loading || courses === null ? (

@@ -448,14 +448,17 @@ export function distanceFt(aLat: number, aLng: number, bLat: number, bLng: numbe
   return Math.round(metres * 3.28084);
 }
 
-export interface HoleDraft { par: number; teeLat: number; teeLng: number; basketLat: number; basketLng: number }
+export interface HoleDraft { par: number; teeLat: number; teeLng: number; basketLat: number; basketLng: number; notes?: string }
 export interface CourseDraft {
   name: string;
   city?: string;
   state?: string;
+  latitude?: number;
+  longitude?: number;
   description?: string;
-  courseType?: string;
-  terrain?: string;
+  courseType?: string;      // "Public" | "Private"
+  terrain?: string;         // Mixed | Open | Wooded | Hilly | Desert | Coastal
+  manualDifficulty?: string; // Beginner | Intermediate | Advanced | Expert | ""
   amenities?: string[];
   isFree?: boolean;
   courseFeeAmount?: number;
@@ -484,12 +487,14 @@ export async function createCourse(uid: string, draft: CourseDraft): Promise<str
       par: h.par > 0 ? h.par : 3,
       distance: distanceFt(h.teeLat, h.teeLng, h.basketLat, h.basketLng),
       teeLat: h.teeLat, teeLng: h.teeLng, basketLat: h.basketLat, basketLng: h.basketLng,
+      notes: h.notes?.trim() || "",
     }));
     const par = holes.reduce((s, h) => s + h.par, 0);
     const totalDist = holes.reduce((s, h) => s + h.distance, 0);
-    // Course center = average of tee positions (real value, not a guess).
-    const latitude = draft.holes.reduce((s, h) => s + h.teeLat, 0) / draft.holes.length;
-    const longitude = draft.holes.reduce((s, h) => s + h.teeLng, 0) / draft.holes.length;
+    // Course location: the parking/center set in step 1; fall back to the average tee position.
+    const latitude = draft.latitude ?? draft.holes.reduce((s, h) => s + h.teeLat, 0) / draft.holes.length;
+    const longitude = draft.longitude ?? draft.holes.reduce((s, h) => s + h.teeLng, 0) / draft.holes.length;
+    const isFree = draft.isFree ?? true;
 
     const docData: Record<string, unknown> = {
       id,
@@ -497,11 +502,12 @@ export async function createCourse(uid: string, draft: CourseDraft): Promise<str
       city: draft.city?.trim() || "",
       state: draft.state?.trim() || "",
       description: draft.description?.trim() || "",
-      courseType: draft.courseType?.trim() || "",
-      terrain: draft.terrain?.trim() || "",
+      courseType: draft.courseType?.trim() || "Public",
+      terrain: draft.terrain?.trim() || "Mixed",
       amenities: draft.amenities ?? [],
-      isFree: draft.isFree ?? true,
-      courseFeeAmount: draft.courseFeeAmount ?? 0,
+      isFree,
+      courseFee: isFree ? "Free" : "Pay to Play",
+      courseFeeAmount: isFree ? 0 : (draft.courseFeeAmount ?? 0),
       isPublic: true,
       isFeatured: false,
       latitude, longitude,
@@ -516,6 +522,7 @@ export async function createCourse(uid: string, draft: CourseDraft): Promise<str
       reviewStatus: "Draft",
       isDraft: true,
     };
+    if (draft.manualDifficulty?.trim()) docData.manualDifficulty = draft.manualDifficulty.trim();
     if (draft.coverPhotoUrl?.trim()) docData.coverPhotoUrl = draft.coverPhotoUrl.trim();
 
     await setDoc(doc(db, "courses", id), docData);
