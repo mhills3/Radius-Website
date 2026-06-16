@@ -30,6 +30,7 @@ function sortDiscs(list: FlightDisc[], key: SortKey): FlightDisc[] {
 }
 
 const card = "rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6";
+const cardTight = "rounded-3xl border border-white/[0.08] bg-white/[0.03] p-5";
 const ORDER: Cat[] = ["DISTANCE", "FAIRWAY", "MIDRANGE", "PUTTER", "UNKNOWN"];
 const TIERS: Tier[] = ["US", "ST", "OS"];
 
@@ -323,9 +324,9 @@ export default function BagView({ bag, uid }: { bag: Bag; uid: string }) {
             <FlightChart discs={discs} />
           </div>
 
-          <div className="flex flex-col gap-4 lg:col-span-3">
-            <div className={`fade-up ${card}`} style={{ animationDelay: "60ms" }}>
-              <div className="mb-4 flex items-center justify-between">
+          <div className="flex flex-col gap-3 lg:col-span-3">
+            <div className={`fade-up ${cardTight}`} style={{ animationDelay: "60ms" }}>
+              <div className="mb-3 flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--sage-dim)]">Slot coverage</span>
                 <span className="text-xs text-[var(--text-body)]"><span className="font-bold text-[var(--cream)]">{covered}/12</span> covered</span>
               </div>
@@ -340,15 +341,15 @@ export default function BagView({ bag, uid }: { bag: Bag; uid: string }) {
               </div>
             </div>
 
-            <div className={`fade-up grid grid-cols-3 gap-3 ${card}`} style={{ animationDelay: "120ms" }}>
+            <div className={`fade-up grid grid-cols-3 gap-2.5 ${cardTight}`} style={{ animationDelay: "120ms" }}>
               <div className="col-span-3 -mb-1 text-xs font-bold uppercase tracking-[0.18em] text-[var(--sage-dim)]">Bag DNA</div>
               {(["US", "ST", "OS"] as Tier[]).map((t) => (
-                <div key={t} className="rounded-2xl bg-white/[0.03] p-4">
+                <div key={t} className="rounded-2xl bg-white/[0.03] p-3">
                   <div className="flex items-center gap-1.5 text-xs text-[var(--text-body)]"><span className="h-2.5 w-2.5 rounded-full" style={{ background: TIER_META[t].color }} />{TIER_META[t].label}</div>
-                  <div className="mt-1 font-[family-name:var(--font-heading)] text-3xl font-extrabold text-[var(--cream)]">{tierCount(t)}</div>
+                  <div className="mt-0.5 font-[family-name:var(--font-heading)] text-2xl font-extrabold text-[var(--cream)]">{tierCount(t)}</div>
                 </div>
               ))}
-              <div className="col-span-3 mt-1 flex gap-8 border-t border-white/[0.06] pt-4 text-sm">
+              <div className="col-span-3 mt-0.5 flex flex-wrap gap-x-6 gap-y-1 border-t border-white/[0.06] pt-3 text-sm">
                 <div><span className="text-[var(--sage-dim)]">Avg speed </span><span className="font-bold text-[var(--cream)]">{avgSpeed}</span></div>
                 <div><span className="text-[var(--sage-dim)]">Brands </span><span className="font-bold text-[var(--cream)]">{brands}</span></div>
                 <div><span className="text-[var(--sage-dim)]">Arm </span><span className="font-bold text-[var(--cream)]">≤ speed {rating.ceiling}</span></div>
@@ -356,7 +357,7 @@ export default function BagView({ bag, uid }: { bag: Bag; uid: string }) {
             </div>
 
             {/* Stability Map — fills the gap; click to open the full, shareable branded version. */}
-            <StabilityMap discs={discs} className="fade-up min-h-[260px] flex-1" />
+            <StabilityMap discs={discs} className="fade-up min-h-[200px] flex-1" />
           </div>
         </div>
 
