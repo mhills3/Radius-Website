@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { type Bag, type Cat, type Tier, type FlightDisc, type RawDisc, type DbDisc, CAT_META, TIER_META, tierFor, normCat, plasticColor } from "@/lib/bag";
-import { setFavorites, saveBag, newDisc, freshId } from "@/lib/bagWrite";
+import { setFavorites, saveBag, newDisc, freshId, moveToCollection, markAsLost, recoverToBag, deleteStoredDisc } from "@/lib/bagWrite";
 import FlightChart from "@/components/bag/FlightChart";
 import DiscDetail from "@/components/bag/DiscDetail";
 import DiscGraphic from "@/components/bag/DiscGraphic";
@@ -138,6 +138,8 @@ export default function BagView({ bag, uid }: { bag: Bag; uid: string }) {
   const { rating } = bag;
   const [discs, setDiscs] = useState<FlightDisc[]>(bag.discs);
   const [rawDiscs, setRawDiscs] = useState<RawDisc[]>(bag.rawDiscs);
+  const [collection, setCollection] = useState<FlightDisc[]>(bag.collection);
+  const [lost, setLost] = useState<FlightDisc[]>(bag.lost);
   const [selected, setSelected] = useState<FlightDisc | null>(null);
   const [view, setView] = useState<"cards" | "list">("cards");
   const [sort, setSort] = useState<SortKey>("speed");
@@ -181,6 +183,43 @@ export default function BagView({ bag, uid }: { bag: Bag; uid: string }) {
     setSelected(null);
     // Tombstone the id so iOS/Android honor the deletion instead of re-adding it from their local bag.
     saveBag(uid, nextRaw, [d.id]).catch(() => { setDiscs(discs); setRawDiscs(rawDiscs); });
+  };
+
+  // Move a bag disc out to collection/lost. Bag/collection/lost are mutually exclusive BY NAME.
+  const moveOut = (d: FlightDisc, dest: "collection" | "lost") => {
+    const nameKey = d.name.toLowerCase();
+    const nextDiscs = discs.filter((x) => x.id !== d.id);
+    const nextRaw = rawDiscs.filter((r) => r.id !== d.id);
+    const stored: FlightDisc = { ...d, id: `${dest === "collection" ? "col" : "lost"}:${d.name}`, isFavorite: false };
+    setDiscs(nextDiscs);
+    setRawDiscs(nextRaw);
+    setCollection((cur) => dest === "collection" ? (cur.some((c) => c.name.toLowerCase() === nameKey) ? cur : [...cur, stored]) : cur.filter((c) => c.name.toLowerCase() !== nameKey));
+    setLost((cur) => dest === "lost" ? (cur.some((c) => c.name.toLowerCase() === nameKey) ? cur : [...cur, stored]) : cur.filter((c) => c.name.toLowerCase() !== nameKey));
+    setSelected(null);
+    const revert = () => { setDiscs(discs); setRawDiscs(rawDiscs); setCollection(collection); setLost(lost); };
+    (dest === "collection" ? moveToCollection(uid, nextRaw, d.name) : markAsLost(uid, nextRaw, d.name)).catch(revert);
+  };
+
+  // Recover a collection/lost disc back into the bag (fresh bag entry under a new id, by name).
+  const recover = (d: FlightDisc) => {
+    const nameKey = d.name.toLowerCase();
+    const raw = newDisc(d.name);
+    const fd: FlightDisc = { ...d, id: raw.id, isFavorite: false, condition: "Brand New", customSpeed: undefined, customGlide: undefined, customTurn: undefined, customFade: undefined };
+    const nextDiscs = [...discs, fd];
+    const nextRaw = [...rawDiscs, raw];
+    setDiscs(nextDiscs);
+    setRawDiscs(nextRaw);
+    setCollection((cur) => cur.filter((c) => c.name.toLowerCase() !== nameKey));
+    setLost((cur) => cur.filter((c) => c.name.toLowerCase() !== nameKey));
+    recoverToBag(uid, nextRaw, d.name).catch(() => { setDiscs(discs); setRawDiscs(rawDiscs); setCollection(collection); setLost(lost); });
+  };
+
+  // Permanently delete a disc that's in collection/lost (not in the bag).
+  const deleteStored = (d: FlightDisc) => {
+    const nameKey = d.name.toLowerCase();
+    setCollection((cur) => cur.filter((c) => c.name.toLowerCase() !== nameKey));
+    setLost((cur) => cur.filter((c) => c.name.toLowerCase() !== nameKey));
+    deleteStoredDisc(uid, d.name).catch(() => { setCollection(collection); setLost(lost); });
   };
 
   const onAdd = (dbDisc: DbDisc) => {
@@ -426,11 +465,47 @@ export default function BagView({ bag, uid }: { bag: Bag; uid: string }) {
             ))}
           </div>
         )}
+
+        {collection.length > 0 && <StoredSection title="Collection" subtitle="Discs you own but aren't carrying" icon="📦" discs={collection} primaryLabel="Move to bag" onPrimary={recover} onDelete={deleteStored} />}
+        {lost.length > 0 && <StoredSection title="Lost discs" subtitle="Marked lost — recover anytime" icon="❓" discs={lost} primaryLabel="Recover" onPrimary={recover} onDelete={deleteStored} />}
       </div>
 
-      {selected && <DiscDetail disc={selected} onClose={() => setSelected(null)} onToggleFav={() => toggleFav(selected)} onSave={(patch) => saveDisc(selected, patch)} onRemove={() => removeDisc(selected)} />}
+      {selected && <DiscDetail disc={selected} onClose={() => setSelected(null)} onToggleFav={() => toggleFav(selected)} onSave={(patch) => saveDisc(selected, patch)} onRemove={() => removeDisc(selected)} onMoveToCollection={() => moveOut(selected, "collection")} onMarkLost={() => moveOut(selected, "lost")} />}
       {showAdd && <AddDiscModal existing={new Set(discs.map((d) => d.name.toLowerCase()))} onAdd={onAdd} onClose={() => setShowAdd(false)} />}
     </div>
+  );
+}
+
+function StoredSection({ title, subtitle, icon, discs, primaryLabel, onPrimary, onDelete }: { title: string; subtitle: string; icon: string; discs: FlightDisc[]; primaryLabel: string; onPrimary: (d: FlightDisc) => void; onDelete: (d: FlightDisc) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <section className="mt-10">
+      <button onClick={() => setOpen((v) => !v)} className="flex w-full items-center gap-2.5 rounded-2xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-left transition-colors hover:bg-white/[0.04]">
+        <span className="text-lg">{icon}</span>
+        <h3 className="font-[family-name:var(--font-heading)] text-lg font-bold tracking-tight">{title} <span className="text-[var(--sage-dim)]">{discs.length}</span></h3>
+        <span className="ml-1 hidden text-sm text-[var(--sage-dim)] sm:inline">· {subtitle}</span>
+        <svg className={`ml-auto h-5 w-5 text-[var(--sage-dim)] transition-transform ${open ? "rotate-180" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+      </button>
+      {open && (
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        {discs.map((d) => (
+          <div key={d.id} className="flex flex-col items-center gap-2 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-3 text-center">
+            <DiscGraphic color={d.color} speed={d.speed} size={56} />
+            <div className="w-full">
+              <div className="truncate text-sm font-semibold text-[var(--cream)]">{d.name}</div>
+              <div className="truncate font-mono text-[11px] text-[var(--sage-dim)]">{d.known ? `${d.speed}/${d.glide}/${d.turn}/${d.fade}` : "—"}</div>
+            </div>
+            <div className="mt-1 flex w-full items-center gap-1.5">
+              <button onClick={() => onPrimary(d)} className="flex-1 rounded-full bg-[var(--gold)] py-1.5 text-xs font-bold text-[#16221b] transition-colors hover:bg-[var(--gold-bright)]">{primaryLabel}</button>
+              <button onClick={() => onDelete(d)} aria-label="Delete" className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-white/10 text-[var(--sage-dim)] transition-colors hover:border-[#d9473f]/40 hover:text-[#e0857d]">
+                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /></svg>
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+      )}
+    </section>
   );
 }
 

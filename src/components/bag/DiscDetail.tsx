@@ -41,7 +41,7 @@ const numOrUndef = (s: string): number | undefined => {
   return s.trim() === "" || Number.isNaN(n) ? undefined : n;
 };
 
-export default function DiscDetail({ disc, onClose, onToggleFav, onSave, onRemove }: { disc: FlightDisc; onClose: () => void; onToggleFav?: () => void; onSave?: (patch: DiscPatch) => void; onRemove?: () => void }) {
+export default function DiscDetail({ disc, onClose, onToggleFav, onSave, onRemove, onMoveToCollection, onMarkLost }: { disc: FlightDisc; onClose: () => void; onToggleFav?: () => void; onSave?: (patch: DiscPatch) => void; onRemove?: () => void; onMoveToCollection?: () => void; onMarkLost?: () => void }) {
   const [editing, setEditing] = useState(false);
   const [nick, setNick] = useState(disc.nickname || "");
   const [cond, setCond] = useState(disc.condition || "Brand New");
@@ -151,6 +151,12 @@ export default function DiscDetail({ disc, onClose, onToggleFav, onSave, onRemov
               <button onClick={save} className="flex-1 rounded-full bg-[var(--gold)] py-2.5 text-sm font-bold text-[#16221b] transition-colors hover:bg-[var(--gold-bright)]">Save</button>
               <button onClick={() => { setNick(disc.nickname || ""); setCond(disc.condition || "Brand New"); setCs(disc.customSpeed?.toString() ?? ""); setCg(disc.customGlide?.toString() ?? ""); setCt(disc.customTurn?.toString() ?? ""); setCf(disc.customFade?.toString() ?? ""); setEditing(false); }} className="rounded-full border border-white/10 px-5 py-2.5 text-sm font-semibold text-[var(--sage)] transition-colors hover:text-[var(--cream)]">Cancel</button>
             </div>
+            {(onMoveToCollection || onMarkLost) && (
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {onMoveToCollection && <button onClick={onMoveToCollection} className="rounded-full border border-white/10 py-2 text-sm font-semibold text-[var(--sage)] transition-colors hover:border-white/30 hover:text-[var(--cream)]">📦 To collection</button>}
+                {onMarkLost && <button onClick={onMarkLost} className="rounded-full border border-white/10 py-2 text-sm font-semibold text-[var(--sage)] transition-colors hover:border-white/30 hover:text-[var(--cream)]">❓ Mark lost</button>}
+              </div>
+            )}
             {onRemove && (
               <div className="mt-4 border-t border-white/10 pt-3">
                 {!confirmRemove ? (

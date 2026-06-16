@@ -86,6 +86,8 @@ export interface Bag {
   armSpeed?: string;
   rawDiscs: RawDisc[];
   favoriteIds: string[];
+  collection: FlightDisc[]; // discs owned but not in the bag (myCollection — name only)
+  lost: FlightDisc[];        // discs marked lost (lostDiscs — name only)
 }
 
 export interface DbDisc {
@@ -258,6 +260,30 @@ export async function getBag(uid: string): Promise<Bag> {
     };
   });
 
-  const rating = rateBag(discs, armSpeed, discDb.list);
-  return { discs, rating, armSpeed, rawDiscs: rawBag as RawDisc[], favoriteIds };
+  // Collection & Lost are name-only string arrays. Bag/collection/lost are mutually exclusive by
+  // NAME (matches the apps): a disc whose name is in either list is shown there, not in the bag.
+  const collectionNames: string[] = Array.isArray(data.myCollection) ? data.myCollection.map((x: unknown) => String(x)) : [];
+  const lostNames: string[] = Array.isArray(data.lostDiscs) ? data.lostDiscs.map((x: unknown) => String(x)) : [];
+  const excluded = new Set([...collectionNames, ...lostNames].map((n) => n.toLowerCase()));
+
+  const bagDiscs = excluded.size ? discs.filter((d) => !excluded.has(d.name.toLowerCase())) : discs;
+  const keptRaw = (excluded.size ? rawBag.filter((r) => !excluded.has(String(r?.discName ?? r?.name ?? "").toLowerCase())) : rawBag) as RawDisc[];
+
+  // Resolve a bare disc name (no id/wear) to a display disc for the Collection/Lost lists.
+  const nameToDisc = (name: string, idPrefix: string): FlightDisc => {
+    const src = dbMap.get(name.toLowerCase()) ?? customMap.get(name.toLowerCase());
+    const turn = src?.turn, fade = src?.fade;
+    const stability = typeof turn === "number" && typeof fade === "number" ? turn + fade : undefined;
+    return {
+      id: `${idPrefix}:${name}`, name, brand: src?.manufacturer || undefined, category: normCat(src?.category),
+      speed: src?.speed, glide: src?.glide, turn, fade, stability, tier: stability != null ? tierFor(stability) : undefined,
+      color: plasticColor(src?.color), throwCount: Number(throwCounts[name]) || 0, known: !!src, isFavorite: false,
+      photoUrl: safeHttp(photoMap[name]),
+    };
+  };
+  const collection = collectionNames.map((n) => nameToDisc(n, "col"));
+  const lost = lostNames.map((n) => nameToDisc(n, "lost"));
+
+  const rating = rateBag(bagDiscs, armSpeed, discDb.list);
+  return { discs: bagDiscs, rating, armSpeed, rawDiscs: keptRaw, favoriteIds, collection, lost };
 }

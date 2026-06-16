@@ -1,5 +1,5 @@
 import { db } from "./firebase";
-import { doc, setDoc, arrayUnion } from "firebase/firestore";
+import { doc, setDoc, arrayUnion, arrayRemove } from "firebase/firestore";
 import { resolveCanonicalId } from "./account";
 import { type RawDisc } from "./bag";
 
@@ -28,6 +28,37 @@ export async function saveBag(uid: string, discs: RawDisc[], removedIds?: string
   const payload: Record<string, unknown> = { myBagJSON: encodeBag(discs), lastUpdated: Date.now() };
   if (removedIds && removedIds.length) payload.deletedBagDiscIds = arrayUnion(...removedIds);
   await setDoc(doc(db, `userBackups/${cid}/data/current`), payload, { merge: true });
+}
+
+// Collection & Lost: bag/collection/lost are kept mutually exclusive BY NAME (matches the apps).
+// A move drops the disc from myBagJSON and adds its NAME to the target list (arrayUnion) while
+// removing it from the other list (arrayRemove). NO tombstone — move-back works because the name
+// leaves the list and the disc reappears in myBagJSON. The apps reconcile the bag against these
+// lists by name on adopt, so the disc lands in exactly one place.
+const dataDoc = (cid: string) => doc(db, `userBackups/${cid}/data/current`);
+
+/** Move a bag disc into the collection. Pass the bag WITHOUT the moved disc. */
+export async function moveToCollection(uid: string, bagWithout: RawDisc[], discName: string): Promise<void> {
+  const cid = await resolveCanonicalId(uid);
+  await setDoc(dataDoc(cid), { myBagJSON: encodeBag(bagWithout), myCollection: arrayUnion(discName), lostDiscs: arrayRemove(discName), lastUpdated: Date.now() }, { merge: true });
+}
+
+/** Mark a bag disc as lost. Pass the bag WITHOUT the disc. */
+export async function markAsLost(uid: string, bagWithout: RawDisc[], discName: string): Promise<void> {
+  const cid = await resolveCanonicalId(uid);
+  await setDoc(dataDoc(cid), { myBagJSON: encodeBag(bagWithout), lostDiscs: arrayUnion(discName), myCollection: arrayRemove(discName), lastUpdated: Date.now() }, { merge: true });
+}
+
+/** Recover a collection/lost disc back into the bag. Pass the bag WITH the fresh disc added. */
+export async function recoverToBag(uid: string, bagWith: RawDisc[], discName: string): Promise<void> {
+  const cid = await resolveCanonicalId(uid);
+  await setDoc(dataDoc(cid), { myBagJSON: encodeBag(bagWith), myCollection: arrayRemove(discName), lostDiscs: arrayRemove(discName), lastUpdated: Date.now() }, { merge: true });
+}
+
+/** Permanently remove a disc from the collection AND lost lists (it's not in the bag). */
+export async function deleteStoredDisc(uid: string, discName: string): Promise<void> {
+  const cid = await resolveCanonicalId(uid);
+  await setDoc(dataDoc(cid), { myCollection: arrayRemove(discName), lostDiscs: arrayRemove(discName), lastUpdated: Date.now() }, { merge: true });
 }
 
 /** Fresh uppercase-UUID bag-entry id (matches the iOS/Android id shape). */
