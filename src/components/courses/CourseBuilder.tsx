@@ -178,9 +178,22 @@ export default function CourseBuilder({ uid }: { uid: string }) {
         if (!hydrated.current && typeof navigator !== "undefined" && navigator.geolocation) {
           navigator.geolocation.getCurrentPosition((pos) => { if (!cancelled && !hydrated.current) map.flyTo({ center: [pos.coords.longitude, pos.coords.latitude], zoom: 16, duration: 1200 }); }, () => {}, { enableHighAccuracy: true, timeout: 8000 });
         }
-        const img = new Image();
-        img.onload = () => { try { const s = 2, w = 32 * s, h = 40 * s; const cv = document.createElement("canvas"); cv.width = w; cv.height = h; const c = cv.getContext("2d"); if (c) { c.drawImage(img, 0, 0, w, h); if (!map.hasImage("basket-pin")) map.addImage("basket-pin", c.getImageData(0, 0, w, h), { pixelRatio: 2 }); } } catch {} };
-        img.src = "/basket-pin.svg";
+        // Use the app's real BasketIcon, tinted gold (primary) and into the 9 alt-basket colors.
+        const bimg = new Image();
+        bimg.onload = () => {
+          try {
+            const s = 2, w = 40 * s, h = 40 * s;
+            const make = (nm: string, color: string) => {
+              const cv = document.createElement("canvas"); cv.width = w; cv.height = h; const c = cv.getContext("2d"); if (!c) return;
+              c.drawImage(bimg, 0, 0, w, h);
+              c.globalCompositeOperation = "source-in"; c.fillStyle = color; c.fillRect(0, 0, w, h);
+              if (!map.hasImage(nm)) map.addImage(nm, c.getImageData(0, 0, w, h), { pixelRatio: 2 });
+            };
+            make("basket-gold", "#F6C165");
+            for (const col of ALT_COLORS) make(`altbasket-${col.hex}`, `#${col.hex}`);
+          } catch {}
+        };
+        bimg.src = "/basket-icon.svg";
 
         const empty: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
         for (const id of ["rings", "fairway", "tees", "baskets", "elbows", "altTees", "altBaskets", "mandos", "pending"]) map.addSource(id, { type: "geojson", data: empty });
@@ -190,7 +203,7 @@ export default function CourseBuilder({ uid }: { uid: string }) {
         map.addLayer({ id: "fairway-casing", type: "line", source: "fairway", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#0f1813", "line-width": 5, "line-opacity": ["case", ["get", "cur"], 0.55, 0.2] } });
         map.addLayer({ id: "fairway", type: "line", source: "fairway", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#F6C165", "line-width": ["case", ["get", "cur"], 3, 1.5], "line-opacity": ["case", ["get", "cur"], 1, 0.35] } });
         map.addLayer({ id: "altBaskets", type: "symbol", source: "altBaskets", layout: { "icon-image": ["concat", "altbasket-", ["get", "colorHex"]], "icon-size": ["case", ["get", "cur"], 0.9, 0.6], "icon-allow-overlap": true, "text-field": ["get", "label"], "text-font": TF, "text-size": 10, "text-offset": [0, 1.1], "text-anchor": "top", "text-optional": true }, paint: { "icon-opacity": ["case", ["get", "cur"], 1, 0.45], "text-color": "#fff", "text-halo-color": "#0f1813", "text-halo-width": 1.4 } });
-        map.addLayer({ id: "baskets", type: "symbol", source: "baskets", layout: { "icon-image": "basket-pin", "icon-size": ["case", ["get", "cur"], 0.85, 0.55], "icon-anchor": "bottom", "icon-allow-overlap": true }, paint: { "icon-opacity": ["case", ["get", "cur"], 1, 0.5] } });
+        map.addLayer({ id: "baskets", type: "symbol", source: "baskets", layout: { "icon-image": "basket-gold", "icon-size": ["case", ["get", "cur"], 0.95, 0.6], "icon-anchor": "center", "icon-allow-overlap": true }, paint: { "icon-opacity": ["case", ["get", "cur"], 1, 0.5] } });
         map.addLayer({ id: "mandos", type: "symbol", source: "mandos", layout: { "icon-image": ["concat", "mando-", ["get", "dir"]], "icon-size": 0.9, "icon-allow-overlap": true, "text-field": ["get", "label"], "text-font": TF, "text-size": 10, "text-offset": [0, -1.3], "text-anchor": "bottom", "text-optional": true }, paint: { "icon-opacity": ["case", ["get", "cur"], 1, 0.45], "text-color": "#F1C40F", "text-halo-color": "#0f1813", "text-halo-width": 1.4 } });
         map.addLayer({ id: "elbows", type: "symbol", source: "elbows", layout: { "icon-image": ["get", "icon"], "icon-size": 0.9, "icon-allow-overlap": true }, paint: { "icon-opacity": ["case", ["get", "cur"], 1, 0.4] } });
         map.addLayer({ id: "altTees", type: "symbol", source: "altTees", layout: { "icon-image": "altpad", "icon-rotate": ["get", "rot"], "icon-rotation-alignment": "map", "icon-size": ["case", ["get", "cur"], 0.85, 0.6], "icon-allow-overlap": true, "text-field": ["get", "label"], "text-font": TF, "text-size": 10, "text-offset": [0, 1.2], "text-anchor": "top", "text-optional": true }, paint: { "icon-opacity": ["case", ["get", "cur"], 1, 0.5], "text-color": "#cfe8d6", "text-halo-color": "#0f1813", "text-halo-width": 1.4 } });
@@ -247,7 +260,6 @@ export default function CourseBuilder({ uid }: { uid: string }) {
     }
     if (!map.hasImage("altpad")) { const s = 2, w = 24 * s, h = 13 * s; const cv = document.createElement("canvas"); cv.width = w; cv.height = h; const c = cv.getContext("2d"); if (c) { roundRectPath(c, s, s, w - 2 * s, h - 2 * s, 3 * s); c.fillStyle = "rgba(22,51,31,0.9)"; c.fill(); c.lineWidth = 1.5 * s; c.strokeStyle = "#fff"; c.stroke(); map.addImage("altpad", c.getImageData(0, 0, w, h), { pixelRatio: 2 }); } }
     for (let n = 1; n <= 12; n++) ensure(`elbow-${n}`, (c, s, sz) => { c.translate(sz / 2, sz / 2); c.rotate(Math.PI / 4); roundRectPath(c, -6 * s, -6 * s, 12 * s, 12 * s, 2 * s); c.fillStyle = "#E0752A"; c.fill(); c.rotate(-Math.PI / 4); c.fillStyle = "#fff"; c.font = `bold ${9 * s}px sans-serif`; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(String(n), 0, s * 0.5); }, 18);
-    for (const col of ALT_COLORS) ensure(`altbasket-${col.hex}`, (c, s, sz) => { c.beginPath(); c.arc(sz / 2, sz / 2, sz / 2 - 2 * s, 0, 2 * Math.PI); c.fillStyle = `#${col.hex}`; c.fill(); c.lineWidth = 2 * s; c.strokeStyle = "#fff"; c.stroke(); }, 18);
     for (const d of ["Left", "Right", "Down"]) ensure(`mando-${d}`, (c, s, sz) => { roundRectPath(c, sz * 0.2, sz * 0.12, sz * 0.6, sz * 0.76, 4 * s); c.fillStyle = "#F1C40F"; c.fill(); c.lineWidth = 1.5 * s; c.strokeStyle = "#0f1813"; c.stroke(); c.fillStyle = "#0f1813"; c.font = `bold ${13 * s}px sans-serif`; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(d === "Left" ? "←" : d === "Right" ? "→" : "↓", sz / 2, sz / 2 + s); }, 26);
 
     const fc = (features: unknown[]) => ({ type: "FeatureCollection", features } as unknown as GeoJSON.FeatureCollection);
@@ -318,6 +330,9 @@ export default function CourseBuilder({ uid }: { uid: string }) {
   const removeAltTee = (id: string) => mutateCur((h) => ({ ...h, altTees: h.altTees.filter((t) => t.id !== id) }));
   const removeAltBasket = (id: string) => mutateCur((h) => ({ ...h, altBaskets: h.altBaskets.filter((b) => b.id !== id) }));
   const removeMando = (id: string) => mutateCur((h) => ({ ...h, mandos: renumberMandos(h.mandos.filter((m) => m.id !== id)) }));
+  const removeTee = () => mutateCur((h) => ({ ...h, teeLat: undefined, teeLng: undefined }));
+  const removeBasket = () => mutateCur((h) => ({ ...h, basketLat: undefined, basketLng: undefined }));
+  const removeElbow = (idx: number) => mutateCur((h) => ({ ...h, elbows: h.elbows.filter((_, i) => i !== idx) }));
   const renameAltTee = (id: string, v: string) => setHoles((hs) => hs.map((h, i) => (i === cur ? { ...h, altTees: h.altTees.map((t) => (t.id === id ? { ...t, label: v } : t)) } : h)));
   const editAltBasket = (id: string, patch: Partial<AltBasket>) => setHoles((hs) => hs.map((h, i) => (i === cur ? { ...h, altBaskets: h.altBaskets.map((b) => (b.id === id ? { ...b, ...patch } : b)) } : h)));
   const setMandoDir = (id: string, d: Dir) => setHoles((hs) => hs.map((h, i) => (i === cur ? { ...h, mandos: h.mandos.map((m) => (m.id === id ? { ...m, direction: d } : m)) } : h)));
@@ -352,6 +367,13 @@ export default function CourseBuilder({ uid }: { uid: string }) {
     { k: "altBasket", label: `Alt basket${curHole?.altBaskets.length ? ` (${curHole.altBaskets.length})` : ""}`, color: "#3498DB", on: !!curHole?.basketLat },
     { k: "mando", label: `Mando${curHole?.mandos.length ? ` (${curHole.mandos.length})` : ""}`, color: "#caa106", on: true },
   ];
+  const modePreview = (k: Mode, active: boolean) => {
+    if (k === "tee") return <span className="h-2.5 w-4 shrink-0 rounded-[2px]" style={{ background: active ? "#fff" : "#16331f" }} />;
+    if (k === "altTee") return <span className="h-2 w-3.5 shrink-0 rounded-[2px]" style={{ background: active ? "#fff" : "#16331f" }} />;
+    if (k === "elbow") return <span className="h-2.5 w-2.5 shrink-0 rotate-45 rounded-[2px]" style={{ background: active ? "#fff" : "#E0752A" }} />;
+    if (k === "mando") return <span className="grid h-3.5 w-3 shrink-0 place-items-center rounded-[2px] text-[8px] font-bold text-[#16221b]" style={{ background: active ? "#fff" : "#F1C40F" }}>→</span>;
+    return <span className="h-4 w-4 shrink-0 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: "url(/basket-icon.svg)", filter: active ? "brightness(0) invert(1)" : "none" }} />;
+  };
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-10">
@@ -448,7 +470,7 @@ export default function CourseBuilder({ uid }: { uid: string }) {
               <div className="rounded-2xl border border-black/[0.07] bg-[#faf9f5] p-4">
                 <div className="mb-3 flex items-center justify-between"><span className="font-[family-name:var(--font-heading)] text-lg font-extrabold text-[#16221b]">Hole {cur + 1}</span>{curHole && mapped(curHole) && <span className="rounded-full bg-[var(--gold)]/20 px-2.5 py-1 text-xs font-bold text-[#9a7a3a]">{holeDistFt(curHole)} ft</span>}</div>
                 <div className="mb-3 grid grid-cols-3 gap-2">
-                  {MODES.map((m) => <button key={m.k} disabled={!m.on} onClick={() => { setMode(m.k); setPending(null); }} className={`rounded-full py-2 text-[11px] font-bold transition-all disabled:opacity-35 ${mode === m.k ? "text-white shadow" : "border border-black/[0.08] bg-white text-[#46554c]"}`} style={mode === m.k ? { background: m.color } : undefined}>{m.label}</button>)}
+                  {MODES.map((m) => <button key={m.k} disabled={!m.on} onClick={() => { setMode(m.k); setPending(null); }} className={`flex flex-col items-center gap-1 rounded-xl py-2 text-[10px] font-bold leading-tight transition-all disabled:opacity-35 ${mode === m.k ? "text-white shadow" : "border border-black/[0.08] bg-white text-[#46554c]"}`} style={mode === m.k ? { background: m.color } : undefined}>{modePreview(m.k, mode === m.k)}<span>{m.label}</span></button>)}
                 </div>
                 <p className="mb-3 text-xs text-[#6b7a70]">{pending ? "Set the details below, then Add." : mode === "tee" ? "Click the map to drop the TEE." : mode === "basket" ? "Click the map to drop the BASKET." : mode === "elbow" ? "Click to add a dogleg bend along the fairway." : mode === "altTee" ? "Click to place an alternate tee (max 3)." : mode === "altBasket" ? "Click to place an alternate basket (max 3)." : "Click to place a mando (max 4)."}</p>
 
@@ -464,9 +486,13 @@ export default function CourseBuilder({ uid }: { uid: string }) {
                   </div>
                 )}
 
-                {/* placed alt tees / baskets / mandos */}
-                {curHole && (curHole.altTees.length > 0 || curHole.altBaskets.length > 0 || curHole.mandos.length > 0) && (
+                {/* placed objects on this hole — remove each individually */}
+                {curHole && (curHole.teeLat != null || curHole.basketLat != null || curHole.elbows.length > 0 || curHole.altTees.length > 0 || curHole.altBaskets.length > 0 || curHole.mandos.length > 0) && (
                   <div className="mb-3 space-y-1.5">
+                    <div className="text-[10px] font-bold uppercase tracking-wide text-[#8a968d]">Placed on this hole</div>
+                    {curHole.teeLat != null && <div className="flex items-center gap-2 rounded-lg bg-white px-2 py-1.5"><span className="h-3 w-4 rounded-sm bg-[#16331f]" /><span className="flex-1 text-xs font-semibold text-[#16221b]">Tee</span><button onClick={removeTee} className="text-[#b3bbb2] hover:text-[#d9473f]">✕</button></div>}
+                    {curHole.basketLat != null && <div className="flex items-center gap-2 rounded-lg bg-white px-2 py-1.5"><span className="h-3.5 w-3.5 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: "url(/basket-icon.svg)" }} /><span className="flex-1 text-xs font-semibold text-[#16221b]">Basket</span><button onClick={removeBasket} className="text-[#b3bbb2] hover:text-[#d9473f]">✕</button></div>}
+                    {curHole.elbows.map((_, ei) => <div key={`e${ei}`} className="flex items-center gap-2 rounded-lg bg-white px-2 py-1.5"><span className="h-2.5 w-2.5 rotate-45 rounded-sm bg-[#E0752A]" /><span className="flex-1 text-xs font-semibold text-[#16221b]">Dogleg {ei + 1}</span><button onClick={() => removeElbow(ei)} className="text-[#b3bbb2] hover:text-[#d9473f]">✕</button></div>)}
                     {curHole.altTees.map((t) => <div key={t.id} className="flex items-center gap-2 rounded-lg bg-white px-2 py-1.5"><span className="h-3 w-4 rounded-sm bg-[#16331f]" /><input value={t.label} onChange={(e) => renameAltTee(t.id, e.target.value)} className="min-w-0 flex-1 bg-transparent text-xs font-semibold text-[#16221b] outline-none" /><button onClick={() => removeAltTee(t.id)} className="text-[#b3bbb2] hover:text-[#d9473f]">✕</button></div>)}
                     {curHole.altBaskets.map((b) => <div key={b.id} className="flex items-center gap-2 rounded-lg bg-white px-2 py-1.5"><span className="h-3.5 w-3.5 shrink-0 rounded-full border border-white shadow" style={{ background: `#${b.colorHex}` }} /><input value={b.label} onChange={(e) => editAltBasket(b.id, { label: e.target.value })} className="min-w-0 flex-1 bg-transparent text-xs font-semibold text-[#16221b] outline-none" /><div className="flex gap-0.5">{ALT_COLORS.map((c) => <button key={c.hex} onClick={() => editAltBasket(b.id, { colorHex: c.hex })} className={`h-3.5 w-3.5 rounded-full ${b.colorHex === c.hex ? "ring-2 ring-[#16221b]" : ""}`} style={{ background: `#${c.hex}` }} />)}</div><button onClick={() => removeAltBasket(b.id)} className="text-[#b3bbb2] hover:text-[#d9473f]">✕</button></div>)}
                     {curHole.mandos.map((m) => <div key={m.id} className="flex items-center gap-2 rounded-lg bg-white px-2 py-1.5"><span className="grid h-4 w-4 place-items-center rounded bg-[#F1C40F] text-[9px] font-bold text-black">{m.direction === "Left" ? "←" : m.direction === "Right" ? "→" : "↓"}</span><span className="flex-1 text-xs font-semibold text-[#16221b]">{m.label}</span><div className="flex gap-1">{(["Left", "Right", "Down"] as Dir[]).map((d) => <button key={d} onClick={() => setMandoDir(m.id, d)} className={`rounded px-1.5 text-xs font-bold ${m.direction === d ? "bg-[#F1C40F] text-black" : "text-[#8a968d]"}`}>{d === "Left" ? "←" : d === "Right" ? "→" : "↓"}</button>)}</div><button onClick={() => removeMando(m.id)} className="text-[#b3bbb2] hover:text-[#d9473f]">✕</button></div>)}

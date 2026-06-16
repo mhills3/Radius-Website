@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 100" width="64" height="100">
+  <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Flag pole extends above top -->
+    <line x1="32" y1="0" x2="32" y2="18" stroke-width="2.5"/>
+    <!-- Flag -->
+    <path d="M32 1 L44 5 L32 9Z" fill="currentColor" stroke="none"/>
+
+    <!-- Top rim / band -->
+    <ellipse cx="32" cy="20" rx="22" ry="5" stroke-width="3"/>
+    <ellipse cx="32" cy="21.5" rx="22" ry="5" stroke-width="1.5" opacity="0.5"/>
+
+    <!-- Chains - outer pairs -->
+    <path d="M10.5 24 C11 30, 12 38, 16 50" stroke-width="2"/>
+    <path d="M53.5 24 C53 30, 52 38, 48 50" stroke-width="2"/>
+    <!-- Chains - mid pairs -->
+    <path d="M15 24.5 C16 32, 17 40, 19 50" stroke-width="1.8"/>
+    <path d="M49 24.5 C48 32, 47 40, 45 50" stroke-width="1.8"/>
+    <!-- Chains - inner pairs -->
+    <path d="M20 25 C21 33, 22 41, 23 50.5" stroke-width="1.5"/>
+    <path d="M44 25 C43 33, 42 41, 41 50.5" stroke-width="1.5"/>
+    <!-- Chains - near center -->
+    <path d="M25.5 25 C26 34, 26.5 42, 27 51" stroke-width="1.5"/>
+    <path d="M38.5 25 C38 34, 37.5 42, 37 51" stroke-width="1.5"/>
+    <!-- Center chain -->
+    <line x1="32" y1="25" x2="32" y2="51.5" stroke-width="2"/>
+
+    <!-- Chain links decoration (subtle dashes) -->
+    <path d="M10.5 24 C11 30, 12 38, 16 50" stroke-width="2" stroke-dasharray="2 2.5" opacity="0.4"/>
+    <path d="M53.5 24 C53 30, 52 38, 48 50" stroke-width="2" stroke-dasharray="2 2.5" opacity="0.4"/>
+    <path d="M15 24.5 C16 32, 17 40, 19 50" stroke-width="1.8" stroke-dasharray="2 2.5" opacity="0.4"/>
+    <path d="M49 24.5 C48 32, 47 40, 45 50" stroke-width="1.8" stroke-dasharray="2 2.5" opacity="0.4"/>
+
+    <!-- Tray / catch basin top rim -->
+    <ellipse cx="32" cy="52" rx="18" ry="4.5" stroke-width="2.5"/>
+
+    <!-- Tray basket sides with grid lines -->
+    <path d="M14 52 L14 58 C14 62, 22 65, 32 65 C42 65, 50 62, 50 58 L50 52" stroke-width="2.5"/>
+    <!-- Tray horizontal bands -->
+    <path d="M14.5 55.5 C14.5 58, 22 60.5, 32 60.5 C42 60.5, 49.5 58, 49.5 55.5" stroke-width="1.2" opacity="0.6"/>
+    <!-- Tray vertical grid lines -->
+    <line x1="19" y1="53.5" x2="19.5" y2="63" stroke-width="1" opacity="0.5"/>
+    <line x1="24" y1="54.5" x2="24.5" y2="64.5" stroke-width="1" opacity="0.5"/>
+    <line x1="29" y1="55" x2="29" y2="65" stroke-width="1" opacity="0.5"/>
+    <line x1="35" y1="55" x2="35" y2="65" stroke-width="1" opacity="0.5"/>
+    <line x1="40" y1="54.5" x2="39.5" y2="64.5" stroke-width="1" opacity="0.5"/>
+    <line x1="45" y1="53.5" x2="44.5" y2="63" stroke-width="1" opacity="0.5"/>
+
+    <!-- Pole -->
+    <line x1="32" y1="65" x2="32" y2="90" stroke-width="3"/>
+
+    <!-- Base ring -->
+    <ellipse cx="32" cy="91" rx="13" ry="3.5" stroke-width="2.5"/>
+  </g>
+</svg>
