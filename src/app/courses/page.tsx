@@ -310,7 +310,7 @@ export default function CoursesPage() {
                     <div className="relative flex items-center gap-3.5 bg-gradient-to-br from-[#243a2e] to-[#16221b] p-4 ring-1 ring-[var(--gold)]/25 transition-colors group-hover:ring-[var(--gold)]/55">
                       <span className="pointer-events-none absolute inset-0 opacity-[0.06]" style={{ maskImage: "url(/topo.png)", WebkitMaskImage: "url(/topo.png)", maskSize: "cover", WebkitMaskSize: "cover", backgroundColor: "#fff" }} />
                       <span className="relative grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-[var(--gold-bright)] to-[var(--gold)] shadow-[inset_0_1px_2px_rgba(255,255,255,0.45)]">
-                        <span className="h-6 w-6 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: "url(/basket-icon.svg)" }} />
+                        <span className="h-7 w-7 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: "url(/basket-icon.svg)" }} />
                       </span>
                       <div className="relative min-w-0 flex-1">
                         <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--gold)]">Your builds</div>

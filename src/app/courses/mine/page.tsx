@@ -46,7 +46,7 @@ export default function MyCoursesPage() {
               <span className="absolute -inset-x-10 inset-y-0 bg-[linear-gradient(110deg,transparent_30%,rgba(246,193,101,0.45),transparent_70%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
               <span className="relative flex items-center gap-3 rounded-2xl bg-gradient-to-br from-[#243a2e] to-[#16221b] px-5 py-3 ring-1 ring-[var(--gold)]/30 transition-colors group-hover:ring-[var(--gold)]/60">
                 <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[var(--gold-bright)] to-[var(--gold)] text-[#16221b] shadow-[inset_0_1px_2px_rgba(255,255,255,0.45)]">
-                  <span className="h-5 w-5 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: "url(/basket-icon.svg)" }} />
+                  <span className="h-6 w-6 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: "url(/basket-icon.svg)" }} />
                 </span>
                 <span className="text-left">
                   <span className="block font-[family-name:var(--font-heading)] text-sm font-extrabold leading-tight tracking-tight text-[var(--cream)]">Build a course</span>
