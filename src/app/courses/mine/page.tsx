@@ -32,8 +32,13 @@ export default function MyCoursesPage() {
     <div className="min-h-screen bg-[#faf8f3] text-[#16221b]">
       <div className="mx-auto max-w-4xl px-6 pt-24 pb-16">
         <div className="mb-1 text-[11px] font-bold uppercase tracking-[0.2em] text-[#9a7a3a]">Course builder</div>
-        <h1 className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-[-0.02em]">My courses & layouts</h1>
-        <p className="mt-2 text-sm text-[#46554c]">Every course and layout you&apos;ve built — review their stats and edit the details.</p>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-[-0.02em]">My courses & layouts</h1>
+            <p className="mt-2 text-sm text-[#46554c]">Every course and layout you&apos;ve built — review their stats and edit the details.</p>
+          </div>
+          {user && <Link href="/courses/new" className="hidden shrink-0 items-center gap-1.5 rounded-full bg-[#16221b] px-5 py-2.5 text-sm font-bold text-[var(--cream)] transition-colors hover:bg-[#22332a] md:inline-flex">⛳ Build a course</Link>}
+        </div>
 
         {loading || courses === null ? (
           <div className="mt-8 space-y-3">{[0, 1].map((i) => <div key={i} className="h-28 animate-pulse rounded-2xl bg-black/5" />)}</div>

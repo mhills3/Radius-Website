@@ -12,10 +12,11 @@ import {
   limit,
   documentId,
   updateDoc,
+  setDoc,
   getCountFromServer,
   DocumentData,
 } from "firebase/firestore";
-import { resolveCanonicalId } from "./account";
+import { resolveCanonicalId, getProfileLite } from "./account";
 
 /** Lightweight count of all courses (server-side aggregation — one cheap read). */
 export async function getCourseCount(): Promise<number> {
@@ -91,7 +92,19 @@ export interface Course {
   createdBy: string;
   createdById: string;
   reviewStatus: string;
+  isDraft?: boolean;
   lastModified: number;
+}
+
+/**
+ * Whether a course should appear in the PUBLIC directory. Matches the apps' hide rules so web
+ * stays consistent: iOS hides reviewStatus=="Draft", Android hides isDraft==true. Hide drafts /
+ * pending / rejected; SHOW everything else — including the ~339 legacy courses with no reviewStatus.
+ */
+export function isPubliclyListed(c: { reviewStatus?: string; isDraft?: boolean }): boolean {
+  if (c.isDraft === true) return false;
+  const rs = (c.reviewStatus || "").trim().toLowerCase();
+  return rs !== "draft" && rs !== "pending" && rs !== "rejected";
 }
 
 export interface CourseScore {
@@ -185,6 +198,7 @@ function docToCourse(id: string, data: DocumentData): Course {
     createdBy: data.createdBy ?? "",
     createdById: data.createdById ?? "",
     reviewStatus: data.reviewStatus ?? "",
+    isDraft: data.isDraft === true,
     lastModified: data.lastModified ?? 0,
     dateCreated: normMs(data.dateCreated ?? data.lastModified),
   };
@@ -200,9 +214,10 @@ function normMs(v: unknown): number {
 }
 
 export async function getAllCourses(): Promise<Course[]> {
-  // Every course in the directory (matches the live site count).
+  // Public directory: every named course EXCEPT drafts/pending/rejected (matches both apps' hide
+  // rules). Owners still see their own drafts via getMyCourses (a separate createdById query).
   const snap = await getDocs(collection(db, "courses"));
-  return snap.docs.map((d) => docToCourse(d.id, d.data())).filter((c) => c.name);
+  return snap.docs.map((d) => docToCourse(d.id, d.data())).filter((c) => c.name && isPubliclyListed(c));
 }
 
 // ---- Geo classification (US states + countries) ----
@@ -414,4 +429,116 @@ export function idFromSlug(slug: string): string | null {
   if (parts.length < 2) return null;
   const shortId = parts[parts.length - 1];
   return shortId;
+}
+
+function uuidUpper(): string {
+  return typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID().toUpperCase()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`.toUpperCase();
+}
+
+/** Great-circle distance in FEET between two lat/lng points (haversine). */
+export function distanceFt(aLat: number, aLng: number, bLat: number, bLng: number): number {
+  const R = 6371000; // metres
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(bLat - aLat);
+  const dLng = toRad(bLng - aLng);
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLng / 2) ** 2;
+  const metres = 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
+  return Math.round(metres * 3.28084);
+}
+
+export interface HoleDraft { par: number; teeLat: number; teeLng: number; basketLat: number; basketLng: number }
+export interface CourseDraft {
+  name: string;
+  city?: string;
+  state?: string;
+  description?: string;
+  courseType?: string;
+  terrain?: string;
+  amenities?: string[];
+  isFree?: boolean;
+  courseFeeAmount?: number;
+  coverPhotoUrl?: string;
+  holes: HoleDraft[];
+}
+
+/**
+ * Create a NEW course from the web. Written as reviewStatus "Draft" + isDraft true so it is HIDDEN
+ * in the public directory of BOTH apps (iOS hides reviewStatus=="Draft"; Android hides isDraft) and
+ * on web — it only shows in the creator's "My courses" until approved. Matches the app course schema
+ * exactly: course holes keyed `holeNumber`; altitude fields are OMITTED (never fabricated). Ownership
+ * is stamped with the caller's resolved canonical id. Returns the new course id, or null on failure.
+ */
+export async function createCourse(uid: string, draft: CourseDraft): Promise<string | null> {
+  try {
+    const cid = await resolveCanonicalId(uid);
+    if (!draft.name?.trim() || draft.holes.length === 0) return null;
+    const me = await getProfileLite(uid);
+    const id = uuidUpper();
+    const now = Date.now();
+
+    const holes = draft.holes.map((h, i) => ({
+      id: uuidUpper(),
+      holeNumber: i + 1,
+      par: h.par > 0 ? h.par : 3,
+      distance: distanceFt(h.teeLat, h.teeLng, h.basketLat, h.basketLng),
+      teeLat: h.teeLat, teeLng: h.teeLng, basketLat: h.basketLat, basketLng: h.basketLng,
+    }));
+    const par = holes.reduce((s, h) => s + h.par, 0);
+    const totalDist = holes.reduce((s, h) => s + h.distance, 0);
+    // Course center = average of tee positions (real value, not a guess).
+    const latitude = draft.holes.reduce((s, h) => s + h.teeLat, 0) / draft.holes.length;
+    const longitude = draft.holes.reduce((s, h) => s + h.teeLng, 0) / draft.holes.length;
+
+    const docData: Record<string, unknown> = {
+      id,
+      name: draft.name.trim(),
+      city: draft.city?.trim() || "",
+      state: draft.state?.trim() || "",
+      description: draft.description?.trim() || "",
+      courseType: draft.courseType?.trim() || "",
+      terrain: draft.terrain?.trim() || "",
+      amenities: draft.amenities ?? [],
+      isFree: draft.isFree ?? true,
+      courseFeeAmount: draft.courseFeeAmount ?? 0,
+      isPublic: true,
+      isFeatured: false,
+      latitude, longitude,
+      holes, holeCount: holes.length, par, distanceFt: totalDist,
+      layouts: [],
+      createdBy: me?.name || "",
+      createdById: cid,
+      adminIds: [],
+      dateCreated: now,
+      lastModified: now,
+      // Moderation gate: hidden in both apps + web until approved.
+      reviewStatus: "Draft",
+      isDraft: true,
+    };
+    if (draft.coverPhotoUrl?.trim()) docData.coverPhotoUrl = draft.coverPhotoUrl.trim();
+
+    await setDoc(doc(db, "courses", id), docData);
+    return id;
+  } catch {
+    return null;
+  }
+}
+
+/** Nearby + similarly-named existing courses, to warn about duplicates before creating. */
+export async function findNearbyCourses(lat: number, lng: number, name: string, radiusMi = 2): Promise<Course[]> {
+  try {
+    const all = await getAllCourses();
+    const n = name.trim().toLowerCase();
+    const degLat = radiusMi / 69;
+    const degLng = radiusMi / (69 * Math.max(0.1, Math.cos((lat * Math.PI) / 180)));
+    return all.filter((c) => {
+      if (c.latitude == null || c.longitude == null) return false;
+      const near = Math.abs(c.latitude - lat) <= degLat && Math.abs(c.longitude - lng) <= degLng;
+      const nameMatch = !!n && c.name.toLowerCase().includes(n);
+      return near || nameMatch;
+    }).slice(0, 6);
+  } catch {
+    return [];
+  }
 }
