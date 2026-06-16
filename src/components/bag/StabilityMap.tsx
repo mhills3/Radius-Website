@@ -7,11 +7,15 @@ import { CAT_META, type Cat, type FlightDisc } from "@/lib/bag";
 const BG = "#131e18";
 const CREAM = "#F5EDE1";
 const GOLD = "#F6C165";
-const GRID = "rgba(245,237,225,0.09)";
-const GRID_STRONG = "rgba(245,237,225,0.22)";
-const DIM = "rgba(168,179,145,0.6)";
-const BODY = "rgba(245,237,225,0.72)";
+const GRID = "rgba(245,237,225,0.07)";
+const GRID_STRONG = "rgba(245,237,225,0.18)";
+const DIM = "rgba(168,179,145,0.62)";
+const BODY = "rgba(245,237,225,0.74)";
 const FONT = "'Sora', system-ui, -apple-system, sans-serif";
+
+// Radius round "R" mark (from public/logo-lettermark.svg), viewBox ~40.88 — inlined so it bakes
+// into the exported PNG.
+const MARK = "M20.44,0C9.15,0,0,9.15,0,20.44s9.15,20.44,20.44,20.44,20.44-9.15,20.44-20.44S31.72,0,20.44,0ZM16.18,31.04h-4.26c-.06,0-.1-.05-.09-.11l.94-5.78.63-3.72c.02-.1.16-.11.19,0,.57,2.09,1.65,4,3.26,5.62.02.02.03.05.03.08l-.68,3.92h-.02ZM13.48,16.41c1.38,7.26,7.2,12.53,13.91,14.63-7.24-.03-14.33-7.1-13.91-14.63ZM31.25,27.61c-.64,1.16-1.41,2.67-2.7,2.91-6.36-1.31-12.96-7.4-14.21-14.06-.02-.16-.06-.4.13-.42,1-.01,3.58-.04,4.79-.02.1.02.14.1.14.2-2.05,5.65,5.87.6,6.28-2.98.02-.18-.14-.66-.26-.79-3.09-3.34-13.91,2.22-19.18,4.42l.83-1.15c13.52-15.52,37.55-3.48,14.44,5.5-.13.08-.28.2-.28.35,2.15,2.98,5.79,5.5,9.48,5.68.27.01.71-.03.53.37h.01Z";
 
 type Pt = { name: string; speed: number; stab: number; glide?: number; turn?: number; fade?: number; cat: Cat; color: string; photoUrl?: string };
 
@@ -64,6 +68,78 @@ function plot(pts: Pt[], r: Ranges, gx: number, gy: number, gw: number, gh: numb
 const ticksDown = (hi: number, lo: number) => { const a: number[] = []; for (let v = hi; v >= lo; v--) a.push(v); return a; };
 const fmtNum = (n?: number) => (n == null ? "—" : n);
 const trunc = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
+const CATS: Cat[] = ["DISTANCE", "FAIRWAY", "MIDRANGE", "PUTTER"];
+
+/** Shared gradient + clip defs (namespaced so two charts can co-exist in the DOM). */
+function Defs({ ns, cats, placed, R, glow = true }: { ns: string; cats: Cat[]; placed: Placed[]; R: number; glow?: boolean }) {
+  return (
+    <defs>
+      <linearGradient id={`${ns}-bg`} x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#17271e" />
+        <stop offset="100%" stopColor="#0d1611" />
+      </linearGradient>
+      <radialGradient id={`${ns}-gold`} cx="86%" cy="2%" r="60%">
+        <stop offset="0%" stopColor="rgba(246,193,101,0.16)" />
+        <stop offset="70%" stopColor="rgba(246,193,101,0)" />
+      </radialGradient>
+      <linearGradient id={`${ns}-region`} x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stopColor="rgba(217,71,63,0.07)" />
+        <stop offset="50%" stopColor="rgba(0,0,0,0)" />
+        <stop offset="100%" stopColor="rgba(77,148,250,0.07)" />
+      </linearGradient>
+      <linearGradient id={`${ns}-rule`} x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stopColor="rgba(246,193,101,0)" />
+        <stop offset="50%" stopColor="rgba(246,193,101,0.45)" />
+        <stop offset="100%" stopColor="rgba(246,193,101,0)" />
+      </linearGradient>
+      {cats.map((c) => {
+        const col = CAT_META[c].color;
+        return (
+          <radialGradient key={`sph${c}`} id={`${ns}-sph-${c}`} cx="34%" cy="27%" r="82%">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.6" />
+            <stop offset="42%" stopColor={col} />
+            <stop offset="100%" stopColor={col} />
+          </radialGradient>
+        );
+      })}
+      {glow && cats.map((c) => {
+        const col = CAT_META[c].color;
+        return (
+          <radialGradient key={`gl${c}`} id={`${ns}-glow-${c}`} cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor={col} stopOpacity="0.5" />
+            <stop offset="55%" stopColor={col} stopOpacity="0.13" />
+            <stop offset="100%" stopColor={col} stopOpacity="0" />
+          </radialGradient>
+        );
+      })}
+      {placed.map((pl, i) => (
+        <clipPath key={i} id={`${ns}c${i}`}><circle cx={pl.x} cy={pl.y} r={R} /></clipPath>
+      ))}
+    </defs>
+  );
+}
+
+/** One premium disc marker (glow + glossy sphere or photo + ring + outlined name). */
+function DiscMark({ ns, i, x, y, R, p, on, ring, nameFont, gi, gn, photo, glow = true }: {
+  ns: string; i: number; x: number; y: number; R: number; p: Pt; on: boolean; ring: number; nameFont: number; gi: number; gn: number; photo?: string; glow?: boolean;
+}) {
+  return (
+    <g style={{ cursor: "pointer" }}>
+      {glow && <circle cx={x} cy={y} r={R * 1.7} fill={`url(#${ns}-glow-${p.cat})`} />}
+      {photo ? (
+        <>
+          <circle cx={x} cy={y} r={R} fill="#0c1410" />
+          <image href={photo} x={x - R} y={y - R} width={2 * R} height={2 * R} clipPath={`url(#${ns}c${i})`} preserveAspectRatio="xMidYMid slice" />
+        </>
+      ) : (
+        <circle cx={x} cy={y} r={R} fill={`url(#${ns}-sph-${p.cat})`} />
+      )}
+      <ellipse cx={x - R * 0.3} cy={y - R * 0.36} rx={R * 0.52} ry={R * 0.32} fill="#ffffff" opacity={photo ? 0.1 : 0.18} clipPath={`url(#${ns}c${i})`} />
+      <circle cx={x} cy={y} r={R} fill="none" stroke={on ? GOLD : p.color} strokeWidth={on ? ring + 1.5 : ring} />
+      <text x={x} y={y - R - 7 - (gn > 1 ? (gi % 2) * (nameFont + 2) : 0)} fill={CREAM} fontSize={nameFont} fontWeight={700} textAnchor="middle" paintOrder="stroke" stroke="#0b120e" strokeWidth={Math.max(2.5, nameFont * 0.3)} strokeLinejoin="round">{trunc(p.name, 13)}</text>
+    </g>
+  );
+}
 
 /* ----------------------------- Compact preview (fills its box) ----------------------------- */
 function PreviewChart({ pts }: { pts: Pt[] }) {
@@ -96,7 +172,7 @@ function PreviewChart({ pts }: { pts: Pt[] }) {
           {ticksDown(r.yHi, r.yLo).map((v) => (
             <line key={`y${v}`} x1={gx} y1={ty(v)} x2={gx + gw} y2={ty(v)} stroke={GRID} strokeWidth={1} />
           ))}
-          <rect x={gx} y={gyTop} width={gw} height={gh} fill="none" stroke={GRID_STRONG} strokeWidth={1} />
+          <rect x={gx} y={gyTop} width={gw} height={gh} rx={8} fill="none" stroke={GRID_STRONG} strokeWidth={1} />
           <text x={gx + 2} y={11} fill={DIM} fontSize={9} fontWeight={700} letterSpacing={1}>OVER</text>
           <text x={gx + gw} y={11} fill={DIM} fontSize={9} fontWeight={700} letterSpacing={1} textAnchor="end">UNDER</text>
           {placed.map(({ p, x, y }, i) => (
@@ -127,10 +203,9 @@ function BigChart({ pts }: { pts: Pt[] }) {
   const r = ranges(pts);
   const { w, h } = size;
   const cols = r.xHi - r.xLo, rows = r.yHi - r.yLo;
-  const padL = 48, padT = 48, padR = 20, padB = 24;
+  const padL = 48, padT = 50, padR = 20, padB = 24;
   const availW = Math.max(0, w - padL - padR);
   const availH = Math.max(0, h - padT - padB);
-  // square cells that fit BOTH dimensions → whole chart is visible without scrolling
   const cell = Math.min(availW / cols, availH / rows);
   const gw = cell * cols, gh = cell * rows;
   const gx = padL + (availW - gw) / 2;
@@ -140,8 +215,9 @@ function BigChart({ pts }: { pts: Pt[] }) {
   const ty = (v: number) => gy + ((r.yHi - v) / (r.yHi - r.yLo)) * gh;
   const R = Math.min(cell * 0.34, 22);
   const ring = Math.max(2, R * 0.12);
-  const nameFont = Math.max(10, Math.min(15, R * 0.78));
+  const nameFont = Math.max(10, Math.min(15, R * 0.82));
   const tickFont = Math.max(10, Math.min(14, cell * 0.26));
+  const cats = CATS.filter((c) => pts.some((p) => p.cat === c));
   const ht = hover != null ? placed[hover] : null;
 
   return (
@@ -149,11 +225,9 @@ function BigChart({ pts }: { pts: Pt[] }) {
       {w > 0 && h > 0 && (
         <>
           <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ display: "block", fontFamily: FONT }}>
-            <defs>
-              {placed.map((pl, i) => pl.p.photoUrl ? (
-                <clipPath key={i} id={`scd${i}`}><circle cx={pl.x} cy={pl.y} r={R} /></clipPath>
-              ) : null)}
-            </defs>
+            <Defs ns="s" cats={cats} placed={placed} R={R} />
+            <rect x={gx} y={gy} width={gw} height={gh} rx={14} fill="rgba(255,255,255,0.018)" />
+            <rect x={gx} y={gy} width={gw} height={gh} rx={14} fill="url(#s-region)" />
             {ticksDown(r.xHi, r.xLo).map((v) => (
               <g key={`x${v}`}>
                 <line x1={tx(v)} y1={gy} x2={tx(v)} y2={gy + gh} stroke={v === 0 ? "rgba(246,193,101,0.45)" : GRID} strokeWidth={1} strokeDasharray={v === 0 ? "6 7" : undefined} />
@@ -166,32 +240,19 @@ function BigChart({ pts }: { pts: Pt[] }) {
                 <text x={gx - 14} y={ty(v) + tickFont * 0.36} fill={DIM} fontSize={tickFont} fontWeight={700} textAnchor="end">{v}</text>
               </g>
             ))}
-            <rect x={gx} y={gy} width={gw} height={gh} fill="none" stroke={GRID_STRONG} strokeWidth={1.5} />
-            <text x={gx} y={gy - 30} fill={DIM} fontSize={tickFont} fontWeight={700} letterSpacing={1}>OVERSTABLE</text>
-            <text x={gx + gw} y={gy - 30} fill={DIM} fontSize={tickFont} fontWeight={700} letterSpacing={1} textAnchor="end">UNDERSTABLE</text>
+            <rect x={gx} y={gy} width={gw} height={gh} rx={14} fill="none" stroke={GRID_STRONG} strokeWidth={1.4} />
+            <text x={gx + 2} y={gy - 30} fill={DIM} fontSize={tickFont} fontWeight={700} letterSpacing={1.2}>OVERSTABLE</text>
+            <text x={gx + gw - 2} y={gy - 30} fill={DIM} fontSize={tickFont} fontWeight={700} letterSpacing={1.2} textAnchor="end">UNDERSTABLE</text>
 
-            {placed.map(({ p, x, y, gi, gn }, i) => {
-              const on = hover === i;
-              const dim = hover != null && !on;
-              return (
-                <g key={i} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover((cur) => (cur === i ? null : cur))} style={{ cursor: "pointer" }} opacity={dim ? 0.45 : 1}>
-                  <circle cx={x} cy={y} r={R + 8} fill="transparent" />
-                  {p.photoUrl ? (
-                    <>
-                      <circle cx={x} cy={y} r={R} fill="#0c1410" />
-                      <image href={p.photoUrl} x={x - R} y={y - R} width={2 * R} height={2 * R} clipPath={`url(#scd${i})`} preserveAspectRatio="xMidYMid slice" />
-                      <circle cx={x} cy={y} r={R} fill="none" stroke={on ? GOLD : p.color} strokeWidth={on ? ring + 1.5 : ring} />
-                    </>
-                  ) : (
-                    <circle cx={x} cy={y} r={R} fill={p.color} stroke={on ? GOLD : BG} strokeWidth={on ? 3.5 : 2.5} />
-                  )}
-                  <text x={x} y={y - R - 8 - (gn > 1 ? (gi % 2) * (nameFont + 2) : 0)} fill={CREAM} fontSize={nameFont} fontWeight={700} textAnchor="middle">{trunc(p.name, 13)}</text>
-                </g>
-              );
-            })}
+            {placed.map((pl, i) => (
+              <g key={i} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover((cur) => (cur === i ? null : cur))} opacity={hover != null && hover !== i ? 0.4 : 1}>
+                <circle cx={pl.x} cy={pl.y} r={R + 8} fill="transparent" />
+                <DiscMark ns="s" i={i} x={pl.x} y={pl.y} R={R} p={pl.p} on={hover === i} ring={ring} nameFont={nameFont} gi={pl.gi} gn={pl.gn} photo={pl.p.photoUrl} />
+              </g>
+            ))}
           </svg>
           {ht && (
-            <div className="pointer-events-none absolute z-10 -translate-x-1/2 rounded-xl border border-white/10 bg-black/85 px-3 py-2 backdrop-blur-sm" style={{ left: ht.x, top: ht.y + R + 8 }}>
+            <div className="pointer-events-none absolute z-10 -translate-x-1/2 rounded-xl border border-white/10 bg-black/85 px-3 py-2 shadow-xl backdrop-blur-sm" style={{ left: ht.x, top: ht.y + R + 8 }}>
               <div className="whitespace-nowrap text-sm font-bold text-[var(--cream)]">{ht.p.name}</div>
               <div className="mt-0.5 whitespace-nowrap font-mono text-xs text-[var(--gold)]">{fmtNum(ht.p.speed)} / {fmtNum(ht.p.glide)} / {fmtNum(ht.p.turn)} / {fmtNum(ht.p.fade)}</div>
             </div>
@@ -202,86 +263,80 @@ function BigChart({ pts }: { pts: Pt[] }) {
   );
 }
 
-/* ----------------------------- Branded export SVG (portrait, photos baked in) ----------------------------- */
+/* ----------------------------- Branded export SVG (premium poster) ----------------------------- */
 function BrandedChart({ pts, discCount, svgRef, photoMap }: { pts: Pt[]; discCount: number; svgRef: React.Ref<SVGSVGElement>; photoMap: Record<string, string> }) {
   const Wd = 1120;
   const r = ranges(pts);
   const cols = r.xHi - r.xLo, rows = r.yHi - r.yLo;
-  const gxBase = 124, rightPad = 56;
+  const gxBase = 128, rightPad = 60;
   const availW = Wd - gxBase - rightPad;
-  const cell = Math.max(70, Math.min(124, availW / cols));
+  const cell = Math.max(66, Math.min(118, availW / cols));
   const gw = cell * cols, gh = cell * rows;
   const gx = gxBase + Math.max(0, (availW - gw) / 2);
-  const gy = 256;
-  const footerY = gy + gh + 78;
-  const Hd = footerY + 96;
-  const placed = plot(pts, r, gx, gy, gw, gh, cell * 0.52);
+  const gy = 268;
+  const footerY = gy + gh + 84;
+  const Hd = footerY + 92;
+  const placed = plot(pts, r, gx, gy, gw, gh, cell * 0.5);
   const tx = (v: number) => gx + ((r.xHi - v) / (r.xHi - r.xLo)) * gw;
   const ty = (v: number) => gy + ((r.yHi - v) / (r.yHi - r.yLo)) * gh;
-  const R = Math.min(cell * 0.42, 54);
-  const ring = Math.max(3, R * 0.1);
-  const nameFont = Math.max(16, Math.min(24, R * 0.66));
-  const cats: Cat[] = (["DISTANCE", "FAIRWAY", "MIDRANGE", "PUTTER"] as Cat[]).filter((c) => pts.some((p) => p.cat === c));
+  const R = Math.min(cell * 0.38, 46);
+  const ring = Math.max(2.5, R * 0.11);
+  const nameFont = Math.max(15, Math.min(22, R * 0.7));
+  const cats = CATS.filter((c) => pts.some((p) => p.cat === c));
+  const cx = (gx + gx + gw) / 2;
 
   return (
     <svg ref={svgRef} viewBox={`0 0 ${Wd} ${Hd}`} width={Wd} height={Hd} style={{ display: "block", fontFamily: FONT }} xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <radialGradient id="rad-glow" cx="84%" cy="5%" r="60%">
-          <stop offset="0%" stopColor="rgba(246,193,101,0.15)" />
-          <stop offset="70%" stopColor="rgba(246,193,101,0)" />
-        </radialGradient>
-        {placed.map((pl, i) => (pl.p.photoUrl && photoMap[pl.p.photoUrl]) ? (
-          <clipPath key={i} id={`bcd${i}`}><circle cx={pl.x} cy={pl.y} r={R} /></clipPath>
-        ) : null)}
-      </defs>
-      <rect x={0} y={0} width={Wd} height={Hd} fill={BG} />
-      <rect x={0} y={0} width={Wd} height={Hd} fill="url(#rad-glow)" />
-      <text x={60} y={70} fill={GOLD} fontSize={21} fontWeight={700} letterSpacing={4}>RADIUS · MY BAG</text>
-      <text x={60} y={124} fill={CREAM} fontSize={56} fontWeight={800} letterSpacing={-1.6}>Bag Stability Map</text>
-      <text x={Wd - 60} y={92} fill={CREAM} fontSize={36} fontWeight={800} textAnchor="end">{discCount}</text>
-      <text x={Wd - 60} y={122} fill={DIM} fontSize={18} fontWeight={600} letterSpacing={2} textAnchor="end">DISCS</text>
-      <text x={(gx + gx + gw) / 2} y={196} fill={BODY} fontSize={26} fontWeight={700} textAnchor="middle">Stability (Turn + Fade)</text>
-      <text x={gx} y={228} fill={DIM} fontSize={18} fontWeight={700} letterSpacing={1.5}>OVERSTABLE</text>
-      <text x={gx + gw} y={228} fill={DIM} fontSize={18} fontWeight={700} letterSpacing={1.5} textAnchor="end">UNDERSTABLE</text>
-      <text x={42} y={gy + gh / 2} fill={BODY} fontSize={23} fontWeight={700} textAnchor="middle" transform={`rotate(-90 42 ${gy + gh / 2})`}>Speed</text>
+      <Defs ns="b" cats={cats} placed={placed} R={R} />
+      <rect x={0} y={0} width={Wd} height={Hd} fill={`url(#b-bg)`} />
+      <rect x={0} y={0} width={Wd} height={Hd} fill={`url(#b-gold)`} />
+
+      {/* brand lockup */}
+      <g transform="translate(60,40) scale(0.92)"><path d={MARK} fill={GOLD} /></g>
+      <text x={108} y={71} fill={CREAM} fontSize={40} fontWeight={700} letterSpacing={-1.4}>Radius</text>
+      <text x={Wd - 60} y={70} fill={GOLD} fontSize={22} fontWeight={600} letterSpacing={0.3} textAnchor="end">Play Smarter, Not Harder</text>
+
+      {/* title */}
+      <text x={60} y={156} fill={CREAM} fontSize={58} fontWeight={800} letterSpacing={-1.8}>Bag Stability Map</text>
+      <text x={60} y={192} fill={BODY} fontSize={23} fontWeight={500}>Speed × Turn + Fade · {discCount} discs</text>
+      <line x1={60} y1={216} x2={Wd - 60} y2={216} stroke={`url(#b-rule)`} strokeWidth={2} />
+
+      {/* axis titles */}
+      <text x={cx} y={246} fill={BODY} fontSize={24} fontWeight={700} textAnchor="middle" letterSpacing={0.2}>Stability (Turn + Fade)</text>
+      <text x={gx} y={gy - 30} fill={DIM} fontSize={18} fontWeight={700} letterSpacing={1.6}>OVERSTABLE</text>
+      <text x={gx + gw} y={gy - 30} fill={DIM} fontSize={18} fontWeight={700} letterSpacing={1.6} textAnchor="end">UNDERSTABLE</text>
+      <text x={44} y={gy + gh / 2} fill={BODY} fontSize={22} fontWeight={700} textAnchor="middle" transform={`rotate(-90 44 ${gy + gh / 2})`}>Speed</text>
+
+      {/* grid */}
+      <rect x={gx} y={gy} width={gw} height={gh} rx={18} fill="rgba(255,255,255,0.02)" />
+      <rect x={gx} y={gy} width={gw} height={gh} rx={18} fill={`url(#b-region)`} />
       {ticksDown(r.xHi, r.xLo).map((v) => (
         <g key={`x${v}`}>
           <line x1={tx(v)} y1={gy} x2={tx(v)} y2={gy + gh} stroke={v === 0 ? GOLD : GRID} strokeWidth={v === 0 ? 1.5 : 1} strokeDasharray={v === 0 ? "8 9" : undefined} opacity={v === 0 ? 0.5 : 1} />
-          <text x={tx(v)} y={gy - 16} fill={v === 0 ? GOLD : DIM} fontSize={20} fontWeight={700} textAnchor="middle">{v > 0 ? `+${v}` : v}</text>
+          <text x={tx(v)} y={gy - 12} fill={v === 0 ? GOLD : DIM} fontSize={20} fontWeight={700} textAnchor="middle">{v > 0 ? `+${v}` : v}</text>
         </g>
       ))}
       {ticksDown(r.yHi, r.yLo).map((v) => (
         <g key={`y${v}`}>
           <line x1={gx} y1={ty(v)} x2={gx + gw} y2={ty(v)} stroke={GRID} strokeWidth={1} />
-          <text x={gx - 18} y={ty(v) + 7} fill={DIM} fontSize={20} fontWeight={700} textAnchor="end">{v}</text>
+          <text x={gx - 16} y={ty(v) + 7} fill={DIM} fontSize={20} fontWeight={700} textAnchor="end">{v}</text>
         </g>
       ))}
-      <rect x={gx} y={gy} width={gw} height={gh} fill="none" stroke={GRID_STRONG} strokeWidth={1.5} />
-      {placed.map(({ p, x, y, gi, gn }, i) => {
-        const data = p.photoUrl ? photoMap[p.photoUrl] : undefined;
-        return (
-          <g key={i}>
-            {data ? (
-              <>
-                <circle cx={x} cy={y} r={R} fill="#0c1410" />
-                <image href={data} x={x - R} y={y - R} width={2 * R} height={2 * R} clipPath={`url(#bcd${i})`} preserveAspectRatio="xMidYMid slice" />
-                <circle cx={x} cy={y} r={R} fill="none" stroke={p.color} strokeWidth={ring} />
-              </>
-            ) : (
-              <circle cx={x} cy={y} r={R} fill={p.color} stroke={BG} strokeWidth={3} />
-            )}
-            <text x={x} y={y - R - 10 - (gn > 1 ? (gi % 2) * (nameFont + 2) : 0)} fill={CREAM} fontSize={nameFont} fontWeight={700} textAnchor="middle">{trunc(p.name, 13)}</text>
-          </g>
-        );
-      })}
+      <rect x={gx} y={gy} width={gw} height={gh} rx={18} fill="none" stroke={GRID_STRONG} strokeWidth={1.5} />
+
+      {placed.map((pl, i) => (
+        <DiscMark key={i} ns="b" i={i} x={pl.x} y={pl.y} R={R} p={pl.p} on={false} ring={ring} nameFont={nameFont} gi={pl.gi} gn={pl.gn} photo={pl.p.photoUrl ? photoMap[pl.p.photoUrl] : undefined} />
+      ))}
+
+      {/* footer */}
+      <line x1={60} y1={footerY} x2={Wd - 60} y2={footerY} stroke="rgba(245,237,225,0.08)" strokeWidth={1} />
       {cats.map((c, i) => (
-        <g key={c} transform={`translate(${60 + i * 196}, ${footerY + 42})`}>
+        <g key={c} transform={`translate(${60 + i * 188}, ${footerY + 42})`}>
           <circle cx={9} cy={-6} r={9} fill={CAT_META[c].color} />
-          <text x={28} y={0} fill={BODY} fontSize={21} fontWeight={600}>{CAT_META[c].short}</text>
+          <text x={28} y={0} fill={BODY} fontSize={20} fontWeight={600}>{CAT_META[c].short}</text>
         </g>
       ))}
-      <text x={Wd - 60} y={footerY + 20} fill={CREAM} fontSize={29} fontWeight={700} letterSpacing={-0.9} textAnchor="end">Radius</text>
-      <text x={Wd - 60} y={footerY + 48} fill={DIM} fontSize={18} fontWeight={500} textAnchor="end">radiusdiscgolf.com</text>
+      <text x={Wd - 60} y={footerY + 38} fill={DIM} fontSize={19} fontWeight={500} textAnchor="end">radiusdiscgolf.com</text>
     </svg>
   );
 }
@@ -352,7 +407,7 @@ export default function StabilityMap({ discs, className = "" }: { discs: FlightD
   }, [open]);
 
   if (pts.length === 0) return null;
-  const cats: Cat[] = (["DISTANCE", "FAIRWAY", "MIDRANGE", "PUTTER"] as Cat[]).filter((c) => pts.some((p) => p.cat === c));
+  const cats = CATS.filter((c) => pts.some((p) => p.cat === c));
 
   async function handleDownload() {
     setExporting(true);
@@ -386,28 +441,33 @@ export default function StabilityMap({ discs, className = "" }: { discs: FlightD
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-3 backdrop-blur-sm sm:p-6" onClick={() => setOpen(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-3 backdrop-blur-md sm:p-6" onClick={() => setOpen(false)}>
           <div
-            className="relative flex w-[min(96vw,760px)] flex-col overflow-hidden rounded-3xl bg-[var(--bg-deep)] p-4 ring-1 ring-white/10 sm:p-6"
+            className="relative flex w-[min(96vw,760px)] flex-col overflow-hidden rounded-[28px] bg-gradient-to-b from-[#17271e] to-[#0e1712] p-4 shadow-[0_40px_120px_-20px_rgba(0,0,0,0.8)] ring-1 ring-[var(--gold)]/15 sm:p-6"
             style={{ height: "min(94vh, 1040px)" }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mb-3 flex items-start justify-between gap-4">
+            <span className="pointer-events-none absolute -top-24 right-0 h-64 w-64 rounded-full bg-[radial-gradient(circle,rgba(246,193,101,0.14),transparent_70%)]" />
+            <div className="relative mb-3 flex items-start justify-between gap-4">
               <div>
-                <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">Radius · My Bag</div>
+                <div className="mb-1 flex items-center gap-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <span className="grid h-6 w-6 place-items-center rounded-full bg-[var(--gold)]/15"><span className="text-[11px] font-extrabold text-[var(--gold)]">R</span></span>
+                  <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[var(--gold)]">Radius · My Bag</span>
+                </div>
                 <h2 className="font-[family-name:var(--font-heading)] text-2xl font-extrabold tracking-[-0.02em] text-[var(--cream)]">Bag Stability Map</h2>
-                <p className="mt-0.5 text-sm text-[var(--text-body)]">Speed × Turn+Fade · {discs.length} discs · hover a disc</p>
+                <p className="mt-0.5 text-sm text-[var(--text-body)]">Speed × Turn + Fade · {discs.length} discs · hover a disc</p>
               </div>
               <button onClick={() => setOpen(false)} aria-label="Close" className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/[0.06] text-[var(--cream)] transition-colors hover:bg-white/15">
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
               </button>
             </div>
 
-            <div className="min-h-0 flex-1">
+            <div className="relative min-h-0 flex-1">
               <BigChart pts={pts} />
             </div>
 
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.08] pt-3">
+            <div className="relative mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.08] pt-3">
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[var(--text-body)]">
                 {cats.map((c) => (
                   <span key={c} className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: CAT_META[c].color }} />{CAT_META[c].short}</span>
@@ -416,7 +476,7 @@ export default function StabilityMap({ discs, className = "" }: { discs: FlightD
               <button
                 onClick={handleDownload}
                 disabled={exporting}
-                className="inline-flex shrink-0 items-center gap-2 rounded-full bg-[var(--gold)] px-5 py-2.5 text-sm font-bold text-[#16221b] transition-opacity hover:opacity-90 disabled:opacity-60"
+                className="inline-flex shrink-0 items-center gap-2 rounded-full bg-gradient-to-b from-[var(--gold-bright)] to-[var(--gold)] px-5 py-2.5 text-sm font-bold text-[#16221b] shadow-[0_6px_18px_-6px_rgba(246,193,101,0.6)] transition-opacity hover:opacity-90 disabled:opacity-60"
               >
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" /></svg>
                 {exporting ? "Preparing…" : "Download PNG"}
