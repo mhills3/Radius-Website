@@ -56,10 +56,10 @@ export default function MyCoursesPage() {
           Back to courses
         </Link>
         <div className="mb-1 text-[11px] font-bold uppercase tracking-[0.2em] text-[#9a7a3a]">Course builder</div>
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
+        <div className="flex items-end justify-between gap-4">
+          <div className="min-w-0">
             <h1 className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-[-0.02em]">My courses &amp; layouts</h1>
-            <p className="mt-2 text-sm text-[#46554c]">Every course and layout you&apos;ve built — review their stats and edit the details.{summary && <span className="text-[#8a968d]">{"  ·  " + summary}</span>}</p>
+            <p className="mt-2 text-sm text-[#46554c]">Every course and layout you&apos;ve built — review their stats and edit the details.</p>
           </div>
           {user && (
             <Link href="/courses/new" className="group relative hidden shrink-0 overflow-hidden rounded-2xl shadow-[0_12px_28px_-12px_rgba(15,24,19,0.65)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_38px_-12px_rgba(15,24,19,0.85)] md:block">
@@ -77,6 +77,7 @@ export default function MyCoursesPage() {
             </Link>
           )}
         </div>
+        {user && summary && <p className="mt-3 text-xs font-medium text-[#9aa39a]">{summary}</p>}
 
         {loading || courses === null ? (
           <div className="mt-8 space-y-4">{[0, 1].map((i) => <div key={i} className="h-44 animate-pulse rounded-3xl bg-black/5" />)}</div>
