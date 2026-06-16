@@ -110,6 +110,7 @@ export default function CourseBuilder({ uid }: { uid: string }) {
   const [cur, setCur] = useState(0);
   const [mode, setMode] = useState<Mode>("tee");
   const [undo, setUndo] = useState<Hole[][]>([]);
+  const [redo, setRedo] = useState<Hole[][]>([]);
   const [pending, setPending] = useState<null | { mode: "altTee" | "altBasket" | "mando"; lng: number; lat: number; label: string; colorHex: string; direction: Dir }>(null);
 
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
@@ -202,8 +203,8 @@ export default function CourseBuilder({ uid }: { uid: string }) {
         map.addLayer({ id: "rings-line", type: "line", source: "rings", paint: { "line-color": "#ffffff", "line-opacity": ["case", ["==", ["get", "c"], 1], 0.35, 0.18], "line-width": 1 } });
         map.addLayer({ id: "fairway-casing", type: "line", source: "fairway", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#0f1813", "line-width": 5, "line-opacity": ["case", ["get", "cur"], 0.55, 0.2] } });
         map.addLayer({ id: "fairway", type: "line", source: "fairway", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#F6C165", "line-width": ["case", ["get", "cur"], 3, 1.5], "line-opacity": ["case", ["get", "cur"], 1, 0.35] } });
-        map.addLayer({ id: "altBaskets", type: "symbol", source: "altBaskets", layout: { "icon-image": ["concat", "altbasket-", ["get", "colorHex"]], "icon-size": ["case", ["get", "cur"], 1.65, 1.05], "icon-allow-overlap": true, "text-field": ["get", "label"], "text-font": TF, "text-size": 10, "text-offset": [0, 1.1], "text-anchor": "top", "text-optional": true }, paint: { "icon-opacity": ["case", ["get", "cur"], 1, 0.45], "text-color": "#fff", "text-halo-color": "#0f1813", "text-halo-width": 1.4 } });
-        map.addLayer({ id: "baskets", type: "symbol", source: "baskets", layout: { "icon-image": "basket-gold", "icon-size": ["case", ["get", "cur"], 2.1, 1.3], "icon-anchor": "center", "icon-allow-overlap": true }, paint: { "icon-opacity": ["case", ["get", "cur"], 1, 0.5] } });
+        map.addLayer({ id: "altBaskets", type: "symbol", source: "altBaskets", layout: { "icon-image": ["concat", "altbasket-", ["get", "colorHex"]], "icon-size": ["case", ["get", "cur"], 1.24, 0.79], "icon-allow-overlap": true, "text-field": ["get", "label"], "text-font": TF, "text-size": 10, "text-offset": [0, 1.1], "text-anchor": "top", "text-optional": true }, paint: { "icon-opacity": ["case", ["get", "cur"], 1, 0.45], "text-color": "#fff", "text-halo-color": "#0f1813", "text-halo-width": 1.4 } });
+        map.addLayer({ id: "baskets", type: "symbol", source: "baskets", layout: { "icon-image": "basket-gold", "icon-size": ["case", ["get", "cur"], 1.58, 0.98], "icon-anchor": "center", "icon-allow-overlap": true }, paint: { "icon-opacity": ["case", ["get", "cur"], 1, 0.5] } });
         map.addLayer({ id: "mandos", type: "symbol", source: "mandos", layout: { "icon-image": ["concat", "mando-", ["get", "dir"]], "icon-size": 0.9, "icon-allow-overlap": true, "text-field": ["get", "label"], "text-font": TF, "text-size": 10, "text-offset": [0, -1.3], "text-anchor": "bottom", "text-optional": true }, paint: { "icon-opacity": ["case", ["get", "cur"], 1, 0.45], "text-color": "#F1C40F", "text-halo-color": "#0f1813", "text-halo-width": 1.4 } });
         map.addLayer({ id: "elbows", type: "symbol", source: "elbows", layout: { "icon-image": ["get", "icon"], "icon-size": 0.9, "icon-allow-overlap": true }, paint: { "icon-opacity": ["case", ["get", "cur"], 1, 0.4] } });
         map.addLayer({ id: "altTees", type: "symbol", source: "altTees", layout: { "icon-image": "altpad", "icon-rotate": ["get", "rot"], "icon-rotation-alignment": "map", "icon-size": ["case", ["get", "cur"], 0.85, 0.6], "icon-allow-overlap": true, "text-field": ["get", "label"], "text-font": TF, "text-size": 10, "text-offset": [0, 1.2], "text-anchor": "top", "text-optional": true }, paint: { "icon-opacity": ["case", ["get", "cur"], 1, 0.5], "text-color": "#cfe8d6", "text-halo-color": "#0f1813", "text-halo-width": 1.4 } });
@@ -217,6 +218,7 @@ export default function CourseBuilder({ uid }: { uid: string }) {
         const i = curRef.current; const pt = { lat: e.lngLat.lat, lng: e.lngLat.lng };
         const m = modeRef.current;
         if (m === "tee" || m === "basket" || m === "elbow") {
+          setRedo([]);
           setHoles((hs) => {
             setUndo((u) => [...u.slice(-29), snapshot(hs)]);
             const next = snapshot(hs); if (!next[i]) return hs;
@@ -312,11 +314,12 @@ export default function CourseBuilder({ uid }: { uid: string }) {
   };
   const allMapped = holes.length === holeCount && holes.every(mapped);
   const focusHole = (i: number) => { setPending(null); setCur(i); setMode(holes[i] && holes[i].teeLat == null ? "tee" : holes[i].basketLat == null ? "basket" : "tee"); const h = holes[i]; if (h?.teeLat != null) mapRef.current?.flyTo({ center: [h.teeLng, h.teeLat], zoom: 17 }); };
-  const doUndo = () => setUndo((u) => { if (!u.length) return u; setHoles(snapshot(u[u.length - 1])); return u.slice(0, -1); });
+  const doUndo = () => setUndo((u) => { if (!u.length) return u; setRedo((r) => [...r.slice(-29), snapshot(holesRef.current)]); setHoles(snapshot(u[u.length - 1])); return u.slice(0, -1); });
+  const doRedo = () => setRedo((r) => { if (!r.length) return r; setUndo((u) => [...u.slice(-29), snapshot(holesRef.current)]); setHoles(snapshot(r[r.length - 1])); return r.slice(0, -1); });
   const clearHole = () => { setUndo((u) => [...u.slice(-29), snapshot(holes)]); setHoles((hs) => hs.map((h, i) => (i === cur ? { ...blankHole(), par: h.par, notes: h.notes } : h))); setMode("tee"); setPending(null); };
   const setPar = (p: number) => setHoles((hs) => hs.map((h, i) => (i === cur ? { ...h, par: p } : h)));
   const setNotes = (v: string) => setHoles((hs) => hs.map((h, i) => (i === cur ? { ...h, notes: v } : h)));
-  const mutateCur = (fn: (h: Hole) => Hole) => { setUndo((u) => [...u.slice(-29), snapshot(holes)]); setHoles((hs) => hs.map((h, i) => (i === cur ? fn(h) : h))); };
+  const mutateCur = (fn: (h: Hole) => Hole) => { setUndo((u) => [...u.slice(-29), snapshot(holes)]); setRedo([]); setHoles((hs) => hs.map((h, i) => (i === cur ? fn(h) : h))); };
 
   const confirmPending = () => {
     if (!pending) return; const p = pending;
@@ -457,7 +460,6 @@ export default function CourseBuilder({ uid }: { uid: string }) {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-bold text-[#16221b]">{mappedCount}<span className="text-[#8a968d]">/{holeCount} mapped</span></span>
-                <button onClick={doUndo} disabled={!undo.length} className="rounded-full border border-black/[0.08] px-3.5 py-1.5 text-xs font-bold text-[#46554c] transition-colors disabled:opacity-40 hover:border-[var(--gold)]">↶ Undo</button>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {holes.map((h, i) => (
@@ -548,6 +550,12 @@ export default function CourseBuilder({ uid }: { uid: string }) {
         <div className="lg:sticky lg:top-24">
           <div className="relative">
             <div ref={elRef} className="h-[460px] w-full overflow-hidden rounded-3xl border border-black/[0.07] bg-[#e9e4d8] shadow-[0_18px_50px_-26px_rgba(15,24,19,0.32)] lg:h-[640px]" />
+            {step === 1 && (
+              <div className="absolute left-3 top-3 z-10 flex gap-1.5">
+                <button onClick={doUndo} disabled={!undo.length} title="Undo" aria-label="Undo" className="grid h-9 w-9 place-items-center rounded-lg bg-white/95 text-[#16221b] shadow-md transition-colors hover:bg-white disabled:opacity-40"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 14 4 9l5-5" /><path d="M4 9h11a5 5 0 0 1 0 10h-1" /></svg></button>
+                <button onClick={doRedo} disabled={!redo.length} title="Redo" aria-label="Redo" className="grid h-9 w-9 place-items-center rounded-lg bg-white/95 text-[#16221b] shadow-md transition-colors hover:bg-white disabled:opacity-40"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 14 5-5-5-5" /><path d="M20 9H9a5 5 0 0 0 0 10h1" /></svg></button>
+              </div>
+            )}
             <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl">
               {step === 0 && (
                 <>
@@ -556,8 +564,8 @@ export default function CourseBuilder({ uid }: { uid: string }) {
                   <div className="absolute bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[var(--bg-deep)]/85 px-4 py-1.5 text-xs font-semibold text-[var(--cream)] backdrop-blur">Center the map, then “Set location”</div>
                 </>
               )}
-              {step === 1 && <div className="absolute left-3 top-3 whitespace-nowrap rounded-xl bg-[var(--bg-deep)]/85 px-3 py-2 text-xs font-bold text-[var(--cream)] backdrop-blur">Hole {cur + 1} · {pending ? "confirm in panel" : `placing ${mode === "elbow" ? "dogleg" : mode === "altTee" ? "alt tee" : mode === "altBasket" ? "alt basket" : mode}`}</div>}
-              {mapErr && <div className="absolute inset-x-3 bottom-3 rounded-xl bg-[#d9473f] px-3 py-2 text-xs font-semibold text-white shadow-lg">Map error: {mapErr}</div>}
+              {step === 1 && <div className="absolute bottom-3 left-3 whitespace-nowrap rounded-xl bg-[var(--bg-deep)]/85 px-3 py-2 text-xs font-bold text-[var(--cream)] backdrop-blur">Hole {cur + 1} · {pending ? "confirm in panel" : `placing ${mode === "elbow" ? "dogleg" : mode === "altTee" ? "alt tee" : mode === "altBasket" ? "alt basket" : mode}`}</div>}
+              {mapErr && <div className="absolute inset-x-3 top-3 rounded-xl bg-[#d9473f] px-3 py-2 text-xs font-semibold text-white shadow-lg">Map error: {mapErr}</div>}
             </div>
           </div>
         </div>
