@@ -108,42 +108,47 @@ function PreviewChart({ pts }: { pts: Pt[] }) {
   );
 }
 
-/* ----------------------------- Big interactive chart (square cells, scrolls when tall) ----------------------------- */
+/* ----------------------------- Big interactive chart (fits the modal, no scroll) ----------------------------- */
 function BigChart({ pts }: { pts: Pt[] }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [w, setW] = useState(0);
+  const [size, setSize] = useState({ w: 0, h: 0 });
   const [hover, setHover] = useState<number | null>(null);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const ro = new ResizeObserver((entries) => setW(Math.round(entries[0].contentRect.width)));
+    const ro = new ResizeObserver((entries) => {
+      const cr = entries[0].contentRect;
+      setSize({ w: Math.round(cr.width), h: Math.round(cr.height) });
+    });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
 
   const r = ranges(pts);
+  const { w, h } = size;
   const cols = r.xHi - r.xLo, rows = r.yHi - r.yLo;
-  const padL = 50, padT = 50, padR = 22, padB = 26;
+  const padL = 48, padT = 48, padR = 20, padB = 24;
   const availW = Math.max(0, w - padL - padR);
-  const cell = Math.max(54, Math.min(120, availW / cols));
+  const availH = Math.max(0, h - padT - padB);
+  // square cells that fit BOTH dimensions → whole chart is visible without scrolling
+  const cell = Math.min(availW / cols, availH / rows);
   const gw = cell * cols, gh = cell * rows;
-  const gx = padL + Math.max(0, (availW - gw) / 2);
-  const gy = padT;
-  const svgH = gy + gh + padB;
-  const placed = w > 0 ? plot(pts, r, gx, gy, gw, gh, cell * 0.52) : [];
+  const gx = padL + (availW - gw) / 2;
+  const gy = padT + (availH - gh) / 2;
+  const placed = w > 0 && h > 0 ? plot(pts, r, gx, gy, gw, gh, cell * 0.5) : [];
   const tx = (v: number) => gx + ((r.xHi - v) / (r.xHi - r.xLo)) * gw;
   const ty = (v: number) => gy + ((r.yHi - v) / (r.yHi - r.yLo)) * gh;
-  const R = Math.min(cell * 0.42, 52);
-  const ring = Math.max(2.5, R * 0.1);
-  const nameFont = Math.max(13, Math.min(22, R * 0.7));
-  const tickFont = Math.max(12, Math.min(17, cell * 0.22));
+  const R = Math.min(cell * 0.4, 26);
+  const ring = Math.max(2, R * 0.12);
+  const nameFont = Math.max(10, Math.min(15, R * 0.78));
+  const tickFont = Math.max(10, Math.min(14, cell * 0.26));
   const ht = hover != null ? placed[hover] : null;
 
   return (
-    <div ref={ref} className="h-full w-full overflow-y-auto overflow-x-hidden">
-      {w > 0 && (
-        <div className="relative" style={{ height: svgH }}>
-          <svg width={w} height={svgH} viewBox={`0 0 ${w} ${svgH}`} style={{ display: "block", fontFamily: FONT }}>
+    <div ref={ref} className="relative h-full w-full overflow-hidden">
+      {w > 0 && h > 0 && (
+        <>
+          <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ display: "block", fontFamily: FONT }}>
             <defs>
               {placed.map((pl, i) => pl.p.photoUrl ? (
                 <clipPath key={i} id={`scd${i}`}><circle cx={pl.x} cy={pl.y} r={R} /></clipPath>
@@ -191,7 +196,7 @@ function BigChart({ pts }: { pts: Pt[] }) {
               <div className="mt-0.5 whitespace-nowrap font-mono text-xs text-[var(--gold)]">{fmtNum(ht.p.speed)} / {fmtNum(ht.p.glide)} / {fmtNum(ht.p.turn)} / {fmtNum(ht.p.fade)}</div>
             </div>
           )}
-        </div>
+        </>
       )}
     </div>
   );
@@ -383,8 +388,8 @@ export default function StabilityMap({ discs, className = "" }: { discs: FlightD
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-3 backdrop-blur-sm sm:p-6" onClick={() => setOpen(false)}>
           <div
-            className="relative flex w-[min(96vw,1000px)] flex-col overflow-hidden rounded-3xl bg-[var(--bg-deep)] p-4 ring-1 ring-white/10 sm:p-6"
-            style={{ height: "min(94vh, 1100px)" }}
+            className="relative flex w-[min(96vw,760px)] flex-col overflow-hidden rounded-3xl bg-[var(--bg-deep)] p-4 ring-1 ring-white/10 sm:p-6"
+            style={{ height: "min(94vh, 1040px)" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-start justify-between gap-4">
