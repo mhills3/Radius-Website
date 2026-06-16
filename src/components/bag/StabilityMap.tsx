@@ -13,8 +13,27 @@ const DIM = "rgba(168,179,145,0.62)";
 const BODY = "rgba(245,237,225,0.74)";
 const FONT = "'Sora', system-ui, -apple-system, sans-serif";
 
-// Radius round "R" mark (from public/logo-lettermark.svg) — inlined so it bakes into the PNG.
-const MARK = "M20.44,0C9.15,0,0,9.15,0,20.44s9.15,20.44,20.44,20.44,20.44-9.15,20.44-20.44S31.72,0,20.44,0ZM16.18,31.04h-4.26c-.06,0-.1-.05-.09-.11l.94-5.78.63-3.72c.02-.1.16-.11.19,0,.57,2.09,1.65,4,3.26,5.62.02.02.03.05.03.08l-.68,3.92h-.02ZM13.48,16.41c1.38,7.26,7.2,12.53,13.91,14.63-7.24-.03-14.33-7.1-13.91-14.63ZM31.25,27.61c-.64,1.16-1.41,2.67-2.7,2.91-6.36-1.31-12.96-7.4-14.21-14.06-.02-.16-.06-.4.13-.42,1-.01,3.58-.04,4.79-.02.1.02.14.1.14.2-2.05,5.65,5.87.6,6.28-2.98.02-.18-.14-.66-.26-.79-3.09-3.34-13.91,2.22-19.18,4.42l.83-1.15c13.52-15.52,37.55-3.48,14.44,5.5-.13.08-.28.2-.28.35,2.15,2.98,5.79,5.5,9.48,5.68.27.01.71-.03.53.37h.01Z";
+// Full Radius lettermark (round mark + "Radius" wordmark, from Radius Logos/radius lettermark.svg),
+// inlined so it bakes into the exported PNG and can be recolored to cream/gold on the dark canvas.
+const LETTERMARK_VB = "0 0 145.17 40.87";
+const LETTERMARK_PATHS = [
+  "M20.44,0C9.15,0,0,9.15,0,20.44s9.15,20.44,20.44,20.44,20.44-9.15,20.44-20.44S31.72,0,20.44,0ZM16.18,31.04h-4.26c-.06,0-.1-.05-.09-.11l.94-5.78.63-3.72c.02-.1.16-.11.19,0,.57,2.09,1.65,4,3.26,5.62.02.02.03.05.03.08l-.68,3.92h-.02ZM13.48,16.41c1.38,7.26,7.2,12.53,13.91,14.63-7.24-.03-14.33-7.1-13.91-14.63ZM31.25,27.61c-.64,1.16-1.41,2.67-2.7,2.91-6.36-1.31-12.96-7.4-14.21-14.06-.02-.16-.06-.4.13-.42,1-.01,3.58-.04,4.79-.02.1.02.14.1.14.2-2.05,5.65,5.87.6,6.28-2.98.02-.18-.14-.66-.26-.79-3.09-3.34-13.91,2.22-19.18,4.42l.83-1.15c13.52-15.52,37.55-3.48,14.44,5.5-.13.08-.28.2-.28.35,2.15,2.98,5.79,5.5,9.48,5.68.27.01.71-.03.53.37h.01Z",
+  "M48.33,29.63V8.98h3.99v20.65h-3.99ZM51.14,22.77v-3.23h5.23c.73,0,1.36-.15,1.9-.45.53-.3.95-.72,1.24-1.25.29-.53.44-1.16.44-1.87s-.15-1.33-.44-1.87c-.29-.53-.7-.96-1.24-1.26-.53-.31-1.17-.46-1.9-.46h-5.23v-3.4h4.81c1.65,0,3.08.25,4.29.74,1.21.5,2.14,1.24,2.8,2.22.66.98.98,2.23.98,3.75v.45c0,1.5-.33,2.74-1,3.72-.67.98-1.6,1.71-2.8,2.19-1.2.48-2.62.72-4.27.72h-4.81ZM60.83,29.63l-6.27-8.91h4.47l6.49,8.91h-4.69Z",
+  "M71.71,30.02c-1.11,0-2.07-.2-2.89-.59-.82-.39-1.47-.96-1.92-1.69-.46-.73-.69-1.61-.69-2.64,0-1.12.27-2.04.81-2.75.54-.71,1.32-1.25,2.33-1.6,1.01-.36,2.19-.53,3.54-.53h3.51v2.36h-3.57c-.9,0-1.59.21-2.07.65-.48.43-.72.99-.72,1.69s.24,1.25.72,1.69c.48.43,1.17.65,2.07.65.54,0,1.04-.1,1.5-.29s.84-.53,1.14-1.01c.3-.48.47-1.13.51-1.95l.96,1.1c-.09,1.07-.35,1.97-.77,2.7-.42.73-1,1.29-1.74,1.67-.74.38-1.64.58-2.71.58ZM76.62,29.63v-4.52h-.65v-5.03c0-.86-.22-1.51-.65-1.95-.43-.44-1.09-.66-1.97-.66-.47,0-1.03,0-1.69.03-.66.02-1.32.04-1.98.07-.67.03-1.26.06-1.78.1v-3.32c.43-.04.91-.08,1.45-.11.53-.04,1.09-.06,1.67-.07s1.12-.01,1.63-.01c1.57,0,2.88.21,3.92.62,1.04.41,1.83,1.06,2.36,1.95.53.89.8,2.05.8,3.47v9.44h-3.12Z",
+  "M89.41,30.14c-1.09,0-2.08-.2-2.96-.59s-1.66-.94-2.32-1.64c-.66-.7-1.16-1.53-1.52-2.49s-.53-1.99-.53-3.09v-.59c0-1.09.17-2.11.5-3.06.34-.96.82-1.79,1.46-2.5.64-.71,1.4-1.27,2.28-1.67.88-.4,1.86-.6,2.95-.6,1.2,0,2.26.26,3.17.77.92.51,1.64,1.29,2.18,2.32.53,1.03.83,2.32.89,3.88l-1.15-1.32v-10.42h3.93v20.51h-3.12v-6.46h.67c-.06,1.54-.38,2.82-.96,3.86-.58,1.04-1.34,1.82-2.29,2.33-.95.51-2.01.77-3.19.77ZM90.28,26.85c.77,0,1.46-.17,2.09-.52s1.13-.85,1.52-1.52.58-1.45.58-2.35v-1.12c0-.88-.2-1.63-.59-2.25s-.91-1.09-1.55-1.42c-.64-.33-1.32-.49-2.05-.49-.84,0-1.59.21-2.23.62s-1.15.98-1.52,1.7c-.37.72-.55,1.57-.55,2.54s.19,1.82.56,2.54c.37.72.88,1.28,1.53,1.67s1.38.59,2.21.59Z",
+  "M100.48,17.29v-2.92h6.04v2.92h-6.04ZM104.05,12.54c-.77,0-1.33-.2-1.7-.59s-.55-.91-.55-1.55.18-1.12.55-1.52c.37-.39.93-.59,1.7-.59s1.33.2,1.69.59c.36.39.53.9.53,1.52s-.18,1.15-.53,1.55c-.36.39-.92.59-1.69.59ZM102.62,29.63v-15.26h3.91v15.26h-3.91Z",
+  "M115.38,30.11c-1.78,0-3.15-.58-4.1-1.73-.96-1.15-1.43-2.88-1.43-5.18v-8.85h3.91v9.19c0,.94.26,1.68.79,2.23s1.24.83,2.14.83,1.63-.29,2.21-.87c.57-.58.86-1.37.86-2.36v-9.02h3.91v15.29h-3.09v-6.49h.31c0,1.56-.2,2.85-.6,3.88-.4,1.03-.99,1.8-1.77,2.32-.78.51-1.76.77-2.94.77h-.17Z",
+  "M132.83,30.11c-2.1,0-3.74-.45-4.93-1.33-1.19-.89-1.82-2.12-1.9-3.69h3.54c.06.52.35,1,.87,1.43.53.43,1.35.65,2.47.65.92,0,1.66-.17,2.22-.51s.84-.8.84-1.38c0-.49-.21-.88-.63-1.18-.42-.3-1.15-.5-2.18-.62l-1.32-.14c-1.72-.17-3.04-.65-3.96-1.45s-1.38-1.85-1.38-3.16c0-1.05.26-1.93.79-2.64.52-.71,1.25-1.25,2.18-1.62s2-.55,3.22-.55c1.87,0,3.39.41,4.55,1.24,1.16.83,1.77,2.04,1.83,3.65h-3.51c-.06-.54-.32-1-.8-1.38-.48-.38-1.18-.56-2.09-.56-.82,0-1.46.16-1.91.48-.45.32-.68.73-.68,1.24s.18.86.55,1.12c.37.26.96.44,1.78.53l1.35.14c1.8.19,3.21.68,4.23,1.49,1.02.81,1.53,1.89,1.53,3.26,0,1.01-.28,1.89-.83,2.64s-1.33,1.33-2.32,1.73c-.99.4-2.16.6-3.51.6Z",
+];
+
+/** The Radius lettermark as an inline SVG (currentColor) — use in HTML headers. */
+function RadiusLettermark({ className }: { className?: string }) {
+  return (
+    <svg viewBox={LETTERMARK_VB} className={className} fill="currentColor" role="img" aria-label="Radius">
+      {LETTERMARK_PATHS.map((d, i) => <path key={i} d={d} />)}
+    </svg>
+  );
+}
 
 type Pt = { name: string; speed: number; stab: number; glide?: number; turn?: number; fade?: number; cat: Cat; color: string };
 
@@ -282,9 +301,8 @@ function BrandedChart({ pts, discCount, svgRef }: { pts: Pt[]; discCount: number
       <rect x={0} y={0} width={Wd} height={Hd} fill={`url(#b-bg)`} />
       <rect x={0} y={0} width={Wd} height={Hd} fill={`url(#b-gold)`} />
 
-      <g transform="translate(60,40) scale(0.92)"><path d={MARK} fill={GOLD} /></g>
-      <text x={108} y={71} fill={CREAM} fontSize={40} fontWeight={700} letterSpacing={-1.4}>Radius</text>
-      <text x={Wd - 60} y={70} fill={GOLD} fontSize={22} fontWeight={600} letterSpacing={0.3} textAnchor="end">Play Smarter, Not Harder</text>
+      <g transform="translate(60,38) scale(1.16)">{LETTERMARK_PATHS.map((d, i) => <path key={i} d={d} fill={CREAM} />)}</g>
+      <text x={Wd - 60} y={72} fill={GOLD} fontSize={22} fontWeight={600} letterSpacing={0.3} textAnchor="end">Play Smarter, Not Harder</text>
 
       <text x={60} y={156} fill={CREAM} fontSize={58} fontWeight={800} letterSpacing={-1.8}>Bag Stability Map</text>
       <text x={60} y={192} fill={BODY} fontSize={23} fontWeight={500}>Speed × Turn + Fade · {discCount} discs</text>
@@ -395,9 +413,9 @@ export default function StabilityMap({ discs, className = "" }: { discs: FlightD
             <span className="pointer-events-none absolute -top-24 right-0 h-64 w-64 rounded-full bg-[radial-gradient(circle,rgba(246,193,101,0.14),transparent_70%)]" />
             <div className="relative mb-3 flex items-start justify-between gap-4">
               <div>
-                <div className="mb-1 flex items-center gap-2">
-                  <span className="grid h-6 w-6 place-items-center rounded-full bg-[var(--gold)]/15"><span className="text-[11px] font-extrabold text-[var(--gold)]">R</span></span>
-                  <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[var(--gold)]">Radius · My Bag</span>
+                <div className="mb-1.5 flex items-center gap-3">
+                  <RadiusLettermark className="h-6 w-auto text-[var(--cream)]" />
+                  <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[var(--gold)]">My Bag</span>
                 </div>
                 <h2 className="font-[family-name:var(--font-heading)] text-2xl font-extrabold tracking-[-0.02em] text-[var(--cream)]">Bag Stability Map</h2>
                 <p className="mt-0.5 text-sm text-[var(--text-body)]">Speed × Turn + Fade · {discs.length} discs · hover a disc</p>
