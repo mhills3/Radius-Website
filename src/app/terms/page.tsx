@@ -42,6 +42,10 @@ const HTML = `
 <h2>User-Generated Content</h2>
 <p>You retain ownership of content you create and share through the App (posts, comments, forum threads, etc.). By posting content, you grant Radius a worldwide, non-exclusive, royalty-free license to use, display, reproduce, and distribute that content within the App and for promotional purposes. You are solely responsible for the content you post and must not post content that infringes on the intellectual property rights of others.</p>
 
+<h2>Course and Database Contributions</h2>
+<p>Radius is a community-built database. When you submit, upload, or edit course information — including course names, locations, layouts, hole and tee data, descriptions, ratings, photographs, and similar material (collectively, "Contributions") — you represent and warrant that: (a) you have all rights necessary to make the Contribution and to grant the license below; (b) the Contribution consists of factual information and/or your own original work; and (c) the Contribution does not copy proprietary content (such as original written descriptions, photographs, or other original material) from any third party, and does not infringe any intellectual property right or violate the terms of service of any other platform or service.</p>
+<p>You grant Radius a worldwide, perpetual, irrevocable, royalty-free, sublicensable license to host, store, use, reproduce, modify, adapt, display, and distribute your Contributions as part of the Services and the Radius database. Because Contributions become part of a shared community database that other users rely on, this license survives deletion of your account with respect to Contributions already incorporated into the database.</p>
+
 <h2>Community Guidelines</h2>
 <p>When using community features (Discover feed, forums, local meetups), you agree to:</p>
 <ul>
@@ -77,6 +81,9 @@ const HTML = `
 <h2>Limitation of Liability</h2>
 <p>To the fullest extent permitted by law, Radius Disc Golf shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including but not limited to loss of data, profits, or goodwill, arising out of or related to your use of the App.</p>
 
+<h2>Indemnification</h2>
+<p>You agree to indemnify, defend, and hold harmless Radius Disc Golf and its members, officers, employees, and agents from and against any claims, demands, liabilities, damages, losses, costs, and expenses (including reasonable attorneys' fees) arising out of or related to: (a) any content or Contributions you submit to or share through the Services; (b) your violation of these Terms; (c) your violation or infringement of any intellectual property or other right of any third party; or (d) your violation of any applicable law or of the terms of service of any third-party platform or service. Radius reserves the right to assume the exclusive defense and control of any matter subject to indemnification by you, in which case you agree to cooperate with Radius's defense.</p>
+
 <h2>Termination</h2>
 <p>We may suspend or terminate your access to the Services at any time, with or without cause and with or without notice. Upon termination, your right to use the Services will immediately cease. You may delete your account and associated data at any time directly within the App (in your Profile settings) on both iOS and Android, or by contacting us.</p>
 
@@ -103,5 +110,5 @@ Email: <a href="mailto:info@radiusdiscgolf.com">info@radiusdiscgolf.com</a></p>
 `;
 
 export default function TermsPage() {
-  return <LegalLayout title="Terms of Service" updated="Last updated: June 13, 2026" html={HTML} />;
+  return <LegalLayout title="Terms of Service" updated="Last updated: June 16, 2026" html={HTML} />;
 }
