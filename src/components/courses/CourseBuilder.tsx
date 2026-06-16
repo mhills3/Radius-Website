@@ -92,13 +92,19 @@ export default function CourseBuilder({ uid }: { uid: string }) {
 
   useEffect(() => {
     let cancelled = false;
+    let ro: ResizeObserver | undefined;
     (async () => {
+     try {
       const mapboxgl = (await import("mapbox-gl")).default;
-      if (cancelled || !elRef.current) return;
+      if (cancelled) return;
+      if (!elRef.current) { setMapErr("Map container didn't mount."); return; }
       mapboxgl.accessToken = TOKEN;
       const map = new mapboxgl.Map({ container: elRef.current, style: "mapbox://styles/mapbox/satellite-v9", projection: "mercator", center: [-98.5, 39.5], zoom: 3.4, attributionControl: false });
       mapRef.current = map;
       map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
+      // Keep the canvas sized to its container (fixes a map rendered into a 0-size box).
+      ro = new ResizeObserver(() => { try { map.resize(); } catch {} });
+      ro.observe(elRef.current);
       // Surface the real Mapbox failure (token 403, WebGL, etc.) instead of a silent blank map.
       map.on("error", (e: { error?: { message?: string; status?: number } }) => {
         const m = e?.error?.message || (e?.error?.status ? `HTTP ${e.error.status}` : "");
@@ -106,6 +112,7 @@ export default function CourseBuilder({ uid }: { uid: string }) {
       });
       map.on("load", () => {
         if (cancelled) return;
+        map.resize();
         const img = new Image();
         img.onload = () => { try { const s = 2, w = 32 * s, h = 40 * s; const cv = document.createElement("canvas"); cv.width = w; cv.height = h; const c = cv.getContext("2d"); if (c) { c.drawImage(img, 0, 0, w, h); if (!map.hasImage("basket-pin")) map.addImage("basket-pin", c.getImageData(0, 0, w, h), { pixelRatio: 2 }); } } catch {} };
         img.src = "/basket-pin.svg";
@@ -131,8 +138,11 @@ export default function CourseBuilder({ uid }: { uid: string }) {
         });
         if (modeRef.current === "tee") setMode("basket");
       });
+     } catch (err) {
+      setMapErr(err instanceof Error ? err.message : String(err));
+     }
     })();
-    return () => { cancelled = true; if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } };
+    return () => { cancelled = true; ro?.disconnect(); if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } };
   }, []);
 
   useEffect(() => { const m = mapRef.current; if (m?.getCanvas) m.getCanvas().style.cursor = step === 1 ? "crosshair" : ""; }, [step]);
