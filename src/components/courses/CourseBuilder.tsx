@@ -182,7 +182,7 @@ export default function CourseBuilder({ uid }: { uid: string }) {
         const bimg = new Image();
         bimg.onload = () => {
           try {
-            const s = 2, w = 40 * s, h = 40 * s;
+            const s = 2, w = 64 * s, h = 64 * s;
             const make = (nm: string, color: string) => {
               const cv = document.createElement("canvas"); cv.width = w; cv.height = h; const c = cv.getContext("2d"); if (!c) return;
               c.drawImage(bimg, 0, 0, w, h);
@@ -202,8 +202,8 @@ export default function CourseBuilder({ uid }: { uid: string }) {
         map.addLayer({ id: "rings-line", type: "line", source: "rings", paint: { "line-color": "#ffffff", "line-opacity": ["case", ["==", ["get", "c"], 1], 0.35, 0.18], "line-width": 1 } });
         map.addLayer({ id: "fairway-casing", type: "line", source: "fairway", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#0f1813", "line-width": 5, "line-opacity": ["case", ["get", "cur"], 0.55, 0.2] } });
         map.addLayer({ id: "fairway", type: "line", source: "fairway", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#F6C165", "line-width": ["case", ["get", "cur"], 3, 1.5], "line-opacity": ["case", ["get", "cur"], 1, 0.35] } });
-        map.addLayer({ id: "altBaskets", type: "symbol", source: "altBaskets", layout: { "icon-image": ["concat", "altbasket-", ["get", "colorHex"]], "icon-size": ["case", ["get", "cur"], 0.9, 0.6], "icon-allow-overlap": true, "text-field": ["get", "label"], "text-font": TF, "text-size": 10, "text-offset": [0, 1.1], "text-anchor": "top", "text-optional": true }, paint: { "icon-opacity": ["case", ["get", "cur"], 1, 0.45], "text-color": "#fff", "text-halo-color": "#0f1813", "text-halo-width": 1.4 } });
-        map.addLayer({ id: "baskets", type: "symbol", source: "baskets", layout: { "icon-image": "basket-gold", "icon-size": ["case", ["get", "cur"], 0.95, 0.6], "icon-anchor": "center", "icon-allow-overlap": true }, paint: { "icon-opacity": ["case", ["get", "cur"], 1, 0.5] } });
+        map.addLayer({ id: "altBaskets", type: "symbol", source: "altBaskets", layout: { "icon-image": ["concat", "altbasket-", ["get", "colorHex"]], "icon-size": ["case", ["get", "cur"], 1.1, 0.7], "icon-allow-overlap": true, "text-field": ["get", "label"], "text-font": TF, "text-size": 10, "text-offset": [0, 1.1], "text-anchor": "top", "text-optional": true }, paint: { "icon-opacity": ["case", ["get", "cur"], 1, 0.45], "text-color": "#fff", "text-halo-color": "#0f1813", "text-halo-width": 1.4 } });
+        map.addLayer({ id: "baskets", type: "symbol", source: "baskets", layout: { "icon-image": "basket-gold", "icon-size": ["case", ["get", "cur"], 1.4, 0.85], "icon-anchor": "center", "icon-allow-overlap": true }, paint: { "icon-opacity": ["case", ["get", "cur"], 1, 0.5] } });
         map.addLayer({ id: "mandos", type: "symbol", source: "mandos", layout: { "icon-image": ["concat", "mando-", ["get", "dir"]], "icon-size": 0.9, "icon-allow-overlap": true, "text-field": ["get", "label"], "text-font": TF, "text-size": 10, "text-offset": [0, -1.3], "text-anchor": "bottom", "text-optional": true }, paint: { "icon-opacity": ["case", ["get", "cur"], 1, 0.45], "text-color": "#F1C40F", "text-halo-color": "#0f1813", "text-halo-width": 1.4 } });
         map.addLayer({ id: "elbows", type: "symbol", source: "elbows", layout: { "icon-image": ["get", "icon"], "icon-size": 0.9, "icon-allow-overlap": true }, paint: { "icon-opacity": ["case", ["get", "cur"], 1, 0.4] } });
         map.addLayer({ id: "altTees", type: "symbol", source: "altTees", layout: { "icon-image": "altpad", "icon-rotate": ["get", "rot"], "icon-rotation-alignment": "map", "icon-size": ["case", ["get", "cur"], 0.85, 0.6], "icon-allow-overlap": true, "text-field": ["get", "label"], "text-font": TF, "text-size": 10, "text-offset": [0, 1.2], "text-anchor": "top", "text-optional": true }, paint: { "icon-opacity": ["case", ["get", "cur"], 1, 0.5], "text-color": "#cfe8d6", "text-halo-color": "#0f1813", "text-halo-width": 1.4 } });
@@ -368,11 +368,11 @@ export default function CourseBuilder({ uid }: { uid: string }) {
     { k: "mando", label: `Mando${curHole?.mandos.length ? ` (${curHole.mandos.length})` : ""}`, color: "#caa106", on: true },
   ];
   const modePreview = (k: Mode, active: boolean) => {
-    if (k === "tee") return <span className="h-2.5 w-4 shrink-0 rounded-[2px]" style={{ background: active ? "#fff" : "#16331f" }} />;
-    if (k === "altTee") return <span className="h-2 w-3.5 shrink-0 rounded-[2px]" style={{ background: active ? "#fff" : "#16331f" }} />;
-    if (k === "elbow") return <span className="h-2.5 w-2.5 shrink-0 rotate-45 rounded-[2px]" style={{ background: active ? "#fff" : "#E0752A" }} />;
-    if (k === "mando") return <span className="grid h-3.5 w-3 shrink-0 place-items-center rounded-[2px] text-[8px] font-bold text-[#16221b]" style={{ background: active ? "#fff" : "#F1C40F" }}>→</span>;
-    return <span className="h-4 w-4 shrink-0 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: "url(/basket-icon.svg)", filter: active ? "brightness(0) invert(1)" : "none" }} />;
+    if (k === "tee") return <span className="h-3.5 w-6 shrink-0 rounded-[3px]" style={{ background: active ? "#fff" : "#16331f" }} />;
+    if (k === "altTee") return <span className="h-3 w-5 shrink-0 rounded-[3px]" style={{ background: active ? "#fff" : "#16331f" }} />;
+    if (k === "elbow") return <span className="h-3.5 w-3.5 shrink-0 rotate-45 rounded-[2px]" style={{ background: active ? "#fff" : "#E0752A" }} />;
+    if (k === "mando") return <span className="grid h-5 w-4 shrink-0 place-items-center rounded-[3px] text-[10px] font-bold text-[#16221b]" style={{ background: active ? "#fff" : "#F1C40F" }}>→</span>;
+    return <span className="h-7 w-7 shrink-0 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: "url(/basket-icon.svg)", filter: active ? "brightness(0) invert(1)" : "none" }} />;
   };
 
   return (
@@ -499,7 +499,7 @@ export default function CourseBuilder({ uid }: { uid: string }) {
                   </div>
                 )}
 
-                <div className="mb-3"><span className={LABEL}>Par</span><div className="flex gap-2">{[2, 3, 4, 5].map((p) => <button key={p} onClick={() => setPar(p)} className={pill(curHole?.par === p) + " py-2"}>{p}</button>)}</div></div>
+                <div className="mb-3"><span className={LABEL}>Par</span><div className="grid grid-cols-4 gap-2">{[2, 3, 4, 5].map((p) => <button key={p} onClick={() => setPar(p)} className={pill(curHole?.par === p) + " py-2.5"}>{p}</button>)}</div></div>
                 <label className="block"><span className={LABEL}>Notes</span><input value={curHole?.notes ?? ""} onChange={(e) => setNotes(e.target.value)} placeholder="Optional — OB, tips…" className={FIELD.replace("bg-[#faf9f5]", "bg-white")} /></label>
                 {curHole && (curHole.teeLat != null || curHole.basketLat != null || curHole.elbows.length > 0 || curHole.altTees.length > 0 || curHole.altBaskets.length > 0 || curHole.mandos.length > 0) && <button onClick={clearHole} className="mt-3 text-xs font-bold text-[#e0857d] hover:underline">Clear this hole</button>}
               </div>
