@@ -448,7 +448,7 @@ export function distanceFt(aLat: number, aLng: number, bLat: number, bLng: numbe
   return Math.round(metres * 3.28084);
 }
 
-export interface HoleDraft { par: number; teeLat: number; teeLng: number; basketLat: number; basketLng: number; notes?: string }
+export interface HoleDraft { par: number; teeLat: number; teeLng: number; basketLat: number; basketLng: number; notes?: string; elbows?: [number, number][] }
 export interface CourseDraft {
   name: string;
   city?: string;
@@ -481,14 +481,21 @@ export async function createCourse(uid: string, draft: CourseDraft, presetId?: s
     const id = presetId || uuidUpper();
     const now = Date.now();
 
-    const holes = draft.holes.map((h, i) => ({
-      id: uuidUpper(),
-      holeNumber: i + 1,
-      par: h.par > 0 ? h.par : 3,
-      distance: distanceFt(h.teeLat, h.teeLng, h.basketLat, h.basketLng),
-      teeLat: h.teeLat, teeLng: h.teeLng, basketLat: h.basketLat, basketLng: h.basketLng,
-      notes: h.notes?.trim() || "",
-    }));
+    const holes = draft.holes.map((h, i) => {
+      const elbows = h.elbows ?? []; // [lat,lng] pairs
+      // Distance walks the fairway: tee -> elbows -> basket.
+      let dist = 0; let pa: [number, number] = [h.teeLat, h.teeLng];
+      for (const e of elbows) { dist += distanceFt(pa[0], pa[1], e[0], e[1]); pa = e; }
+      dist += distanceFt(pa[0], pa[1], h.basketLat, h.basketLng);
+      return {
+        id: uuidUpper(),
+        holeNumber: i + 1,
+        par: h.par > 0 ? h.par : 3,
+        distance: Math.round(dist),
+        teeLat: h.teeLat, teeLng: h.teeLng, basketLat: h.basketLat, basketLng: h.basketLng,
+        elbows, notes: h.notes?.trim() || "",
+      };
+    });
     const par = holes.reduce((s, h) => s + h.par, 0);
     const totalDist = holes.reduce((s, h) => s + h.distance, 0);
     // Course location: the parking/center set in step 1; fall back to the average tee position.

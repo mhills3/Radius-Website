@@ -12,7 +12,6 @@ const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "pk.eyJ1IjoibWlrZXkzIiwiYS
 
 const TERRAINS = ["Mixed", "Open", "Wooded", "Hilly", "Desert", "Coastal"];
 const DIFFICULTIES = ["Beginner", "Intermediate", "Advanced", "Pro"];
-// Mirror the app (radiusDifficultyColor): green / blue / orange, Pro = amber→gold gradient + glow.
 const DIFF_COLOR: Record<string, string> = { Beginner: "#4AA861", Intermediate: "#3385CC", Advanced: "#E0752A", Pro: "#F6C165" };
 const PRO_GRADIENT = "linear-gradient(135deg, #FFD452, #F6C165, #CC6B1A)";
 function diffStyle(label: string, on: boolean): React.CSSProperties {
@@ -24,9 +23,42 @@ function diffStyle(label: string, on: boolean): React.CSSProperties {
 const AMENITIES = ["Parking", "Restrooms", "Water", "Lighting", "Picnic Area", "Camping", "Pro Shop", "Food"];
 const STEPS = ["Details", "Map holes", "Review"];
 
-type Hole = { par: number; teeLat?: number; teeLng?: number; basketLat?: number; basketLng?: number; notes: string };
-const blankHole = (): Hole => ({ par: 3, notes: "" });
+// elbows are [lng,lat] pairs internally (Mapbox order); written to Firestore as [lat,lng].
+type Hole = { par: number; teeLat?: number; teeLng?: number; basketLat?: number; basketLng?: number; elbows: [number, number][]; notes: string };
+const blankHole = (): Hole => ({ par: 3, elbows: [], notes: "" });
 const mapped = (h: Hole) => h.teeLat != null && h.basketLat != null;
+type Mode = "tee" | "basket" | "elbow";
+
+// great-circle bearing a->b in degrees (0=N, clockwise)
+function bearing(aLat: number, aLng: number, bLat: number, bLng: number): number {
+  const toR = (d: number) => (d * Math.PI) / 180, toDg = (r: number) => (r * 180) / Math.PI;
+  const y = Math.sin(toR(bLng - aLng)) * Math.cos(toR(bLat));
+  const x = Math.cos(toR(aLat)) * Math.sin(toR(bLat)) - Math.sin(toR(aLat)) * Math.cos(toR(bLat)) * Math.cos(toR(bLng - aLng));
+  return (toDg(Math.atan2(y, x)) + 360) % 360;
+}
+// polygon ring (GeoJSON [lng,lat] coords) of radiusFt around center, for C1/C2 putting circles
+function ringCoords(lng: number, lat: number, radiusFt: number, pts = 64): number[][] {
+  const radM = radiusFt * 0.3048, R = 6378137, out: number[][] = [];
+  for (let i = 0; i <= pts; i++) {
+    const a = (i / pts) * 2 * Math.PI, dx = radM * Math.cos(a), dy = radM * Math.sin(a);
+    out.push([lng + (dx / (R * Math.cos((lat * Math.PI) / 180))) * (180 / Math.PI), lat + (dy / R) * (180 / Math.PI)]);
+  }
+  return out;
+}
+// fairway path [lng,lat]: tee -> elbows -> basket (whichever exist)
+function fairway(h: Hole): number[][] {
+  const p: number[][] = [];
+  if (h.teeLat != null) p.push([h.teeLng!, h.teeLat!]);
+  for (const e of h.elbows) p.push(e);
+  if (h.basketLat != null) p.push([h.basketLng!, h.basketLat!]);
+  return p;
+}
+function holeDistFt(h: Hole): number {
+  const p = fairway(h);
+  let d = 0;
+  for (let i = 1; i < p.length; i++) d += distanceFt(p[i - 1][1], p[i - 1][0], p[i][1], p[i][0]);
+  return Math.round(d);
+}
 
 function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
@@ -44,9 +76,8 @@ export default function CourseBuilder({ uid }: { uid: string }) {
   const mapRef = useRef<any>(null);
   const [mapReady, setMapReady] = useState(false);
   const [mapErr, setMapErr] = useState("");
-  // Generate the course id up front so the cover photo can live at the app's allowed Storage path
-  // (courses/{authUid}/{courseId}/cover.jpg) and the created course reuses the same id.
   const [courseId] = useState(() => (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID().toUpperCase() : `${Date.now()}-${Math.random().toString(36).slice(2)}`.toUpperCase()));
+  const DRAFT_KEY = `radius_course_draft_${uid}`;
 
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
@@ -64,37 +95,55 @@ export default function CourseBuilder({ uid }: { uid: string }) {
 
   const [holes, setHoles] = useState<Hole[]>([]);
   const [cur, setCur] = useState(0);
-  const [mode, setMode] = useState<"tee" | "basket">("tee");
+  const [mode, setMode] = useState<Mode>("tee");
   const [undo, setUndo] = useState<Hole[][]>([]);
 
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
   const [error, setError] = useState("");
   const [dupes, setDupes] = useState<Course[] | null>(null);
   const [uploading, setUploading] = useState(false);
-
-  async function onCoverFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true); setError("");
-    try {
-      // Match the apps' allowed Storage path: courses/{authUid}/{courseId}/cover.jpg (rule gates on
-      // path uid == request.auth.uid, so use the raw auth uid, which is the `uid` prop).
-      const r = storageRef(storage, `courses/${uid}/${courseId}/cover.jpg`);
-      await uploadBytes(r, file, { contentType: file.type || "image/jpeg" });
-      setCoverPhotoUrl(await getDownloadURL(r));
-    } catch (err) {
-      const e = err as { code?: string; message?: string };
-      setError(`Photo upload failed: ${e.code || e.message || "unknown error"}`);
-    }
-    setUploading(false);
-  }
+  const [resume, setResume] = useState<null | (() => void)>(null);
 
   const stepRef = useRef(step); stepRef.current = step;
   const modeRef = useRef(mode); modeRef.current = mode;
   const curRef = useRef(cur); curRef.current = cur;
+  const hydrated = useRef(false);
 
   const holeCount = Math.max(0, Math.min(27, parseInt(holeCountText, 10) || 0));
 
+  // ---------- draft autosave / resume (localStorage) ----------
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const d = JSON.parse(raw);
+      if (!d || (!d.name && !(d.holes?.length))) return;
+      setResume(() => () => {
+        setName(d.name || ""); setHoleCountText(d.holeCountText || "18"); setDescription(d.description || "");
+        setCourseType(d.courseType || "Public"); setTerrain(d.terrain || "Mixed"); setDifficulty(d.difficulty || "");
+        setIsFree(d.isFree ?? true); setFeeAmount(d.feeAmount || 0); setAmenities(new Set(d.amenities || []));
+        setCoverPhotoUrl(d.coverPhotoUrl || ""); setLoc(d.loc || null);
+        setHoles(Array.isArray(d.holes) ? d.holes.map((h: Hole) => ({ par: h.par ?? 3, teeLat: h.teeLat, teeLng: h.teeLng, basketLat: h.basketLat, basketLng: h.basketLng, elbows: h.elbows || [], notes: h.notes || "" })) : []);
+        setStep(d.step || 0); setCur(d.cur || 0);
+        hydrated.current = true; setResume(null);
+        if (d.loc) setTimeout(() => mapRef.current?.flyTo({ center: [d.loc.lng, d.loc.lat], zoom: 16 }), 300);
+      });
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (resume) return; // don't overwrite an unaccepted draft
+    const t = setTimeout(() => {
+      try {
+        if (!name && holes.length === 0) return;
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({ name, holeCountText, description, courseType, terrain, difficulty, isFree, feeAmount, amenities: [...amenities], coverPhotoUrl, loc, holes, step, cur, ts: Date.now() }));
+      } catch {}
+    }, 800);
+    return () => clearTimeout(t);
+  }, [name, holeCountText, description, courseType, terrain, difficulty, isFree, feeAmount, amenities, coverPhotoUrl, loc, holes, step, cur, resume, DRAFT_KEY]);
+
+  // ---------- map ----------
   useEffect(() => {
     let cancelled = false;
     let ro: ResizeObserver | undefined;
@@ -104,91 +153,128 @@ export default function CourseBuilder({ uid }: { uid: string }) {
       if (cancelled) return;
       if (!elRef.current) { setMapErr("Map container didn't mount."); return; }
       mapboxgl.accessToken = TOKEN;
-      // satellite-streets shows roads + town/state boundaries & labels over the imagery (helps
-      // place pins accurately) vs plain satellite.
       const map = new mapboxgl.Map({ container: elRef.current, style: "mapbox://styles/mapbox/satellite-streets-v12", projection: "mercator", center: [-98.5, 39.5], zoom: 3.4, attributionControl: false });
       mapRef.current = map;
       map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
       map.addControl(new mapboxgl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: false, showUserLocation: true }), "top-right");
-      // Keep the canvas sized to its container (fixes a map rendered into a 0-size box).
+      map.on("error", (e: { error?: { message?: string; status?: number } }) => { const m = e?.error?.message || (e?.error?.status ? `HTTP ${e.error.status}` : ""); if (m) setMapErr(m); });
       ro = new ResizeObserver(() => { try { map.resize(); } catch {} });
       ro.observe(elRef.current);
-      // Surface the real Mapbox failure (token 403, WebGL, etc.) instead of a silent blank map.
-      map.on("error", (e: { error?: { message?: string; status?: number } }) => {
-        const m = e?.error?.message || (e?.error?.status ? `HTTP ${e.error.status}` : "");
-        if (m) setMapErr(m);
-      });
+
       map.on("load", () => {
         if (cancelled) return;
         map.resize();
-        // Default to the user's current location, zoomed in (they can pan/zoom from there).
-        if (typeof navigator !== "undefined" && navigator.geolocation) {
+        if (!hydrated.current && typeof navigator !== "undefined" && navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(
-            (pos) => { if (!cancelled) map.flyTo({ center: [pos.coords.longitude, pos.coords.latitude], zoom: 16, duration: 1200 }); },
-            () => {},
-            { enableHighAccuracy: true, timeout: 8000 },
+            (pos) => { if (!cancelled && !hydrated.current) map.flyTo({ center: [pos.coords.longitude, pos.coords.latitude], zoom: 16, duration: 1200 }); },
+            () => {}, { enableHighAccuracy: true, timeout: 8000 },
           );
         }
+        // basket pin image
         const img = new Image();
         img.onload = () => { try { const s = 2, w = 32 * s, h = 40 * s; const cv = document.createElement("canvas"); cv.width = w; cv.height = h; const c = cv.getContext("2d"); if (c) { c.drawImage(img, 0, 0, w, h); if (!map.hasImage("basket-pin")) map.addImage("basket-pin", c.getImageData(0, 0, w, h), { pixelRatio: 2 }); } } catch {} };
         img.src = "/basket-pin.svg";
+
         const empty: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
-        for (const id of ["lines", "tees", "baskets"]) map.addSource(id, { type: "geojson", data: empty });
-        map.addLayer({ id: "lines-casing", type: "line", source: "lines", layout: { "line-cap": "round" }, paint: { "line-color": "#0f1813", "line-width": 5, "line-opacity": ["case", ["get", "cur"], 0.6, 0.25] } });
-        map.addLayer({ id: "lines", type: "line", source: "lines", layout: { "line-cap": "round" }, paint: { "line-color": "#F6C165", "line-width": 2.5, "line-dasharray": [2, 1.4], "line-opacity": ["case", ["get", "cur"], 1, 0.4] } });
-        map.addLayer({ id: "baskets", type: "symbol", source: "baskets", layout: { "icon-image": "basket-pin", "icon-size": ["case", ["get", "cur"], 0.9, 0.6], "icon-anchor": "bottom", "icon-allow-overlap": true }, paint: { "icon-opacity": ["case", ["get", "cur"], 1, 0.45] } });
-        map.addLayer({ id: "tees", type: "symbol", source: "tees", layout: { "icon-image": ["get", "icon"], "icon-size": ["case", ["get", "cur"], 0.95, 0.65], "icon-allow-overlap": true }, paint: { "icon-opacity": ["case", ["get", "cur"], 1, 0.5] } });
+        for (const id of ["rings", "fairway", "tees", "baskets", "elbows"]) map.addSource(id, { type: "geojson", data: empty });
+        // C1/C2 putting rings (current hole basket)
+        map.addLayer({ id: "rings-fill", type: "fill", source: "rings", paint: { "fill-color": "#ffffff", "fill-opacity": ["case", ["==", ["get", "c"], 1], 0.08, 0.04] } });
+        map.addLayer({ id: "rings-line", type: "line", source: "rings", paint: { "line-color": "#ffffff", "line-opacity": ["case", ["==", ["get", "c"], 1], 0.35, 0.18], "line-width": 1 } });
+        // fairway line tee->elbows->basket
+        map.addLayer({ id: "fairway-casing", type: "line", source: "fairway", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#0f1813", "line-width": 5, "line-opacity": ["case", ["get", "cur"], 0.55, 0.2] } });
+        map.addLayer({ id: "fairway", type: "line", source: "fairway", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#F6C165", "line-width": ["case", ["get", "cur"], 3, 1.5], "line-opacity": ["case", ["get", "cur"], 1, 0.35] } });
+        // baskets (brand pin) + elbows + tee pads
+        map.addLayer({ id: "baskets", type: "symbol", source: "baskets", layout: { "icon-image": "basket-pin", "icon-size": ["case", ["get", "cur"], 0.85, 0.55], "icon-anchor": "bottom", "icon-allow-overlap": true }, paint: { "icon-opacity": ["case", ["get", "cur"], 1, 0.5] } });
+        map.addLayer({ id: "elbows", type: "symbol", source: "elbows", layout: { "icon-image": ["get", "icon"], "icon-size": 0.9, "icon-allow-overlap": true }, paint: { "icon-opacity": ["case", ["get", "cur"], 1, 0.4] } });
+        map.addLayer({ id: "tees", type: "symbol", source: "tees", layout: { "icon-image": ["get", "icon"], "icon-rotate": ["get", "rot"], "icon-rotation-alignment": "map", "icon-size": ["case", ["get", "cur"], 1, 0.7], "icon-allow-overlap": true }, paint: { "icon-opacity": ["case", ["get", "cur"], 1, 0.5] } });
         setMapReady(true);
       });
+
       map.on("click", (e: { lngLat: { lng: number; lat: number } }) => {
         if (stepRef.current !== 1) return;
         const i = curRef.current;
         const pt = { lat: e.lngLat.lat, lng: e.lngLat.lng };
         setHoles((hs) => {
-          setUndo((u) => [...u.slice(-29), hs.map((h) => ({ ...h }))]);
-          const next = hs.map((h) => ({ ...h }));
+          setUndo((u) => [...u.slice(-29), hs.map((h) => ({ ...h, elbows: [...h.elbows] }))]);
+          const next = hs.map((h) => ({ ...h, elbows: [...h.elbows] }));
           if (!next[i]) return hs;
           if (modeRef.current === "tee") { next[i].teeLat = pt.lat; next[i].teeLng = pt.lng; }
-          else { next[i].basketLat = pt.lat; next[i].basketLng = pt.lng; }
+          else if (modeRef.current === "basket") { next[i].basketLat = pt.lat; next[i].basketLng = pt.lng; }
+          else { next[i].elbows.push([pt.lng, pt.lat]); }
           return next;
         });
         if (modeRef.current === "tee") setMode("basket");
+        else if (modeRef.current === "basket") {
+          // auto-advance to next unmapped/next hole
+          setMode("tee");
+          setCur((c) => (c + 1 < holeCount ? c + 1 : c));
+        }
       });
      } catch (err) {
       setMapErr(err instanceof Error ? err.message : String(err));
      }
     })();
     return () => { cancelled = true; ro?.disconnect(); if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => { const m = mapRef.current; if (m?.getCanvas) m.getCanvas().style.cursor = step === 1 ? "crosshair" : ""; }, [step]);
   useEffect(() => { setTimeout(() => mapRef.current?.resize(), 60); }, [step]);
 
+  // render markers
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady || !map.getSource) return;
+    // tee pad icons (dark-green pad, hole number)
     for (let n = 1; n <= Math.max(holes.length, 1); n++) {
-      const id = `tee-${n}`;
+      const id = `teepad-${n}`;
       if (map.hasImage(id)) continue;
-      const s = 2, w = 30 * s, h = 30 * s, pad = 3 * s, r = 7 * s;
+      const s = 2, w = 30 * s, h = 16 * s;
       const cv = document.createElement("canvas"); cv.width = w; cv.height = h; const c = cv.getContext("2d"); if (!c) continue;
-      roundRectPath(c, pad, pad, w - 2 * pad, h - 2 * pad, r); c.fillStyle = "#F6C165"; c.fill();
-      c.lineWidth = 2 * s; c.strokeStyle = "#fff"; c.stroke();
-      c.fillStyle = "#16221b"; c.font = `bold ${13 * s}px sans-serif`; c.textAlign = "center"; c.textBaseline = "middle";
+      roundRectPath(c, 1 * s, 1 * s, w - 2 * s, h - 2 * s, 3 * s); c.fillStyle = "#16331f"; c.fill();
+      c.lineWidth = 1.5 * s; c.strokeStyle = "rgba(255,255,255,0.55)"; c.stroke();
+      c.fillStyle = "#fff"; c.font = `bold ${10 * s}px sans-serif`; c.textAlign = "center"; c.textBaseline = "middle";
       c.fillText(String(n), w / 2, h / 2 + s * 0.5);
       map.addImage(id, c.getImageData(0, 0, w, h), { pixelRatio: 2 });
     }
+    // elbow diamond icons
+    for (let n = 1; n <= 12; n++) {
+      const id = `elbow-${n}`;
+      if (map.hasImage(id)) continue;
+      const s = 2, sz = 18 * s;
+      const cv = document.createElement("canvas"); cv.width = sz; cv.height = sz; const c = cv.getContext("2d"); if (!c) continue;
+      c.translate(sz / 2, sz / 2); c.rotate(Math.PI / 4);
+      roundRectPath(c, -6 * s, -6 * s, 12 * s, 12 * s, 2 * s); c.fillStyle = "#E0752A"; c.fill();
+      c.rotate(-Math.PI / 4);
+      c.fillStyle = "#fff"; c.font = `bold ${9 * s}px sans-serif`; c.textAlign = "center"; c.textBaseline = "middle";
+      c.fillText(String(n), 0, s * 0.5);
+      map.addImage(id, c.getImageData(0, 0, sz, sz), { pixelRatio: 2 });
+    }
     const fc = (features: unknown[]) => ({ type: "FeatureCollection", features } as unknown as GeoJSON.FeatureCollection);
-    const lines: unknown[] = [], tees: unknown[] = [], baskets: unknown[] = [];
+    const rings: unknown[] = [], fairwayF: unknown[] = [], tees: unknown[] = [], baskets: unknown[] = [], elbowsF: unknown[] = [];
     holes.forEach((h, i) => {
       const isCur = i === cur;
-      if (h.teeLat != null && h.basketLat != null) lines.push({ type: "Feature", properties: { cur: isCur }, geometry: { type: "LineString", coordinates: [[h.teeLng, h.teeLat], [h.basketLng, h.basketLat]] } });
-      if (h.teeLat != null) tees.push({ type: "Feature", properties: { icon: `tee-${i + 1}`, cur: isCur }, geometry: { type: "Point", coordinates: [h.teeLng, h.teeLat] } });
-      if (h.basketLat != null) baskets.push({ type: "Feature", properties: { cur: isCur }, geometry: { type: "Point", coordinates: [h.basketLng, h.basketLat] } });
+      const path = fairway(h);
+      if (path.length >= 2) fairwayF.push({ type: "Feature", properties: { cur: isCur }, geometry: { type: "LineString", coordinates: path } });
+      if (h.teeLat != null) {
+        const target = h.elbows[0] ?? (h.basketLat != null ? [h.basketLng!, h.basketLat!] : null);
+        const rot = target ? bearing(h.teeLat, h.teeLng!, target[1], target[0]) - 90 : 0;
+        tees.push({ type: "Feature", properties: { icon: `teepad-${i + 1}`, rot, cur: isCur }, geometry: { type: "Point", coordinates: [h.teeLng, h.teeLat] } });
+      }
+      if (h.basketLat != null) {
+        baskets.push({ type: "Feature", properties: { cur: isCur }, geometry: { type: "Point", coordinates: [h.basketLng, h.basketLat] } });
+        if (isCur) {
+          rings.push({ type: "Feature", properties: { c: 2 }, geometry: { type: "Polygon", coordinates: [ringCoords(h.basketLng!, h.basketLat!, 66)] } });
+          rings.push({ type: "Feature", properties: { c: 1 }, geometry: { type: "Polygon", coordinates: [ringCoords(h.basketLng!, h.basketLat!, 33)] } });
+        }
+      }
+      h.elbows.forEach((e, ei) => elbowsF.push({ type: "Feature", properties: { icon: `elbow-${Math.min(ei + 1, 12)}`, cur: isCur }, geometry: { type: "Point", coordinates: e } }));
     });
-    map.getSource("lines").setData(fc(lines));
+    map.getSource("rings").setData(fc(rings));
+    map.getSource("fairway").setData(fc(fairwayF));
     map.getSource("tees").setData(fc(tees));
     map.getSource("baskets").setData(fc(baskets));
+    map.getSource("elbows").setData(fc(elbowsF));
   }, [holes, cur, mapReady]);
 
   async function geocode(e: React.FormEvent) {
@@ -197,7 +283,7 @@ export default function CourseBuilder({ uid }: { uid: string }) {
     try {
       const r = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?access_token=${TOKEN}&limit=1&types=place,locality,address,poi,region`);
       const f = (await r.json()).features?.[0];
-      if (f?.center) mapRef.current?.flyTo({ center: f.center, zoom: 15 });
+      if (f?.center) mapRef.current?.flyTo({ center: f.center, zoom: 16 });
     } catch {}
   }
 
@@ -236,14 +322,28 @@ export default function CourseBuilder({ uid }: { uid: string }) {
     const h = holes[i];
     if (h?.teeLat != null) mapRef.current?.flyTo({ center: [h.teeLng, h.teeLat], zoom: 17 });
   };
-  const doUndo = () => setUndo((u) => { if (!u.length) return u; const prev = u[u.length - 1]; setHoles(prev.map((h) => ({ ...h }))); return u.slice(0, -1); });
-  const clearHole = () => { setUndo((u) => [...u.slice(-29), holes.map((h) => ({ ...h }))]); setHoles((hs) => hs.map((h, i) => (i === cur ? { ...h, teeLat: undefined, teeLng: undefined, basketLat: undefined, basketLng: undefined } : h))); setMode("tee"); };
+  const doUndo = () => setUndo((u) => { if (!u.length) return u; const prev = u[u.length - 1]; setHoles(prev.map((h) => ({ ...h, elbows: [...h.elbows] }))); return u.slice(0, -1); });
+  const clearHole = () => { setUndo((u) => [...u.slice(-29), holes.map((h) => ({ ...h, elbows: [...h.elbows] }))]); setHoles((hs) => hs.map((h, i) => (i === cur ? { ...h, teeLat: undefined, teeLng: undefined, basketLat: undefined, basketLng: undefined, elbows: [] } : h))); setMode("tee"); };
   const setPar = (p: number) => setHoles((hs) => hs.map((h, i) => (i === cur ? { ...h, par: p } : h)));
   const setNotes = (v: string) => setHoles((hs) => hs.map((h, i) => (i === cur ? { ...h, notes: v } : h)));
 
+  async function onCoverFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]; if (!file) return;
+    setUploading(true); setError("");
+    try {
+      const r = storageRef(storage, `courses/${uid}/${courseId}/cover.jpg`);
+      await uploadBytes(r, file, { contentType: file.type || "image/jpeg" });
+      setCoverPhotoUrl(await getDownloadURL(r));
+    } catch (err) {
+      const er = err as { code?: string; message?: string };
+      setError(`Photo upload failed: ${er.code || er.message || "unknown error"}`);
+    }
+    setUploading(false);
+  }
+
   async function submit() {
     setError("");
-    const built: HoleDraft[] = holes.filter(mapped).map((h) => ({ par: h.par, teeLat: h.teeLat!, teeLng: h.teeLng!, basketLat: h.basketLat!, basketLng: h.basketLng!, notes: h.notes }));
+    const built: HoleDraft[] = holes.filter(mapped).map((h) => ({ par: h.par, teeLat: h.teeLat!, teeLng: h.teeLng!, basketLat: h.basketLat!, basketLng: h.basketLng!, notes: h.notes, elbows: h.elbows.map(([lng, lat]) => [lat, lng] as [number, number]) }));
     if (built.length === 0) { setError("Map at least one hole."); return; }
     if (dupes === null && loc) {
       const near = await findNearbyCourses(loc.lat, loc.lng, name);
@@ -257,12 +357,18 @@ export default function CourseBuilder({ uid }: { uid: string }) {
       isFree, courseFeeAmount: isFree ? 0 : Number(feeAmount) || 0, coverPhotoUrl, holes: built,
     }, courseId);
     if (!id) { setStatus("error"); setError("Couldn't save the course. Please try again."); return; }
+    try { localStorage.removeItem(DRAFT_KEY); } catch {}
     router.push(`/courses/${slugify(name, id)}`);
   }
 
   const curHole = holes[cur];
   const mappedCount = holes.filter(mapped).length;
   const totalPar = holes.reduce((s, h) => s + (h.par || 0), 0);
+  const MODES: { k: Mode; label: string; color: string }[] = [
+    { k: "tee", label: curHole?.teeLat != null ? "✓ Tee" : "Tee", color: "#16331f" },
+    { k: "basket", label: curHole?.basketLat != null ? "✓ Basket" : "Basket", color: "#F6C165" },
+    { k: "elbow", label: `Dogleg${curHole?.elbows.length ? ` (${curHole.elbows.length})` : ""}`, color: "#E0752A" },
+  ];
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-10">
@@ -270,11 +376,10 @@ export default function CourseBuilder({ uid }: { uid: string }) {
         <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
         Back to my courses
       </Link>
-      {/* header + stepper */}
       <div className="mb-7">
         <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#9a7a3a]">Course builder</div>
         <h1 className="mt-1.5 font-[family-name:var(--font-heading)] text-4xl font-extrabold tracking-[-0.03em] text-[#16221b]">Build a course</h1>
-        <p className="mt-2 max-w-xl text-sm text-[#6b7a70]">Map your local course hole by hole. It&apos;s saved as a private <span className="font-semibold text-[#46554c]">draft</span> — only you can see it until it&apos;s reviewed and published.</p>
+        <p className="mt-2 max-w-xl text-sm text-[#6b7a70]">Map your local course hole by hole. It auto-saves as a private <span className="font-semibold text-[#46554c]">draft</span> — only you can see it until it&apos;s reviewed and published.</p>
         <div className="mt-5 inline-flex items-center gap-1 rounded-2xl border border-black/[0.06] bg-white p-1.5 shadow-sm">
           {STEPS.map((s, i) => (
             <div key={s} className="flex items-center">
@@ -288,8 +393,17 @@ export default function CourseBuilder({ uid }: { uid: string }) {
         </div>
       </div>
 
+      {resume && (
+        <div className="mb-5 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--gold)]/40 bg-[var(--gold)]/10 px-4 py-3">
+          <span className="text-sm font-semibold text-[#9a7a3a]">You have an unfinished course draft.</span>
+          <div className="ml-auto flex gap-2">
+            <button onClick={() => resume()} className="rounded-full bg-[#16221b] px-4 py-2 text-xs font-bold text-[var(--cream)] hover:bg-[#22332a]">Resume draft</button>
+            <button onClick={() => { try { localStorage.removeItem(DRAFT_KEY); } catch {} setResume(null); }} className="rounded-full border border-black/10 bg-white px-4 py-2 text-xs font-bold text-[#46554c] hover:border-black/20">Start fresh</button>
+          </div>
+        </div>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-[440px_1fr]">
-        {/* LEFT — step controls in a premium card */}
         <div className="min-w-0">
           <div className="rounded-3xl border border-black/[0.07] bg-white p-6 shadow-[0_18px_50px_-26px_rgba(15,24,19,0.32)]">
           {step === 0 && (
@@ -297,7 +411,7 @@ export default function CourseBuilder({ uid }: { uid: string }) {
               <label className="block"><span className={LABEL}>Course name *</span><input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Maple Hill" className={FIELD} /></label>
               <div>
                 <span className={LABEL}>Location *</span>
-                <form onSubmit={geocode} className="flex gap-2"><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search a town to fly the map…" className={FIELD} /><button type="submit" className="shrink-0 rounded-xl border border-black/[0.08] bg-white px-4 text-sm font-bold text-[#16221b] transition-colors hover:border-[var(--gold)]">Find</button></form>
+                <form onSubmit={geocode} className="flex gap-2"><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search an address or town…" className={FIELD} /><button type="submit" className="shrink-0 rounded-xl border border-black/[0.08] bg-white px-4 text-sm font-bold text-[#16221b] transition-colors hover:border-[var(--gold)]">Find</button></form>
                 <button onClick={setLocationToCenter} className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--gold)]/40 bg-[var(--gold)]/10 py-2.5 text-sm font-bold text-[#9a7a3a] transition-colors hover:bg-[var(--gold)]/20">
                   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.1 2 5 5.1 5 9c0 5.2 7 13 7 13s7-7.8 7-13c0-3.9-3.1-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z" /></svg>
                   Set location to map center
@@ -349,15 +463,14 @@ export default function CourseBuilder({ uid }: { uid: string }) {
                 ))}
               </div>
               <div className="rounded-2xl border border-black/[0.07] bg-[#faf9f5] p-4">
-                <div className="mb-3 flex items-center justify-between"><span className="font-[family-name:var(--font-heading)] text-lg font-extrabold text-[#16221b]">Hole {cur + 1}</span>{curHole && mapped(curHole) && <span className="rounded-full bg-[var(--gold)]/20 px-2.5 py-1 text-xs font-bold text-[#9a7a3a]">{distanceFt(curHole.teeLat!, curHole.teeLng!, curHole.basketLat!, curHole.basketLng!)} ft</span>}</div>
-                <div className="mb-3 flex gap-2">
-                  <button onClick={() => setMode("tee")} className={`flex-1 rounded-full py-2.5 text-sm font-bold transition-all ${mode === "tee" ? "bg-[#16221b] text-[var(--cream)]" : "border border-black/[0.08] bg-white text-[#46554c]"}`}>{curHole?.teeLat != null ? "✓ " : ""}Tee</button>
-                  <button onClick={() => setMode("basket")} className={`flex-1 rounded-full py-2.5 text-sm font-bold transition-all ${mode === "basket" ? "bg-[var(--gold)] text-[#16221b]" : "border border-black/[0.08] bg-white text-[#46554c]"}`}>{curHole?.basketLat != null ? "✓ " : ""}Basket</button>
+                <div className="mb-3 flex items-center justify-between"><span className="font-[family-name:var(--font-heading)] text-lg font-extrabold text-[#16221b]">Hole {cur + 1}</span>{curHole && mapped(curHole) && <span className="rounded-full bg-[var(--gold)]/20 px-2.5 py-1 text-xs font-bold text-[#9a7a3a]">{holeDistFt(curHole)} ft</span>}</div>
+                <div className="mb-3 grid grid-cols-3 gap-2">
+                  {MODES.map((m) => <button key={m.k} onClick={() => setMode(m.k)} className={`rounded-full py-2 text-xs font-bold transition-all ${mode === m.k ? "text-white shadow" : "border border-black/[0.08] bg-white text-[#46554c]"}`} style={mode === m.k ? { background: m.color } : undefined}>{m.label}</button>)}
                 </div>
-                <p className="mb-3 text-xs text-[#6b7a70]">{mode === "tee" ? "Click the map to drop the TEE." : "Click the map to drop the BASKET."}</p>
+                <p className="mb-3 text-xs text-[#6b7a70]">{mode === "tee" ? "Click the map to drop the TEE." : mode === "basket" ? "Click the map to drop the BASKET." : "Click to add a dogleg/bend point along the fairway."}</p>
                 <div className="mb-3"><span className={LABEL}>Par</span><div className="flex gap-2">{[2, 3, 4, 5].map((p) => <button key={p} onClick={() => setPar(p)} className={pill(curHole?.par === p) + " py-2"}>{p}</button>)}</div></div>
                 <label className="block"><span className={LABEL}>Notes</span><input value={curHole?.notes ?? ""} onChange={(e) => setNotes(e.target.value)} placeholder="Optional — OB, mando, tips…" className={FIELD.replace("bg-[#faf9f5]", "bg-white")} /></label>
-                {curHole && (curHole.teeLat != null || curHole.basketLat != null) && <button onClick={clearHole} className="mt-3 text-xs font-bold text-[#e0857d] hover:underline">Clear this hole&apos;s pins</button>}
+                {curHole && (curHole.teeLat != null || curHole.basketLat != null || curHole.elbows.length > 0) && <button onClick={clearHole} className="mt-3 text-xs font-bold text-[#e0857d] hover:underline">Clear this hole</button>}
               </div>
               {error && <p className="text-sm font-medium text-[#d9473f]">{error}</p>}
               <div className="flex gap-2">
@@ -375,7 +488,7 @@ export default function CourseBuilder({ uid }: { uid: string }) {
                 <div className="mt-4 grid grid-cols-3 gap-2 text-center">
                   <div className="rounded-xl bg-white py-3 shadow-sm"><div className="font-[family-name:var(--font-heading)] text-2xl font-extrabold text-[#16221b]">{holeCount}</div><div className="text-[10px] uppercase tracking-wide text-[#8a968d]">Holes</div></div>
                   <div className="rounded-xl bg-white py-3 shadow-sm"><div className="font-[family-name:var(--font-heading)] text-2xl font-extrabold text-[#16221b]">{totalPar}</div><div className="text-[10px] uppercase tracking-wide text-[#8a968d]">Par</div></div>
-                  <div className="rounded-xl bg-white py-3 shadow-sm"><div className="font-[family-name:var(--font-heading)] text-2xl font-extrabold text-[#16221b]">{(holes.reduce((s, h) => s + (mapped(h) ? distanceFt(h.teeLat!, h.teeLng!, h.basketLat!, h.basketLng!) : 0), 0)).toLocaleString()}</div><div className="text-[10px] uppercase tracking-wide text-[#8a968d]">Feet</div></div>
+                  <div className="rounded-xl bg-white py-3 shadow-sm"><div className="font-[family-name:var(--font-heading)] text-2xl font-extrabold text-[#16221b]">{holes.reduce((s, h) => s + (mapped(h) ? holeDistFt(h) : 0), 0).toLocaleString()}</div><div className="text-[10px] uppercase tracking-wide text-[#8a968d]">Feet</div></div>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-1.5 text-[11px]">
                   <span className="rounded-full bg-white px-2.5 py-1 font-bold text-[#46554c] shadow-sm">{courseType}</span>
@@ -401,21 +514,11 @@ export default function CourseBuilder({ uid }: { uid: string }) {
           </div>
         </div>
 
-        {/* RIGHT — map. Outer = sticky grid item (may stretch). Inner relative = the EXACT map box,
-            so the overlay (pin/instructions) aligns to the map, not the stretched column. The map
-            div keeps an explicit height (an absolute-inset-0 map makes Mapbox build a 0-size canvas). */}
         <div className="lg:sticky lg:top-24">
           <div className="relative">
             <div ref={elRef} className="h-[460px] w-full overflow-hidden rounded-3xl border border-black/[0.07] bg-[#e9e4d8] shadow-[0_18px_50px_-26px_rgba(15,24,19,0.32)] lg:h-[640px]" />
             <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl">
-              {step === 0 && (
-                <>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/basket-pin.svg" alt="" className="absolute left-1/2 top-1/2 h-12 w-12 -translate-x-1/2 -translate-y-full drop-shadow-[0_6px_10px_rgba(0,0,0,0.45)]" />
-                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[var(--bg-deep)]/85 px-4 py-1.5 text-xs font-semibold text-[var(--cream)] backdrop-blur">Center the map, then “Set location”</div>
-                </>
-              )}
-              {step === 1 && <div className="absolute left-3 top-3 whitespace-nowrap rounded-xl bg-[var(--bg-deep)]/85 px-3 py-2 text-xs font-bold text-[var(--cream)] backdrop-blur">Hole {cur + 1} · placing {mode}</div>}
+              {step === 1 && <div className="absolute left-3 top-3 whitespace-nowrap rounded-xl bg-[var(--bg-deep)]/85 px-3 py-2 text-xs font-bold text-[var(--cream)] backdrop-blur">Hole {cur + 1} · placing {mode === "elbow" ? "dogleg" : mode}</div>}
               {mapErr && <div className="absolute inset-x-3 bottom-3 rounded-xl bg-[#d9473f] px-3 py-2 text-xs font-semibold text-white shadow-lg">Map error: {mapErr}</div>}
             </div>
           </div>
