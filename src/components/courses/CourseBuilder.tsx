@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { createCourse, findNearbyCourses, distanceFt, slugify, type HoleDraft, type Course } from "@/lib/courses";
 
@@ -206,6 +207,10 @@ export default function CourseBuilder({ uid }: { uid: string }) {
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-10">
+      <Link href="/courses/mine" className="mb-5 inline-flex items-center gap-1.5 text-sm font-semibold text-[#6b7a70] transition-colors hover:text-[#16221b]">
+        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+        Back to my courses
+      </Link>
       {/* header + stepper */}
       <div className="mb-7">
         <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#9a7a3a]">Course builder</div>
