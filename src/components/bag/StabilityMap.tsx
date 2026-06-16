@@ -9,10 +9,11 @@ const CREAM = "#F5EDE1";
 const GOLD = "#F6C165";
 const GRID = "rgba(245,237,225,0.09)";
 const GRID_STRONG = "rgba(245,237,225,0.22)";
-const DIM = "rgba(168,179,145,0.55)";
+const DIM = "rgba(168,179,145,0.6)";
 const BODY = "rgba(245,237,225,0.72)";
+const FONT = "'Sora', system-ui, -apple-system, sans-serif";
 
-type Pt = { name: string; speed: number; stab: number; cat: Cat; color: string };
+type Pt = { name: string; speed: number; stab: number; glide?: number; turn?: number; fade?: number; cat: Cat; color: string };
 
 /** Effective flight (custom wear overrides win), then map to a plottable point. */
 function toPoints(discs: FlightDisc[]): Pt[] {
@@ -22,7 +23,7 @@ function toPoints(discs: FlightDisc[]): Pt[] {
       const turn = d.customTurn ?? d.turn;
       const fade = d.customFade ?? d.fade;
       if (speed == null || turn == null || fade == null) return null;
-      return { name: d.nickname || d.name, speed, stab: turn + fade, cat: d.category, color: CAT_META[d.category].color };
+      return { name: d.nickname || d.name, speed, stab: turn + fade, glide: d.customGlide ?? d.glide, turn, fade, cat: d.category, color: CAT_META[d.category].color };
     })
     .filter(Boolean) as Pt[];
 }
@@ -32,15 +33,14 @@ interface Ranges { xHi: number; xLo: number; yHi: number; yLo: number; }
 function ranges(pts: Pt[]): Ranges {
   const stabs = pts.map((p) => p.stab);
   const sps = pts.map((p) => p.speed);
-  const xHi = Math.max(2, Math.ceil(Math.max(...stabs)) + 1);   // left = most overstable
-  const xLo = Math.min(-1, Math.floor(Math.min(...stabs)) - 1); // right = most understable
-  const yHi = Math.min(16, Math.ceil(Math.max(...sps)) + 1);    // top = fastest
-  const yLo = Math.max(0, Math.floor(Math.min(...sps)) - 1);    // bottom (room for labels)
+  const xHi = Math.max(2, Math.ceil(Math.max(...stabs)) + 1);
+  const xLo = Math.min(-1, Math.floor(Math.min(...stabs)) - 1);
+  const yHi = Math.min(16, Math.ceil(Math.max(...sps)) + 1);
+  const yLo = Math.max(0, Math.floor(Math.min(...sps)) - 1);
   return { xHi, xLo, yHi, yLo };
 }
 
 interface Placed { p: Pt; x: number; y: number; gi: number; gn: number; }
-/** Place points; spread any sharing an integer cell so dots + labels don't collide. */
 function plot(pts: Pt[], r: Ranges, gx: number, gy: number, gw: number, gh: number, maxSpread: number) {
   const sx = (stab: number) => gx + ((r.xHi - stab) / (r.xHi - r.xLo)) * gw;
   const sy = (speed: number) => gy + ((r.yHi - speed) / (r.yHi - r.yLo)) * gh;
@@ -64,86 +64,13 @@ function plot(pts: Pt[], r: Ranges, gx: number, gy: number, gw: number, gh: numb
 }
 
 const ticksDown = (hi: number, lo: number) => { const a: number[] = []; for (let v = hi; v >= lo; v--) a.push(v); return a; };
+const fmtNum = (n?: number) => (n == null ? "—" : n);
 
-/* ----------------------------- Branded export SVG (DiscRPM-style) ----------------------------- */
-const W = 1080, H = 1350;
-
-function BrandedChart({ pts, discCount, svgRef, style }: { pts: Pt[]; discCount: number; svgRef: React.Ref<SVGSVGElement>; style?: React.CSSProperties }) {
-  const r = ranges(pts);
-  const gx = 132, gridRight = W - 60;
-  const gy = 232;
-  const footerY = H - 92;
-  const gw = gridRight - gx;
-  const gh = footerY - 44 - gy;
-  const placed = plot(pts, r, gx, gy, gw, gh, 46);
-  const tx = (v: number) => gx + ((r.xHi - v) / (r.xHi - r.xLo)) * gw;
-  const ty = (v: number) => gy + ((r.yHi - v) / (r.yHi - r.yLo)) * gh;
-  const cats: Cat[] = (["DISTANCE", "FAIRWAY", "MIDRANGE", "PUTTER"] as Cat[]).filter((c) => pts.some((p) => p.cat === c));
-  const FONT = "'Sora', system-ui, -apple-system, sans-serif";
-
-  return (
-    <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} style={{ display: "block", fontFamily: FONT, ...style }} xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <radialGradient id="rad-glow" cx="84%" cy="6%" r="62%">
-          <stop offset="0%" stopColor="rgba(246,193,101,0.15)" />
-          <stop offset="70%" stopColor="rgba(246,193,101,0)" />
-        </radialGradient>
-      </defs>
-      <rect x={0} y={0} width={W} height={H} fill={BG} />
-      <rect x={0} y={0} width={W} height={H} fill="url(#rad-glow)" />
-
-      {/* header */}
-      <text x={60} y={68} fill={GOLD} fontSize={20} fontWeight={700} letterSpacing={4}>RADIUS · MY BAG</text>
-      <text x={60} y={120} fill={CREAM} fontSize={54} fontWeight={800} letterSpacing={-1.6}>Bag Stability Map</text>
-      <text x={W - 60} y={90} fill={CREAM} fontSize={34} fontWeight={800} textAnchor="end">{discCount}</text>
-      <text x={W - 60} y={118} fill={DIM} fontSize={18} fontWeight={600} letterSpacing={2} textAnchor="end">DISCS</text>
-
-      {/* axis titles */}
-      <text x={(gx + gridRight) / 2} y={172} fill={BODY} fontSize={25} fontWeight={700} textAnchor="middle">Stability (Turn + Fade)</text>
-      <text x={gx} y={204} fill={DIM} fontSize={17} fontWeight={700} letterSpacing={1.5}>OVERSTABLE</text>
-      <text x={gridRight} y={204} fill={DIM} fontSize={17} fontWeight={700} letterSpacing={1.5} textAnchor="end">UNDERSTABLE</text>
-      <text x={40} y={gy + gh / 2} fill={BODY} fontSize={22} fontWeight={700} textAnchor="middle" transform={`rotate(-90 40 ${gy + gh / 2})`}>Speed</text>
-
-      {/* full grid */}
-      {ticksDown(r.xHi, r.xLo).map((v) => (
-        <g key={`x${v}`}>
-          <line x1={tx(v)} y1={gy} x2={tx(v)} y2={gy + gh} stroke={v === 0 ? GOLD : GRID} strokeWidth={v === 0 ? 1.5 : 1} strokeDasharray={v === 0 ? "7 8" : undefined} opacity={v === 0 ? 0.5 : 1} />
-          <text x={tx(v)} y={gy - 14} fill={v === 0 ? GOLD : DIM} fontSize={19} fontWeight={700} textAnchor="middle">{v > 0 ? `+${v}` : v}</text>
-        </g>
-      ))}
-      {ticksDown(r.yHi, r.yLo).map((v) => (
-        <g key={`y${v}`}>
-          <line x1={gx} y1={ty(v)} x2={gridRight} y2={ty(v)} stroke={GRID} strokeWidth={1} />
-          <text x={gx - 18} y={ty(v) + 6} fill={DIM} fontSize={19} fontWeight={700} textAnchor="end">{v}</text>
-        </g>
-      ))}
-      <rect x={gx} y={gy} width={gw} height={gh} fill="none" stroke={GRID_STRONG} strokeWidth={1.5} />
-
-      {/* discs */}
-      {placed.map(({ p, x, y, gi, gn }, i) => (
-        <g key={i}>
-          <circle cx={x} cy={y} r={14} fill={p.color} stroke={BG} strokeWidth={3} />
-          <text x={x} y={y + 33 + (gn > 1 ? (gi % 2) * 22 : 0)} fill={CREAM} fontSize={18} fontWeight={600} textAnchor="middle">{p.name.length > 13 ? p.name.slice(0, 12) + "…" : p.name}</text>
-        </g>
-      ))}
-
-      {/* footer: legend + wordmark */}
-      {cats.map((c, i) => (
-        <g key={c} transform={`translate(${60 + i * 188}, ${footerY + 40})`}>
-          <circle cx={9} cy={-6} r={9} fill={CAT_META[c].color} />
-          <text x={28} y={0} fill={BODY} fontSize={20} fontWeight={600}>{CAT_META[c].short}</text>
-        </g>
-      ))}
-      <text x={W - 60} y={footerY + 18} fill={CREAM} fontSize={28} fontWeight={700} letterSpacing={-0.9} textAnchor="end">Radius</text>
-      <text x={W - 60} y={footerY + 46} fill={DIM} fontSize={17} fontWeight={500} textAnchor="end">radiusdiscgolf.com</text>
-    </svg>
-  );
-}
-
-/* ----------------------------- Compact preview (fills its box exactly) ----------------------------- */
-function PreviewChart({ pts }: { pts: Pt[] }) {
+/* ----------------------------- Interactive on-screen chart (just the chart, fills its box) ----------------------------- */
+function ChartCore({ pts, big }: { pts: Pt[]; big: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
+  const [hover, setHover] = useState<number | null>(null);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -157,42 +84,140 @@ function PreviewChart({ pts }: { pts: Pt[] }) {
 
   const r = ranges(pts);
   const { w, h } = size;
-  const gx = 26, gyTop = 16, gw = Math.max(0, w - gx - 12), gh = Math.max(0, h - gyTop - 14);
-  const placed = w > 0 ? plot(pts, r, gx, gyTop, gw, gh, 18) : [];
+  const padL = big ? 46 : 26, padT = big ? 40 : 16, padR = big ? 18 : 12, padB = big ? 18 : 14;
+  const gx = padL, gy = padT, gw = Math.max(0, w - padL - padR), gh = Math.max(0, h - padT - padB);
+  const placed = w > 0 ? plot(pts, r, gx, gy, gw, gh, big ? 30 : 18) : [];
   const tx = (v: number) => gx + ((r.xHi - v) / (r.xHi - r.xLo)) * gw;
-  const ty = (v: number) => gyTop + ((r.yHi - v) / (r.yHi - r.yLo)) * gh;
-  const dotR = Math.max(3.5, Math.min(6, Math.min(w, h) / 42));
+  const ty = (v: number) => gy + ((r.yHi - v) / (r.yHi - r.yLo)) * gh;
+  const dotR = big ? Math.max(6, Math.min(11, Math.min(w, h) / 52)) : Math.max(3.5, Math.min(6, Math.min(w, h) / 42));
+  const nameFont = Math.max(9, Math.min(15, w / 64));
+  const tickFont = big ? Math.max(10, Math.min(15, w / 70)) : 9;
+  const ht = hover != null ? placed[hover] : null;
 
   return (
-    <div ref={ref} className="h-full w-full">
+    <div ref={ref} className="relative h-full w-full">
       {w > 0 && (
-        <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ display: "block" }}>
+        <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ display: "block", fontFamily: FONT }}>
+          {/* grid */}
           {ticksDown(r.xHi, r.xLo).map((v) => (
-            <line key={`x${v}`} x1={tx(v)} y1={gyTop} x2={tx(v)} y2={gyTop + gh} stroke={v === 0 ? "rgba(246,193,101,0.4)" : GRID} strokeWidth={1} strokeDasharray={v === 0 ? "4 5" : undefined} />
+            <g key={`x${v}`}>
+              <line x1={tx(v)} y1={gy} x2={tx(v)} y2={gy + gh} stroke={v === 0 ? "rgba(246,193,101,0.4)" : GRID} strokeWidth={1} strokeDasharray={v === 0 ? "5 6" : undefined} />
+              {big && <text x={tx(v)} y={gy - 10} fill={v === 0 ? GOLD : DIM} fontSize={tickFont} fontWeight={700} textAnchor="middle">{v > 0 ? `+${v}` : v}</text>}
+            </g>
           ))}
           {ticksDown(r.yHi, r.yLo).map((v) => (
-            <line key={`y${v}`} x1={gx} y1={ty(v)} x2={gx + gw} y2={ty(v)} stroke={GRID} strokeWidth={1} />
+            <g key={`y${v}`}>
+              <line x1={gx} y1={ty(v)} x2={gx + gw} y2={ty(v)} stroke={GRID} strokeWidth={1} />
+              {big && <text x={gx - 12} y={ty(v) + tickFont * 0.36} fill={DIM} fontSize={tickFont} fontWeight={700} textAnchor="end">{v}</text>}
+            </g>
           ))}
-          <rect x={gx} y={gyTop} width={gw} height={gh} fill="none" stroke={GRID_STRONG} strokeWidth={1} />
-          <text x={gx + 2} y={11} fill={DIM} fontSize={9} fontWeight={700} letterSpacing={1}>OVER</text>
-          <text x={gx + gw} y={11} fill={DIM} fontSize={9} fontWeight={700} letterSpacing={1} textAnchor="end">UNDER</text>
-          {placed.map(({ p, x, y }, i) => (
-            <circle key={i} cx={x} cy={y} r={dotR} fill={p.color} stroke={BG} strokeWidth={1.5} />
-          ))}
+          <rect x={gx} y={gy} width={gw} height={gh} fill="none" stroke={GRID_STRONG} strokeWidth={1} />
+          {big ? (
+            <>
+              <text x={gx} y={gy - 24} fill={DIM} fontSize={tickFont} fontWeight={700} letterSpacing={1}>OVERSTABLE</text>
+              <text x={gx + gw} y={gy - 24} fill={DIM} fontSize={tickFont} fontWeight={700} letterSpacing={1} textAnchor="end">UNDERSTABLE</text>
+              <text x={14} y={gy + gh / 2} fill={BODY} fontSize={tickFont} fontWeight={700} textAnchor="middle" transform={`rotate(-90 14 ${gy + gh / 2})`}>Speed</text>
+            </>
+          ) : (
+            <>
+              <text x={gx + 2} y={11} fill={DIM} fontSize={9} fontWeight={700} letterSpacing={1}>OVER</text>
+              <text x={gx + gw} y={11} fill={DIM} fontSize={9} fontWeight={700} letterSpacing={1} textAnchor="end">UNDER</text>
+            </>
+          )}
+
+          {/* discs */}
+          {placed.map(({ p, x, y, gi, gn }, i) => {
+            const on = hover === i;
+            return (
+              <g key={i} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover((h) => (h === i ? null : h))} style={{ cursor: big ? "pointer" : "default" }}>
+                {big && <circle cx={x} cy={y} r={dotR + 12} fill="transparent" />}
+                <circle cx={x} cy={y} r={on ? dotR + 2 : dotR} fill={p.color} stroke={BG} strokeWidth={big ? 2.5 : 1.5} opacity={hover != null && !on ? 0.45 : 1} />
+                {big && <text x={x} y={y + dotR + nameFont + (gn > 1 ? (gi % 2) * (nameFont + 3) : 0)} fill={CREAM} fontSize={nameFont} fontWeight={600} textAnchor="middle" opacity={hover != null && !on ? 0.4 : 0.92}>{p.name.length > 13 ? p.name.slice(0, 12) + "…" : p.name}</text>}
+              </g>
+            );
+          })}
         </svg>
+      )}
+      {/* hover tooltip (HTML overlay, kept out of the exported SVG) */}
+      {big && ht && w > 0 && (
+        <div
+          className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-xl border border-white/10 bg-black/85 px-3 py-2 backdrop-blur-sm"
+          style={{ left: `${(ht.x / w) * 100}%`, top: `${((ht.y - dotR - 6) / h) * 100}%` }}
+        >
+          <div className="whitespace-nowrap text-sm font-bold text-[var(--cream)]">{ht.p.name}</div>
+          <div className="mt-0.5 whitespace-nowrap font-mono text-xs text-[var(--gold)]">{fmtNum(ht.p.speed)} / {fmtNum(ht.p.glide)} / {fmtNum(ht.p.turn)} / {fmtNum(ht.p.fade)}</div>
+        </div>
       )}
     </div>
   );
 }
 
+/* ----------------------------- Branded export SVG (portrait, for sharing) ----------------------------- */
+const W = 1080, H = 1350;
+function BrandedChart({ pts, discCount, svgRef }: { pts: Pt[]; discCount: number; svgRef: React.Ref<SVGSVGElement> }) {
+  const r = ranges(pts);
+  const gx = 132, gridRight = W - 60;
+  const gy = 232;
+  const footerY = H - 92;
+  const gw = gridRight - gx;
+  const gh = footerY - 44 - gy;
+  const placed = plot(pts, r, gx, gy, gw, gh, 46);
+  const tx = (v: number) => gx + ((r.xHi - v) / (r.xHi - r.xLo)) * gw;
+  const ty = (v: number) => gy + ((r.yHi - v) / (r.yHi - r.yLo)) * gh;
+  const cats: Cat[] = (["DISTANCE", "FAIRWAY", "MIDRANGE", "PUTTER"] as Cat[]).filter((c) => pts.some((p) => p.cat === c));
+
+  return (
+    <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} width={W} height={H} style={{ display: "block", fontFamily: FONT }} xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="rad-glow" cx="84%" cy="6%" r="62%">
+          <stop offset="0%" stopColor="rgba(246,193,101,0.15)" />
+          <stop offset="70%" stopColor="rgba(246,193,101,0)" />
+        </radialGradient>
+      </defs>
+      <rect x={0} y={0} width={W} height={H} fill={BG} />
+      <rect x={0} y={0} width={W} height={H} fill="url(#rad-glow)" />
+      <text x={60} y={68} fill={GOLD} fontSize={20} fontWeight={700} letterSpacing={4}>RADIUS · MY BAG</text>
+      <text x={60} y={120} fill={CREAM} fontSize={54} fontWeight={800} letterSpacing={-1.6}>Bag Stability Map</text>
+      <text x={W - 60} y={90} fill={CREAM} fontSize={34} fontWeight={800} textAnchor="end">{discCount}</text>
+      <text x={W - 60} y={118} fill={DIM} fontSize={18} fontWeight={600} letterSpacing={2} textAnchor="end">DISCS</text>
+      <text x={(gx + gridRight) / 2} y={172} fill={BODY} fontSize={25} fontWeight={700} textAnchor="middle">Stability (Turn + Fade)</text>
+      <text x={gx} y={204} fill={DIM} fontSize={17} fontWeight={700} letterSpacing={1.5}>OVERSTABLE</text>
+      <text x={gridRight} y={204} fill={DIM} fontSize={17} fontWeight={700} letterSpacing={1.5} textAnchor="end">UNDERSTABLE</text>
+      <text x={40} y={gy + gh / 2} fill={BODY} fontSize={22} fontWeight={700} textAnchor="middle" transform={`rotate(-90 40 ${gy + gh / 2})`}>Speed</text>
+      {ticksDown(r.xHi, r.xLo).map((v) => (
+        <g key={`x${v}`}>
+          <line x1={tx(v)} y1={gy} x2={tx(v)} y2={gy + gh} stroke={v === 0 ? GOLD : GRID} strokeWidth={v === 0 ? 1.5 : 1} strokeDasharray={v === 0 ? "7 8" : undefined} opacity={v === 0 ? 0.5 : 1} />
+          <text x={tx(v)} y={gy - 14} fill={v === 0 ? GOLD : DIM} fontSize={19} fontWeight={700} textAnchor="middle">{v > 0 ? `+${v}` : v}</text>
+        </g>
+      ))}
+      {ticksDown(r.yHi, r.yLo).map((v) => (
+        <g key={`y${v}`}>
+          <line x1={gx} y1={ty(v)} x2={gridRight} y2={ty(v)} stroke={GRID} strokeWidth={1} />
+          <text x={gx - 18} y={ty(v) + 6} fill={DIM} fontSize={19} fontWeight={700} textAnchor="end">{v}</text>
+        </g>
+      ))}
+      <rect x={gx} y={gy} width={gw} height={gh} fill="none" stroke={GRID_STRONG} strokeWidth={1.5} />
+      {placed.map(({ p, x, y, gi, gn }, i) => (
+        <g key={i}>
+          <circle cx={x} cy={y} r={14} fill={p.color} stroke={BG} strokeWidth={3} />
+          <text x={x} y={y + 33 + (gn > 1 ? (gi % 2) * 22 : 0)} fill={CREAM} fontSize={18} fontWeight={600} textAnchor="middle">{p.name.length > 13 ? p.name.slice(0, 12) + "…" : p.name}</text>
+        </g>
+      ))}
+      {cats.map((c, i) => (
+        <g key={c} transform={`translate(${60 + i * 188}, ${footerY + 40})`}>
+          <circle cx={9} cy={-6} r={9} fill={CAT_META[c].color} />
+          <text x={28} y={0} fill={BODY} fontSize={20} fontWeight={600}>{CAT_META[c].short}</text>
+        </g>
+      ))}
+      <text x={W - 60} y={footerY + 18} fill={CREAM} fontSize={28} fontWeight={700} letterSpacing={-0.9} textAnchor="end">Radius</text>
+      <text x={W - 60} y={footerY + 46} fill={DIM} fontSize={17} fontWeight={500} textAnchor="end">radiusdiscgolf.com</text>
+    </svg>
+  );
+}
+
 /* ----------------------------- PNG export ----------------------------- */
 function downloadPng(svg: SVGSVGElement, filename: string, scale = 2) {
-  const clone = svg.cloneNode(true) as SVGSVGElement;
-  clone.setAttribute("width", String(W));
-  clone.setAttribute("height", String(H));
-  clone.removeAttribute("style");
-  clone.setAttribute("style", "font-family:'Sora',system-ui,sans-serif");
-  const xml = new XMLSerializer().serializeToString(clone);
+  const xml = new XMLSerializer().serializeToString(svg);
   const src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(xml);
   const img = new Image();
   img.onload = () => {
@@ -231,6 +256,7 @@ export default function StabilityMap({ discs, className = "" }: { discs: FlightD
   }, [open]);
 
   if (pts.length === 0) return null;
+  const cats: Cat[] = (["DISTANCE", "FAIRWAY", "MIDRANGE", "PUTTER"] as Cat[]).filter((c) => pts.some((p) => p.cat === c));
 
   return (
     <>
@@ -246,34 +272,55 @@ export default function StabilityMap({ discs, className = "" }: { discs: FlightD
           </span>
         </div>
         <div className="min-h-0 flex-1">
-          <PreviewChart pts={pts} />
+          <ChartCore pts={pts} big={false} />
         </div>
       </button>
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-3 backdrop-blur-sm sm:p-6" onClick={() => setOpen(false)}>
           <div
-            className="relative flex w-auto max-w-[96vw] flex-col overflow-hidden rounded-3xl bg-[var(--bg-deep)] ring-1 ring-white/10"
-            style={{ height: "min(94vh, 1240px)" }}
+            className="relative flex w-[min(96vw,1060px)] flex-col overflow-hidden rounded-3xl bg-[var(--bg-deep)] p-4 ring-1 ring-white/10 sm:p-6"
+            style={{ height: "min(94vh, 920px)" }}
             onClick={(e) => e.stopPropagation()}
           >
-            <button onClick={() => setOpen(false)} aria-label="Close" className="absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-full bg-black/40 text-[var(--cream)] backdrop-blur transition-colors hover:bg-black/70">
-              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
-            </button>
-            <div className="flex min-h-0 flex-1 items-center justify-center p-2">
-              <BrandedChart pts={pts} discCount={discs.length} svgRef={svgRef} style={{ height: "100%", width: "auto", maxWidth: "100%" }} />
+            <div className="mb-3 flex items-start justify-between gap-4">
+              <div>
+                <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">Radius · My Bag</div>
+                <h2 className="font-[family-name:var(--font-heading)] text-2xl font-extrabold tracking-[-0.02em] text-[var(--cream)]">Bag Stability Map</h2>
+                <p className="mt-0.5 text-sm text-[var(--text-body)]">Speed × Turn+Fade · {discs.length} discs · hover a disc</p>
+              </div>
+              <button onClick={() => setOpen(false)} aria-label="Close" className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/[0.06] text-[var(--cream)] transition-colors hover:bg-white/15">
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+              </button>
             </div>
-            <div className="flex items-center justify-between gap-3 border-t border-white/[0.08] p-4">
-              <p className="hidden text-xs text-[var(--text-body)] sm:block">Shareable image with Radius branding.</p>
+
+            {/* the chart — fills, interactive */}
+            <div className="min-h-0 flex-1">
+              <ChartCore pts={pts} big />
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.08] pt-3">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[var(--text-body)]">
+                {cats.map((c) => (
+                  <span key={c} className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: CAT_META[c].color }} />{CAT_META[c].short}</span>
+                ))}
+              </div>
               <button
                 onClick={() => svgRef.current && downloadPng(svgRef.current, "radius-stability-map.png")}
-                className="ml-auto inline-flex shrink-0 items-center gap-2 rounded-full bg-[var(--gold)] px-5 py-2.5 text-sm font-bold text-[#16221b] transition-opacity hover:opacity-90"
+                className="inline-flex shrink-0 items-center gap-2 rounded-full bg-[var(--gold)] px-5 py-2.5 text-sm font-bold text-[#16221b] transition-opacity hover:opacity-90"
               >
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" /></svg>
                 Download PNG
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* off-screen branded portrait, rendered only for the PNG export */}
+      {open && (
+        <div aria-hidden className="pointer-events-none fixed left-[-99999px] top-0 opacity-0">
+          <BrandedChart pts={pts} discCount={discs.length} svgRef={svgRef} />
         </div>
       )}
     </>
