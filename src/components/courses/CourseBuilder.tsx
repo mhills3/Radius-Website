@@ -76,10 +76,11 @@ export default function CourseBuilder({ uid }: { uid: string }) {
     try {
       const safe = file.name.replace(/[^a-zA-Z0-9.]/g, "_");
       const r = storageRef(storage, `courseCovers/${uid}/${Date.now()}-${safe}`);
-      await uploadBytes(r, file);
+      await uploadBytes(r, file, { contentType: file.type || "image/jpeg" });
       setCoverPhotoUrl(await getDownloadURL(r));
-    } catch {
-      setError("Photo upload failed — try a smaller image.");
+    } catch (err) {
+      const e = err as { code?: string; message?: string };
+      setError(`Photo upload failed: ${e.code || e.message || "unknown error"}`);
     }
     setUploading(false);
   }
