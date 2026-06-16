@@ -44,6 +44,9 @@ export default function CourseBuilder({ uid }: { uid: string }) {
   const mapRef = useRef<any>(null);
   const [mapReady, setMapReady] = useState(false);
   const [mapErr, setMapErr] = useState("");
+  // Generate the course id up front so the cover photo can live at the app's allowed Storage path
+  // (courses/{authUid}/{courseId}/cover.jpg) and the created course reuses the same id.
+  const [courseId] = useState(() => (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID().toUpperCase() : `${Date.now()}-${Math.random().toString(36).slice(2)}`.toUpperCase()));
 
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
@@ -74,8 +77,9 @@ export default function CourseBuilder({ uid }: { uid: string }) {
     if (!file) return;
     setUploading(true); setError("");
     try {
-      const safe = file.name.replace(/[^a-zA-Z0-9.]/g, "_");
-      const r = storageRef(storage, `courseCovers/${uid}/${Date.now()}-${safe}`);
+      // Match the apps' allowed Storage path: courses/{authUid}/{courseId}/cover.jpg (rule gates on
+      // path uid == request.auth.uid, so use the raw auth uid, which is the `uid` prop).
+      const r = storageRef(storage, `courses/${uid}/${courseId}/cover.jpg`);
       await uploadBytes(r, file, { contentType: file.type || "image/jpeg" });
       setCoverPhotoUrl(await getDownloadURL(r));
     } catch (err) {
@@ -251,7 +255,7 @@ export default function CourseBuilder({ uid }: { uid: string }) {
       name, city: loc?.city, state: loc?.state, latitude: loc?.lat, longitude: loc?.lng, description,
       courseType, terrain, manualDifficulty: difficulty, amenities: [...amenities],
       isFree, courseFeeAmount: isFree ? 0 : Number(feeAmount) || 0, coverPhotoUrl, holes: built,
-    });
+    }, courseId);
     if (!id) { setStatus("error"); setError("Couldn't save the course. Please try again."); return; }
     router.push(`/courses/${slugify(name, id)}`);
   }

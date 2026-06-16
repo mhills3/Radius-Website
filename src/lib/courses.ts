@@ -473,12 +473,12 @@ export interface CourseDraft {
  * exactly: course holes keyed `holeNumber`; altitude fields are OMITTED (never fabricated). Ownership
  * is stamped with the caller's resolved canonical id. Returns the new course id, or null on failure.
  */
-export async function createCourse(uid: string, draft: CourseDraft): Promise<string | null> {
+export async function createCourse(uid: string, draft: CourseDraft, presetId?: string): Promise<string | null> {
   try {
     const cid = await resolveCanonicalId(uid);
     if (!draft.name?.trim() || draft.holes.length === 0) return null;
     const me = await getProfileLite(uid);
-    const id = uuidUpper();
+    const id = presetId || uuidUpper();
     const now = Date.now();
 
     const holes = draft.holes.map((h, i) => ({
