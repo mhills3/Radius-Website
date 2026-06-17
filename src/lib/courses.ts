@@ -243,14 +243,18 @@ const COUNT_KEY = "AIzaSyCVjfvMNwy5sLFjONGZFfPpPsnqO79IiPE"; // public Firebase 
  * everywhere on the site, so the homepage, hero, strip, and /courses page never disagree. Returns 0
  * on failure so callers can fall back.
  */
-export async function getTotalCourseCount(): Promise<number> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function runCourseCount(where?: any): Promise<number> {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sq: any = { from: [{ collectionId: "courses" }] };
+    if (where) sq.where = where;
     const res = await fetch(
       `https://firestore.googleapis.com/v1/projects/radius-dg/databases/(default)/documents:runAggregationQuery?key=${COUNT_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ structuredAggregationQuery: { structuredQuery: { from: [{ collectionId: "courses" }] }, aggregations: [{ alias: "count", count: {} }] } }),
+        body: JSON.stringify({ structuredAggregationQuery: { structuredQuery: sq, aggregations: [{ alias: "count", count: {} }] } }),
       }
     );
     if (!res.ok) return 0;
@@ -260,6 +264,15 @@ export async function getTotalCourseCount(): Promise<number> {
   } catch {
     return 0;
   }
+}
+
+export function getTotalCourseCount(): Promise<number> {
+  return runCourseCount();
+}
+
+/** Count-only (no doc data returned) of private courses — for the "why fewer are listed" note. */
+export function getPrivateCourseCount(): Promise<number> {
+  return runCourseCount({ fieldFilter: { field: { fieldPath: "courseType" }, op: "EQUAL", value: { stringValue: "Private" } } });
 }
 
 // ---- Geo classification (US states + countries) ----
