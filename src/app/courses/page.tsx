@@ -158,7 +158,7 @@ export default function CoursesPage() {
   return (
     <div className="min-h-screen bg-[#faf8f3] text-[#16221b]">
       {/* hero — photo backed (DSC_8535 basket) */}
-      <div className="relative isolate z-10 overflow-hidden bg-[var(--bg-deep)] text-[var(--cream)] shadow-[0_12px_30px_-14px_rgba(15,24,19,0.6)]">
+      <div className="relative isolate z-10 overflow-hidden bg-[var(--bg-deep)] text-[var(--cream)]">
         <Image src="/course/courses-hero.jpg" alt="" fill sizes="100vw" quality={88} className="-z-10 object-cover object-center" />
         <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_bottom,rgba(15,24,19,0.8),rgba(15,24,19,0.72))]" />
         <div className="relative mx-auto max-w-7xl px-6 pb-7 pt-16">
