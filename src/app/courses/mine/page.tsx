@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
-import { getMyCourses, slugify, isPrivateCourse, type Course } from "@/lib/courses";
+import { getMyCourses, slugify, isPrivateCourse, isPubliclyListed, publishCourse, type Course } from "@/lib/courses";
 import CourseAnalytics from "@/components/courses/CourseAnalytics";
 
 const fmtDate = (ms?: number) => (ms ? new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "");
@@ -29,6 +29,7 @@ export default function MyCoursesPage() {
   const { user, loading } = useAuth();
   const [courses, setCourses] = useState<Course[] | null>(null);
   const [statsOpen, setStatsOpen] = useState<Set<string>>(new Set());
+  const [publishing, setPublishing] = useState<string | null>(null);
 
   useEffect(() => {
     if (loading) return;
@@ -37,6 +38,14 @@ export default function MyCoursesPage() {
   }, [user, loading]);
 
   const toggleStats = (id: string) => setStatsOpen((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+  const publish = async (c: Course) => {
+    if (!user) return;
+    setPublishing(c.id);
+    const ok = await publishCourse(user.uid, c.id);
+    setPublishing(null);
+    if (ok) setCourses((prev) => prev?.map((x) => (x.id === c.id ? { ...x, reviewStatus: "Approved", isDraft: false } : x)) ?? null);
+  };
 
   const summary = useMemo(() => {
     const list = courses ?? [];
@@ -141,6 +150,12 @@ export default function MyCoursesPage() {
                       {statsOpen.has(c.id) ? "Hide analytics" : "Analytics"}
                     </button>
                     <Link href={`/courses/${slugify(c.name, c.id)}`} className="rounded-full px-4 py-2 text-sm font-semibold text-[#46554c] transition-colors hover:bg-black/[0.04] hover:text-[#16221b]">View page</Link>
+                    {!isPubliclyListed(c) && (
+                      <button onClick={() => publish(c)} disabled={publishing === c.id} className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-b from-[var(--gold-bright)] to-[var(--gold)] px-4 py-2 text-sm font-bold text-[#16221b] shadow-[0_4px_14px_-6px_rgba(246,193,101,0.7)] transition-opacity hover:opacity-90 disabled:opacity-60">
+                        <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
+                        {publishing === c.id ? "Publishing…" : "Publish"}
+                      </button>
+                    )}
                     <Link href={`/courses/${slugify(c.name, c.id)}/edit`} className="inline-flex items-center gap-1.5 rounded-full bg-[#16221b] px-5 py-2 text-sm font-bold text-[var(--cream)] transition-colors hover:bg-[#22332a]">
                       <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
                       Edit course

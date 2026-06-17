@@ -549,13 +549,14 @@ function buildCourseHoles(draft: CourseDraft) {
  * exactly: course holes keyed `holeNumber`; altitude fields are OMITTED (never fabricated). Ownership
  * is stamped with the caller's resolved canonical id. Returns the new course id, or null on failure.
  */
-export async function createCourse(uid: string, draft: CourseDraft, presetId?: string): Promise<string | null> {
+export async function createCourse(uid: string, draft: CourseDraft, opts?: { presetId?: string; publish?: boolean }): Promise<string | null> {
   try {
     const cid = await resolveCanonicalId(uid);
     if (!draft.name?.trim() || draft.holes.length === 0) return null;
     const me = await getProfileLite(uid);
-    const id = presetId || uuidUpper();
+    const id = opts?.presetId || uuidUpper();
     const now = Date.now();
+    const publish = opts?.publish === true;
 
     const { holes, par, totalDist, latitude, longitude } = buildCourseHoles(draft);
     const isFree = draft.isFree ?? true;
@@ -582,10 +583,12 @@ export async function createCourse(uid: string, draft: CourseDraft, presetId?: s
       adminIds: [],
       dateCreated: now,
       lastModified: now,
-      // Moderation gate: hidden in both apps + web until approved.
-      reviewStatus: "Draft",
-      isDraft: true,
+      // Publish → live everywhere (iOS reads reviewStatus, Android reads isDraft); both must agree.
+      // Save as draft → hidden in both apps + web until the owner publishes it.
+      reviewStatus: publish ? "Approved" : "Draft",
+      isDraft: !publish,
     };
+    if (publish) docData.submittedDate = now;
     if (draft.manualDifficulty?.trim()) docData.manualDifficulty = draft.manualDifficulty.trim();
     if (draft.coverPhotoUrl?.trim()) docData.coverPhotoUrl = draft.coverPhotoUrl.trim();
 
@@ -639,6 +642,22 @@ async function ownsCourse(uid: string, data: DocumentData): Promise<boolean> {
   const createdById = (data.createdById as string) || "";
   const adminIds: string[] = Array.isArray(data.adminIds) ? data.adminIds.map(String) : [];
   return owned.has(createdById) || adminIds.some((a) => owned.has(a));
+}
+
+/**
+ * Publish an owner's course so it goes live everywhere. Mirrors the app's publish: iOS reads
+ * reviewStatus ("Approved"), Android reads isDraft (false) — we set BOTH so it shows on every
+ * platform + web. Owner-only. Returns success.
+ */
+export async function publishCourse(uid: string, id: string): Promise<boolean> {
+  try {
+    const snap = await getDoc(doc(db, "courses", id));
+    if (!snap.exists()) return false;
+    if (!(await ownsCourse(uid, snap.data()))) return false;
+    const now = Date.now();
+    await updateDoc(doc(db, "courses", id), { reviewStatus: "Approved", isDraft: false, submittedDate: now, lastModified: now });
+    return true;
+  } catch { return false; }
 }
 
 /** Load a course (owner-only) into the exact shape the builder needs — incl. every hole marker. */

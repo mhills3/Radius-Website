@@ -357,7 +357,7 @@ export default function CourseBuilder({ uid, initial }: { uid: string; initial?:
     setUploading(false);
   }
 
-  async function submit() {
+  async function submit(publish = false) {
     setError("");
     const built: HoleDraft[] = holes.filter(mapped).map((h) => ({ par: h.par, teeLat: h.teeLat!, teeLng: h.teeLng!, basketLat: h.basketLat!, basketLng: h.basketLng!, notes: h.notes, elbows: h.elbows.map(([lng, lat]) => ({ lat, lng })), alternateTees: h.altTees, alternateBaskets: h.altBaskets, mandos: h.mandos }));
     if (built.length === 0) { setError("Map at least one hole."); return; }
@@ -371,7 +371,7 @@ export default function CourseBuilder({ uid, initial }: { uid: string; initial?:
     }
     if (dupes === null && loc) { const near = await findNearbyCourses(loc.lat, loc.lng, name); if (near.length > 0) { setDupes(near); return; } setDupes([]); }
     setStatus("saving");
-    const id = await createCourse(uid, payload, courseId);
+    const id = await createCourse(uid, payload, { presetId: courseId, publish });
     if (!id) { setStatus("error"); setError("Couldn't save the course. Please try again."); return; }
     try { localStorage.removeItem(DRAFT_KEY); } catch {}
     router.push(`/courses/${slugify(name, id)}`);
@@ -405,7 +405,7 @@ export default function CourseBuilder({ uid, initial }: { uid: string; initial?:
       <div className="mb-7">
         <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#9a7a3a]">Course builder</div>
         <h1 className="mt-1.5 font-[family-name:var(--font-heading)] text-4xl font-extrabold tracking-[-0.03em] text-[#16221b]">{editing ? "Edit course" : "Build a course"}</h1>
-        <p className="mt-2 max-w-xl text-sm text-[#6b7a70]">{editing ? <>Update your course, hole by hole. Changes save back to your course and sync to the apps.</> : <>Map your local course hole by hole. It auto-saves as a private <span className="font-semibold text-[#46554c]">draft</span> — only you can see it until it&apos;s reviewed and published.</>}</p>
+        <p className="mt-2 max-w-xl text-sm text-[#6b7a70]">{editing ? <>Update your course, hole by hole. Changes save back to your course and sync to the apps.</> : <>Map your local course hole by hole, then <span className="font-semibold text-[#46554c]">publish</span> it to go live everywhere — or save a private draft to finish later.</>}</p>
         <div className="mt-5 inline-flex items-center gap-1 rounded-2xl border border-black/[0.06] bg-white p-1.5 shadow-sm">
           {STEPS.map((s, i) => (
             <div key={s} className="flex items-center">
@@ -552,13 +552,20 @@ export default function CourseBuilder({ uid, initial }: { uid: string; initial?:
                 <div className="rounded-xl border border-[var(--gold)]/40 bg-[var(--gold)]/10 p-3 text-sm">
                   <p className="font-bold text-[#9a7a3a]">Possible duplicate{dupes.length > 1 ? "s" : ""} nearby</p>
                   <ul className="mt-1 list-disc pl-5 text-[#46554c]">{dupes.map((d) => <li key={d.id}>{d.name}{d.city ? ` · ${d.city}` : ""}</li>)}</ul>
-                  <p className="mt-1.5 text-xs text-[#6b7a70]">If yours is different, tap Create again to proceed.</p>
+                  <p className="mt-1.5 text-xs text-[#6b7a70]">If yours is different, tap Publish again to proceed.</p>
                 </div>
               )}
               {error && <p className="text-sm font-medium text-[#d9473f]">{error}</p>}
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button onClick={() => setStep(1)} className="rounded-full border border-black/[0.08] bg-white px-5 py-3.5 text-sm font-bold text-[#16221b] transition-colors hover:border-[var(--gold)]">← Back</button>
-                <button onClick={submit} disabled={status === "saving"} className="flex-1 rounded-full bg-[#16221b] px-5 py-3.5 text-sm font-bold text-[var(--cream)] transition-colors hover:bg-[#22332a] disabled:opacity-60">{status === "saving" ? "Saving…" : editing ? "Save changes" : dupes && dupes.length > 0 ? "Create anyway (draft)" : "Create course (draft)"}</button>
+                {editing ? (
+                  <button onClick={() => submit(false)} disabled={status === "saving"} className="flex-1 rounded-full bg-[#16221b] px-5 py-3.5 text-sm font-bold text-[var(--cream)] transition-colors hover:bg-[#22332a] disabled:opacity-60">{status === "saving" ? "Saving…" : "Save changes"}</button>
+                ) : (
+                  <>
+                    <button onClick={() => submit(false)} disabled={status === "saving"} className="rounded-full border border-black/[0.1] bg-white px-5 py-3.5 text-sm font-bold text-[#46554c] transition-colors hover:border-[var(--gold)] hover:text-[#16221b] disabled:opacity-60">Save as draft</button>
+                    <button onClick={() => submit(true)} disabled={status === "saving"} className="flex-1 rounded-full bg-[#16221b] px-5 py-3.5 text-sm font-bold text-[var(--cream)] transition-colors hover:bg-[#22332a] disabled:opacity-60">{status === "saving" ? "Saving…" : dupes && dupes.length > 0 ? "Publish anyway" : "Publish course"}</button>
+                  </>
+                )}
               </div>
             </div>
           )}
