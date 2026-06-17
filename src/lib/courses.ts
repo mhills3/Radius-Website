@@ -89,6 +89,7 @@ export interface Course {
   createdById: string;
   reviewStatus: string;
   isDraft?: boolean;
+  defaultLayoutName?: string;
   lastModified: number;
 }
 
@@ -210,6 +211,7 @@ function docToCourse(id: string, data: DocumentData): Course {
     createdById: data.createdById ?? "",
     reviewStatus: data.reviewStatus ?? "",
     isDraft: data.isDraft === true,
+    defaultLayoutName: typeof data.defaultLayoutName === "string" ? data.defaultLayoutName : undefined,
     lastModified: data.lastModified ?? 0,
     dateCreated: normMs(data.dateCreated ?? data.lastModified),
   };
@@ -461,10 +463,11 @@ export async function getCourseScores(courseId: string, max = 25): Promise<Cours
       playerHandle: (data.playerHandle as string | undefined)?.replace(/^@/, ""),
     };
   });
-  // Best score per player, then sort by relativeToPar.
+  // Best score per player PER LAYOUT (a player who played multiple layouts keeps one best on
+  // EACH — keying by player alone hid their scores on every layout but their single best).
   const best = new Map<string, CourseScore>();
   for (const s of all) {
-    const key = s.playerUid || s.playerName;
+    const key = `${s.playerUid || s.playerName}|${s.layoutName || ""}`;
     const cur = best.get(key);
     if (!cur || s.relativeToPar < cur.relativeToPar) best.set(key, s);
   }

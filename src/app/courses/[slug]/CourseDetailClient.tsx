@@ -129,9 +129,12 @@ export default function CourseDetailClient({ slug }: { slug: string }) {
   const totalPar = sortedHoles.reduce((s, h) => s + h.par, 0) || course.par;
   const totalDist = sortedHoles.reduce((s, h) => s + (h.distance || 0), 0) || course.distanceFt;
 
-  // Layouts — most courses have multiple. "Main layout" = the course default holes.
+  // Layouts — most courses have multiple. The default holes are the course's primary layout;
+  // use its real name (defaultLayoutName) when the app provided one, else a generic label.
+  const dln = course.defaultLayoutName?.trim();
+  const defaultLayoutLabel = dln && dln.toLowerCase() !== "default" ? dln : "Main layout";
   const layoutOptions = [
-    { id: "default", name: "Main layout", holes: sortedHoles, par: totalPar, distanceFt: totalDist },
+    { id: "default", name: defaultLayoutLabel, holes: sortedHoles, par: totalPar, distanceFt: totalDist },
     ...(course.layouts || []).filter((l) => l.holes.length > 0).map((l) => ({ id: l.id || l.name, name: l.name, holes: l.holes, par: l.par, distanceFt: l.distanceFt })),
   ];
   const activeLayout = layoutOptions.find((l) => l.id === layoutId) || layoutOptions[0];
