@@ -53,7 +53,7 @@ export function getDiscCount(): number {
   }
 }
 
-import { isUSState, countryOf } from "./courses";
+import { canonicalState, countryOf, isPubliclyListed, isPrivateCourse } from "./courses";
 
 const fnum = (f?: { doubleValue?: number; integerValue?: string }): number | undefined => {
   if (!f) return undefined;
@@ -63,9 +63,9 @@ const fnum = (f?: { doubleValue?: number; integerValue?: string }): number | und
 };
 
 /**
- * Distinct geographic reach: US states + international countries the courses span.
- * Pulls only state/lat/lng for every course (field-masked REST list) and de-dupes —
- * replaces the old hard-coded "50" so the stat stays accurate as courses are added.
+ * Distinct geographic reach: US states + international countries the courses span. Counts the SAME
+ * public/visible courses the directory + coverage map use (so the numbers always agree), and
+ * normalizes states to a canonical name so "CA"/"California" count once.
  */
 export async function getRegionCountServer(): Promise<number> {
   try {
@@ -75,9 +75,7 @@ export async function getRegionCountServer(): Promise<number> {
     for (let page = 0; page < 20; page++) {
       const url = new URL(`https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/courses`);
       url.searchParams.set("pageSize", "300");
-      url.searchParams.append("mask.fieldPaths", "state");
-      url.searchParams.append("mask.fieldPaths", "latitude");
-      url.searchParams.append("mask.fieldPaths", "longitude");
+      for (const fp of ["name", "state", "latitude", "longitude", "reviewStatus", "isDraft", "courseType"]) url.searchParams.append("mask.fieldPaths", fp);
       url.searchParams.set("key", API_KEY);
       if (pageToken) url.searchParams.set("pageToken", pageToken);
       const res = await fetch(url.toString(), { next: { revalidate: 3600 } });
@@ -85,10 +83,17 @@ export async function getRegionCountServer(): Promise<number> {
       const data = await res.json();
       for (const doc of data.documents ?? []) {
         const f = doc.fields ?? {};
+        const name = f.name?.stringValue as string | undefined;
+        const reviewStatus = f.reviewStatus?.stringValue as string | undefined;
+        const isDraft = f.isDraft?.booleanValue === true;
+        const courseType = f.courseType?.stringValue as string | undefined;
+        // Same gate as the public directory + coverage map.
+        if (!name || !isPubliclyListed({ reviewStatus, isDraft }) || isPrivateCourse({ courseType })) continue;
         const state = f.state?.stringValue as string | undefined;
         const latitude = fnum(f.latitude);
         const longitude = fnum(f.longitude);
-        if (isUSState(state)) states.add(state!.trim().toUpperCase());
+        const cs = canonicalState(state);
+        if (cs) states.add(cs);
         const co = countryOf({ state, latitude, longitude });
         // count international reach; the US is already represented by its states
         if (co && co !== "International" && co !== "United States" && co !== "US") countries.add(co);

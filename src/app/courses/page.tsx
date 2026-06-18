@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { getAllCourses, getTotalCourseCount, getPrivateCourseCount, getTopBuilders, slugify, isUSState, countryOf, STATE_NAMES, type Course, type Builder } from "@/lib/courses";
+import { getAllCourses, getTotalCourseCount, getTopBuilders, slugify, isUSState, canonicalState, countryOf, STATE_NAMES, type Course, type Builder } from "@/lib/courses";
 import { getOwnedIds } from "@/lib/account";
 import { getRanksFor, type RankInfo } from "@/lib/community";
 import { getPlayedCourses, type PlayedStat } from "@/lib/rounds";
@@ -26,7 +26,6 @@ export default function CoursesPage() {
   const { user } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [totalCount, setTotalCount] = useState(0);
-  const [privateCount, setPrivateCount] = useState(0);
   const [played, setPlayed] = useState<Map<string, PlayedStat>>(new Map());
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -46,7 +45,6 @@ export default function CoursesPage() {
     getTopBuilders(10).then((b) => { setBuilders(b); getRanksFor(b.map((x) => x.id).filter(Boolean)).then(setBuilderRanks).catch(() => {}); }).catch(() => {});
     // Headline "courses" stat = the full mapped-course total (matches the homepage banner exactly).
     getTotalCourseCount().then(setTotalCount).catch(() => {});
-    getPrivateCourseCount().then(setPrivateCount).catch(() => {});
     // Support the sitelinks search box / shareable search URLs: /courses?search=term
     const q = new URLSearchParams(window.location.search).get("search");
     if (q) setSearch(q);
@@ -71,12 +69,9 @@ export default function CoursesPage() {
 
   const states = useMemo(() => [...new Set(courses.map((c) => c.state).filter(Boolean))].sort(), [courses]);
   const anyFilter = !!(search || stateFilter || holes !== "all" || freeOnly);
-  // Why the listed count (public) is below the mapped total (908): private + unpublished drafts aren't listed.
-  const hiddenCount = Math.max(0, totalCount - courses.length);
-  const draftCount = Math.max(0, hiddenCount - privateCount);
 
-  // geo + fun stats
-  const usStateCount = useMemo(() => new Set(courses.filter((c) => isUSState(c.state)).map((c) => c.state!.trim().toUpperCase())).size, [courses]);
+  // geo + fun stats — canonicalState dedupes "CA" vs "California" so this matches the coverage map.
+  const usStateCount = useMemo(() => new Set(courses.map((c) => canonicalState(c.state)).filter(Boolean)).size, [courses]);
   const countryCount = useMemo(() => new Set(courses.map((c) => countryOf(c))).size, [courses]);
   const topStates = useMemo(() => {
     const m = new Map<string, number>();
@@ -215,14 +210,9 @@ export default function CoursesPage() {
           <div className="order-2 flex min-h-0 flex-col border-r border-black/[0.06] bg-[#faf8f3] lg:order-1">
             <div className="border-b border-black/[0.06] px-4 py-3">
               <div className="flex items-baseline gap-1.5">
-                <span className="font-[family-name:var(--font-heading)] text-base font-extrabold text-[#16221b]">{filtered.length.toLocaleString()}</span>
-                <span className="text-sm text-[#8a968d]">{filtered.length === 1 ? "course" : "courses"}{stateFilter ? ` in ${stateFilter}` : userLoc ? " near you" : ""}</span>
+                <span className="font-[family-name:var(--font-heading)] text-base font-extrabold text-[#16221b]">{(anyFilter ? filtered.length : (totalCount || filtered.length)).toLocaleString()}</span>
+                <span className="text-sm text-[#8a968d]">{(anyFilter ? filtered.length : (totalCount || filtered.length)) === 1 ? "course" : "courses"}{stateFilter ? ` in ${stateFilter}` : userLoc ? " near you" : ""}</span>
               </div>
-              {!anyFilter && totalCount > courses.length && (
-                <p className="mt-0.5 text-[11px] leading-snug text-[#9aa39a]">
-                  of {totalCount.toLocaleString()} mapped — {[draftCount > 0 && `${draftCount.toLocaleString()} unpublished`, privateCount > 0 && `${privateCount.toLocaleString()} private`].filter(Boolean).join(" · ") || `${hiddenCount.toLocaleString()} hidden`} aren&apos;t public
-                </p>
-              )}
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto">
             {loading ? (

@@ -285,6 +285,13 @@ export const STATE_NAMES: Record<string, string> = { AL: "Alabama", AK: "Alaska"
 export function isUSState(s?: string): boolean {
   return !!s && US_STATES.has(s.trim().toUpperCase());
 }
+/** Canonical US-state key (full name, UPPERCASE) so "CA" and "California" count as ONE state. */
+export function canonicalState(s?: string): string | null {
+  if (!isUSState(s)) return null;
+  const up = s!.trim().toUpperCase();
+  const full = (STATE_NAMES[up] ? STATE_NAMES[up].toUpperCase() : up);
+  return full === "WASHINGTON DC" ? "DISTRICT OF COLUMBIA" : full;
+}
 // name, west, south, east, north
 const COUNTRY_BOXES: [string, number, number, number, number][] = [
   ["Canada", -141, 49.0, -52, 83], ["Mexico", -118, 14.5, -86, 32.8],
