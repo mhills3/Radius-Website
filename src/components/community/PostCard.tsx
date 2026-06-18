@@ -5,6 +5,7 @@ import { type FeedPost, timeAgo } from "@/lib/feed";
 import { type RankInfo } from "@/lib/community";
 import RankPill from "@/components/community/RankPill";
 import ReactionBar from "@/components/community/ReactionBar";
+import MentionText from "@/components/community/MentionText";
 
 const fmtScore = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`);
 const scoreColor = (n: number) => (n < 0 ? "#5fcf80" : n === 0 ? "var(--cream)" : "#f08c8c");
@@ -32,7 +33,7 @@ export default function PostCard({ post, rank, myReaction, onReact, onOpen }: { 
         </div>
       </div>
 
-      {post.text && <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-[var(--text-body)]">{post.text}</p>}
+      {post.text && <MentionText text={post.text} tagged={post.taggedUsers} className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-[var(--text-body)]" />}
 
       {post.linkedCourseName && (
         <div className="mt-3 flex items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.03] p-3">
@@ -62,7 +63,7 @@ export default function PostCard({ post, rank, myReaction, onReact, onOpen }: { 
           <span>with</span>
           {post.taggedUsers.map((u, i) => (
             <span key={u.id}>
-              <Link href={`/u/${u.username}`} onClick={(e) => e.stopPropagation()} className="font-semibold text-[var(--gold)] hover:underline">@{u.username}</Link>{i < post.taggedUsers!.length - 1 ? "," : ""}
+              <Link href={`/u/${u.username}`} onClick={(e) => e.stopPropagation()} className="font-semibold text-[#4d94fa] hover:underline">@{u.username}</Link>{i < post.taggedUsers!.length - 1 ? "," : ""}
             </span>
           ))}
         </div>

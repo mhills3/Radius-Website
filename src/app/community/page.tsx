@@ -279,7 +279,7 @@ export default function CommunityPage() {
                           <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--gold)]/15 px-3 py-1 text-sm font-semibold text-[var(--gold)]">🥏 {taggedDisc.name}<button onClick={() => setTaggedDisc(null)} aria-label="Remove disc" className="text-[var(--gold)]/70 hover:text-[var(--gold)]">✕</button></span>
                         )}
                         {taggedUsers.map((u) => (
-                          <span key={u.id} className="inline-flex items-center gap-1.5 rounded-full bg-[var(--gold)]/15 px-3 py-1 text-sm font-semibold text-[var(--gold)]">@{u.username}<button onClick={() => setTaggedUsers((arr) => arr.filter((x) => x.id !== u.id))} aria-label="Remove tag" className="text-[var(--gold)]/70 hover:text-[var(--gold)]">✕</button></span>
+                          <span key={u.id} className="inline-flex items-center gap-1.5 rounded-full bg-[#4d94fa]/15 px-3 py-1 text-sm font-semibold text-[#4d94fa]">@{u.username}<button onClick={() => setTaggedUsers((arr) => arr.filter((x) => x.id !== u.id))} aria-label="Remove tag" className="text-[#4d94fa]/70 hover:text-[#4d94fa]">✕</button></span>
                         ))}
                       </div>
                     )}
@@ -301,7 +301,7 @@ export default function CommunityPage() {
                 )}
                 {pickerOpen && <CourseTagPicker onSelect={setTaggedCourse} onClose={() => setPickerOpen(false)} />}
                 {discPickerOpen && <DiscTagPicker onSelect={setTaggedDisc} onClose={() => setDiscPickerOpen(false)} />}
-                {userPickerOpen && <UserTagPicker exclude={taggedUsers.map((u) => u.id)} onSelect={(u) => setTaggedUsers((arr) => (arr.some((x) => x.id === u.id) ? arr : [...arr, u]))} onClose={() => setUserPickerOpen(false)} />}
+                {userPickerOpen && <UserTagPicker exclude={taggedUsers.map((u) => u.id)} onSelect={(u) => { setTaggedUsers((arr) => (arr.some((x) => x.id === u.id) ? arr : [...arr, u])); setText((t) => `${t}${t && !/\s$/.test(t) ? " " : ""}@${u.username} `); }} onClose={() => setUserPickerOpen(false)} />}
 
                 {loading && [0, 1, 2].map((i) => <PostSkeleton key={i} />)}
 

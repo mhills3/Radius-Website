@@ -7,6 +7,7 @@ import { createNotification } from "@/lib/notifications";
 import { type MentionUser } from "@/lib/leaderboard";
 import ReactionBar from "@/components/community/ReactionBar";
 import UserTagPicker from "@/components/community/UserTagPicker";
+import MentionText from "@/components/community/MentionText";
 
 const fmtScore = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`);
 const scoreColor = (n: number) => (n < 0 ? "#5fcf80" : n === 0 ? "var(--cream)" : "#f08c8c");
@@ -74,9 +75,9 @@ export default function PostDetail({ post, uid, myReaction, onReact, onClose, on
       <div className="min-w-0 flex-1">
         <div className="rounded-2xl bg-white/[0.05] px-3.5 py-2.5">
           <div className="text-sm font-bold text-[var(--cream)]">{c.authorName}{c.authorHandle ? <span className="ml-1.5 text-xs font-normal text-[var(--sage-dim)]">@{c.authorHandle}</span> : null}</div>
-          <div className="whitespace-pre-wrap text-[14px] leading-relaxed text-[var(--text-body)]">{c.text}</div>
+          <MentionText text={c.text} tagged={c.taggedUsers} className="whitespace-pre-wrap text-[14px] leading-relaxed text-[var(--text-body)]" />
           {c.taggedUsers && c.taggedUsers.length > 0 && (
-            <div className="mt-1 flex flex-wrap gap-x-1 text-xs text-[var(--gold)]">{c.taggedUsers.map((u) => <Link key={u.id} href={`/u/${u.username}`} className="hover:underline">@{u.username}</Link>)}</div>
+            <div className="mt-1 flex flex-wrap gap-x-1 text-xs text-[#4d94fa]">{c.taggedUsers.map((u) => <Link key={u.id} href={`/u/${u.username}`} className="hover:underline">@{u.username}</Link>)}</div>
           )}
         </div>
         <div className="mt-1 flex items-center gap-3 pl-1 text-xs text-[var(--sage-dim)]">
@@ -111,7 +112,7 @@ export default function PostDetail({ post, uid, myReaction, onReact, onClose, on
                 <div className="truncate text-xs text-[var(--sage-dim)]">{post.authorHandle ? `@${post.authorHandle} · ` : ""}{timeAgo(post.createdAt)}</div>
               </div>
             </div>
-            {post.text && <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-[var(--text-body)]">{post.text}</p>}
+            {post.text && <MentionText text={post.text} tagged={post.taggedUsers} className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-[var(--text-body)]" />}
             {post.linkedCourseName && (
               <div className="mt-3 flex items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.03] p-3">
                 <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--gold-dim)] text-[var(--gold)]">⛳</span>
@@ -171,7 +172,7 @@ export default function PostDetail({ post, uid, myReaction, onReact, onClose, on
                 <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] px-3 py-1 text-xs text-[var(--sage)]">↩ Replying to <span className="font-semibold text-[var(--cream)]">{replyTo.authorName}</span><button onClick={() => setReplyTo(null)} className="text-[var(--sage-dim)] hover:text-[var(--cream)]" aria-label="Cancel reply">✕</button></div>
               )}
               {mentions.length > 0 && (
-                <div className="mb-2 flex flex-wrap gap-1.5">{mentions.map((u) => <span key={u.id} className="inline-flex items-center gap-1 rounded-full bg-[var(--gold)]/15 px-2.5 py-1 text-xs font-semibold text-[var(--gold)]">@{u.username}<button onClick={() => setMentions((a) => a.filter((x) => x.id !== u.id))} aria-label="Remove tag">✕</button></span>)}</div>
+                <div className="mb-2 flex flex-wrap gap-1.5">{mentions.map((u) => <span key={u.id} className="inline-flex items-center gap-1 rounded-full bg-[#4d94fa]/15 px-2.5 py-1 text-xs font-semibold text-[#4d94fa]">@{u.username}<button onClick={() => setMentions((a) => a.filter((x) => x.id !== u.id))} aria-label="Remove tag">✕</button></span>)}</div>
               )}
               <div className="flex items-end gap-2">
                 <button onClick={() => setPickerOpen(true)} title="Tag people" className="shrink-0 rounded-full bg-white/[0.06] px-3 py-2.5 text-sm text-[var(--sage)] transition-colors hover:text-[var(--cream)]">👤</button>
@@ -182,7 +183,7 @@ export default function PostDetail({ post, uid, myReaction, onReact, onClose, on
           ) : (
             <p className="text-center text-sm text-[var(--sage-dim)]"><Link href="/login" className="font-bold text-[var(--gold)] hover:underline">Sign in</Link> to comment.</p>
           )}
-          {pickerOpen && <UserTagPicker exclude={mentions.map((u) => u.id)} onSelect={(u) => setMentions((a) => (a.some((x) => x.id === u.id) ? a : [...a, u]))} onClose={() => setPickerOpen(false)} />}
+          {pickerOpen && <UserTagPicker exclude={mentions.map((u) => u.id)} onSelect={(u) => { setMentions((a) => (a.some((x) => x.id === u.id) ? a : [...a, u])); setText((t) => `${t}${t && !/\s$/.test(t) ? " " : ""}@${u.username} `); }} onClose={() => setPickerOpen(false)} />}
         </div>
       </div>
     </div>
