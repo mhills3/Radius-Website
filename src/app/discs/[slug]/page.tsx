@@ -6,6 +6,7 @@ import { stabilityLabel, stabilityTier, tierColor, catLabel, type DiscData } fro
 import { normCat, tierFor, type FlightDisc } from "@/lib/bag";
 import DiscGraphic from "@/components/bag/DiscGraphic";
 import DiscVsWidget from "@/components/discs/DiscVsWidget";
+import DiscBagCta from "@/components/discs/DiscBagCta";
 import DiscCard from "@/components/discs/DiscCard";
 import DiscReviewForm from "@/components/discs/DiscReviewForm";
 import DiscMyStats from "@/components/discs/DiscMyStats";
@@ -237,12 +238,8 @@ export default async function DiscPage({ params }: Props) {
             <div className="mt-3 flex items-center justify-between border-t border-black/[0.06] pt-3 text-sm"><span className="text-[#8a968d]">Recommended arm</span><span className="font-bold text-[#16221b]">{armSpeedFor(d.speed)}</span></div>
           </div>
 
-          {/* bag CTA */}
-          <div className="overflow-hidden rounded-2xl border border-[var(--gold)]/25 bg-[var(--gold)]/10 p-5 text-center">
-            <h3 className="font-[family-name:var(--font-heading)] text-lg font-bold tracking-tight">Bag the {d.name}</h3>
-            <p className="mx-auto mt-1 text-xs text-[#46554c]">Scan your discs, rate your bag & get shot guidance on Radius.</p>
-            <Link href="/login" className="mt-3 block rounded-full bg-[#16221b] px-6 py-2.5 text-sm font-bold text-[var(--cream)] transition-colors hover:bg-[#22332a]">Create free account</Link>
-          </div>
+          {/* bag CTA — logged-out only */}
+          <DiscBagCta discName={d.name} />
         </aside>
       </div>
     </div>

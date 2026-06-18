@@ -63,7 +63,7 @@ export default function DiscVsWidget({ self }: { self: FlightDisc }) {
       )}
 
       <div className="grid gap-5 sm:grid-cols-[210px_1fr] sm:items-start">
-        <div className="mx-auto w-full max-w-[210px]"><FlightChart discs={discs} /></div>
+        <div className="mx-auto w-full max-w-[210px]"><FlightChart discs={discs} light /></div>
         <div className="overflow-hidden rounded-xl border border-black/8">
           <table className="w-full text-sm">
             <thead><tr className="bg-black/[0.03] text-left text-[11px] uppercase tracking-wide text-[#8a968d]">

@@ -20,7 +20,7 @@ function effOf(d: FlightDisc): { speed?: number; glide?: number; turn?: number; 
   return { speed, glide, turn, fade, tier: stab < -0.5 ? "US" : stab <= 1.5 ? "ST" : "OS" };
 }
 
-export default function FlightChart({ discs }: { discs: FlightDisc[] }) {
+export default function FlightChart({ discs, light = false }: { discs: FlightDisc[]; light?: boolean }) {
   const flown = discs.filter((d) => d.speed != null && d.turn != null && d.fade != null);
   const cats = (["DISTANCE", "FAIRWAY", "MIDRANGE", "PUTTER"] as Cat[]).filter((c) => flown.some((d) => d.category === c));
   const [filter, setFilter] = useState<Cat | "ALL">("ALL");
@@ -28,15 +28,20 @@ export default function FlightChart({ discs }: { discs: FlightDisc[] }) {
 
   const shown = filter === "ALL" ? flown : flown.filter((d) => d.category === filter);
   const hovered = shown.find((d) => d.id === hover);
+  // The chart lives on the dark bag page AND the light disc-detail page — switch text/control
+  // colors so legends/labels are readable on a light background too.
+  const inactiveBtn = light ? "bg-black/[0.05] text-[#46554c] hover:bg-black/10" : "bg-white/[0.06] text-[var(--text-body)] hover:bg-white/10";
+  const legendText = light ? "text-[#46554c]" : "text-[var(--text-body)]";
+  const subText = light ? "text-[#8a968d]" : "text-[var(--sage-dim)]";
 
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <button onClick={() => setFilter("ALL")} className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${filter === "ALL" ? "bg-[var(--gold)] text-[#16221b]" : "bg-white/[0.06] text-[var(--text-body)] hover:bg-white/10"}`}>
+        <button onClick={() => setFilter("ALL")} className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${filter === "ALL" ? "bg-[var(--gold)] text-[#16221b]" : inactiveBtn}`}>
           All
         </button>
         {cats.map((c) => (
-          <button key={c} onClick={() => setFilter(c)} className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${filter === c ? "bg-[var(--gold)] text-[#16221b]" : "bg-white/[0.06] text-[var(--text-body)] hover:bg-white/10"}`}>
+          <button key={c} onClick={() => setFilter(c)} className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${filter === c ? "bg-[var(--gold)] text-[#16221b]" : inactiveBtn}`}>
             {CAT_META[c].short}
           </button>
         ))}
@@ -79,7 +84,7 @@ export default function FlightChart({ discs }: { discs: FlightDisc[] }) {
         )}
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-xs text-[var(--text-body)]">
+      <div className={`mt-4 flex flex-wrap items-center justify-center gap-4 text-xs ${legendText}`}>
         {(["US", "ST", "OS"] as const).map((t) => (
           <span key={t} className="inline-flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-full" style={{ background: TIER_META[t].color }} />
@@ -87,7 +92,7 @@ export default function FlightChart({ discs }: { discs: FlightDisc[] }) {
           </span>
         ))}
       </div>
-      <p className="mt-2 text-center text-xs text-[var(--sage-dim)]">RHBH · hover a disc</p>
+      <p className={`mt-2 text-center text-xs ${subText}`}>RHBH · hover a disc</p>
     </div>
   );
 }
