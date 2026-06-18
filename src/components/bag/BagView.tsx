@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { type Bag, type Cat, type Tier, type FlightDisc, type RawDisc, type DbDisc, CAT_META, TIER_META, tierFor, normCat, plasticColor } from "@/lib/bag";
-import { setFavorites, saveBag, newDisc, freshId, moveToCollection, markAsLost, recoverToBag, deleteStoredDisc } from "@/lib/bagWrite";
+import { setFavorites, saveBag, newDisc, freshId, moveToCollection, markAsLost, recoverToBag, deleteStoredDisc, addCustomDisc, type CustomDiscInput } from "@/lib/bagWrite";
 import FlightChart from "@/components/bag/FlightChart";
 import DiscDetail from "@/components/bag/DiscDetail";
 import DiscGraphic from "@/components/bag/DiscGraphic";
@@ -241,6 +241,27 @@ export default function BagView({ bag, uid }: { bag: Bag; uid: string }) {
     saveBag(uid, nextRaw).catch(() => { setDiscs(discs); setRawDiscs(rawDiscs); });
   };
 
+  // Create a custom disc (writes customDiscsJSON union + bag/collection), then reflect it locally.
+  const onAddCustom = (custom: CustomDiscInput, dest: "bag" | "collection") => {
+    const raw = newDisc(custom.name);
+    const stab = custom.turn + custom.fade;
+    const fd: FlightDisc = {
+      id: dest === "bag" ? raw.id : `col:${custom.name}`, name: custom.name, brand: custom.manufacturer, category: normCat(custom.category),
+      speed: custom.speed, glide: custom.glide, turn: custom.turn, fade: custom.fade,
+      stability: stab, tier: tierFor(stab), color: "#a673d9", condition: "Brand New", throwCount: 0, known: true, isFavorite: false,
+    };
+    setShowAdd(false);
+    if (dest === "bag") {
+      const nextRaw = [...rawDiscs, raw];
+      setDiscs([...discs, fd]);
+      setRawDiscs(nextRaw);
+      addCustomDisc(uid, custom, "bag", nextRaw).catch(() => { setDiscs(discs); setRawDiscs(rawDiscs); });
+    } else {
+      setCollection([...collection, fd]);
+      addCustomDisc(uid, custom, "collection", rawDiscs).catch(() => setCollection(collection));
+    }
+  };
+
   const known = discs.filter((d) => d.speed != null);
   const byCat = (c: Cat) => discs.filter((d) => d.category === c);
   const presentCats = ORDER.filter((c) => byCat(c).length > 0);
@@ -476,7 +497,7 @@ export default function BagView({ bag, uid }: { bag: Bag; uid: string }) {
       </div>
 
       {selected && <DiscDetail disc={selected} onClose={() => setSelected(null)} onToggleFav={() => toggleFav(selected)} onSave={(patch) => saveDisc(selected, patch)} onRemove={() => removeDisc(selected)} onMoveToCollection={() => moveOut(selected, "collection")} onMarkLost={() => moveOut(selected, "lost")} />}
-      {showAdd && <AddDiscModal existing={new Set(discs.map((d) => d.name.toLowerCase()))} onAdd={onAdd} onClose={() => setShowAdd(false)} />}
+      {showAdd && <AddDiscModal existing={new Set(discs.map((d) => d.name.toLowerCase()))} onAdd={onAdd} onAddCustom={onAddCustom} onClose={() => setShowAdd(false)} />}
     </div>
   );
 }

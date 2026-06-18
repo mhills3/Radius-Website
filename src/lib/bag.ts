@@ -227,6 +227,7 @@ export async function getBag(uid: string): Promise<Bag> {
   const discs: FlightDisc[] = rawBag.map((d, i) => {
     const name = (d?.discName ?? d?.name ?? "Disc").toString();
     const key = name.toLowerCase();
+    const isCustom = !dbMap.has(key) && customMap.has(key);
     const src = dbMap.get(key) ?? customMap.get(key);
     const known = !!src;
     const speed = src?.speed;
@@ -251,7 +252,7 @@ export async function getBag(uid: string): Promise<Bag> {
       customGlide: typeof d?.wear?.customGlide === "number" ? d.wear.customGlide : undefined,
       customTurn: typeof d?.wear?.customTurn === "number" ? d.wear.customTurn : undefined,
       customFade: typeof d?.wear?.customFade === "number" ? d.wear.customFade : undefined,
-      color: plasticColor(src?.color),
+      color: isCustom ? "#a673d9" : plasticColor(src?.color),
       throwCount: Number(throwCounts[name]) || 0,
       known,
       isFavorite: favoriteIds.includes((d?.id ?? "").toString()),
@@ -271,13 +272,15 @@ export async function getBag(uid: string): Promise<Bag> {
 
   // Resolve a bare disc name (no id/wear) to a display disc for the Collection/Lost lists.
   const nameToDisc = (name: string, idPrefix: string): FlightDisc => {
-    const src = dbMap.get(name.toLowerCase()) ?? customMap.get(name.toLowerCase());
+    const key = name.toLowerCase();
+    const isCustom = !dbMap.has(key) && customMap.has(key);
+    const src = dbMap.get(key) ?? customMap.get(key);
     const turn = src?.turn, fade = src?.fade;
     const stability = typeof turn === "number" && typeof fade === "number" ? turn + fade : undefined;
     return {
       id: `${idPrefix}:${name}`, name, brand: src?.manufacturer || undefined, category: normCat(src?.category),
       speed: src?.speed, glide: src?.glide, turn, fade, stability, tier: stability != null ? tierFor(stability) : undefined,
-      color: plasticColor(src?.color), throwCount: Number(throwCounts[name]) || 0, known: !!src, isFavorite: false,
+      color: isCustom ? "#a673d9" : plasticColor(src?.color), throwCount: Number(throwCounts[name]) || 0, known: !!src, isFavorite: false,
       photoUrl: safeHttp(photoMap[name]),
     };
   };
