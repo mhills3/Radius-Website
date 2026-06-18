@@ -134,6 +134,19 @@ export interface CourseScore {
   playerHandle?: string;
 }
 
+// Some courses store hole tee/basket coordinates but NO explicit `distance` — the apps compute it
+// from the tee→elbows→basket geometry. Mirror that so hole distances render everywhere.
+function holeGeoDistanceFt(h: DocumentData): number {
+  const t0 = h?.teeLat, t1 = h?.teeLng, b0 = h?.basketLat, b1 = h?.basketLng;
+  if ([t0, t1, b0, b1].some((n) => typeof n !== "number")) return 0;
+  const pts: [number, number][] = [[t0, t1]];
+  if (Array.isArray(h.elbows)) for (const e of h.elbows) { const lat = e?.lat, lng = e?.lng; if (typeof lat === "number" && typeof lng === "number") pts.push([lat, lng]); }
+  pts.push([b0, b1]);
+  let d = 0;
+  for (let i = 0; i < pts.length - 1; i++) d += distanceFt(pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]);
+  return d;
+}
+
 function docToCourse(id: string, data: DocumentData): Course {
   return {
     id,
@@ -163,7 +176,7 @@ function docToCourse(id: string, data: DocumentData): Course {
     holes: (data.holes ?? []).map((h: DocumentData, i: number) => ({
       holeNumber: h.holeNumber ?? h.number ?? i + 1,
       par: h.par ?? 3,
-      distance: h.distance ?? 0,
+      distance: (typeof h.distance === "number" && h.distance > 0) ? h.distance : holeGeoDistanceFt(h),
       handicap: h.handicap,
       holeType: h.holeType,
       elevation: h.elevation,
@@ -178,7 +191,7 @@ function docToCourse(id: string, data: DocumentData): Course {
           const holes: CourseHole[] = (l.holes ?? []).map((h: DocumentData, i: number) => ({
             holeNumber: h.number ?? h.holeNumber ?? i + 1,
             par: h.par ?? 3,
-            distance: h.distance ?? 0,
+            distance: (typeof h.distance === "number" && h.distance > 0) ? h.distance : holeGeoDistanceFt(h),
             holeType: h.holeType,
             elevation: h.elevation,
             fairwayShape: h.fairwayShape,
