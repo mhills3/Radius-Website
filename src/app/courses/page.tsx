@@ -348,17 +348,25 @@ export default function CoursesPage() {
                   <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-[#9a7a3a]">🏗️ Top builders</div>
                   <div className="space-y-3">
                     {builders.length === 0 && <p className="text-sm text-[#8a968d]">—</p>}
-                    {builders.map((b, i) => (
+                    {builders.map((b, i) => {
+                      const legend = b.count >= 100; // 100+ courses built → "Legend" treatment
+                      return (
                       <div key={b.name + i} className="flex items-center gap-3">
                         <span className="w-3 shrink-0 text-xs font-bold text-[#9a7a3a]">{i + 1}</span>
-                        <span className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--gold)]/15 text-xs font-bold text-[#9a7a3a]">
+                        <span className={`grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full text-xs font-bold text-[#9a7a3a] ${legend ? "bg-gradient-to-br from-[var(--gold-bright)] to-[var(--gold)] ring-2 ring-[var(--gold)]/40" : "bg-[var(--gold)]/15"}`}>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           {b.id && builderRanks.get(b.id)?.photo ? <img src={builderRanks.get(b.id)!.photo} alt="" loading="lazy" className="h-full w-full object-cover" /> : b.name.charAt(0).toUpperCase()}
                         </span>
-                        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-[#16221b]">{b.name}</span>
-                        <span className="shrink-0 text-xs font-bold text-[#6b7a70]">{b.count}</span>
+                        <span className="flex min-w-0 flex-1 items-center gap-1">
+                          {legend && (
+                            <svg className="h-3.5 w-3.5 shrink-0 text-[#c79a3a]" viewBox="0 0 24 24" fill="currentColor" aria-label="Legend"><path d="M5 19h14l1.5-10-4.5 3.5L12 6l-4 6.5L3.5 9 5 19z" /></svg>
+                          )}
+                          <span className={`min-w-0 truncate text-sm ${legend ? "bg-gradient-to-r from-[#9a7a3a] to-[#d4a94a] bg-clip-text font-extrabold text-transparent" : "font-semibold text-[#16221b]"}`} title={legend ? `${b.name} · Legend builder (${b.count} courses)` : b.name}>{b.name}</span>
+                        </span>
+                        <span className={`shrink-0 text-xs font-bold ${legend ? "text-[#c79a3a]" : "text-[#6b7a70]"}`}>{b.count}</span>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
