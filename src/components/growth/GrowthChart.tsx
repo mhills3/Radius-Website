@@ -64,7 +64,14 @@ export default function GrowthChart({ data }: { data: GrowthData }) {
   const xLabelEvery = Math.max(1, Math.ceil(pts.length / 7));
   const ht = hover != null ? pts[hover] : null;
   const slot = gw / pts.length;
-  const barW = showUsers ? Math.min(slot * 0.34, 16) : Math.min(slot * 0.6, 26);
+  // Bars use band positioning (centered in each slot) so they stay inside the grid at the edges
+  // and can be much wider. Two bars fill ~76% of the band; a single bar ~64%.
+  const band = slot;
+  const bucketX = (i: number) => padL + band * (i + 0.5);
+  const barGap = band * 0.05;
+  const barW = showUsers ? Math.min(band * 0.36, 90) : Math.min(band * 0.64, 150);
+  const cxOf = (i: number) => (bars ? bucketX(i) : sx(pts[i].d));
+  const hx = hover != null ? cxOf(hover) : 0;
 
   const Toggle = <T extends string>({ value, set, opts }: { value: T; set: (v: T) => void; opts: { v: T; label: string }[] }) => (
     <div className="inline-flex rounded-full border border-white/10 bg-white/[0.04] p-1">
@@ -100,15 +107,15 @@ export default function GrowthChart({ data }: { data: GrowthData }) {
             </g>
           ))}
           {pts.map((p, i) => i % xLabelEvery === 0 || i === pts.length - 1 ? (
-            <text key={i} x={sx(p.d)} y={H - 14} fill="rgba(168,179,145,0.6)" fontSize={12} textAnchor="middle">{mode === "month" ? fmtMonth(p.d) : fmtDate(p.d)}</text>
+            <text key={i} x={bars ? bucketX(i) : sx(p.d)} y={H - 14} fill="rgba(168,179,145,0.6)" fontSize={12} textAnchor="middle">{mode === "month" ? fmtMonth(p.d) : fmtDate(p.d)}</text>
           ) : null)}
 
           {bars ? (
             // per-period "added" bars
             pts.map((p, i) => {
-              const cx = sx(p.d);
-              const cBar = { x: showUsers ? cx - barW - 1 : cx - barW / 2, h: Math.max(0, baseY - sy(p.courses)) };
-              const uBar = { x: cx + 1, h: Math.max(0, baseY - sy(p.users)) };
+              const cx = bucketX(i);
+              const cBar = { x: showUsers ? cx - barGap / 2 - barW : cx - barW / 2, h: Math.max(0, baseY - sy(p.courses)) };
+              const uBar = { x: cx + barGap / 2, h: Math.max(0, baseY - sy(p.users)) };
               const on = hover === i;
               return (
                 <g key={i} opacity={hover != null && !on ? 0.55 : 1}>
@@ -135,11 +142,11 @@ export default function GrowthChart({ data }: { data: GrowthData }) {
 
           {/* hover capture */}
           {pts.map((p, i) => (
-            <rect key={`h${i}`} x={sx(p.d) - slot / 2} y={padT} width={slot} height={gh} fill="transparent" onMouseEnter={() => setHover(i)} />
+            <rect key={`h${i}`} x={bars ? padL + band * i : sx(p.d) - slot / 2} y={padT} width={slot} height={gh} fill="transparent" onMouseEnter={() => setHover(i)} />
           ))}
         </svg>
         {ht && (
-          <div className="pointer-events-none absolute top-2 rounded-xl border border-white/10 bg-black/85 px-3 py-2 text-xs backdrop-blur" style={{ left: `${(sx(ht.d) / W) * 100}%`, transform: "translateX(-50%)" }}>
+          <div className="pointer-events-none absolute top-2 rounded-xl border border-white/10 bg-black/85 px-3 py-2 text-xs backdrop-blur" style={{ left: `${(hx / W) * 100}%`, transform: "translateX(-50%)" }}>
             <div className="font-semibold text-[var(--cream)]">{fmtFull(ht.d)}</div>
             <div className="mt-0.5" style={{ color: GOLD }}>{ht.courses.toLocaleString()} courses{metric === "added" ? " added" : ""}</div>
             {showUsers && <div style={{ color: BLUE }}>{ht.users.toLocaleString()} users{metric === "added" ? " joined" : ""}</div>}
