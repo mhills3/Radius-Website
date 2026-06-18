@@ -62,7 +62,8 @@ export default function Footer() {
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.5fr_repeat(4,1fr)]">
           {/* brand + app */}
           <div>
-            <Link href="/" aria-label="Radius home">
+            {/* Footer logo is the subtle entrance to the internal Growth page. */}
+            <Link href="/growth" aria-label="Radius growth">
               <Logo className="h-8 w-[114px] text-[var(--cream)]" />
             </Link>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-[var(--text-body)]">
