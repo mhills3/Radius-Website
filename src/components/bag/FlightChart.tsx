@@ -9,6 +9,17 @@ const PAD = 26;
 const CX = W / 2;
 const BASE_Y = H - PAD;
 
+// Effective flight = custom wear override ?? factory (what the disc actually flies — matches the
+// disc detail + stability map). The chart must draw these, not the raw factory numbers.
+function effOf(d: FlightDisc): { speed?: number; glide?: number; turn?: number; fade?: number; tier: "US" | "ST" | "OS" } {
+  const speed = d.customSpeed ?? d.speed;
+  const glide = d.customGlide ?? d.glide;
+  const turn = d.customTurn ?? d.turn;
+  const fade = d.customFade ?? d.fade;
+  const stab = (typeof turn === "number" ? turn : 0) + (typeof fade === "number" ? fade : 0);
+  return { speed, glide, turn, fade, tier: stab < -0.5 ? "US" : stab <= 1.5 ? "ST" : "OS" };
+}
+
 export default function FlightChart({ discs }: { discs: FlightDisc[] }) {
   const flown = discs.filter((d) => d.speed != null && d.turn != null && d.fade != null);
   const cats = (["DISTANCE", "FAIRWAY", "MIDRANGE", "PUTTER"] as Cat[]).filter((c) => flown.some((d) => d.category === c));
@@ -43,8 +54,9 @@ export default function FlightChart({ discs }: { discs: FlightDisc[] }) {
           <line x1={CX} y1={PAD} x2={CX} y2={BASE_Y} stroke="rgba(255,255,255,0.06)" strokeWidth="1" strokeDasharray="3 5" />
 
           {shown.map((disc) => {
-            const p = buildFlightPath(disc, W, H, PAD);
-            const color = disc.tier ? TIER_META[disc.tier].color : "#8a968d";
+            const e = effOf(disc);
+            const p = buildFlightPath({ speed: e.speed, turn: e.turn, fade: e.fade }, W, H, PAD);
+            const color = TIER_META[e.tier].color;
             const isHover = hover === disc.id;
             const dim = hover && !isHover;
             return (
@@ -62,7 +74,7 @@ export default function FlightChart({ discs }: { discs: FlightDisc[] }) {
         {hovered && (
           <div className="pointer-events-none absolute left-2 top-2 rounded-xl border border-white/10 bg-[var(--bg-deep)]/90 px-3 py-2 backdrop-blur-sm">
             <div className="text-sm font-bold text-[var(--cream)]">{hovered.nickname || hovered.name}</div>
-            <div className="mt-0.5 font-mono text-xs text-[var(--gold)]">{hovered.speed} / {hovered.glide} / {hovered.turn} / {hovered.fade}</div>
+            <div className="mt-0.5 font-mono text-xs text-[var(--gold)]">{(() => { const e = effOf(hovered); return `${e.speed ?? "—"} / ${e.glide ?? "—"} / ${e.turn ?? "—"} / ${e.fade ?? "—"}`; })()}</div>
           </div>
         )}
       </div>
