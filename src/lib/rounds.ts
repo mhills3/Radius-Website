@@ -29,6 +29,121 @@ export interface DecodedRound {
   relativeToPar: number;
   holesPlayed: number;
   format?: string;
+  // Insights extras (present on app-written rounds; optional)
+  iqBefore?: number;
+  iqAfter?: number;
+  weatherSummary?: string;
+  windSummary?: string;
+  temperatureSummary?: string;
+}
+
+// Per-round performance stats — EXACT ports of the iOS/Android Round Review card
+// (RoundSummarySheet.kt PerformanceSection / iOS Round computed props). "Score"
+// pseudo-throws are excluded from every denominator. Percent values are 0..1;
+// `null` means "no data → show --" (matches the apps' display gates).
+export interface RoundStats {
+  throws: number;
+  throwQuality: number | null; // 0..100
+  fairwayPct: number | null;
+  obRate: number | null;
+  scramblePct: number | null;
+  greenHitPct: number | null;
+  c1Pct: number | null;
+  c2Pct: number | null;
+  birdies: number;
+  pars: number;
+  bogeys: number;
+  doublePlus: number;
+  bestHole?: { holeNumber: number; rel: number };
+  worstHole?: { holeNumber: number; rel: number };
+  discs: { name: string; count: number; quality: number }[];
+}
+
+function isMissKey(k: string): boolean {
+  return k === "Miss";
+}
+
+export function computeRoundStats(round: DecodedRound): RoundStats {
+  const played = round.holes.filter((h) => h.played);
+  // Flatten throws, excluding "Score" pseudo-throws, tagging each with its hole.
+  const all: { t: DecodedThrow; key: string; hole: number }[] = [];
+  for (const h of played) {
+    for (const t of h.throws) {
+      if (t.discName === "Score") continue;
+      all.push({ t, key: resultKey(t.result), hole: h.holeNumber });
+    }
+  }
+  const n = all.length;
+  const successOf = (key: string) => RESULTS.find((r) => r.key === key)?.success ?? 40;
+
+  // fieldThrows = off-tee/approach (Fairway, Miss/rough, OB)
+  const field = all.filter((x) => x.key === "Fairway" || isMissKey(x.key) || x.key === "OB");
+  // teeShots = first throw on each hole
+  const byHole = new Map<number, typeof all>();
+  for (const x of all) {
+    const arr = byHole.get(x.hole) ?? [];
+    arr.push(x);
+    byHole.set(x.hole, arr);
+  }
+  const tee = [...byHole.values()].map((arr) => arr[0]).filter(Boolean);
+  const fairwayHits = tee.filter((x) => ["Fairway", "Circle 1", "Circle 2", "Basket"].includes(x.key)).length;
+  const fairwayPct = field.length === 0 ? null : tee.length === 0 ? null : fairwayHits / tee.length;
+
+  const obThrows = all.filter((x) => x.key === "OB").length;
+  const obRate = n === 0 ? null : obThrows / n;
+
+  const greenHits = field.filter((x) => ["Basket", "Circle 1", "Circle 2"].includes(x.key)).length;
+  const greenHitPct = field.length === 0 ? null : greenHits / field.length;
+
+  // Scramble: holes with a miss/OB throw that still scored par-or-better. No trouble = 0.5.
+  const relByHole = new Map(played.map((h) => [h.holeNumber, h.score - h.par]));
+  const trouble = [...byHole.entries()].filter(([, arr]) => arr.some((x) => isMissKey(x.key) || x.key === "OB")).map(([h]) => h);
+  const scramblePct = n === 0 ? null : trouble.length === 0 ? 0.5 : trouble.filter((h) => (relByHole.get(h) ?? 1) <= 0).length / trouble.length;
+
+  // C1 ≤33ft, C2 34–66ft; "made" via madeIt flag.
+  const c1 = all.filter((x) => x.t.distanceToBasket != null && x.t.distanceToBasket <= 33);
+  const c2 = all.filter((x) => x.t.distanceToBasket != null && x.t.distanceToBasket >= 34 && x.t.distanceToBasket <= 66);
+  const c1Made = c1.filter((x) => x.t.madeIt).length;
+  const c2Made = c2.filter((x) => x.t.madeIt).length;
+  const c1Pct = c1.length === 0 ? null : c1Made / c1.length;
+  const c2Pct = c2.length === 0 ? null : c2Made / c2.length;
+
+  const throwQuality = n === 0 ? null : all.reduce((s, x) => s + successOf(x.key), 0) / n;
+
+  // Score distribution + best/worst
+  let birdies = 0, pars = 0, bogeys = 0, doublePlus = 0;
+  for (const h of played) {
+    const rel = h.score - h.par;
+    if (rel < 0) birdies++;
+    else if (rel === 0) pars++;
+    else if (rel === 1) bogeys++;
+    else doublePlus++;
+  }
+  let bestHole: RoundStats["bestHole"], worstHole: RoundStats["worstHole"];
+  if (played.length) {
+    const sorted = [...played].sort((a, b) => (a.score - a.par) - (b.score - b.par));
+    const b = sorted[0], w = sorted[sorted.length - 1];
+    bestHole = { holeNumber: b.holeNumber, rel: b.score - b.par };
+    worstHole = { holeNumber: w.holeNumber, rel: w.score - w.par };
+  }
+
+  // Discs thrown (excl. Score), with per-disc quality.
+  const discMap = new Map<string, { count: number; sum: number }>();
+  for (const x of all) {
+    const name = x.t.discName || "Unknown";
+    const d = discMap.get(name) ?? { count: 0, sum: 0 };
+    d.count++;
+    d.sum += successOf(x.key);
+    discMap.set(name, d);
+  }
+  const discs = [...discMap.entries()]
+    .map(([name, d]) => ({ name, count: d.count, quality: d.count ? d.sum / d.count : 0 }))
+    .sort((a, b) => b.count - a.count);
+
+  return {
+    throws: n, throwQuality, fairwayPct, obRate, scramblePct, greenHitPct, c1Pct, c2Pct,
+    birdies, pars, bogeys, doublePlus, bestHole, worstHole, discs,
+  };
 }
 
 // Throw-result palette (iOS ThrowResult, exact colors).
@@ -42,7 +157,7 @@ export const RESULTS: { key: string; label: string; color: string; success: numb
 ];
 
 function resultKey(raw: string): string {
-  if (raw === "Miss Left" || raw === "Miss Right") return "Miss";
+  if (raw === "Miss Left" || raw === "Miss Right" || raw === "Rough") return "Miss";
   if (raw === "Penalty") return "OB";
   return raw;
 }
@@ -133,6 +248,11 @@ function parseRound(docId: string, data: any): Promise<DecodedRound | null> {
         relativeToPar: total - totalPar,
         holesPlayed,
         format: (j.scoringFormat as string) ?? undefined,
+        iqBefore: typeof j.iqBefore === "number" ? (j.iqBefore as number) : undefined,
+        iqAfter: typeof j.iqAfter === "number" ? (j.iqAfter as number) : undefined,
+        weatherSummary: typeof j.weatherSummary === "string" && j.weatherSummary ? (j.weatherSummary as string) : undefined,
+        windSummary: typeof j.windSummary === "string" && j.windSummary ? (j.windSummary as string) : undefined,
+        temperatureSummary: typeof j.temperatureSummary === "string" && j.temperatureSummary ? (j.temperatureSummary as string) : undefined,
       };
     } catch {
       return null;
