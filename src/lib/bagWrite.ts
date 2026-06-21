@@ -49,6 +49,20 @@ export async function saveBag(uid: string, discs: RawDisc[], removedIds?: string
   await setDoc(doc(db, `userBackups/${cid}/data/current`), payload, { merge: true });
 }
 
+/**
+ * Add a single catalog disc to the bag by name (used by the disc-detail "Add to bag" action).
+ * Reads the current myBagJSON, appends a fresh bag entry, and merge-writes it back — lossless, and
+ * matches the app shape (duplicate copies of the same disc are allowed, exactly like the apps).
+ */
+export async function addDiscToBag(uid: string, discName: string): Promise<void> {
+  const cid = await resolveCanonicalId(uid);
+  const ref = dataDoc(cid);
+  const snap = await getDoc(ref);
+  const existing = (snap.exists() ? decodeJsonArray(snap.data().myBagJSON) : []) as RawDisc[];
+  const next = [...existing, newDisc(discName)];
+  await setDoc(ref, { myBagJSON: encodeBag(next), lastUpdated: Date.now() }, { merge: true });
+}
+
 // Collection & Lost: bag/collection/lost are kept mutually exclusive BY NAME (matches the apps).
 // A move drops the disc from myBagJSON and adds its NAME to the target list (arrayUnion) while
 // removing it from the other list (arrayRemove). NO tombstone — move-back works because the name

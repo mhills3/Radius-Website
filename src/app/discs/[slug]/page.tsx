@@ -7,6 +7,7 @@ import { normCat, tierFor, type FlightDisc } from "@/lib/bag";
 import DiscGraphic from "@/components/bag/DiscGraphic";
 import DiscVsWidget from "@/components/discs/DiscVsWidget";
 import DiscBagCta from "@/components/discs/DiscBagCta";
+import AddToBag from "@/components/discs/AddToBag";
 import DiscCard from "@/components/discs/DiscCard";
 import DiscReviewForm from "@/components/discs/DiscReviewForm";
 import DiscMyStats from "@/components/discs/DiscMyStats";
@@ -238,8 +239,9 @@ export default async function DiscPage({ params }: Props) {
             <div className="mt-3 flex items-center justify-between border-t border-black/[0.06] pt-3 text-sm"><span className="text-[#8a968d]">Recommended arm</span><span className="font-bold text-[#16221b]">{armSpeedFor(d.speed)}</span></div>
           </div>
 
-          {/* bag CTA — logged-out only */}
+          {/* bag CTA — logged-out: create-account prompt; logged-in: add-to-bag (mutually exclusive) */}
           <DiscBagCta discName={d.name} />
+          <AddToBag discName={d.name} />
         </aside>
       </div>
     </div>
