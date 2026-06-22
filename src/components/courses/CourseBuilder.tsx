@@ -7,6 +7,8 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { createCourse, updateBuiltCourse, findNearbyCourses, distanceFt, slugify, type HoleDraft, type Course, type EditCourse } from "@/lib/courses";
 import { storage } from "@/lib/firebase";
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
+import { useMetricPref } from "@/lib/useMetricPref";
+import { fmtDist, distValue } from "@/lib/units";
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "pk.eyJ1IjoibWlrZXkzIiwiYSI6ImNtb3Fra25hZzB6dnIycHB6ZHMxcjIwNHYifQ.tyyS7i-aoR54_l11rW0Khg";
 
@@ -130,6 +132,7 @@ export default function CourseBuilder({ uid, initial }: { uid: string; initial?:
   const modeRef = useRef(mode); modeRef.current = mode;
   const curRef = useRef(cur); curRef.current = cur;
   const holesRef = useRef(holes); holesRef.current = holes;
+  const metric = useMetricPref();
   const hydrated = useRef(editing); // edit mode: skip geolocate-on-load, use the course's own location
 
   const holeCount = Math.max(0, Math.min(27, parseInt(holeCountText, 10) || 0));
@@ -238,10 +241,14 @@ export default function CourseBuilder({ uid, initial }: { uid: string; initial?:
             return next;
           });
           if (m === "tee") setMode("basket");
-          else if (m === "basket") { setMode("tee"); setCur((c) => (c + 1 < holeCount ? c + 1 : c)); }
+          // Cap auto-advance at the ACTUAL number of holes (holesRef), not the stale holeCount
+          // captured when this once-registered click handler was created — otherwise mapping the
+          // last hole's basket advanced past the end (phantom "Hole 13").
+          else if (m === "basket") { setMode("tee"); setCur((c) => (c + 1 < holesRef.current.length ? c + 1 : c)); }
         } else {
           // alt tee / alt basket / mando — capture point, confirm details in the panel
           const h = holesRef.current[i];
+          if (!h) return; // never act on a non-existent hole (defensive)
           if (m === "altTee" && (h?.teeLat == null || h.altTees.length >= MAX_ALT)) { setError(h?.teeLat == null ? "Place the primary tee first." : "Max 3 alternate tees."); return; }
           if (m === "altBasket" && (h?.basketLat == null || h.altBaskets.length >= MAX_ALT)) { setError(h?.basketLat == null ? "Place the primary basket first." : "Max 3 alternate baskets."); return; }
           if (m === "mando" && (h?.mandos.length ?? 0) >= MAX_MANDO) { setError("Max 4 mandos."); return; }
@@ -488,7 +495,7 @@ export default function CourseBuilder({ uid, initial }: { uid: string; initial?:
                 ))}
               </div>
               <div className="rounded-2xl border border-black/[0.07] bg-[#faf9f5] p-4">
-                <div className="mb-3 flex items-center justify-between"><span className="font-[family-name:var(--font-heading)] text-lg font-extrabold text-[#16221b]">Hole {cur + 1}</span>{curHole && mapped(curHole) && <span className="rounded-full bg-[var(--gold)]/20 px-2.5 py-1 text-xs font-bold text-[#9a7a3a]">{holeDistFt(curHole)} ft</span>}</div>
+                <div className="mb-3 flex items-center justify-between"><span className="font-[family-name:var(--font-heading)] text-lg font-extrabold text-[#16221b]">Hole {cur + 1}</span>{curHole && mapped(curHole) && <span className="rounded-full bg-[var(--gold)]/20 px-2.5 py-1 text-xs font-bold text-[#9a7a3a]">{fmtDist(holeDistFt(curHole), metric)}</span>}</div>
                 <div className="mb-3 grid grid-cols-3 gap-2">
                   {MODES.map((m) => <button key={m.k} disabled={!m.on} onClick={() => { setMode(m.k); setPending(null); }} className={`flex flex-col items-center justify-center gap-1.5 rounded-xl py-3 text-[11px] font-bold leading-none transition-all disabled:opacity-35 ${mode === m.k ? "text-white shadow" : "border border-black/[0.08] bg-white text-[#46554c]"}`} style={mode === m.k ? { background: m.color } : undefined}><span className="flex h-6 items-center justify-center">{modePreview(m.k, mode === m.k)}</span><span>{m.label}</span></button>)}
                 </div>
@@ -539,7 +546,7 @@ export default function CourseBuilder({ uid, initial }: { uid: string; initial?:
                 <div className="mt-4 grid grid-cols-3 gap-2 text-center">
                   <div className="rounded-xl bg-white py-3 shadow-sm"><div className="font-[family-name:var(--font-heading)] text-2xl font-extrabold text-[#16221b]">{holeCount}</div><div className="text-[10px] uppercase tracking-wide text-[#8a968d]">Holes</div></div>
                   <div className="rounded-xl bg-white py-3 shadow-sm"><div className="font-[family-name:var(--font-heading)] text-2xl font-extrabold text-[#16221b]">{totalPar}</div><div className="text-[10px] uppercase tracking-wide text-[#8a968d]">Par</div></div>
-                  <div className="rounded-xl bg-white py-3 shadow-sm"><div className="font-[family-name:var(--font-heading)] text-2xl font-extrabold text-[#16221b]">{holes.reduce((s, h) => s + (mapped(h) ? holeDistFt(h) : 0), 0).toLocaleString()}</div><div className="text-[10px] uppercase tracking-wide text-[#8a968d]">Feet</div></div>
+                  <div className="rounded-xl bg-white py-3 shadow-sm"><div className="font-[family-name:var(--font-heading)] text-2xl font-extrabold text-[#16221b]">{distValue(holes.reduce((s, h) => s + (mapped(h) ? holeDistFt(h) : 0), 0), metric).toLocaleString()}</div><div className="text-[10px] uppercase tracking-wide text-[#8a968d]">{metric ? "Meters" : "Feet"}</div></div>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-1.5 text-[11px]">
                   <span className="rounded-full bg-white px-2.5 py-1 font-bold text-[#46554c] shadow-sm">{courseType}</span>

@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { type DecodedRound, computeRoundStats, type RoundStats } from "@/lib/rounds";
 import { rankForIQ, rankLabel } from "@/lib/rank";
+import { useMetricPref } from "@/lib/useMetricPref";
+import { fmtDist } from "@/lib/units";
 
 const fmtScore = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`);
 const fmtDate = (ms: number) => (ms ? new Date(ms).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" }) : "");
@@ -17,7 +19,7 @@ function holeColor(diff: number): string {
   return "#e0473f"; // double+
 }
 
-function HoleCell({ n, par, score, dist }: { n: number; par: number; score: number; dist?: number }) {
+function HoleCell({ n, par, score, dist, metric }: { n: number; par: number; score: number; dist?: number; metric: boolean }) {
   const diff = score - par;
   const color = holeColor(diff);
   const ring = diff < 0; // circle for under par
@@ -25,7 +27,7 @@ function HoleCell({ n, par, score, dist }: { n: number; par: number; score: numb
   return (
     <div className="flex w-12 shrink-0 flex-col items-center gap-1">
       <div className="text-[10px] font-semibold text-[var(--sage-dim)]">{n}</div>
-      <div className="text-[10px] text-[var(--sage-dim)]">{dist ? `${dist}ft` : `par ${par}`}</div>
+      <div className="text-[10px] text-[var(--sage-dim)]">{dist ? fmtDist(dist, metric) : `par ${par}`}</div>
       <div
         className={`grid h-9 w-9 place-items-center font-[family-name:var(--font-heading)] text-base font-bold ${ring ? "rounded-full border-2" : square ? "border-2" : ""}`}
         style={{ color, borderColor: diff !== 0 ? color : "transparent" }}
@@ -49,6 +51,7 @@ type Tab = "scorecard" | "stats" | "insights";
 
 export default function Scorecard({ round, onClose }: { round: DecodedRound; onClose: () => void }) {
   const [tab, setTab] = useState<Tab>("scorecard");
+  const metric = useMetricPref();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
@@ -119,7 +122,7 @@ export default function Scorecard({ round, onClose }: { round: DecodedRound; onC
                 {back.length > 0 && <div className="mb-2 text-xs font-bold uppercase tracking-wide text-[var(--sage-dim)]">{seg.label} nine</div>}
                 <div className="flex items-center gap-1 overflow-x-auto pb-2">
                   {seg.hs.map((h) => (
-                    <HoleCell key={h.holeNumber} n={h.holeNumber} par={h.par} score={h.score} dist={h.distance || undefined} />
+                    <HoleCell key={h.holeNumber} n={h.holeNumber} par={h.par} score={h.score} dist={h.distance || undefined} metric={metric} />
                   ))}
                   <div className="ml-2 flex w-14 shrink-0 flex-col items-center gap-1 border-l border-white/10 pl-3">
                     <div className="text-[10px] font-semibold text-[var(--sage-dim)]">TOT</div>
