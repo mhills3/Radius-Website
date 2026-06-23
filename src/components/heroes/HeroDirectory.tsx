@@ -4,11 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getAllCourses, slugify, type Course } from "@/lib/courses";
+import { useMetricPref } from "@/lib/useMetricPref";
+import { fmtDist } from "@/lib/units";
 
 // Option C — Directory-forward: a slim search hero that blends straight into a
 // live grid of courses. Maximum "website of utility" — you're using it instantly.
 export default function HeroDirectory() {
   const router = useRouter();
+  const metric = useMetricPref();
   const [courses, setCourses] = useState<Course[]>([]);
   const [query, setQuery] = useState("");
 
@@ -65,7 +68,7 @@ export default function HeroDirectory() {
               <div className="mt-4 flex flex-wrap gap-2 text-xs text-[var(--text-body)]">
                 <span className="rounded-full bg-white/5 px-3 py-1">{c.holeCount} holes</span>
                 <span className="rounded-full bg-white/5 px-3 py-1">Par {c.par}</span>
-                {c.distanceFt > 0 && <span className="rounded-full bg-white/5 px-3 py-1">{c.distanceFt.toLocaleString()} ft</span>}
+                {c.distanceFt > 0 && <span className="rounded-full bg-white/5 px-3 py-1">{fmtDist(c.distanceFt, metric)}</span>}
               </div>
             </Link>
           ))}

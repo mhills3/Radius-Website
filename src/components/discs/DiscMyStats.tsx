@@ -6,11 +6,14 @@ import { useAuth } from "@/components/AuthProvider";
 import { getDecodedRounds, outcomesByDisc, RESULTS } from "@/lib/rounds";
 import { getBag } from "@/lib/bag";
 import { ceilingFor } from "@/lib/bagRating";
+import { useMetricPref } from "@/lib/useMetricPref";
+import { fmtDist } from "@/lib/units";
 
 interface MyStats { thrown: number; quality: number; counts: Record<string, number>; avgDist: number | null; aces: number; inBag: boolean; armSpeed?: string }
 
 export default function DiscMyStats({ discName, discSpeed }: { discName: string; discSpeed: number }) {
   const { user } = useAuth();
+  const metric = useMetricPref();
   const [data, setData] = useState<MyStats | null | undefined>(undefined);
 
   useEffect(() => {
@@ -81,7 +84,7 @@ export default function DiscMyStats({ discName, discSpeed }: { discName: string;
               <div className="flex flex-wrap gap-x-8 gap-y-3">
                 <Stat label="Times thrown" value={data.thrown} />
                 <Stat label="Success rate" value={`${data.quality}%`} />
-                {data.avgDist != null && <Stat label="Avg distance" value={`${data.avgDist} ft`} />}
+                {data.avgDist != null && <Stat label="Avg distance" value={fmtDist(data.avgDist, metric)} />}
                 {data.aces > 0 && <Stat label="Aces" value={data.aces} />}
               </div>
               <div className="mt-4">

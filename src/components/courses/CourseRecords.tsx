@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { type AceRecord, type DriveRecord } from "@/lib/courseRecords";
+import { useMetricPref } from "@/lib/useMetricPref";
+import { fmtDist } from "@/lib/units";
 
 export interface BestScore { uid: string; name: string; username?: string; value: number }
 
@@ -35,6 +37,7 @@ function Panel({ icon, title, children }: { icon: string; title: string; childre
 }
 
 export default function CourseRecords({ best, aces, drives, photos, loaded }: { best: BestScore[]; aces: AceRecord[]; drives: DriveRecord[]; photos: Map<string, string>; loaded: boolean }) {
+  const metric = useMetricPref();
   return (
     <div className="grid gap-4 md:grid-cols-3">
       <Panel icon="🏆" title="Best scores">
@@ -51,7 +54,7 @@ export default function CourseRecords({ best, aces, drives, photos, loaded }: { 
 
       <Panel icon="🚀" title="Long drives">
         {!loaded ? <p className="py-2 text-sm text-[#8a968d]">Loading…</p> : drives.length === 0 ? <p className="py-2 text-sm text-[#8a968d]">No drives recorded yet.</p> : drives.map((d, i) => (
-          <Row key={d.uid + i} i={i} photo={photos.get(d.uid)} name={d.player} username={d.username} value={`${d.distance.toLocaleString()} ft`} valueColor="#9a7a3a" />
+          <Row key={d.uid + i} i={i} photo={photos.get(d.uid)} name={d.player} username={d.username} value={fmtDist(d.distance, metric)} valueColor="#9a7a3a" />
         ))}
       </Panel>
     </div>

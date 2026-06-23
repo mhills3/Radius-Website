@@ -11,9 +11,13 @@ import RoundsHeatmap from "@/components/dashboard/RoundsHeatmap";
 import { getDecodedRounds, type DecodedRound } from "@/lib/rounds";
 import ProfileBar from "@/components/profile/ProfileBar";
 import RecapCard from "@/components/dashboard/RecapCard";
+import { useMetricPref } from "@/lib/useMetricPref";
+import { fmtDist } from "@/lib/units";
 
 const cap = (s?: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : "");
 const fmtScore = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`);
+// Avg score matches the iOS app exactly: one decimal, "+" prefix when over par ("+2.3", "0.0", "-1.5").
+const fmtAvg = (n: number) => `${n > 0 ? "+" : ""}${n.toFixed(1)}`;
 const scoreColor = (n: number) => (n < 0 ? "text-[#5fcf80]" : n === 0 ? "text-[var(--cream)]" : "text-[#f08c8c]");
 const fmtDate = (ms: number) => (ms ? new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "");
 const card = "rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6";
@@ -45,6 +49,7 @@ export default function DashboardView({ data, uid }: { data: Dashboard; uid: str
   const { profile, iqCurrent, iqHistory, rounds, topDiscs, bag, roundMetas, acesCount } = data;
   const [decoded, setDecoded] = useState<DecodedRound[] | null>(null);
   const [openRound, setOpenRound] = useState<DecodedRound | null>(null);
+  const metric = useMetricPref();
   const [loadingRound, setLoadingRound] = useState<string | null>(null);
   const [showRanks, setShowRanks] = useState(false);
   const [roundSort, setRoundSort] = useState<"recent" | "az">("recent");
@@ -220,9 +225,9 @@ export default function DashboardView({ data, uid }: { data: Dashboard; uid: str
           <div className={`fade-up ${card}`} style={{ animationDelay: "60ms" }}>
             <div className="grid grid-cols-2 gap-x-6 gap-y-5">
               <Stat label="Rounds" value={profile.roundsPlayed ?? rounds.length} />
-              <Stat label="Avg score" value={avgScore != null ? fmtScore(Math.round(avgScore)) : "—"} />
+              <Stat label="Avg score" value={avgScore != null ? fmtAvg(avgScore) : "—"} />
               <Stat label="Best round" value={bestScore != null ? fmtScore(bestScore) : "—"} />
-              <Stat label="Max distance" value={profile.maxDistance ? `${Math.round(profile.maxDistance)} ft` : "—"} />
+              <Stat label="Max distance" value={profile.maxDistance ? fmtDist(profile.maxDistance, metric) : "—"} />
               <Stat label="Followers" value={profile.followerCount ?? 0} />
               <Stat label="Following" value={profile.followingCount ?? 0} />
             </div>
@@ -233,7 +238,7 @@ export default function DashboardView({ data, uid }: { data: Dashboard; uid: str
             <div className="mb-5 text-xs font-bold uppercase tracking-[0.18em] text-[var(--sage-dim)]">Highlights</div>
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               <PR icon="🏆" label="Best round" value={bestScore != null ? fmtScore(bestScore) : "—"} accent />
-              <PR icon="🚀" label="Longest drive" value={profile.maxDistance ? `${Math.round(profile.maxDistance)} ft` : "—"} />
+              <PR icon="🚀" label="Longest drive" value={profile.maxDistance ? fmtDist(profile.maxDistance, metric) : "—"} />
               <PR icon="🧠" label="Top Game IQ" value={topIQ ? String(topIQ) : "—"} />
               <PR icon="⛳" label="Total rounds" value={String(profile.roundsPlayed ?? roundMetas.length)} />
             </div>
@@ -325,7 +330,7 @@ export default function DashboardView({ data, uid }: { data: Dashboard; uid: str
           <div className={`fade-up ${card}`} style={{ animationDelay: "200ms" }}>
             <div className="mb-1 flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--sage-dim)]">Scoring trend</span>
-              {avgScore != null && <span className={`text-sm font-bold ${scoreColor(avgScore)}`}>{fmtScore(Math.round(avgScore))} avg</span>}
+              {avgScore != null && <span className={`text-sm font-bold ${scoreColor(avgScore)}`}>{fmtAvg(avgScore)} avg</span>}
             </div>
             <AreaChart values={scoreSeries} stroke="#5fcf80" />
             <p className="mt-3 text-sm text-[var(--text-body)]">Relative to par, last {scoreSeries.length} rounds.</p>

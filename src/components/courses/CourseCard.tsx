@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { type Course, slugify } from "@/lib/courses";
+import { useMetricPref } from "@/lib/useMetricPref";
+import { fmtDist } from "@/lib/units";
 
 function Stars({ rating }: { rating: number }) {
   return (
@@ -18,8 +20,9 @@ function Stars({ rating }: { rating: number }) {
 const fmt = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`);
 
 export default function CourseCard({ course, played }: { course: Course; played?: { plays: number; best: number | null } }) {
+  const metric = useMetricPref();
   const loc = [course.city, course.state].filter(Boolean).join(", ");
-  const lengthK = course.distanceFt ? `${Math.round(course.distanceFt).toLocaleString()} ft` : null;
+  const lengthK = course.distanceFt ? fmtDist(course.distanceFt, metric) : null;
   return (
     <Link href={`/courses/${slugify(course.name, course.id)}`} className="group flex flex-col overflow-hidden rounded-2xl border border-black/8 bg-white shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_18px_40px_-16px_rgba(0,0,0,0.28)]">
       <div className="relative aspect-[16/10] overflow-hidden bg-[var(--bg-deep)]">

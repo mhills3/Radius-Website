@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getAllCourses, getTotalCourseCount, slugify, type Course } from "@/lib/courses";
+import { useMetricPref } from "@/lib/useMetricPref";
+import { fmtDist } from "@/lib/units";
 
 // Branded cover palette — keeps the home page professional & consistent (no amateur builder photos).
 const TILE_COLORS = ["#2f6f4e", "#9a6b2f", "#3a5a8c", "#6b4a8c", "#2f6f6f", "#8c5a3a", "#4a7a3a"];
@@ -88,6 +90,7 @@ export default function CoursesStrip() {
 
 function CourseTile({ c, featured = false, className = "" }: { c: Course; featured?: boolean; className?: string }) {
   const color = colorFor(c.id || c.name);
+  const metric = useMetricPref();
   return (
     <Link href={`/courses/${slugify(c.name, c.id)}`} className={`group relative overflow-hidden rounded-3xl shadow-sm ring-1 ring-inset ring-white/10 transition-all hover:-translate-y-0.5 hover:shadow-[0_24px_60px_-22px_rgba(0,0,0,0.45)] ${className}`} style={{ background: `linear-gradient(140deg, ${color}, #0d140f 80%)` }}>
       {/* topo texture */}
@@ -102,7 +105,7 @@ function CourseTile({ c, featured = false, className = "" }: { c: Course; featur
         <div className={`mt-3 flex flex-wrap gap-2 ${featured ? "text-xs" : "text-[11px]"} text-[var(--cream)]`}>
           <span className="rounded-full bg-white/15 px-2.5 py-1 backdrop-blur">{c.holeCount} holes</span>
           <span className="rounded-full bg-white/15 px-2.5 py-1 backdrop-blur">Par {c.par}</span>
-          {featured && c.distanceFt > 0 && <span className="rounded-full bg-white/15 px-2.5 py-1 backdrop-blur">{c.distanceFt.toLocaleString()} ft</span>}
+          {featured && c.distanceFt > 0 && <span className="rounded-full bg-white/15 px-2.5 py-1 backdrop-blur">{fmtDist(c.distanceFt, metric)}</span>}
         </div>
       </div>
     </Link>

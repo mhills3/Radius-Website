@@ -3,9 +3,12 @@
 import { useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { updateCourse, updateCourseHoles, type Course, type HoleEdit } from "@/lib/courses";
+import { useMetricPref } from "@/lib/useMetricPref";
+import { fmtDist, distValue, FT_TO_M } from "@/lib/units";
 
 export default function CourseEditForm({ course, onSaved, onClose }: { course: Course; onSaved: (patch: Partial<Course>) => void; onClose: () => void }) {
   const { user } = useAuth();
+  const metric = useMetricPref();
   const [tab, setTab] = useState<"details" | "holes">("details");
   const [f, setF] = useState({
     name: course.name, city: course.city, state: course.state, description: course.description,
@@ -87,16 +90,16 @@ export default function CourseEditForm({ course, onSaved, onClose }: { course: C
             <p className="py-8 text-center text-sm text-[#8a968d]">No holes mapped for this layout yet. Add holes in the Radius app.</p>
           ) : (
             <div>
-              <div className="mb-2 flex items-center justify-between text-xs font-semibold text-[#8a968d]"><span>Par & distance per hole — tee/basket map data is preserved.</span><span className="text-[#16221b]">Par {totalPar} · {totalDist.toLocaleString()} ft</span></div>
+              <div className="mb-2 flex items-center justify-between text-xs font-semibold text-[#8a968d]"><span>Par & distance per hole — tee/basket map data is preserved.</span><span className="text-[#16221b]">Par {totalPar} · {fmtDist(totalDist, metric)}</span></div>
               <div className="grid grid-cols-[auto_1fr_1fr] items-center gap-x-3 gap-y-2">
                 <div className="text-[10px] font-bold uppercase text-[#8a968d]">Hole</div>
                 <div className="text-[10px] font-bold uppercase text-[#8a968d]">Par</div>
-                <div className="text-[10px] font-bold uppercase text-[#8a968d]">Distance (ft)</div>
+                <div className="text-[10px] font-bold uppercase text-[#8a968d]">Distance ({metric ? "m" : "ft"})</div>
                 {holes.map((h, i) => (
                   <div key={i} className="contents">
                     <div className="text-sm font-bold text-[#16221b]">{h.holeNumber || i + 1}</div>
                     <input type="number" value={h.par} onChange={(e) => setHole(i, "par", Number(e.target.value))} className="rounded-lg border border-black/10 bg-[#faf8f3] px-2.5 py-1.5 text-sm outline-none focus:border-[var(--gold)]" />
-                    <input type="number" value={h.distance} onChange={(e) => setHole(i, "distance", Number(e.target.value))} className="rounded-lg border border-black/10 bg-[#faf8f3] px-2.5 py-1.5 text-sm outline-none focus:border-[var(--gold)]" />
+                    <input type="number" value={metric ? distValue(h.distance, true) : h.distance} onChange={(e) => setHole(i, "distance", metric ? Math.round(Number(e.target.value) / FT_TO_M) : Number(e.target.value))} className="rounded-lg border border-black/10 bg-[#faf8f3] px-2.5 py-1.5 text-sm outline-none focus:border-[var(--gold)]" />
                   </div>
                 ))}
               </div>

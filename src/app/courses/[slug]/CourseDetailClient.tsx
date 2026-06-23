@@ -12,6 +12,8 @@ import { getCourseRoundsForUser, type DecodedRound } from "@/lib/rounds";
 import { getCourseRecords, type CourseRecords as CourseRecordsData } from "@/lib/courseRecords";
 import CourseRecords from "@/components/courses/CourseRecords";
 import { useAuth } from "@/components/AuthProvider";
+import { useMetricPref } from "@/lib/useMetricPref";
+import { fmtDist } from "@/lib/units";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "pk.eyJ1IjoibWlrZXkzIiwiYSI6ImNtb3Fra25hZzB6dnIycHB6ZHMxcjIwNHYifQ.tyyS7i-aoR54_l11rW0Khg";
 const fmt = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`);
@@ -29,6 +31,7 @@ function shotColor(result: string): string {
 
 export default function CourseDetailClient({ slug }: { slug: string }) {
   const { user, profile } = useAuth();
+  const metric = useMetricPref();
   const [course, setCourse] = useState<Course | null>(null);
   const [scores, setScores] = useState<CourseScore[]>([]);
   const [ranks, setRanks] = useState<Map<string, RankInfo>>(new Map());
@@ -234,7 +237,7 @@ export default function CourseDetailClient({ slug }: { slug: string }) {
             <div className="mt-5 flex flex-wrap gap-x-7 gap-y-3 rounded-2xl border border-white/15 bg-black/30 px-5 py-3.5 backdrop-blur-md sm:inline-flex">
               <HeroStat label="Holes" value={course.holeCount} />
               <HeroStat label="Par" value={totalPar} />
-              <HeroStat label="Length" value={totalDist ? `${totalDist.toLocaleString()} ft` : "—"} />
+              <HeroStat label="Length" value={totalDist ? fmtDist(totalDist, metric) : "—"} />
               {course.rating ? <HeroStat label="Rating" value={`★ ${course.rating.toFixed(1)}`} /> : null}
               {avgToPar != null ? <HeroStat label="Avg score" value={fmt(avgToPar)} /> : (course.manualDifficulty ? <HeroStat label="Difficulty" value={course.manualDifficulty} /> : null)}
             </div>
@@ -328,7 +331,7 @@ export default function CourseDetailClient({ slug }: { slug: string }) {
                       <div key={i} className="flex items-center gap-2">
                         <div className="flex items-center gap-2 rounded-xl border border-black/5 bg-black/[0.02] px-3 py-2">
                           <span className="grid h-6 w-6 place-items-center rounded-full text-[11px] font-bold text-white" style={{ background: shotColor(t.result) }}>{i + 1}</span>
-                          <div className="leading-tight"><div className="text-xs font-bold text-[#16221b]">{t.discName && t.discName !== "Score" ? t.discName : t.result}</div><div className="text-[11px] text-[#8a968d]">{t.distance ? `${t.distance} ft · ` : ""}{t.result}</div></div>
+                          <div className="leading-tight"><div className="text-xs font-bold text-[#16221b]">{t.discName && t.discName !== "Score" ? t.discName : t.result}</div><div className="text-[11px] text-[#8a968d]">{t.distance ? `${fmtDist(t.distance, metric)} · ` : ""}{t.result}</div></div>
                         </div>
                         {i < activeRoundHole.throws.length - 1 && <span className="text-[#cbd2cc]">→</span>}
                       </div>
@@ -358,7 +361,7 @@ export default function CourseDetailClient({ slug }: { slug: string }) {
                 <div className="mb-3 flex flex-wrap gap-x-6 gap-y-1 text-sm text-[#6b7a70]">
                   <span><span className="font-bold text-[#16221b]">{activeHoles.length}</span> holes</span>
                   <span>Par <span className="font-bold text-[#16221b]">{activeLayout.par}</span></span>
-                  <span><span className="font-bold text-[#16221b]">{activeLayout.distanceFt.toLocaleString()}</span> ft</span>
+                  <span><span className="font-bold text-[#16221b]">{fmtDist(activeLayout.distanceFt, metric)}</span></span>
                   {layoutAvg != null && <span>Community avg <span className="font-bold" style={{ color: layoutAvg < 0 ? "#3a9d57" : "#46554c" }}>{fmt(Math.round(layoutAvg))}</span></span>}
                 </div>
               )}
@@ -370,7 +373,7 @@ export default function CourseDetailClient({ slug }: { slug: string }) {
                       <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold ${activeHole === h.holeNumber ? "bg-[var(--gold)] text-[#16221b]" : "bg-[#16221b] text-[var(--cream)]"}`}>{h.holeNumber}</span>
                       <span className="w-12 shrink-0 text-sm font-bold">Par {h.par}</span>
                       <div className="hidden min-w-0 flex-1 sm:block"><div className="h-1.5 overflow-hidden rounded-full bg-black/[0.06]"><div className="h-full rounded-full bg-[var(--gold)]/70" style={{ width: `${pct}%` }} /></div></div>
-                      <span className="w-16 shrink-0 text-right text-sm text-[#46554c]">{h.distance > 0 ? `${h.distance} ft` : "—"}</span>
+                      <span className="w-16 shrink-0 text-right text-sm text-[#46554c]">{h.distance > 0 ? fmtDist(h.distance, metric) : "—"}</span>
                       <span className="hidden w-28 shrink-0 truncate text-right text-xs text-[#8a968d] md:block">{[h.fairwayShape, h.elevation].filter((x) => x && x !== "Flat").join(" · ") || h.holeType || ""}</span>
                     </div>
                   );
@@ -379,7 +382,7 @@ export default function CourseDetailClient({ slug }: { slug: string }) {
                   <span className="grid h-7 w-7 shrink-0 place-items-center">Σ</span>
                   <span className="w-12 shrink-0">Par {activeLayout.par}</span>
                   <div className="hidden flex-1 sm:block" />
-                  <span className="w-16 shrink-0 text-right">{activeLayout.distanceFt.toLocaleString()} ft</span>
+                  <span className="w-16 shrink-0 text-right">{fmtDist(activeLayout.distanceFt, metric)}</span>
                   <span className="hidden w-28 md:block" />
                 </div>
               </div>
@@ -482,9 +485,9 @@ export default function CourseDetailClient({ slug }: { slug: string }) {
               {course.communityScoreCount != null && <Row k="Rounds logged" v={course.communityScoreCount} />}
               {course.communityAverage != null && <Row k="Community avg" v={fmt(Math.round(course.communityAverage))} c={scoreColor(Math.round(course.communityAverage))} />}
               <Row k="Par mix" v={`${par3} · ${par4} · ${par5}`} />
-              {longest && <Row k="Longest hole" v={`${longest.distance} ft`} />}
-              {shortest && <Row k="Shortest hole" v={`${shortest.distance} ft`} />}
-              {avgHole > 0 && <Row k="Avg hole" v={`${avgHole} ft`} />}
+              {longest && <Row k="Longest hole" v={fmtDist(longest.distance, metric)} />}
+              {shortest && <Row k="Shortest hole" v={fmtDist(shortest.distance, metric)} />}
+              {avgHole > 0 && <Row k="Avg hole" v={fmtDist(avgHole, metric)} />}
             </dl>
           </div>
 

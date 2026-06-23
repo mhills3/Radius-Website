@@ -10,6 +10,8 @@ import { getPlayedCourses, type PlayedStat } from "@/lib/rounds";
 import { useAuth } from "@/components/AuthProvider";
 import CourseCard from "@/components/courses/CourseCard";
 import CourseMap from "@/components/CourseMap";
+import { useMetricPref } from "@/lib/useMetricPref";
+import { fmtDist } from "@/lib/units";
 import CoverageMap from "@/components/courses/CoverageMap";
 
 function miles(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
@@ -24,6 +26,7 @@ function miles(a: { lat: number; lng: number }, b: { lat: number; lng: number })
 
 export default function CoursesPage() {
   const { user } = useAuth();
+  const metric = useMetricPref();
   const [courses, setCourses] = useState<Course[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [played, setPlayed] = useState<Map<string, PlayedStat>>(new Map());
@@ -429,7 +432,7 @@ export default function CoursesPage() {
                     <Num label="US states" value={usStateCount} />
                     <Num label="Countries" value={countryCount} />
                     <Num label="Added this month" value={`+${addedThisMonth}`} />
-                    {longest && <Num label="Longest course" value={`${Math.round(longest.distanceFt).toLocaleString()} ft`} />}
+                    {longest && <Num label="Longest course" value={fmtDist(longest.distanceFt, metric)} />}
                   </div>
                   {longest && <p className="mt-2 truncate text-xs text-[#8a968d]">🏆 {longest.name}</p>}
                 </div>
