@@ -603,7 +603,12 @@ export async function createCourse(uid: string, draft: CourseDraft, opts?: { pre
       city: draft.city?.trim() || "",
       state: draft.state?.trim() || "",
       description: draft.description?.trim() || "",
-      courseType: draft.courseType?.trim() || "Public",
+      // DRAFT LEAK FIX: a draft must be creator-only until published. Both apps' bulk sync drops
+      // non-owned Private courses, but NOT non-owned drafts — so a draft left as "Public" in the
+      // shared collection shows up in every user's app. Mark drafts Private (creator still sees
+      // them everywhere) and stash the real type in plannedCourseType to restore on publish.
+      courseType: publish ? (draft.courseType?.trim() || "Public") : "Private",
+      plannedCourseType: draft.courseType?.trim() || "Public",
       terrain: draft.terrain?.trim() || "Mixed",
       amenities: draft.amenities ?? [],
       isFree,
@@ -689,9 +694,13 @@ export async function publishCourse(uid: string, id: string): Promise<boolean> {
   try {
     const snap = await getDoc(doc(db, "courses", id));
     if (!snap.exists()) return false;
-    if (!(await ownsCourse(uid, snap.data()))) return false;
+    const data = snap.data();
+    if (!(await ownsCourse(uid, data))) return false;
     const now = Date.now();
-    await updateDoc(doc(db, "courses", id), { reviewStatus: "Approved", isDraft: false, submittedDate: now, lastModified: now });
+    // Restore the real course type stashed at draft time (drafts are forced to "Private" so they
+    // don't leak into other users' apps). Fall back to the current type for legacy docs.
+    const restoredType = (data.plannedCourseType as string) || (data.courseType as string) || "Public";
+    await updateDoc(doc(db, "courses", id), { reviewStatus: "Approved", isDraft: false, courseType: restoredType, submittedDate: now, lastModified: now });
     return true;
   } catch { return false; }
 }
@@ -735,16 +744,22 @@ export async function updateBuiltCourse(uid: string, id: string, draft: CourseDr
     if (!draft.name?.trim() || draft.holes.length === 0) return false;
     const snap = await getDoc(doc(db, "courses", id));
     if (!snap.exists()) return false;
-    if (!(await ownsCourse(uid, snap.data()))) return false;
+    const cur = snap.data();
+    if (!(await ownsCourse(uid, cur))) return false;
     const { holes, par, totalDist, latitude, longitude } = buildCourseHoles(draft);
     const isFree = draft.isFree ?? true;
+    const chosenType = draft.courseType?.trim() || "Public";
+    // If this course is still a draft, keep it Private so it doesn't leak into other users' apps
+    // (see createCourse) and stash the real type; only a published course gets the chosen type.
+    const stillDraft = cur.isDraft === true || String(cur.reviewStatus || "").toLowerCase() === "draft";
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const update: Record<string, any> = {
       name: draft.name.trim(),
       city: draft.city?.trim() || "",
       state: draft.state?.trim() || "",
       description: draft.description?.trim() || "",
-      courseType: draft.courseType?.trim() || "Public",
+      courseType: stillDraft ? "Private" : chosenType,
+      plannedCourseType: chosenType,
       terrain: draft.terrain?.trim() || "Mixed",
       amenities: draft.amenities ?? [],
       isFree,
