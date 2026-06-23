@@ -674,6 +674,7 @@ export interface EditCourse {
   description: string; courseType: string; terrain: string; manualDifficulty: string;
   amenities: string[]; isFree: boolean; courseFeeAmount: number; coverPhotoUrl: string;
   holes: EditHole[];
+  isDraft: boolean; // true if this course is still an unpublished draft (so the builder can offer Publish)
 }
 
 const numv = (x: unknown): number | undefined => (typeof x === "number" && !Number.isNaN(x) ? x : undefined);
@@ -729,6 +730,7 @@ export async function getCourseForEdit(uid: string, id: string): Promise<EditCou
       manualDifficulty: data.manualDifficulty || "", amenities: Array.isArray(data.amenities) ? data.amenities.map(String) : [],
       isFree: data.isFree !== false, courseFeeAmount: typeof data.courseFeeAmount === "number" ? data.courseFeeAmount : 0,
       coverPhotoUrl: typeof data.coverPhotoUrl === "string" ? data.coverPhotoUrl : "", holes,
+      isDraft: data.isDraft === true || String(data.reviewStatus || "").trim().toLowerCase() === "draft",
     };
   } catch { return null; }
 }

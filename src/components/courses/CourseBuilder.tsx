@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { createCourse, updateBuiltCourse, findNearbyCourses, distanceFt, slugify, type HoleDraft, type Course, type EditCourse } from "@/lib/courses";
+import { createCourse, updateBuiltCourse, publishCourse, findNearbyCourses, distanceFt, slugify, type HoleDraft, type Course, type EditCourse } from "@/lib/courses";
 import { storage } from "@/lib/firebase";
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useMetricPref } from "@/lib/useMetricPref";
@@ -373,6 +373,12 @@ export default function CourseBuilder({ uid, initial }: { uid: string; initial?:
       setStatus("saving");
       const ok = await updateBuiltCourse(uid, initial.id, payload);
       if (!ok) { setStatus("error"); setError("Couldn't save changes. Please try again."); return; }
+      // Publish-from-edit: save the edits first (above), then flip the draft live. publishCourse
+      // restores the real courseType from plannedCourseType (so it goes Public, not the draft's Private).
+      if (publish) {
+        const pubOk = await publishCourse(uid, initial.id);
+        if (!pubOk) { setStatus("error"); setError("Saved your changes, but couldn't publish — try the Publish button on My Courses."); return; }
+      }
       router.push(`/courses/${slugify(name, initial.id)}`);
       return;
     }
@@ -566,7 +572,14 @@ export default function CourseBuilder({ uid, initial }: { uid: string; initial?:
               <div className="flex flex-wrap gap-2">
                 <button onClick={() => setStep(1)} className="rounded-full border border-black/[0.08] bg-white px-5 py-3.5 text-sm font-bold text-[#16221b] transition-colors hover:border-[var(--gold)]">← Back</button>
                 {editing ? (
-                  <button onClick={() => submit(false)} disabled={status === "saving"} className="flex-1 rounded-full bg-[#16221b] px-5 py-3.5 text-sm font-bold text-[var(--cream)] transition-colors hover:bg-[#22332a] disabled:opacity-60">{status === "saving" ? "Saving…" : "Save changes"}</button>
+                  initial?.isDraft ? (
+                    <>
+                      <button onClick={() => submit(false)} disabled={status === "saving"} className="rounded-full border border-black/[0.1] bg-white px-5 py-3.5 text-sm font-bold text-[#46554c] transition-colors hover:border-[var(--gold)] hover:text-[#16221b] disabled:opacity-60">{status === "saving" ? "Saving…" : "Save changes"}</button>
+                      <button onClick={() => submit(true)} disabled={status === "saving"} className="flex-1 rounded-full bg-[#16221b] px-5 py-3.5 text-sm font-bold text-[var(--cream)] transition-colors hover:bg-[#22332a] disabled:opacity-60">{status === "saving" ? "Saving…" : "Publish course"}</button>
+                    </>
+                  ) : (
+                    <button onClick={() => submit(false)} disabled={status === "saving"} className="flex-1 rounded-full bg-[#16221b] px-5 py-3.5 text-sm font-bold text-[var(--cream)] transition-colors hover:bg-[#22332a] disabled:opacity-60">{status === "saving" ? "Saving…" : "Save changes"}</button>
+                  )
                 ) : (
                   <>
                     <button onClick={() => submit(false)} disabled={status === "saving"} className="rounded-full border border-black/[0.1] bg-white px-5 py-3.5 text-sm font-bold text-[#46554c] transition-colors hover:border-[var(--gold)] hover:text-[#16221b] disabled:opacity-60">Save as draft</button>
