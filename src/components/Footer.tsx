@@ -50,6 +50,15 @@ const SOCIALS: { label: string; href: string; icon: React.ReactNode }[] = [
       </svg>
     ),
   },
+  {
+    label: "YouTube",
+    href: "https://www.youtube.com/@radiusdiscgolf",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+        <path d="M23.5 6.5a3 3 0 0 0-2.1-2.1C19.5 3.9 12 3.9 12 3.9s-7.5 0-9.4.5A3 3 0 0 0 .5 6.5 31.4 31.4 0 0 0 0 12a31.4 31.4 0 0 0 .5 5.5 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31.4 31.4 0 0 0 24 12a31.4 31.4 0 0 0-.5-5.5ZM9.6 15.6V8.4l6.2 3.6-6.2 3.6Z" />
+      </svg>
+    ),
+  },
 ];
 
 export default function Footer() {
