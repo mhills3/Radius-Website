@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
-import { getMyCourses, slugify, isPrivateCourse, isPubliclyListed, publishCourse, type Course } from "@/lib/courses";
+import { getMyCourses, slugify, isPubliclyListed, publishCourse, type Course } from "@/lib/courses";
 import CourseAnalytics from "@/components/courses/CourseAnalytics";
 
 const fmtDate = (ms?: number) => (ms ? new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "");
@@ -106,7 +106,11 @@ export default function MyCoursesPage() {
           <div className="mt-8 space-y-4">
             {courses.map((c) => {
               const status = statusOf(c);
-              const isPrivate = isPrivateCourse(c);
+              // For a draft, courseType is forced to "Private" (anti-leak) — show the INTENDED type
+              // (plannedCourseType) instead so the owner doesn't see a misleading "Private" tag.
+              const isDraftCourse = c.isDraft === true || (c.reviewStatus || "").trim().toLowerCase() === "draft";
+              const effectiveType = isDraftCourse ? (c.plannedCourseType ?? c.courseType) : c.courseType;
+              const isPrivate = (effectiveType || "").trim().toLowerCase() === "private";
               return (
                 <div key={c.id} className="group overflow-hidden rounded-3xl border border-black/[0.06] bg-white shadow-[0_1px_3px_rgba(15,24,19,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-22px_rgba(15,24,19,0.38)]">
                   <div className="flex gap-5 p-5">

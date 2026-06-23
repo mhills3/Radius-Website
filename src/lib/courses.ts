@@ -65,6 +65,7 @@ export interface Course {
   distanceFt: number;
   description: string;
   courseType: string;
+  plannedCourseType?: string; // for drafts: the real type to show/restore (draft courseType is forced to "Private")
   terrain: string;
   amenities: string[];
   isFree: boolean;
@@ -158,6 +159,7 @@ function docToCourse(id: string, data: DocumentData): Course {
     distanceFt: data.distanceFt ?? 0,
     description: data.description ?? "",
     courseType: data.courseType ?? "",
+    plannedCourseType: data.plannedCourseType ?? undefined,
     terrain: data.terrain ?? "",
     amenities: data.amenities ?? [],
     isFree: data.isFree ?? true,
@@ -723,14 +725,19 @@ export async function getCourseForEdit(uid: string, id: string): Promise<EditCou
       mandos: (Array.isArray(h.mandos) ? h.mandos : []).map((m: DocumentData) => ({ id: String(m.id || uuidUpper()), lat: numv(m.lat), lng: numv(m.lng), direction: (["Left", "Right", "Down"].includes(m.direction) ? m.direction : "Left") as "Left" | "Right" | "Down", label: String(m.label || "") })).filter((m) => m.lat != null && m.lng != null) as MandoWrite[],
       notes: String(h.notes || ""),
     }));
+    const draft = data.isDraft === true || String(data.reviewStatus || "").trim().toLowerCase() === "draft";
+    // A draft is stored courseType:"Private" (anti-leak) with the real type in plannedCourseType.
+    // Load the INTENDED type into the builder so the type selector is correct and saving doesn't
+    // overwrite the user's choice with the transient "Private".
+    const editType = (draft ? (data.plannedCourseType as string) : undefined) || data.courseType || "Public";
     return {
       id, name: data.name || "", city: data.city || "", state: data.state || "",
       latitude: numv(data.latitude), longitude: numv(data.longitude),
-      description: data.description || "", courseType: data.courseType || "Public", terrain: data.terrain || "Mixed",
+      description: data.description || "", courseType: editType, terrain: data.terrain || "Mixed",
       manualDifficulty: data.manualDifficulty || "", amenities: Array.isArray(data.amenities) ? data.amenities.map(String) : [],
       isFree: data.isFree !== false, courseFeeAmount: typeof data.courseFeeAmount === "number" ? data.courseFeeAmount : 0,
       coverPhotoUrl: typeof data.coverPhotoUrl === "string" ? data.coverPhotoUrl : "", holes,
-      isDraft: data.isDraft === true || String(data.reviewStatus || "").trim().toLowerCase() === "draft",
+      isDraft: draft,
     };
   } catch { return null; }
 }
