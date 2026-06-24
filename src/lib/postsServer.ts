@@ -11,7 +11,7 @@ function ms(v: unknown): number {
 }
 const handle = (h: unknown) => (typeof h === "string" ? h.replace(/^@+/, "") : undefined);
 
-export interface CommentSEO { id: string; authorName: string; authorHandle?: string; text: string; createdAt: number }
+export interface CommentSEO { id: string; authorName: string; authorHandle?: string; authorPhotoUrl?: string; authorId?: string; text: string; createdAt: number; likeCount?: number; parentCommentId?: string | null }
 export interface PostSEO {
   id: string; text: string; authorName: string; authorHandle?: string; authorPhotoUrl?: string;
   createdAt: number; likeCount: number; commentCount: number; imageUrl?: string;
@@ -44,7 +44,17 @@ export const getPostById = cache(async (id: string): Promise<PostSEO | null> => 
 export async function getPostComments(id: string): Promise<CommentSEO[]> {
   const rows = await fsList(`posts/${id}/comments`, { max: 200 });
   return rows
-    .map((c) => ({ id: c.id as string, authorName: (c.authorName as string) ?? "Radius player", authorHandle: handle(c.authorHandle), text: (c.text as string) ?? (c.body as string) ?? "", createdAt: ms(c.createdAt ?? c.date) }))
+    .map((c) => ({
+      id: c.id as string,
+      authorName: (c.authorName as string) ?? "Radius player",
+      authorHandle: handle(c.authorHandle),
+      authorPhotoUrl: typeof c.authorPhotoUrl === "string" ? (c.authorPhotoUrl as string) : undefined,
+      authorId: (c.createdById as string) ?? (c.authorId as string) ?? undefined,
+      text: (c.text as string) ?? (c.body as string) ?? "",
+      createdAt: ms(c.createdAt ?? c.date),
+      likeCount: Number(c.likeCount) || 0,
+      parentCommentId: (c.parentCommentId as string | null) ?? null,
+    }))
     .filter((c) => c.text.trim())
     .sort((a, b) => a.createdAt - b.createdAt);
 }

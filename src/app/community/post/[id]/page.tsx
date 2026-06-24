@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPostById, getPostComments } from "@/lib/postsServer";
-import PostInteractions from "./PostInteractions";
+import CommentThread from "./CommentThread";
 
 type Props = { params: Promise<{ id: string }> };
 const SITE = "https://radiusdiscgolf.com";
@@ -91,24 +91,10 @@ export default async function PostPage({ params }: Props) {
           </div>
         </article>
 
+        {/* Comments render server-side inside CommentThread (SSR HTML for SEO) and hydrate for
+            interactivity — threaded replies (parentCommentId), like the mobile apps. */}
         <section className="mt-6">
-          <h2 className="mb-3 font-[family-name:var(--font-heading)] text-lg font-bold">{comments.length} {comments.length === 1 ? "comment" : "comments"}</h2>
-          <div className="space-y-4">
-            {comments.map((c) => (
-              <div key={c.id} className="flex gap-3">
-                <Avatar name={c.authorName} size={32} />
-                <div className="min-w-0 flex-1">
-                  <div className="rounded-2xl bg-white/[0.05] px-3.5 py-2.5">
-                    <div className="text-sm font-bold">{c.authorName}{c.authorHandle ? <span className="ml-1.5 text-xs font-normal text-[var(--sage-dim)]">@{c.authorHandle}</span> : null}</div>
-                    <div className="whitespace-pre-wrap text-[14px] leading-relaxed text-[var(--text-body)]">{c.text}</div>
-                  </div>
-                  <div className="mt-1 pl-1 text-xs text-[var(--sage-dim)]">{fmtDate(c.createdAt)}</div>
-                </div>
-              </div>
-            ))}
-            {comments.length === 0 && <p className="text-sm text-[var(--sage-dim)]">No comments yet — be the first.</p>}
-          </div>
-          <PostInteractions postId={id} likeCount={post.likeCount} />
+          <CommentThread postId={id} initialComments={comments} likeCount={post.likeCount} />
         </section>
       </div>
     </div>

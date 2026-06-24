@@ -362,7 +362,7 @@ export async function getComments(postId: string): Promise<Comment[]> {
     return [];
   }
 }
-export async function addComment(uid: string, postId: string, text: string, opts?: { parentCommentId?: string | null; mentions?: MentionUser[] }): Promise<Comment | null> {
+export async function addComment(uid: string, postId: string, text: string, opts?: { parentCommentId?: string | null; mentions?: MentionUser[]; parentAuthorId?: string | null }): Promise<Comment | null> {
   const profile = await getProfileLite(uid);
   if (!profile) return null;
   const id = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -380,6 +380,10 @@ export async function addComment(uid: string, postId: string, text: string, opts
   });
   await updateDoc(doc(db, "posts", postId), { commentCount: increment(1) });
   for (const m of mentions) await createNotification({ recipientId: m.id, actor: profile, type: "mention", postId, preview: text });
+  // Notify the comment author when someone replies to their comment (matches the apps).
+  if (parentCommentId && opts?.parentAuthorId && !mentions.some((m) => m.id === opts.parentAuthorId)) {
+    await createNotification({ recipientId: opts.parentAuthorId, actor: profile, type: "reply", postId, preview: text });
+  }
   return { id, authorName: profile.name, authorHandle: profile.username, authorPhotoUrl: profile.profileImageUrl, authorId: profile.canonicalId, text, createdAt: now, likeCount: 0, parentCommentId, taggedUsers: mentions.map((m) => ({ id: m.id, name: m.name, username: m.username })) };
 }
 
