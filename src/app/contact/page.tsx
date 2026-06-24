@@ -1,6 +1,7 @@
 export const metadata = {
   title: "Contact",
   description: "Have feedback, found a bug, or want to partner with us? Get in touch.",
+  alternates: { canonical: "/contact" },
 };
 
 export default function ContactPage() {

@@ -4,6 +4,7 @@ import { STATE_NAMES, slugify, citySlug } from "@/lib/courses";
 import { listCoursesLite } from "@/lib/coursesServer";
 import StateCourses from "./StateCourses";
 import RelatedCoursesLinks from "@/components/courses/RelatedCoursesLinks";
+import { breadcrumbJsonLd } from "@/lib/seo";
 
 export const revalidate = 86400;
 
@@ -52,9 +53,16 @@ export default async function Page({ params }: Props) {
       }
     : null;
 
+  const breadcrumbLd = breadcrumbJsonLd([
+    { name: "Home", path: "/" },
+    { name: "Disc Golf Courses", path: "/courses" },
+    { name, path: `/courses/state/${cc}` },
+  ]);
+
   return (
     <>
       {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
       <StateCourses code={cc} />
       {/* Browse by city — server-rendered links so the city landing pages get discovered/crawled. */}
       {cities.length > 0 && (

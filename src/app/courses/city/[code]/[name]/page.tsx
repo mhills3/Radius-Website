@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { STATE_NAMES, citySlug, slugify } from "@/lib/courses";
 import { listCoursesLite, type CourseMeta } from "@/lib/coursesServer";
+import { breadcrumbJsonLd } from "@/lib/seo";
 
 // ISR — generated on first request, cached + regenerated daily.
 export const revalidate = 86400;
@@ -58,9 +59,17 @@ export default async function Page({ params }: Props) {
       }
     : null;
 
+  const breadcrumbLd = breadcrumbJsonLd([
+    { name: "Home", path: "/" },
+    { name: "Disc Golf Courses", path: "/courses" },
+    { name: stateName, path: `/courses/state/${cc}` },
+    { name: cityName, path: `/courses/city/${cc}/${name.toLowerCase()}` },
+  ]);
+
   return (
     <div className="min-h-screen bg-[#faf8f3]">
       {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
       <div className="mx-auto max-w-5xl px-6 py-14">
         <Link href={`/courses/state/${cc}`} className="inline-flex items-center gap-1.5 text-sm font-bold text-[#9a7a3a] hover:underline">← {stateName} disc golf courses</Link>
         <h1 className="mt-3 font-[family-name:var(--font-heading)] text-4xl font-extrabold tracking-[-0.03em] text-[#16221b]">Disc Golf Courses in {cityName}, {stateName}</h1>

@@ -3,6 +3,7 @@ import LearnVideos from "@/components/learn/LearnVideos";
 export const metadata = {
   title: "Learn",
   description: "Short walkthroughs that show you how each part of Radius works.",
+  alternates: { canonical: "/learn" },
 };
 
 export default function LearnPage() {

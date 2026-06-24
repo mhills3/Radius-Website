@@ -3,6 +3,7 @@ import { idFromSlug, isUSState, isPrivateCourse, STATE_NAMES, citySlug, type Cou
 import { getCourseFullByShortId, listCoursesLite } from "@/lib/coursesServer";
 import CourseDetailClient from "./CourseDetailClient";
 import RelatedCoursesLinks from "@/components/courses/RelatedCoursesLinks";
+import { breadcrumbJsonLd, faqJsonLd } from "@/lib/seo";
 
 // ISR: cache the server-rendered page and regenerate daily — fast for crawlers/users, far cheaper
 // than re-rendering on every request, while staying fresh.
@@ -85,9 +86,29 @@ export default async function Page({ params }: Props) {
   if (usState && cityName) hubs.push({ href: `/courses/city/${st}/${citySlug(cityName)}`, label: `Disc golf courses in ${cityName}` });
   if (usState) hubs.push({ href: `/courses/state/${st}`, label: `All ${stateName} disc golf courses` });
 
+  // Breadcrumb (rich result): Home › Courses › [State] › Course.
+  const crumbs = [{ name: "Home", path: "/" }, { name: "Disc Golf Courses", path: "/courses" }];
+  if (usState) crumbs.push({ name: stateName!, path: `/courses/state/${st}` });
+  crumbs.push({ name: course?.name || "Course", path: `/courses/${slug}` });
+  const breadcrumbLd = course && !isPrivate ? breadcrumbJsonLd(crumbs) : null;
+
+  // FAQ — only from real data (no fee claim, since that field can be defaulted).
+  const faq: { q: string; a: string }[] = [];
+  if (course && !isPrivate) {
+    const nm = course.name;
+    const loc = [course.city, course.state].filter(Boolean).join(", ");
+    if (course.holeCount) faq.push({ q: `How many holes is ${nm}?`, a: `${nm}${loc ? ` in ${loc}` : ""} has ${course.holeCount} holes${course.par ? ` with a par of ${course.par}` : ""}.` });
+    if (loc) faq.push({ q: `Where is ${nm}?`, a: `${nm} is a disc golf course in ${loc}.` });
+    if (course.distanceFt) faq.push({ q: `How long is ${nm}?`, a: `${nm} plays about ${course.distanceFt.toLocaleString()} ft from the tees.` });
+    if (course.rating && course.reviewCount) faq.push({ q: `How is ${nm} rated?`, a: `${nm} is rated ${course.rating.toFixed(1)} out of 5 from ${course.reviewCount} review${course.reviewCount === 1 ? "" : "s"} on Radius.` });
+  }
+  const faqLd = faq.length ? faqJsonLd(faq) : null;
+
   return (
     <>
       {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />}
+      {breadcrumbLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />}
+      {faqLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />}
       <CourseDetailClient slug={slug} initialCourse={initialCourse} />
       {initialCourse && (related.length > 0 || hubs.length > 0) && (
         <RelatedCoursesLinks
@@ -95,6 +116,21 @@ export default async function Page({ params }: Props) {
           courses={related}
           hubs={hubs}
         />
+      )}
+      {faq.length > 0 && (
+        <section className="border-t border-black/[0.06] bg-white px-6 py-12">
+          <div className="mx-auto max-w-3xl">
+            <h2 className="font-[family-name:var(--font-heading)] text-xl font-extrabold tracking-tight text-[#16221b]">Frequently asked</h2>
+            <dl className="mt-5 space-y-5">
+              {faq.map((x) => (
+                <div key={x.q}>
+                  <dt className="font-semibold text-[#16221b]">{x.q}</dt>
+                  <dd className="mt-1 text-sm text-[#46554c]">{x.a}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </section>
       )}
     </>
   );
