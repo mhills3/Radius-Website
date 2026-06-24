@@ -41,6 +41,7 @@ export default function CoursesPage() {
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [flyTo, setFlyTo] = useState<{ lng: number; lat: number; zoom?: number } | null>(null);
   const [mapMode, setMapMode] = useState<"pins" | "heat" | "coverage">("pins");
+  const [mapBounds, setMapBounds] = useState<{ west: number; south: number; east: number; north: number } | null>(null);
   const [builders, setBuilders] = useState<Builder[]>([]);
   const [builderRanks, setBuilderRanks] = useState<Map<string, RankInfo>>(new Map());
 
@@ -135,6 +136,15 @@ export default function CoursesPage() {
     return out;
   }, [courses, search, stateFilter, holes, freeOnly, userLoc]);
 
+  // In map view, the left list narrows to courses inside the current map viewport — zoom/pan to filter.
+  const viewportFiltering = view === "map" && mapMode !== "coverage" && !!mapBounds;
+  const visibleCourses = useMemo(() => {
+    if (!viewportFiltering || !mapBounds) return filtered;
+    return filtered.filter((c) => c.latitude != null && c.longitude != null &&
+      c.latitude >= mapBounds.south && c.latitude <= mapBounds.north &&
+      c.longitude >= mapBounds.west && c.longitude <= mapBounds.east);
+  }, [filtered, viewportFiltering, mapBounds]);
+
   const featured = useMemo(() => courses.filter((c) => c.isFeatured && c.coverPhotoUrl).slice(0, 3), [courses]);
   const newest = useMemo(() => [...courses].filter((c) => (c.dateCreated ?? 0) > 0).sort((a, b) => (b.dateCreated ?? 0) - (a.dateCreated ?? 0)).slice(0, 3), [courses]);
   const mostReviewed = useMemo(() => [...courses].filter((c) => (c.reviewCount ?? 0) > 0).sort((a, b) => (b.reviewCount ?? 0) - (a.reviewCount ?? 0)).slice(0, 3), [courses]);
@@ -215,8 +225,8 @@ export default function CoursesPage() {
           <div className="order-2 flex min-h-0 flex-col border-r border-black/[0.06] bg-[#faf8f3] lg:order-1">
             <div className="border-b border-black/[0.06] px-4 py-3">
               <div className="flex items-baseline gap-1.5">
-                <span className="font-[family-name:var(--font-heading)] text-base font-extrabold text-[#16221b]">{(anyFilter ? filtered.length : (totalCount || filtered.length)).toLocaleString()}</span>
-                <span className="text-sm text-[#8a968d]">{(anyFilter ? filtered.length : (totalCount || filtered.length)) === 1 ? "course" : "courses"}{stateFilter ? ` in ${stateFilter}` : userLoc ? " near you" : ""}</span>
+                <span className="font-[family-name:var(--font-heading)] text-base font-extrabold text-[#16221b]">{(viewportFiltering ? visibleCourses.length : (anyFilter ? filtered.length : (totalCount || filtered.length))).toLocaleString()}</span>
+                <span className="text-sm text-[#8a968d]">{(viewportFiltering ? visibleCourses.length : (anyFilter ? filtered.length : (totalCount || filtered.length))) === 1 ? "course" : "courses"}{viewportFiltering ? " in view" : stateFilter ? ` in ${stateFilter}` : userLoc ? " near you" : ""}</span>
               </div>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto">
@@ -224,7 +234,7 @@ export default function CoursesPage() {
               <div className="space-y-2 p-3">{[0, 1, 2, 3, 4].map((i) => <div key={i} className="h-20 animate-pulse rounded-xl bg-black/5" />)}</div>
             ) : (
               <div className="divide-y divide-black/[0.05]">
-                {filtered.map((c) => {
+                {visibleCourses.map((c) => {
                   const d = distOf(c);
                   const active = highlightId === c.id;
                   return (
@@ -256,7 +266,7 @@ export default function CoursesPage() {
                     </Link>
                   );
                 })}
-                {filtered.length === 0 && <p className="p-8 text-center text-sm text-[#6b7a70]">No courses match.</p>}
+                {visibleCourses.length === 0 && <p className="p-8 text-center text-sm text-[#6b7a70]">{viewportFiltering ? "No courses in this area — zoom out to see more." : "No courses match."}</p>}
               </div>
             )}
             </div>
@@ -265,7 +275,7 @@ export default function CoursesPage() {
             {mapMode === "coverage" ? (
               <CoverageMap stateCounts={stateCounts} countryCounts={countryCounts} />
             ) : (
-              <CourseMap courses={filtered} filterActive={anyFilter} highlightId={highlightId} flyTo={flyTo} userLoc={userLoc} onSelect={setHighlightId} onLocate={setUserLoc} mode={mapMode} className="h-full w-full" />
+              <CourseMap courses={filtered} filterActive={anyFilter} highlightId={highlightId} flyTo={flyTo} userLoc={userLoc} onSelect={setHighlightId} onLocate={setUserLoc} onBoundsChange={setMapBounds} mode={mapMode} className="h-full w-full" />
             )}
             <div className="absolute left-4 top-4 z-10 inline-flex rounded-full bg-white/95 p-1 shadow-[0_6px_20px_-4px_rgba(0,0,0,0.3)] ring-1 ring-black/5 backdrop-blur">
               {(["pins", "heat", "coverage"] as const).map((m) => (

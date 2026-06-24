@@ -43,6 +43,7 @@ export default function CourseMap({
   userLoc,
   onSelect,
   onLocate,
+  onBoundsChange,
   mode = "pins",
   className,
 }: {
@@ -53,6 +54,7 @@ export default function CourseMap({
   userLoc?: { lng: number; lat: number } | null;
   onSelect?: (id: string) => void;
   onLocate?: (loc: { lng: number; lat: number }) => void;
+  onBoundsChange?: (b: { west: number; south: number; east: number; north: number }) => void;
   mode?: "pins" | "heat";
   className?: string;
 }) {
@@ -70,6 +72,8 @@ export default function CourseMap({
   flyToRef.current = flyTo;
   const userLocRef = useRef(userLoc);
   userLocRef.current = userLoc;
+  const onBoundsChangeRef = useRef(onBoundsChange);
+  onBoundsChangeRef.current = onBoundsChange;
 
   useEffect(() => {
     let cancelled = false;
@@ -175,6 +179,10 @@ export default function CourseMap({
         });
         map.on("mouseenter", "points", () => (map.getCanvas().style.cursor = "pointer"));
         map.on("mouseleave", "points", () => (map.getCanvas().style.cursor = ""));
+        // Emit the visible viewport so the list pane can filter to courses in view (zoom/pan to filter).
+        const emitBounds = () => { const bb = map.getBounds(); if (!bb) return; onBoundsChangeRef.current?.({ west: bb.getWest(), south: bb.getSouth(), east: bb.getEast(), north: bb.getNorth() }); };
+        map.on("moveend", emitBounds);
+        emitBounds();
         readyRef.current = true;
         // Apply any geolocation that resolved before the map finished loading.
         if (flyToRef.current) {
