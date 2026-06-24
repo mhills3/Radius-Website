@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
-import { idFromSlug, isUSState, isPrivateCourse, STATE_NAMES, type Course } from "@/lib/courses";
+import { idFromSlug, isUSState, isPrivateCourse, STATE_NAMES, citySlug, type Course } from "@/lib/courses";
 import { getCourseFullByShortId, listCoursesLite } from "@/lib/coursesServer";
 import CourseDetailClient from "./CourseDetailClient";
 import RelatedCoursesLinks from "@/components/courses/RelatedCoursesLinks";
+
+// ISR: cache the server-rendered page and regenerate daily — fast for crawlers/users, far cheaper
+// than re-rendering on every request, while staying fresh.
+export const revalidate = 86400;
 
 function buildJsonLd(c: Course, slug: string) {
   const url = `https://radiusdiscgolf.com/courses/${slug}`;
@@ -74,19 +78,22 @@ export default async function Page({ params }: Props) {
         })
         .slice(0, 30)
     : [];
-  const stateName = st && isUSState(course!.state) ? (STATE_NAMES[st] || course!.state) : course?.state;
-  const stateHref = st && isUSState(course!.state) ? `/courses/state/${st}` : undefined;
+  const usState = !!st && isUSState(course!.state);
+  const stateName = usState ? (STATE_NAMES[st!] || course!.state) : course?.state;
+  const cityName = course?.city?.trim();
+  const hubs: { href: string; label: string }[] = [];
+  if (usState && cityName) hubs.push({ href: `/courses/city/${st}/${citySlug(cityName)}`, label: `Disc golf courses in ${cityName}` });
+  if (usState) hubs.push({ href: `/courses/state/${st}`, label: `All ${stateName} disc golf courses` });
 
   return (
     <>
       {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />}
       <CourseDetailClient slug={slug} initialCourse={initialCourse} />
-      {initialCourse && (related.length > 0 || stateHref) && (
+      {initialCourse && (related.length > 0 || hubs.length > 0) && (
         <RelatedCoursesLinks
           heading={`More disc golf courses${stateName ? ` in ${stateName}` : ""}`}
           courses={related}
-          stateHref={stateHref}
-          stateLabel={stateName ? `All ${stateName} disc golf courses` : undefined}
+          hubs={hubs}
         />
       )}
     </>

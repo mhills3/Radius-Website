@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { slugify, isUSState } from "@/lib/courses";
+import { slugify, isUSState, citySlug } from "@/lib/courses";
 import { listCoursesLite } from "@/lib/coursesServer";
 import { listPosts, listThreads } from "@/lib/postsServer";
 import { getAllDiscsServer } from "@/lib/discsServer";
@@ -26,6 +26,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     url: `${BASE}/courses/state/${s}`,
     changeFrequency: "weekly",
     priority: 0.6,
+  }));
+
+  // City landing pages — one per unique state+city, for "[city] disc golf" long-tail.
+  const cityKeys = new Set<string>();
+  for (const c of courses) {
+    if (!isUSState(c.state) || !c.city?.trim()) continue;
+    cityKeys.add(`${c.state!.trim().toUpperCase()}/${citySlug(c.city)}`);
+  }
+  const cityEntries: MetadataRoute.Sitemap = [...cityKeys].map((k) => ({
+    url: `${BASE}/courses/city/${k}`,
+    changeFrequency: "weekly",
+    priority: 0.55,
   }));
 
   const courseEntries: MetadataRoute.Sitemap = courses.map((c) => ({
@@ -69,5 +81,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  return [...staticEntries, ...blogEntries, ...guideEntries, ...stateEntries, ...courseEntries, ...discEntries, ...threadEntries, ...postEntries];
+  return [...staticEntries, ...blogEntries, ...guideEntries, ...stateEntries, ...cityEntries, ...courseEntries, ...discEntries, ...threadEntries, ...postEntries];
 }

@@ -9,15 +9,13 @@ import { slugify } from "@/lib/courses";
 export default function RelatedCoursesLinks({
   heading,
   courses,
-  stateHref,
-  stateLabel,
+  hubs,
 }: {
   heading: string;
   courses: { id: string; name: string; city?: string }[];
-  stateHref?: string;
-  stateLabel?: string;
+  hubs?: { href: string; label: string }[];
 }) {
-  if (courses.length === 0 && !stateHref) return null;
+  if (courses.length === 0 && (!hubs || hubs.length === 0)) return null;
   return (
     <section className="border-t border-black/[0.06] bg-[#faf8f3] px-6 py-12">
       <div className="mx-auto max-w-5xl">
@@ -34,10 +32,14 @@ export default function RelatedCoursesLinks({
             ))}
           </ul>
         )}
-        {stateHref && (
-          <Link href={stateHref} className="mt-6 inline-block text-sm font-bold text-[#9a7a3a] hover:underline">
-            {stateLabel} →
-          </Link>
+        {hubs && hubs.length > 0 && (
+          <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2">
+            {hubs.map((h) => (
+              <Link key={h.href} href={h.href} className="text-sm font-bold text-[#9a7a3a] hover:underline">
+                {h.label} →
+              </Link>
+            ))}
+          </div>
         )}
       </div>
     </section>

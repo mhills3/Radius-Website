@@ -511,6 +511,11 @@ export function idFromSlug(slug: string): string | null {
   return shortId;
 }
 
+/** URL slug for a city name (e.g. "Mason City" -> "mason-city"). Used by /courses/city/[code]/[name]. */
+export function citySlug(city: string): string {
+  return (city || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
 function uuidUpper(): string {
   return typeof crypto !== "undefined" && crypto.randomUUID
     ? crypto.randomUUID().toUpperCase()
