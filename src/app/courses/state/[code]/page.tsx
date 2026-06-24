@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { STATE_NAMES, slugify } from "@/lib/courses";
 import { listCoursesLite } from "@/lib/coursesServer";
 import StateCourses from "./StateCourses";
+import RelatedCoursesLinks from "@/components/courses/RelatedCoursesLinks";
 
 type Props = { params: Promise<{ code: string }> };
 
@@ -48,6 +49,11 @@ export default async function Page({ params }: Props) {
     <>
       {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />}
       <StateCourses code={cc} />
+      {/* Server-rendered crawlable index of every course in the state — the client grid above is
+          for users; this guarantees the internal links are in the HTML for search engines. */}
+      {inState.length > 0 && (
+        <RelatedCoursesLinks heading={`All disc golf courses in ${name}`} courses={inState} />
+      )}
     </>
   );
 }

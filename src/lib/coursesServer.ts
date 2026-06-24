@@ -109,7 +109,7 @@ export async function listCoursesLite(): Promise<CourseMeta[]> {
   let token = "";
   try {
     do {
-      const mask = ["name", "state", "dateCreated", "lastModified", "reviewStatus", "isDraft", "courseType"].map((m) => `&mask.fieldPaths=${m}`).join("");
+      const mask = ["name", "city", "state", "dateCreated", "lastModified", "reviewStatus", "isDraft", "courseType"].map((m) => `&mask.fieldPaths=${m}`).join("");
       const url = `${BASE}/courses?pageSize=300&key=${KEY}${token ? `&pageToken=${token}` : ""}${mask}`;
       const r = await fetch(url, { next: { revalidate: 86400 } });
       if (!r.ok) break;
@@ -121,7 +121,7 @@ export async function listCoursesLite(): Promise<CourseMeta[]> {
         // Never list drafts/pending/rejected or PRIVATE courses in the sitemap — they must stay
         // out of search engines, matching the apps' visibility rules.
         const c = { reviewStatus: o.reviewStatus as string | undefined, isDraft: o.isDraft as boolean | undefined, courseType: o.courseType as string | undefined };
-        if (o.name && isPubliclyListed(c) && !isPrivateCourse(c)) out.push({ id: o.id as string, name: o.name as string, state: o.state as string | undefined, dateCreated: dc });
+        if (o.name && isPubliclyListed(c) && !isPrivateCourse(c)) out.push({ id: o.id as string, name: o.name as string, city: o.city as string | undefined, state: o.state as string | undefined, dateCreated: dc });
       }
       token = j.nextPageToken || "";
     } while (token);

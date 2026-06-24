@@ -7,7 +7,7 @@ import { getAllPosts } from "@/lib/blog";
 // Shape per the agreed contract; `contentMarkdown` is the article body (markdown).
 export const revalidate = 300;
 
-const SITE = "https://www.radiusdiscgolf.com";
+const SITE = "https://radiusdiscgolf.com";
 
 function toIso(ms: number): string | null {
   if (!ms) return null;

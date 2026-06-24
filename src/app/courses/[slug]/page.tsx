@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
-import { idFromSlug, isUSState, isPrivateCourse, type Course } from "@/lib/courses";
-import { getCourseFullByShortId } from "@/lib/coursesServer";
+import { idFromSlug, isUSState, isPrivateCourse, STATE_NAMES, type Course } from "@/lib/courses";
+import { getCourseFullByShortId, listCoursesLite } from "@/lib/coursesServer";
 import CourseDetailClient from "./CourseDetailClient";
+import RelatedCoursesLinks from "@/components/courses/RelatedCoursesLinks";
 
 function buildJsonLd(c: Course, slug: string) {
   const url = `https://radiusdiscgolf.com/courses/${slug}`;
@@ -59,10 +60,35 @@ export default async function Page({ params }: Props) {
   // Seed the client with server-fetched data so the course content (H1, description, hole-by-hole,
   // ratings) is in the SSR HTML for SEO — NOT for private courses (those must never be in the HTML).
   const initialCourse = course && !isPrivate ? course : undefined;
+
+  // Internal linking (SEO): server-render crawlable links to other public courses in the same state
+  // (same city first) + the state hub, so search engines can crawl/authority-flow across the catalog.
+  const st = course?.state?.trim().toUpperCase();
+  const related = course && !isPrivate && st
+    ? (await listCoursesLite().catch(() => []))
+        .filter((c) => c.id !== course.id && (c.state || "").trim().toUpperCase() === st)
+        .sort((a, b) => {
+          const ac = (a.city || "").trim().toLowerCase() === (course.city || "").trim().toLowerCase() ? 0 : 1;
+          const bc = (b.city || "").trim().toLowerCase() === (course.city || "").trim().toLowerCase() ? 0 : 1;
+          return ac - bc || a.name.localeCompare(b.name);
+        })
+        .slice(0, 30)
+    : [];
+  const stateName = st && isUSState(course!.state) ? (STATE_NAMES[st] || course!.state) : course?.state;
+  const stateHref = st && isUSState(course!.state) ? `/courses/state/${st}` : undefined;
+
   return (
     <>
       {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />}
       <CourseDetailClient slug={slug} initialCourse={initialCourse} />
+      {initialCourse && (related.length > 0 || stateHref) && (
+        <RelatedCoursesLinks
+          heading={`More disc golf courses${stateName ? ` in ${stateName}` : ""}`}
+          courses={related}
+          stateHref={stateHref}
+          stateLabel={stateName ? `All ${stateName} disc golf courses` : undefined}
+        />
+      )}
     </>
   );
 }
