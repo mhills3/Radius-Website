@@ -301,6 +301,19 @@ export function isUSState(s?: string): boolean {
   return !!s && US_STATES.has(s.trim().toUpperCase());
 }
 /** Canonical US-state key (full name, UPPERCASE) so "CA" and "California" count as ONE state. */
+// Reverse lookup: full state NAME (uppercased) -> 2-letter code.
+const STATE_CODE_BY_NAME: Record<string, string> = Object.fromEntries(
+  Object.entries(STATE_NAMES).map(([code, name]) => [name.toUpperCase(), code])
+);
+/** Normalize a state value (code OR full name) to its 2-letter code, e.g. "Mississippi" -> "MS". */
+export function stateAbbr(s?: string): string | null {
+  if (!s) return null;
+  const up = s.trim().toUpperCase();
+  if (STATE_NAMES[up]) return up;                 // already a code
+  if (STATE_CODE_BY_NAME[up]) return STATE_CODE_BY_NAME[up]; // full name -> code
+  return null;
+}
+
 export function canonicalState(s?: string): string | null {
   if (!isUSState(s)) return null;
   const up = s!.trim().toUpperCase();

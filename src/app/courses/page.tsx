@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { getAllCourses, getTotalCourseCount, getTopBuilders, slugify, isUSState, canonicalState, countryOf, STATE_NAMES, type Course, type Builder } from "@/lib/courses";
+import { getAllCourses, getTotalCourseCount, getTopBuilders, slugify, isUSState, canonicalState, stateAbbr, countryOf, STATE_NAMES, type Course, type Builder } from "@/lib/courses";
 import { getOwnedIds } from "@/lib/account";
 import { getRanksFor, type RankInfo } from "@/lib/community";
 import { getPlayedCourses, type PlayedStat } from "@/lib/rounds";
@@ -78,7 +78,8 @@ export default function CoursesPage() {
   const countryCount = useMemo(() => new Set(courses.map((c) => countryOf(c))).size, [courses]);
   const topStates = useMemo(() => {
     const m = new Map<string, number>();
-    courses.forEach((c) => { if (isUSState(c.state)) { const k = c.state!.trim().toUpperCase(); m.set(k, (m.get(k) || 0) + 1); } });
+    // Normalize to the 2-letter code so "Mississippi" displays as "MS" AND merges with any "MS" rows.
+    courses.forEach((c) => { const code = stateAbbr(c.state); if (code) m.set(code, (m.get(code) || 0) + 1); });
     return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
   }, [courses]);
   const topCountries = useMemo(() => {
