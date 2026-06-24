@@ -62,7 +62,7 @@ function ScoreRing({ score, grade }: { score: number; grade: string }) {
   );
 }
 
-function Bar({ label, value, tip }: { label: string; value: number; tip?: string }) {
+function Bar({ label, value, tip, tipUp }: { label: string; value: number; tip?: string; tipUp?: boolean }) {
   return (
     <div>
       <div className="flex items-center justify-between text-xs">
@@ -72,7 +72,9 @@ function Bar({ label, value, tip }: { label: string; value: number; tip?: string
             <span className="group relative inline-flex">
               {/* button so a tap (mobile) focuses it → tooltip shows via group-focus-within */}
               <button type="button" aria-label={`What is ${label}?`} className="grid h-4 w-4 place-items-center rounded-full border border-white/25 text-[9px] font-bold leading-none text-[var(--sage-dim)] transition-colors hover:border-white/50 hover:text-[var(--cream)] focus:outline-none">i</button>
-              <span role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 hidden w-60 -translate-x-1/2 rounded-xl border border-white/10 bg-[var(--bg-deep)] p-3 text-[11px] font-normal leading-snug text-[var(--text-body)] shadow-[0_12px_30px_-8px_rgba(0,0,0,0.6)] group-hover:block group-focus-within:block">{tip}</span>
+              {/* The hero card is overflow-hidden, so tooltips must stay inside it: top metrics open
+                  downward, the bottom metric (tipUp) opens upward. Right-aligned to stay in the card. */}
+              <span role="tooltip" className={`pointer-events-none absolute right-0 z-30 hidden w-60 rounded-xl border border-white/10 bg-[var(--bg-deep)] p-3 text-[11px] font-normal leading-snug text-[var(--text-body)] shadow-[0_12px_30px_-8px_rgba(0,0,0,0.6)] group-hover:block group-focus-within:block ${tipUp ? "bottom-full mb-2" : "top-full mt-2"}`}>{tip}</span>
             </span>
           )}
         </span>
@@ -325,7 +327,7 @@ export default function BagView({ bag, uid }: { bag: Bag; uid: string }) {
                 <Bar label="Role coverage" value={b.roleCoverage} tip="Whether you cover the key shot roles — driver, control driver, midrange, approach, and putter. Improve it by adding a disc for any role you're missing." />
                 <Bar label="Depth" value={b.depth} tip="Backups and variety within each category — more than one option per category, flying differently. Improve it by adding a second, different-flying disc where you only carry one." />
                 <Bar label="Speed spread" value={b.speedSpread} tip="How many of the 5 speed bands (putter → distance) your bag covers. Improve it by adding discs in the speed ranges you're missing." />
-                <Bar label="Player fit" value={b.playerFit} tip="How well your discs' speeds match your arm speed. Set your arm speed in your profile, then carry discs you can throw with control rather than all max-speed drivers." />
+                <Bar label="Player fit" value={b.playerFit} tipUp tip="How well your discs' speeds match your arm speed. Set your arm speed in your profile, then carry discs you can throw with control rather than all max-speed drivers." />
               </div>
             </div>
           </div>
