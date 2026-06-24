@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { idFromSlug, isUSState, isPrivateCourse } from "@/lib/courses";
-import { getCourseMetaByShortId, type CourseMeta } from "@/lib/coursesServer";
+import { idFromSlug, isUSState, isPrivateCourse, type Course } from "@/lib/courses";
+import { getCourseFullByShortId } from "@/lib/coursesServer";
 import CourseDetailClient from "./CourseDetailClient";
 
-function buildJsonLd(c: CourseMeta, slug: string) {
+function buildJsonLd(c: Course, slug: string) {
   const url = `https://radiusdiscgolf.com/courses/${slug}`;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const ld: Record<string, any> = { "@context": "https://schema.org", "@type": "SportsActivityLocation", name: c.name, url, sport: "Disc Golf" };
@@ -26,7 +26,7 @@ function nameFromSlug(slug: string): string {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const shortId = idFromSlug(slug);
-  const course = shortId ? await getCourseMetaByShortId(shortId).catch(() => null) : null;
+  const course = shortId ? await getCourseFullByShortId(shortId).catch(() => null) : null;
 
   const name = course?.name || nameFromSlug(slug);
   const loc = course ? [course.city, course.state].filter(Boolean).join(", ") : "";
@@ -52,13 +52,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function Page({ params }: Props) {
   const { slug } = await params;
   const shortId = idFromSlug(slug);
-  const course = shortId ? await getCourseMetaByShortId(shortId).catch(() => null) : null;
+  const course = shortId ? await getCourseFullByShortId(shortId).catch(() => null) : null;
+  const isPrivate = !!course && isPrivateCourse(course);
   // No structured data for private courses — keep them out of search results entirely.
-  const jsonLd = course && !isPrivateCourse(course) ? buildJsonLd(course, slug) : null;
+  const jsonLd = course && !isPrivate ? buildJsonLd(course, slug) : null;
+  // Seed the client with server-fetched data so the course content (H1, description, hole-by-hole,
+  // ratings) is in the SSR HTML for SEO — NOT for private courses (those must never be in the HTML).
+  const initialCourse = course && !isPrivate ? course : undefined;
   return (
     <>
       {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />}
-      <CourseDetailClient slug={slug} />
+      <CourseDetailClient slug={slug} initialCourse={initialCourse} />
     </>
   );
 }

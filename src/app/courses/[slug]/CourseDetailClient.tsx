@@ -29,13 +29,15 @@ function shotColor(result: string): string {
   return "#4d94fa";
 }
 
-export default function CourseDetailClient({ slug }: { slug: string }) {
+export default function CourseDetailClient({ slug, initialCourse }: { slug: string; initialCourse?: Course }) {
   const { user, profile } = useAuth();
   const metric = useMetricPref();
-  const [course, setCourse] = useState<Course | null>(null);
+  // Seed from server-fetched data so the content is in the SSR HTML (SEO); the effect below still
+  // refreshes it client-side and loads the dynamic bits (scores, ranks, records, your rounds).
+  const [course, setCourse] = useState<Course | null>(initialCourse ?? null);
   const [scores, setScores] = useState<CourseScore[]>([]);
   const [ranks, setRanks] = useState<Map<string, RankInfo>>(new Map());
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialCourse);
   const [notFound, setNotFound] = useState(false);
   const [activeHole, setActiveHole] = useState<number | null>(null);
   const [myRounds, setMyRounds] = useState<DecodedRound[]>([]);
@@ -49,18 +51,20 @@ export default function CourseDetailClient({ slug }: { slug: string }) {
   useEffect(() => {
     async function load() {
       const shortId = idFromSlug(slug);
-      if (!shortId) { setNotFound(true); setLoading(false); return; }
+      if (!shortId) { if (!initialCourse) { setNotFound(true); setLoading(false); } return; }
       const c = await getCourseByShortId(shortId);
-      if (!c) { setNotFound(true); setLoading(false); return; }
-      setCourse(c);
+      // Fall back to the server-seeded course if the client refetch misses — don't flash "not found".
+      const effective = c ?? initialCourse ?? null;
+      if (!effective) { setNotFound(true); setLoading(false); return; }
+      if (c) setCourse(c); // refresh with the latest data when available
       setLoading(false);
-      getCourseScores(c.id, 100).then((sc) => {
+      getCourseScores(effective.id, 100).then((sc) => {
         setScores(sc);
         getRanksFor(sc.map((s) => s.playerUid).filter(Boolean) as string[]).then(setRanks).catch(() => {});
       }).catch(() => setScores([]));
     }
     load();
-  }, [slug]);
+  }, [slug, initialCourse]);
 
   useEffect(() => {
     if (user && course) getCourseRoundsForUser(user.uid, course.name).then((r) => { setMyRounds(r); setRoundIdx(0); }).catch(() => {});

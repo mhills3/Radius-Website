@@ -148,7 +148,7 @@ function holeGeoDistanceFt(h: DocumentData): number {
   return d;
 }
 
-function docToCourse(id: string, data: DocumentData): Course {
+export function docToCourse(id: string, data: DocumentData): Course {
   return {
     id,
     name: data.name ?? "",

@@ -2,7 +2,7 @@
 // The gRPC client SDK can't reach Firestore from the Next server runtime, so these use
 // plain fetch against the REST endpoint instead. Only called from server code.
 import { cache } from "react";
-import { isPubliclyListed, isPrivateCourse } from "./courses";
+import { isPubliclyListed, isPrivateCourse, docToCourse, type Course } from "./courses";
 
 const PROJECT = "radius-dg";
 const KEY = "AIzaSyCVjfvMNwy5sLFjONGZFfPpPsnqO79IiPE";
@@ -17,6 +17,9 @@ function sv(f: any): unknown {
   if ("doubleValue" in f) return f.doubleValue;
   if ("booleanValue" in f) return f.booleanValue;
   if ("timestampValue" in f) return Date.parse(f.timestampValue);
+  if ("nullValue" in f) return null;
+  if ("arrayValue" in f) return (f.arrayValue?.values || []).map(sv);
+  if ("mapValue" in f) { const o: Record<string, unknown> = {}; const fs = f.mapValue?.fields || {}; for (const k in fs) o[k] = sv(fs[k]); return o; }
   return undefined;
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -51,7 +54,7 @@ export const getCourseMetaByShortId = cache(async (shortId: string): Promise<Cou
       from: [{ collectionId: "courses" }],
       where: { compositeFilter: { op: "AND", filters: [
         { fieldFilter: { field: { fieldPath: "__name__" }, op: "GREATER_THAN_OR_EQUAL", value: { referenceValue: ref(shortId) } } },
-        { fieldFilter: { field: { fieldPath: "__name__" }, op: "LESS_THAN", value: { referenceValue: ref(shortId + "") } } },
+        { fieldFilter: { field: { fieldPath: "__name__" }, op: "LESS_THAN", value: { referenceValue: ref(shortId + "\uf8ff") } } },
       ] } },
       select: { fields: ["name", "city", "state", "holeCount", "par", "description", "coverPhotoUrl", "latitude", "longitude", "rating", "reviewCount", "courseType"].map((fieldPath) => ({ fieldPath })) },
       limit: 1,
@@ -64,6 +67,37 @@ export const getCourseMetaByShortId = cache(async (shortId: string): Promise<Cou
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const hit = (arr as any[]).find((e) => e.document);
     return hit ? (parseDoc(hit.document) as unknown as CourseMeta) : null;
+  } catch {
+    return null;
+  }
+});
+
+/**
+ * Full course (incl. holes/layouts) via REST, mapped to the client `Course` shape — so the course
+ * detail page can SERVER-RENDER its content (H1, description, hole-by-hole table, ratings) into the
+ * HTML for SEO, instead of leaving an empty client shell. cache() dedupes with generateMetadata.
+ */
+export const getCourseFullByShortId = cache(async (shortId: string): Promise<Course | null> => {
+  const body = {
+    structuredQuery: {
+      from: [{ collectionId: "courses" }],
+      where: { compositeFilter: { op: "AND", filters: [
+        { fieldFilter: { field: { fieldPath: "__name__" }, op: "GREATER_THAN_OR_EQUAL", value: { referenceValue: ref(shortId) } } },
+        { fieldFilter: { field: { fieldPath: "__name__" }, op: "LESS_THAN", value: { referenceValue: ref(shortId + "\uf8ff") } } },
+      ] } },
+      limit: 1, // NB: no `select` — we want the whole doc (holes, layouts, etc.)
+    },
+  };
+  try {
+    const r = await fetch(`${BASE}:runQuery?key=${KEY}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), next: { revalidate: 86400 } });
+    if (!r.ok) return null;
+    const arr = await r.json();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const hit = (arr as any[]).find((e) => e.document);
+    if (!hit) return null;
+    const data = parseDoc(hit.document);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return docToCourse(data.id as string, data as any);
   } catch {
     return null;
   }
