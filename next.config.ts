@@ -1,18 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Canonicalize on the non-www apex domain — 301 any www request to it so SEO signals don't split
-  // across two hostnames. (Belt-and-suspenders alongside the Vercel primary-domain setting.)
-  async redirects() {
-    return [
-      {
-        source: "/:path*",
-        has: [{ type: "host", value: "www.radiusdiscgolf.com" }],
-        destination: "https://radiusdiscgolf.com/:path*",
-        permanent: true,
-      },
-    ];
-  },
+  // NOTE: www<->non-www canonical redirect is handled at the Vercel domain layer (edge), NOT here.
+  // Do NOT add a host redirect in next.config — if it points the opposite way to Vercel's domain
+  // redirect it creates an infinite loop.
   images: {
     qualities: [75, 90, 100],
     remotePatterns: [
