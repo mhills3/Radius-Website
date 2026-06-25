@@ -30,25 +30,26 @@ export default function CommunityBand({ playerCount = 0, regionCount = 0 }: { pl
               near you. Radius is where the disc golf community lives between
               throws — not just a place to keep score.
             </p>
-            <div className="mt-8 flex flex-wrap items-center gap-x-8 gap-y-3">
-              {playerCount > 0 && (
-                <div>
-                  <div className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-tight">{playerCount.toLocaleString()}+</div>
-                  <div className="text-sm text-[#6b7a70]">disc golfers</div>
-                </div>
-              )}
-              {regionCount > 0 && (
-                <div>
-                  <div className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-tight">{regionCount.toLocaleString()}</div>
-                  <div className="text-sm text-[#6b7a70]">states &amp; countries</div>
-                </div>
-              )}
-              <div>
-                <div className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-tight">
-                  iOS · Android · Web
-                </div>
-                <div className="text-sm text-[#6b7a70]">one account, everywhere</div>
+            <div className="mt-8">
+              {/* Two community numbers, prominent, split by a divider. */}
+              <div className="flex items-center gap-x-8">
+                {playerCount > 0 && (
+                  <div>
+                    <div className="font-[family-name:var(--font-heading)] text-4xl font-extrabold leading-none tracking-tight">{playerCount.toLocaleString()}+</div>
+                    <div className="mt-2 text-sm text-[#6b7a70]">disc golfers</div>
+                  </div>
+                )}
+                {regionCount > 0 && (
+                  <div className={playerCount > 0 ? "border-l border-black/10 pl-8" : ""}>
+                    <div className="font-[family-name:var(--font-heading)] text-4xl font-extrabold leading-none tracking-tight">{regionCount.toLocaleString()}</div>
+                    <div className="mt-2 text-sm text-[#6b7a70]">states &amp; countries</div>
+                  </div>
+                )}
               </div>
+              {/* Cross-platform note as a supporting line. */}
+              <p className="mt-6 text-sm text-[#6b7a70]">
+                <span className="font-[family-name:var(--font-heading)] font-extrabold text-[#16221b]">iOS · Android · Web</span> — one account, everywhere
+              </p>
             </div>
             <Link
               href="/community"
