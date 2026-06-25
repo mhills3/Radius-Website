@@ -337,10 +337,31 @@ export interface Comment {
   parentCommentId?: string | null;
   taggedUsers?: { id: string; name: string; username: string }[];
 }
+// Resolve current profile photos by user id (batched + session-cached). Used to backfill comment
+// avatars — many older comments never stored authorPhotoUrl, so we look it up from the profile.
+const photoCache = new Map<string, string | null>();
+export async function getProfilePhotos(ids: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  const need: string[] = [];
+  for (const id of new Set(ids.filter(Boolean))) {
+    if (photoCache.has(id)) { const p = photoCache.get(id); if (p) out.set(id, p); }
+    else need.push(id);
+  }
+  await Promise.all(need.slice(0, 60).map(async (id) => {
+    try {
+      const s = await getDoc(doc(db, "users", id));
+      const url = s.exists() ? safeHttp(s.data().profileImageUrl) : undefined;
+      photoCache.set(id, url ?? null);
+      if (url) out.set(id, url);
+    } catch { photoCache.set(id, null); }
+  }));
+  return out;
+}
+
 export async function getComments(postId: string): Promise<Comment[]> {
   try {
     const snap = await getDocs(query(collection(db, "posts", postId, "comments"), orderBy("createdAt", "asc"), limit(100)));
-    return snap.docs
+    const list = snap.docs
       .map((d) => {
         const c = d.data();
         const handle = (c.authorHandle as string | undefined)?.replace(/^@/, "");
@@ -358,6 +379,13 @@ export async function getComments(postId: string): Promise<Comment[]> {
         };
       })
       .filter((c) => c.text.trim());
+    // Backfill missing avatars from the author's current profile photo.
+    const missing = list.filter((c) => !c.authorPhotoUrl && c.authorId).map((c) => c.authorId!);
+    if (missing.length) {
+      const photos = await getProfilePhotos(missing);
+      for (const c of list) if (!c.authorPhotoUrl && c.authorId) { const p = photos.get(c.authorId); if (p) c.authorPhotoUrl = p; }
+    }
+    return list;
   } catch {
     return [];
   }

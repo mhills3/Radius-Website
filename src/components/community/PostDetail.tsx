@@ -13,10 +13,13 @@ const fmtScore = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`);
 const scoreColor = (n: number) => (n < 0 ? "#5fcf80" : n === 0 ? "var(--cream)" : "#f08c8c");
 
 function Avatar({ url, name, size = 36 }: { url?: string; name: string; size?: number }) {
+  // Initial sits underneath; the photo overlays it and removes itself on load error, so a missing
+  // or broken photo URL falls back cleanly to the letter instead of a broken-image icon.
   return (
-    <span className="grid shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--bg-mid)] text-xs font-bold text-[var(--cream)] ring-1 ring-white/10" style={{ width: size, height: size }}>
+    <span className="relative grid shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--bg-mid)] text-xs font-bold text-[var(--cream)] ring-1 ring-white/10" style={{ width: size, height: size }}>
+      {(name || "?").charAt(0).toUpperCase()}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      {url ? <img src={url} alt="" className="h-full w-full object-cover" /> : (name || "?").charAt(0).toUpperCase()}
+      {url && <img src={url} alt="" className="absolute inset-0 h-full w-full object-cover" onError={(e) => e.currentTarget.remove()} />}
     </span>
   );
 }

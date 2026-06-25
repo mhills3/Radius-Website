@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { addComment, setReaction } from "@/lib/feed";
+import { addComment, setReaction, getProfilePhotos } from "@/lib/feed";
 
 // Comment shape shared between the server-seeded list and client-added ones.
 type CT = {
@@ -21,12 +21,14 @@ type CT = {
 const fmtDate = (ms: number) => (ms ? new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "");
 
 function Avatar({ url, name, size = 32 }: { url?: string; name: string; size?: number }) {
+  // Initial underneath; photo overlays and removes itself on error → clean fallback, no broken icon.
   return (
-    <span className="grid shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--bg-mid)] text-xs font-bold text-[var(--cream)] ring-1 ring-white/10" style={{ width: size, height: size }}>
-      {url ? (
+    <span className="relative grid shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--bg-mid)] text-xs font-bold text-[var(--cream)] ring-1 ring-white/10" style={{ width: size, height: size }}>
+      {(name || "?").charAt(0).toUpperCase()}
+      {url && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={url} alt="" className="h-full w-full object-cover" />
-      ) : (name || "?").charAt(0).toUpperCase()}
+        <img src={url} alt="" className="absolute inset-0 h-full w-full object-cover" onError={(e) => e.currentTarget.remove()} />
+      )}
     </span>
   );
 }
@@ -59,6 +61,19 @@ export default function CommentThread({ postId, initialComments, likeCount }: { 
   const [busy, setBusy] = useState(false);
   const [liked, setLiked] = useState(false);
   const [likes, setLikes] = useState(likeCount);
+
+  // Backfill avatars: most older comments never stored authorPhotoUrl — resolve from the profile.
+  useEffect(() => {
+    const missing = comments.filter((c) => !c.authorPhotoUrl && c.authorId).map((c) => c.authorId!);
+    if (!missing.length) return;
+    let alive = true;
+    getProfilePhotos(missing).then((photos) => {
+      if (!alive || photos.size === 0) return;
+      setComments((prev) => prev.map((c) => (!c.authorPhotoUrl && c.authorId && photos.get(c.authorId) ? { ...c, authorPhotoUrl: photos.get(c.authorId) } : c)));
+    });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const gate = () => router.push("/login");
   const tops = comments.filter((c) => !c.parentCommentId);
