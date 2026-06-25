@@ -1,16 +1,8 @@
-"use client";
-
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { getCourseCount } from "@/lib/courses";
 
-export default function CommunityBand() {
-  const [courseCount, setCourseCount] = useState<number | null>(null);
-  useEffect(() => {
-    getCourseCount().then((n) => n > 0 && setCourseCount(n)).catch(() => {});
-  }, []);
-
+// Counts come from the server (home page) — reliable transport, baked into the HTML.
+export default function CommunityBand({ playerCount = 0, regionCount = 0 }: { playerCount?: number; regionCount?: number }) {
   return (
     <section id="community" className="bg-[#faf8f3] text-[#16221b]">
       <div className="mx-auto max-w-7xl px-6 py-20 md:py-28">
@@ -39,12 +31,18 @@ export default function CommunityBand() {
               throws — not just a place to keep score.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-x-8 gap-y-3">
-              <div>
-                <div className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-tight">
-                  {courseCount != null ? courseCount.toLocaleString() : "—"}
+              {playerCount > 0 && (
+                <div>
+                  <div className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-tight">{playerCount.toLocaleString()}+</div>
+                  <div className="text-sm text-[#6b7a70]">disc golfers</div>
                 </div>
-                <div className="text-sm text-[#6b7a70]">courses mapped by players</div>
-              </div>
+              )}
+              {regionCount > 0 && (
+                <div>
+                  <div className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-tight">{regionCount.toLocaleString()}</div>
+                  <div className="text-sm text-[#6b7a70]">states &amp; countries</div>
+                </div>
+              )}
               <div>
                 <div className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-tight">
                   iOS · Android · Web

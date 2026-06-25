@@ -15,7 +15,7 @@ function colorFor(key: string): string {
   return TILE_COLORS[h % TILE_COLORS.length];
 }
 
-export default function CoursesStrip({ playerCount = 0, regionCount = 0 }: { playerCount?: number; regionCount?: number }) {
+export default function CoursesStrip() {
   const router = useRouter();
   const [courses, setCourses] = useState<Course[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -51,12 +51,6 @@ export default function CoursesStrip({ playerCount = 0, regionCount = 0 }: { pla
             <p className="mt-4 text-lg leading-relaxed text-[#46554c]">
               <span className="font-bold text-[#16221b]">{loading && !totalCount ? "…" : (totalCount || courses.length).toLocaleString()}</span> courses mapped by players — and counting.
             </p>
-            {(playerCount > 0 || regionCount > 0) && (
-              <div className="mt-3 flex flex-wrap gap-x-7 gap-y-1 text-[#46554c]">
-                {playerCount > 0 && <Link href="/leaderboard" className="transition-colors hover:text-[#16221b]"><span className="font-bold text-[#16221b]">{playerCount.toLocaleString()}+</span> disc golfers</Link>}
-                {regionCount > 0 && <Link href="/courses" className="transition-colors hover:text-[#16221b]"><span className="font-bold text-[#16221b]">{regionCount.toLocaleString()}</span> states &amp; countries</Link>}
-              </div>
-            )}
             <div className="mt-5 flex flex-wrap gap-2">
               {PERKS.map((p) => (
                 <span key={p.label} className="inline-flex items-center gap-1.5 rounded-full border border-black/8 bg-white/70 px-3 py-1.5 text-xs font-semibold text-[#46554c]">

@@ -22,9 +22,9 @@ export default async function Home() {
   return (
     <>
       <Hero />
-      <CommunityBand />
+      <CommunityBand playerCount={players} regionCount={regions} />
       <Ecosystem />
-      <CoursesStrip playerCount={players} regionCount={regions} />
+      <CoursesStrip />
       <DownloadBand />
       <JoinCTA />
     </>
