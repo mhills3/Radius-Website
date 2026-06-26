@@ -49,19 +49,18 @@ export default function Nav() {
     setUserMenu(false);
   }, [pathname]);
 
-  // marketing pages with a dark photo/illustration hero — nav stays cream over them at the top
+  // marketing pages with a dark photo/illustration hero — nav is a cream frosted bar over them from
+  // the first paint (NOT a transparent/white nav, which washed out over the bright top of the hero
+  // and only "corrected" once you scrolled). App surfaces stay dark.
   const darkHeroPage = isHome || pathname === "/features" || pathname === "/story" || pathname === "/creators" || pathname === "/subscription";
-  const overPhoto = darkHeroPage && !scrolled && !mobileOpen;
   const darkPage = pathname === "/dashboard" || pathname === "/bag" || pathname === "/community" || pathname === "/notifications" || pathname.startsWith("/u/"); // app surfaces are dark
-  const onDark = overPhoto || darkPage;
+  const onDark = darkPage;
 
   const wrap = darkHeroPage ? "fixed" : "sticky"; // dark-hero pages overlay the nav so it sits ON the hero
-  const shell = overPhoto
-    ? "bg-transparent"
-    : darkPage
-      ? "border-b border-white/[0.07] bg-[var(--bg-deep)]/80 backdrop-blur-xl supports-[backdrop-filter]:bg-[var(--bg-deep)]/70"
-      : "border-b border-black/[0.06] bg-[#faf8f3]/80 backdrop-blur-xl supports-[backdrop-filter]:bg-[#faf8f3]/70";
-  const shadow = scrolled && !overPhoto ? (darkPage ? "shadow-[0_8px_30px_-12px_rgba(0,0,0,0.6)]" : "shadow-[0_8px_30px_-14px_rgba(0,0,0,0.18)]") : "";
+  const shell = darkPage
+    ? "border-b border-white/[0.07] bg-[var(--bg-deep)]/80 backdrop-blur-xl supports-[backdrop-filter]:bg-[var(--bg-deep)]/70"
+    : "border-b border-black/[0.06] bg-[#faf8f3]/80 backdrop-blur-xl supports-[backdrop-filter]:bg-[#faf8f3]/70";
+  const shadow = scrolled ? (darkPage ? "shadow-[0_8px_30px_-12px_rgba(0,0,0,0.6)]" : "shadow-[0_8px_30px_-14px_rgba(0,0,0,0.18)]") : "";
 
   const logoColor = onDark ? "text-[var(--cream)]" : "text-[#16221b]";
 
