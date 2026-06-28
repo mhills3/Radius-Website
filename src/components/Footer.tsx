@@ -43,7 +43,7 @@ const COLUMNS: { heading: string; links: { label: string; href: string; external
 const SOCIALS: { label: string; href: string; icon: React.ReactNode }[] = [
   {
     label: "Discord",
-    href: "https://discord.gg/VFupKEWqX",
+    href: "https://discord.gg/JW2SvWfCq",
     icon: (
       <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
         <path d="M20.3 4.4A19.8 19.8 0 0 0 15.4 3l-.25.5a18.3 18.3 0 0 1 4.3 1.4 16.6 16.6 0 0 0-14.9 0A18.3 18.3 0 0 1 8.85 3.5L8.6 3a19.8 19.8 0 0 0-4.9 1.4C.6 9 .1 13.6.35 18.1a19.9 19.9 0 0 0 6.07 3.06l.78-1.36a13 13 0 0 1-2-.96l.49-.36a14.2 14.2 0 0 0 12.6 0l.49.36c-.63.38-1.3.7-2 .96l.78 1.36A19.8 19.8 0 0 0 23.65 18 18.7 18.7 0 0 0 20.3 4.4ZM8.5 15.3c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Zm7 0c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Z" />
