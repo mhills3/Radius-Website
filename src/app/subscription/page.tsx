@@ -65,14 +65,14 @@ const BENEFITS = [
 
 const COMPARE: { label: string; free: boolean; pro: boolean }[] = [
   { label: "Unlimited scorecards — every round, no limits", free: true, pro: true },
-  { label: "Build & manage multiple bags", free: true, pro: true },
-  { label: "Putting Practice — drills & training", free: true, pro: true },
   { label: "Satellite hole maps & course leaderboards", free: true, pro: true },
   { label: "Disc scanning & bag builder", free: true, pro: true },
   { label: "Community: posts, follows & courses", free: true, pro: true },
   { label: "Your Game IQ score", free: true, pro: true },
   { label: "Caddy — sample shot reads", free: true, pro: true },
   { label: "Per-round stats", free: true, pro: true },
+  { label: "Build & manage multiple bags", free: false, pro: true },
+  { label: "Putting Practice — drills & training", free: false, pro: true },
   { label: "Full performance stats & trends", free: false, pro: true },
   { label: "Full Game IQ Insights — skill breakdown & weaknesses", free: false, pro: true },
   { label: "Unlimited Caddy — guidance on every hole", free: false, pro: true },
@@ -81,14 +81,15 @@ const COMPARE: { label: string; free: boolean; pro: boolean }[] = [
   { label: "All game modes unlocked", free: false, pro: true },
 ];
 
-// Free, forever — the essentials we never gate (the 2.0 story). Shown above pricing.
-const FREE_SHOTS = [
-  { img: "/screens/scorecard.png", title: "Unlimited scorecards", body: "Keep score for every round — no caps, no paywall. Immersive hole-by-hole detail on every card." },
-  { img: "/screens/bags.png", title: "Multiple bags", body: "Build a tournament bag, a casual bag, a winter bag — and switch your active bag on the fly." },
-  { img: "/screens/putting.png", title: "Putting practice", body: "Structured drills on real satellite hole maps with regulation C1 / C2 rings. Reps that transfer." },
+// New in 2.0 — the premium upgrades that make Pro worth it. Shown above pricing.
+const PRO_SHOTS = [
+  { img: "/screens/caddy2.png", title: "Unlimited Caddy", body: "A smart disc and line on every hole, tuned to exactly how you throw." },
+  { img: "/screens/bags.png", title: "Multiple bags", body: "Build a tournament bag, a casual bag, a winter bag — and switch on the fly." },
+  { img: "/screens/putting.png", title: "Putting practice", body: "Structured drills on real satellite hole maps with regulation C1 / C2 rings." },
 ];
 
-const FREE_CHIPS = ["Unlimited scorecards", "Multiple bags", "Putting practice", "Satellite course maps", "Disc scanning", "Game IQ score", "Community & feed"];
+// The essentials Radius keeps free — forever (no asterisks).
+const FREE_CHIPS = ["Unlimited scorecards", "Satellite course maps", "Disc scanning", "Game IQ score", "Per-round stats", "Community & feed"];
 
 export default function SubscriptionPage() {
   const [annual, setAnnual] = useState(true);
@@ -141,33 +142,37 @@ export default function SubscriptionPage() {
         </div>
       </section>
 
-      {/* ===================== FREE, FOREVER (new in 2.0) ===================== */}
+      {/* ===================== NEW IN 2.0 — PRO UPGRADES ===================== */}
       <section className="bg-[#f3eee4]">
         <div className="mx-auto max-w-6xl px-6 py-20 md:py-24">
           <div className="mx-auto max-w-2xl text-center">
-            <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.2em] text-[#9a7a3a]">Generous on free · New in 2.0</div>
-            <h2 className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-[-0.03em] md:text-[2.75rem]">We don&apos;t paywall your scorecard.</h2>
+            <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.2em] text-[#9a7a3a]">New in 2.0 · Radius Pro</div>
+            <h2 className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-[-0.03em] md:text-[2.75rem]">The upgrades worth playing for.</h2>
             <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-[#46554c]">
-              Other apps cap your rounds and lock the basics behind a subscription. Radius keeps the essentials free — forever. <span className="font-semibold text-[#16221b]">Pro is the intelligence layer on top.</span>
+              Your scorecard stays free and unlimited — we&apos;ll never gate that, unlike other apps. <span className="font-semibold text-[#16221b]">Pro is where your game gets sharper.</span>
             </p>
           </div>
 
           <div className="mt-12 grid gap-6 md:grid-cols-3">
-            {FREE_SHOTS.map((s) => (
+            {PRO_SHOTS.map((s) => (
               <div key={s.title} className="flex flex-col items-center text-center">
-                <PhoneShot src={s.img} alt={s.title} />
+                <PhoneShot src={s.img} alt={s.title} badge="Pro" />
                 <h3 className="mt-6 font-[family-name:var(--font-heading)] text-xl font-bold tracking-tight">{s.title}</h3>
                 <p className="mt-2 max-w-xs text-sm leading-relaxed text-[#46554c]">{s.body}</p>
               </div>
             ))}
           </div>
 
-          <div className="mt-12 flex flex-wrap justify-center gap-2.5">
-            {FREE_CHIPS.map((c) => (
-              <span key={c} className="inline-flex items-center gap-1.5 rounded-full border border-black/8 bg-white px-4 py-2 text-sm font-semibold text-[#2c3a32] shadow-sm">
-                <span className="text-[#9a7a3a]">✓</span> {c}
-              </span>
-            ))}
+          {/* What stays free, forever */}
+          <div className="mt-14 text-center">
+            <div className="mb-4 text-[11px] font-bold uppercase tracking-[0.18em] text-[#6b7a70]">Always free — no asterisks</div>
+            <div className="flex flex-wrap justify-center gap-2.5">
+              {FREE_CHIPS.map((c) => (
+                <span key={c} className="inline-flex items-center gap-1.5 rounded-full border border-black/8 bg-white px-4 py-2 text-sm font-semibold text-[#2c3a32] shadow-sm">
+                  <span className="text-[#9a7a3a]">✓</span> {c}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -319,9 +324,12 @@ export default function SubscriptionPage() {
   );
 }
 
-function PhoneShot({ src, alt }: { src: string; alt: string }) {
+function PhoneShot({ src, alt, badge }: { src: string; alt: string; badge?: string }) {
   return (
     <div className="relative w-[230px] shrink-0 rounded-[2.4rem] border border-black/10 bg-[#0d140f] p-2 shadow-[0_30px_70px_-28px_rgba(0,0,0,0.55)]">
+      {badge && (
+        <span className="absolute -right-2 -top-2 z-20 rounded-full bg-[var(--gold)] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#16221b] shadow-[0_6px_18px_rgba(246,193,101,0.5)] ring-1 ring-white/40">{badge}</span>
+      )}
       <div className="relative aspect-[1170/2532] overflow-hidden rounded-[1.9rem] bg-black">
         <Image src={src} alt={alt} fill sizes="230px" quality={90} className="object-cover" />
       </div>

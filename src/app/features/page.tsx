@@ -20,7 +20,7 @@ const FEATURES: Feature[] = [
     title: "Carry as many bags as your game needs",
     body: "Build a tournament bag, a casual bag, a winter bag — and switch your active bag on the fly. See every disc's flight on one chart and spot the gaps before they cost you a stroke.",
     bullets: ["Create & manage multiple named bags", "Switch your active bag on the fly", "Flight chart, slot coverage & a smart gap report"],
-    img: "/screens/bags.png",
+    img: "/screens/mybag2.png",
   },
   {
     eyebrow: "Putting Practice · New in 2.0",
@@ -173,7 +173,7 @@ export default function FeaturesPage() {
         <div className="mx-auto max-w-5xl px-6 py-20 text-center md:py-28">
           <h2 className="mx-auto max-w-3xl font-[family-name:var(--font-heading)] text-3xl font-extrabold leading-[1.1] tracking-[-0.03em] md:text-[2.9rem]">
             Most apps just keep score. <br className="hidden sm:block" />
-            <span className="text-[#9a7a3a]">Radius shows you how to get better.</span>
+            <span className="text-[#9a7a3a]">Radius shows you how to get better.</span>
           </h2>
           <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-[#46554c]">
             It&apos;s the difference between a number at the end of the round and a clear path to your next personal best.
