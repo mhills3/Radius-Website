@@ -5,7 +5,7 @@ import CourseCount from "@/components/CourseCount";
 
 export const metadata: Metadata = {
   title: "Features — Radius",
-  description: "A guided tour of Radius: Game IQ, your bag, scorecards, your Caddy, courses, game modes, and community. The disc golf app that actually makes you better. Play smarter, not harder.",
+  description: "A guided tour of Radius: Game IQ, multiple bags, putting practice, unlimited scorecards, your Caddy, courses, game modes, and community. The disc golf app that actually makes you better. Play smarter, not harder.",
   alternates: { canonical: "https://radiusdiscgolf.com/features" },
 };
 
@@ -16,46 +16,60 @@ type Feature = { eyebrow: string; title: string; body: string; bullets: string[]
 
 const FEATURES: Feature[] = [
   {
-    eyebrow: "My Bag",
-    title: "Your bag, completely dialed in",
-    body: "See every disc's flight on one chart, spot the gaps in your lineup, and know which discs you actually trust — scored and organized from your real throws.",
-    bullets: ["Flight chart of your entire bag at a glance", "Slot coverage + a gap report with suggestions", "Per-disc throw quality from real rounds"],
-    img: "/screens/mybag.png",
+    eyebrow: "My Bag · New in 2.0",
+    title: "Carry as many bags as your game needs",
+    body: "Build a tournament bag, a casual bag, a winter bag — and switch your active bag on the fly. See every disc's flight on one chart and spot the gaps before they cost you a stroke.",
+    bullets: ["Create & manage multiple named bags", "Switch your active bag on the fly", "Flight chart, slot coverage & a smart gap report"],
+    img: "/screens/bags.png",
   },
   {
-    eyebrow: "Rounds",
-    title: "Every round, remembered",
-    body: "Keep score the easy way and walk away with a full breakdown — hole by hole, disc by disc — that quietly makes you better over time.",
-    bullets: ["Fast, frustration-free scorekeeping", "Hole-by-hole scorecards & round review", "Trends that show you actually improving"],
-    img: "/screens/roundreview.png",
+    eyebrow: "Putting Practice · New in 2.0",
+    title: "The practice that actually transfers",
+    body: "Structured putting drills on real satellite hole maps with regulation circles — so the reps you put in show up on the course. Every make and miss feeds your stats.",
+    bullets: ["Drills like Around the World, Pressure Ladder & Speed Run", "Regulation C1 / C2 rings (33 / 66 ft) on real maps", "Every putt feeds your putting stats"],
+    img: "/screens/putting.png",
+  },
+  {
+    eyebrow: "Scorecards",
+    title: "Unlimited scorecards. Never gated.",
+    body: "Keep score for every round, free — no caps, no paywall. Walk away with an immersive hole-by-hole breakdown that quietly makes you better over time.",
+    bullets: ["Unlimited scorecards — every round, no limits", "Immersive hole-by-hole round detail", "Tap any hole for the full story"],
+    img: "/screens/scorecard.png",
+  },
+  {
+    eyebrow: "Improve",
+    title: "A coaching plan, not just numbers",
+    body: "Radius shows you where you stand, why, and exactly what to work on next — then proves it as your game climbs. Your weakest skill, flagged and fixed.",
+    bullets: ["See exactly where you stand across every skill", "Targeted drill stacks for your weakest area", "Watch the proof as your game climbs"],
+    img: "/screens/improve.png",
   },
   {
     eyebrow: "Your Caddy",
     title: "A caddy in your pocket",
     body: "On any hole, Radius reads the shot and suggests a disc and a line based on how you throw. It informs — you decide. That's playing smarter.",
     bullets: ["Disc + line suggestions tuned to your arm", "Built from your own bag and tendencies", "Always your call — never automated"],
-    img: "/screens/caddy.png",
+    img: "/screens/caddy2.png",
   },
   {
     eyebrow: "Courses",
     title: "Know the course before you tee off",
     body: "Satellite hole maps, real layouts, and leaderboards for courses everywhere — so you show up with a plan instead of a guess.",
     bullets: ["Satellite maps with every hole", "Community-built layouts you can trust", "Course leaderboards and your personal bests"],
-    img: "/screens/holemap.png",
+    img: "/screens/coursemap.png",
   },
   {
     eyebrow: "Play",
     title: "Make every round more fun",
     body: "Wolf, Best Ball, skins and more — built-in game modes that turn a casual round with friends into something worth talking about.",
     bullets: ["Wolf, BBB, skins & other modes", "Teams and side games tracked automatically", "Group cards with everyone's scores"],
-    img: "/screens/gamemodes.png",
+    img: "/screens/gamemodes2.png",
   },
   {
     eyebrow: "Community",
     title: "The whole sport, in one place",
     body: "Follow players, share your rounds, find people near you, and watch the game grow — Radius is where disc golf comes together.",
     bullets: ["Follow friends and share your best rounds", "Find players and meetups near you", "A feed built for disc golfers"],
-    img: "/screens/discover.png",
+    img: "/screens/discover2.png",
   },
 ];
 
@@ -185,7 +199,7 @@ export default function FeaturesPage() {
         <div className="pointer-events-none absolute right-0 top-1/2 h-[640px] w-[640px] -translate-y-1/2 translate-x-1/3 rounded-full bg-[radial-gradient(circle,rgba(246,193,101,0.12),transparent_62%)]" />
         <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-6 py-20 md:py-28 lg:grid-cols-[0.95fr_1.05fr]">
           <div className="flex justify-center lg:order-2 lg:justify-end">
-            <ScreenPhone src="/screens/mygame.png" alt="Radius Game IQ dashboard" className="w-[272px]" />
+            <ScreenPhone src="/screens/overview.png" alt="Radius Game IQ dashboard" className="w-[272px]" />
           </div>
           <div className="lg:order-1">
             <div className="mb-4 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">The Radius difference · Game IQ</div>

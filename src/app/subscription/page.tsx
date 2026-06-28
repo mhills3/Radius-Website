@@ -64,19 +64,31 @@ const BENEFITS = [
 ];
 
 const COMPARE: { label: string; free: boolean; pro: boolean }[] = [
-  { label: "Score every hole & track rounds", free: true, pro: true },
-  { label: "Caddy shot insights", free: true, pro: true },
-  { label: "Your Game IQ score", free: true, pro: true },
-  { label: "Build your bag + disc scanning", free: true, pro: true },
+  { label: "Unlimited scorecards — every round, no limits", free: true, pro: true },
+  { label: "Build & manage multiple bags", free: true, pro: true },
+  { label: "Putting Practice — drills & training", free: true, pro: true },
+  { label: "Satellite hole maps & course leaderboards", free: true, pro: true },
+  { label: "Disc scanning & bag builder", free: true, pro: true },
   { label: "Community: posts, follows & courses", free: true, pro: true },
-  { label: "Performance stats", free: true, pro: true },
+  { label: "Your Game IQ score", free: true, pro: true },
+  { label: "Caddy — sample shot reads", free: true, pro: true },
+  { label: "Per-round stats", free: true, pro: true },
+  { label: "Full performance stats & trends", free: false, pro: true },
+  { label: "Full Game IQ Insights — skill breakdown & weaknesses", free: false, pro: true },
   { label: "Unlimited Caddy — guidance on every hole", free: false, pro: true },
-  { label: "Full Game IQ Insights — skill breakdown & trends", free: false, pro: true },
-  { label: "Unlimited scorecards & full round history", free: false, pro: true },
-  { label: "Full performance stats", free: false, pro: true },
   { label: "Full bag analysis & optimization", free: false, pro: true },
+  { label: "Your entire round history & every trend", free: false, pro: true },
   { label: "All game modes unlocked", free: false, pro: true },
 ];
+
+// Free, forever — the essentials we never gate (the 2.0 story). Shown above pricing.
+const FREE_SHOTS = [
+  { img: "/screens/scorecard.png", title: "Unlimited scorecards", body: "Keep score for every round — no caps, no paywall. Immersive hole-by-hole detail on every card." },
+  { img: "/screens/bags.png", title: "Multiple bags", body: "Build a tournament bag, a casual bag, a winter bag — and switch your active bag on the fly." },
+  { img: "/screens/putting.png", title: "Putting practice", body: "Structured drills on real satellite hole maps with regulation C1 / C2 rings. Reps that transfer." },
+];
+
+const FREE_CHIPS = ["Unlimited scorecards", "Multiple bags", "Putting practice", "Satellite course maps", "Disc scanning", "Game IQ score", "Community & feed"];
 
 export default function SubscriptionPage() {
   const [annual, setAnnual] = useState(true);
@@ -125,6 +137,37 @@ export default function SubscriptionPage() {
               Start your free trial
             </Link>
             <p className="text-sm text-[var(--sage)]">Free for 7 days · then from <span className="font-bold text-[var(--cream)]">$3.33/mo</span> · cancel anytime</p>
+          </div>
+        </div>
+      </section>
+
+      {/* ===================== FREE, FOREVER (new in 2.0) ===================== */}
+      <section className="bg-[#f3eee4]">
+        <div className="mx-auto max-w-6xl px-6 py-20 md:py-24">
+          <div className="mx-auto max-w-2xl text-center">
+            <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.2em] text-[#9a7a3a]">Generous on free · New in 2.0</div>
+            <h2 className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-[-0.03em] md:text-[2.75rem]">We don&apos;t paywall your scorecard.</h2>
+            <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-[#46554c]">
+              Other apps cap your rounds and lock the basics behind a subscription. Radius keeps the essentials free — forever. <span className="font-semibold text-[#16221b]">Pro is the intelligence layer on top.</span>
+            </p>
+          </div>
+
+          <div className="mt-12 grid gap-6 md:grid-cols-3">
+            {FREE_SHOTS.map((s) => (
+              <div key={s.title} className="flex flex-col items-center text-center">
+                <PhoneShot src={s.img} alt={s.title} />
+                <h3 className="mt-6 font-[family-name:var(--font-heading)] text-xl font-bold tracking-tight">{s.title}</h3>
+                <p className="mt-2 max-w-xs text-sm leading-relaxed text-[#46554c]">{s.body}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-12 flex flex-wrap justify-center gap-2.5">
+            {FREE_CHIPS.map((c) => (
+              <span key={c} className="inline-flex items-center gap-1.5 rounded-full border border-black/8 bg-white px-4 py-2 text-sm font-semibold text-[#2c3a32] shadow-sm">
+                <span className="text-[#9a7a3a]">✓</span> {c}
+              </span>
+            ))}
           </div>
         </div>
       </section>
@@ -272,6 +315,17 @@ export default function SubscriptionPage() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function PhoneShot({ src, alt }: { src: string; alt: string }) {
+  return (
+    <div className="relative w-[230px] shrink-0 rounded-[2.4rem] border border-black/10 bg-[#0d140f] p-2 shadow-[0_30px_70px_-28px_rgba(0,0,0,0.55)]">
+      <div className="relative aspect-[1170/2532] overflow-hidden rounded-[1.9rem] bg-black">
+        <Image src={src} alt={alt} fill sizes="230px" quality={90} className="object-cover" />
+      </div>
+      <div className="pointer-events-none absolute left-1/2 top-[12px] z-10 h-[20px] w-[80px] -translate-x-1/2 rounded-full bg-[#0d140f]" />
     </div>
   );
 }
