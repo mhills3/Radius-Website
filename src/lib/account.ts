@@ -50,6 +50,8 @@ export interface Profile {
   armSpeed?: string;
   proOverride?: boolean;
   proOverrideExpires?: number;
+  isPro?: boolean;
+  proExpires?: number;
 }
 
 export interface RoundSummary {
@@ -88,6 +90,33 @@ export interface ProfileLite {
   profileImageUrl?: string;
   writer?: boolean;
   homeCourseName?: string;
+  isPro?: boolean;
+  proExpires?: number;
+  proOverride?: boolean;
+  proOverrideExpires?: number;
+}
+
+/**
+ * Pro entitlement on the web. We can read two signals from the user doc:
+ *  - isPro / proExpires      — the REAL App Store / Play subscription, mirrored to Firestore by the
+ *                              apps (StoreKit/Play receipts never reach the web directly).
+ *  - proOverride / *Expires  — a manual comp granted from the console.
+ * Lenient on a missing expiry (treat as active) so a real paying subscriber is NEVER locked out of
+ * the web if the app hasn't written a fresh expiry — over-granting is the safe failure here.
+ * NOTE: client-side reads are public, so this is a UX paywall, not a security boundary.
+ */
+export interface ProEntitlement {
+  isPro?: boolean;
+  proExpires?: number;
+  proOverride?: boolean;
+  proOverrideExpires?: number;
+}
+export function isProEntitled(p?: ProEntitlement | null): boolean {
+  if (!p) return false;
+  const now = Date.now();
+  const real = p.isPro === true && (p.proExpires == null || p.proExpires > now);
+  const comp = p.proOverride === true && (p.proOverrideExpires == null || p.proOverrideExpires > now);
+  return real || comp;
 }
 
 export async function resolveCanonicalId(uid: string): Promise<string> {
@@ -130,7 +159,12 @@ export async function getProfileLite(uid: string): Promise<ProfileLite | null> {
     const snap = await getDoc(doc(db, "users", canonicalId));
     if (!snap.exists()) return null;
     const u = snap.data();
-    return { canonicalId, name: u.name ?? "", username: u.username ?? "", profileImageUrl: safeHttp(u.profileImageUrl), writer: u.writer === true || u.role === "writer", homeCourseName: (u.homeCourseName as string) || undefined };
+    return {
+      canonicalId, name: u.name ?? "", username: u.username ?? "", profileImageUrl: safeHttp(u.profileImageUrl),
+      writer: u.writer === true || u.role === "writer", homeCourseName: (u.homeCourseName as string) || undefined,
+      isPro: u.isPro === true, proExpires: typeof u.proExpires === "number" ? u.proExpires : undefined,
+      proOverride: u.proOverride === true, proOverrideExpires: typeof u.proOverrideExpires === "number" ? u.proOverrideExpires : undefined,
+    };
   } catch {
     return null;
   }
@@ -255,6 +289,8 @@ export async function getDashboard(uid: string): Promise<Dashboard | null> {
     armSpeed: u.armSpeed,
     proOverride: u.proOverride,
     proOverrideExpires: u.proOverrideExpires,
+    isPro: u.isPro === true,
+    proExpires: typeof u.proExpires === "number" ? u.proExpires : undefined,
   };
 
   const iqCurrent = typeof u.gameIQ === "number" && u.gameIQ > 0 ? u.gameIQ : u.previousGameIQ ?? 0;

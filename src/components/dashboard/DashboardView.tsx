@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { type Dashboard } from "@/lib/account";
+import { type Dashboard, isProEntitled } from "@/lib/account";
 import { rankForIQ, rankLabel, rankProgress } from "@/lib/rank";
 import { IqRing, AreaChart, BarList, CountUp } from "@/components/dashboard/charts";
 import LevelBadge from "@/components/rank/LevelBadge";
@@ -171,7 +171,7 @@ export default function DashboardView({ data, uid }: { data: Dashboard; uid: str
               <div className="mt-4">
                 <div className="flex items-center gap-2.5">
                   <h1 className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-[-0.02em] text-[var(--cream)]">{profile.name || "Player"}</h1>
-                  {profile.proOverride && <span className="rounded-full bg-[var(--gold)] px-2.5 py-0.5 text-[11px] font-bold text-[#16221b]">PRO</span>}
+                  {isProEntitled(profile) && <span className="rounded-full bg-[var(--gold)] px-2.5 py-0.5 text-[11px] font-bold text-[#16221b]">PRO</span>}
                 </div>
                 {profile.username && <p className="mt-1.5 text-sm text-[var(--text-body)]">@{profile.username}</p>}
               </div>

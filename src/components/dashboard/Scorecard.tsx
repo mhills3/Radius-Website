@@ -5,6 +5,8 @@ import { type DecodedRound, computeRoundStats, type RoundStats } from "@/lib/rou
 import { rankForIQ, rankLabel } from "@/lib/rank";
 import { useMetricPref } from "@/lib/useMetricPref";
 import { fmtDist } from "@/lib/units";
+import { usePro } from "@/lib/usePro";
+import ProGate from "@/components/ProGate";
 
 const fmtScore = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`);
 const fmtDate = (ms: number) => (ms ? new Date(ms).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" }) : "");
@@ -52,6 +54,7 @@ type Tab = "scorecard" | "stats" | "insights";
 export default function Scorecard({ round, onClose }: { round: DecodedRound; onClose: () => void }) {
   const [tab, setTab] = useState<Tab>("scorecard");
   const metric = useMetricPref();
+  const pro = usePro();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
@@ -108,9 +111,12 @@ export default function Scorecard({ round, onClose }: { round: DecodedRound; onC
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`rounded-full px-4 py-1.5 text-sm font-bold transition-colors ${tab === t.key ? "bg-[var(--gold)] text-[#16221b]" : "text-[var(--text-body)] hover:text-[var(--cream)]"}`}
+              className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-bold transition-colors ${tab === t.key ? "bg-[var(--gold)] text-[#16221b]" : "text-[var(--text-body)] hover:text-[var(--cream)]"}`}
             >
               {t.label}
+              {t.key === "insights" && !pro && (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 opacity-80"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
+              )}
             </button>
           ))}
         </div>
@@ -164,6 +170,7 @@ export default function Scorecard({ round, onClose }: { round: DecodedRound; onC
         )}
 
         {tab === "insights" && (
+          <ProGate pro={pro} title="Game IQ insights" blurb="See your Game IQ change, score distribution and discs thrown with Pro.">
           <div className="space-y-5">
             {hasIQ ? (
               (() => {
@@ -246,6 +253,7 @@ export default function Scorecard({ round, onClose }: { round: DecodedRound; onC
               </div>
             )}
           </div>
+          </ProGate>
         )}
       </div>
     </div>

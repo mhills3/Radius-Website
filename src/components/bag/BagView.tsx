@@ -9,6 +9,8 @@ import DiscGraphic from "@/components/bag/DiscGraphic";
 import AddDiscModal from "@/components/bag/AddDiscModal";
 import StabilityMap from "@/components/bag/StabilityMap";
 import { CountUp } from "@/components/dashboard/charts";
+import { usePro } from "@/lib/usePro";
+import ProGate from "@/components/ProGate";
 
 // Add disc from the web (catalog search modal -> saveBag merge). Verified cross-platform.
 const SHOW_ADD_DISC = true;
@@ -149,6 +151,7 @@ function Cell({ v }: { v?: number }) {
 
 export default function BagView({ bag, uid }: { bag: Bag; uid: string }) {
   const { rating } = bag;
+  const pro = usePro();
   const [discs, setDiscs] = useState<FlightDisc[]>(bag.discs);
   const [rawDiscs, setRawDiscs] = useState<RawDisc[]>(bag.rawDiscs);
   const [collection, setCollection] = useState<FlightDisc[]>(bag.collection);
@@ -320,6 +323,7 @@ export default function BagView({ bag, uid }: { bag: Bag; uid: string }) {
               </div>
             </div>
 
+            <ProGate pro={pro} title="Score breakdown" blurb="See how your bag scores across coverage, depth and fit — with Pro.">
             <div>
               <div className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-[var(--sage-dim)]">Score breakdown</div>
               <div className="space-y-3">
@@ -330,6 +334,7 @@ export default function BagView({ bag, uid }: { bag: Bag; uid: string }) {
                 <Bar label="Player fit" value={b.playerFit} tipUp tip="How well your discs' speeds match your arm speed. Set your arm speed in your profile, then carry discs you can throw with control rather than all max-speed drivers." />
               </div>
             </div>
+            </ProGate>
           </div>
         </div>
 
@@ -357,6 +362,8 @@ export default function BagView({ bag, uid }: { bag: Bag; uid: string }) {
           </div>
 
           <div className="flex flex-col gap-3 lg:col-span-3">
+            <ProGate pro={pro} title="Bag analysis" blurb="Slot coverage, bag DNA and the stability map are part of Pro." className="flex-1">
+            <div className="flex h-full flex-col gap-3">
             <div className={`fade-up ${cardTight}`} style={{ animationDelay: "60ms" }}>
               <div className="mb-3 flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--sage-dim)]">Slot coverage</span>
@@ -390,11 +397,15 @@ export default function BagView({ bag, uid }: { bag: Bag; uid: string }) {
 
             {/* Stability Map — fills the gap; click to open the full, shareable branded version. */}
             <StabilityMap discs={discs} className="fade-up min-h-[200px] flex-1" />
+            </div>
+            </ProGate>
           </div>
         </div>
 
         {/* Gap Report */}
-        <div className={`fade-up mt-4 ${card}`}>
+        <div className="mt-4">
+        <ProGate pro={pro} title="Gap Report" blurb="See where your bag could grow — and a disc that fills each slot — with Pro.">
+        <div className={`fade-up ${card}`}>
           <div className="mb-1 flex items-center gap-2">
             <span className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--sage-dim)]">Gap Report</span>
             <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[11px] font-bold text-[var(--text-body)]">{rating.gaps.length} gaps</span>
@@ -440,6 +451,8 @@ export default function BagView({ bag, uid }: { bag: Bag; uid: string }) {
               ))}
             </div>
           )}
+        </div>
+        </ProGate>
         </div>
 
         {/* Discs — toolbar */}
