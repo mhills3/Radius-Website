@@ -241,15 +241,66 @@ function normMs(v: unknown): number {
   return 0;
 }
 
+// Firestore REST typed value → plain JS (matches the SDK doc shape docToCourse expects).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function restValue(v: any): any {
+  if (v == null) return undefined;
+  if ("stringValue" in v) return v.stringValue;
+  if ("integerValue" in v) return parseInt(v.integerValue, 10);
+  if ("doubleValue" in v) return v.doubleValue;
+  if ("booleanValue" in v) return v.booleanValue;
+  if ("nullValue" in v) return undefined;
+  if ("timestampValue" in v) return Date.parse(v.timestampValue);
+  if ("arrayValue" in v) return (v.arrayValue.values ?? []).map(restValue);
+  if ("mapValue" in v) {
+    const o: Record<string, unknown> = {};
+    for (const [k, mv] of Object.entries(v.mapValue.fields ?? {})) o[k] = restValue(mv);
+    return o;
+  }
+  return undefined;
+}
+
+// The lightweight fields the directory / hero lists / map pins actually render — every Course field
+// EXCEPT the valuable hole geometry (holes, layouts) and embedded reviews. The public list is fetched
+// with a Firestore REST field mask so that hole geometry is NEVER transmitted to the browser (the
+// client SDK can't field-mask, so it would ship the whole map for every course). Individual course
+// PAGES still load full geometry by id — this only starves the "one request = every course's map"
+// bulk pull, which is the thing worth protecting.
+const DIRECTORY_FIELDS = [
+  "name", "city", "state", "holeCount", "par", "distanceFt", "description", "courseType",
+  "plannedCourseType", "terrain", "amenities", "isFree", "isPublic", "isFeatured", "coverPhotoUrl",
+  "galleryPhotoUrls", "communityAverage", "communityScoreCount", "rating", "reviewCount",
+  "manualDifficulty", "courseFeeAmount", "latitude", "longitude", "layoutAverages", "createdBy",
+  "createdById", "reviewStatus", "isDraft", "defaultLayoutName", "lastModified", "dateCreated",
+];
+
 export async function getAllCourses(ownerIds?: Set<string> | null): Promise<Course[]> {
   // Public directory: every named course EXCEPT drafts/pending/rejected (matches both apps' hide
   // rules) and EXCEPT private courses — which are shown only to their creator. Pass the viewer's
   // linked ids (getOwnedIds) to include the private courses THEY own; omit it for anonymous/public
   // contexts so no private course ever leaks. Owners also see their own drafts via getMyCourses.
-  const snap = await getDocs(collection(db, "courses"));
-  return snap.docs
-    .map((d) => docToCourse(d.id, d.data()))
-    .filter((c) => c.name && isPubliclyListed(c) && (!isPrivateCourse(c) || isOwnedBy(c, ownerIds)));
+  const mask = DIRECTORY_FIELDS.map((m) => `&mask.fieldPaths=${m}`).join("");
+  const key = "AIzaSyCVjfvMNwy5sLFjONGZFfPpPsnqO79IiPE"; // public Firebase web key
+  const out: Course[] = [];
+  let token = "";
+  try {
+    do {
+      const url = `https://firestore.googleapis.com/v1/projects/radius-dg/databases/(default)/documents/courses?pageSize=300&key=${key}${token ? `&pageToken=${token}` : ""}${mask}`;
+      const r = await fetch(url);
+      if (!r.ok) break;
+      const j = await r.json();
+      for (const d of j.documents ?? []) {
+        const id = String(d.name).split("/").pop() as string;
+        const data: DocumentData = {};
+        for (const [k, v] of Object.entries(d.fields ?? {})) data[k] = restValue(v);
+        out.push(docToCourse(id, data));
+      }
+      token = j.nextPageToken ?? "";
+    } while (token);
+  } catch {
+    /* return what we have */
+  }
+  return out.filter((c) => c.name && isPubliclyListed(c) && (!isPrivateCourse(c) || isOwnedBy(c, ownerIds)));
 }
 
 const COUNT_KEY = "AIzaSyCVjfvMNwy5sLFjONGZFfPpPsnqO79IiPE"; // public Firebase web key
