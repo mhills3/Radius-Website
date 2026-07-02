@@ -7,6 +7,30 @@ function safeHttp(u: unknown): string | undefined {
   return typeof u === "string" && /^https?:\/\//.test(u) ? u : undefined;
 }
 
+/**
+ * Coerce a Firestore expiry value to epoch milliseconds. Comps write `proOverrideExpires` as a native
+ * Firestore Timestamp; store subs write `proExpires` as ms. Handles: number (already ms → as-is),
+ * Timestamp instance (`.toMillis()`), serialized `{seconds,nanoseconds}` / `{_seconds,_nanoseconds}`
+ * (REST/serialized reads → seconds*1000 + round(nanos/1e6)), ISO string, and Date. Else → undefined.
+ */
+function toEpochMillis(v: unknown): number | undefined {
+  if (v == null) return undefined;
+  if (typeof v === "number") return Number.isFinite(v) ? v : undefined;
+  if (v instanceof Date) { const t = v.getTime(); return Number.isFinite(t) ? t : undefined; }
+  if (typeof v === "object") {
+    const o = v as { toMillis?: () => number; seconds?: number; nanoseconds?: number; _seconds?: number; _nanoseconds?: number };
+    if (typeof o.toMillis === "function") { const t = o.toMillis(); return Number.isFinite(t) ? t : undefined; }
+    const secs = typeof o.seconds === "number" ? o.seconds : typeof o._seconds === "number" ? o._seconds : undefined;
+    if (secs != null) {
+      const nanos = typeof o.nanoseconds === "number" ? o.nanoseconds : typeof o._nanoseconds === "number" ? o._nanoseconds : 0;
+      return secs * 1000 + Math.round(nanos / 1e6);
+    }
+    return undefined;
+  }
+  if (typeof v === "string") { const t = Date.parse(v); return Number.isFinite(t) ? t : undefined; }
+  return undefined;
+}
+
 function b64ToUtf8(b64: string): string {
   return typeof atob !== "undefined" ? atob(b64) : Buffer.from(b64, "base64").toString("utf8");
 }
@@ -101,8 +125,11 @@ export interface ProfileLite {
  *  - isPro / proExpires      — the REAL App Store / Play subscription, mirrored to Firestore by the
  *                              apps (StoreKit/Play receipts never reach the web directly).
  *  - proOverride / *Expires  — a manual comp granted from the console.
- * Lenient on a missing expiry (treat as active) so a real paying subscriber is NEVER locked out of
- * the web if the app hasn't written a fresh expiry — over-granting is the safe failure here.
+ * Store subs are lenient on a missing expiry (treat as active) so a real paying subscriber is NEVER
+ * locked out of the web if the app hasn't written a fresh expiry — over-granting is the safe failure.
+ * Comps are strict (match iOS): a comp needs a parseable FUTURE expiry to count — comps are always
+ * 1-year, never lifetime, so a missing/past expiry means expired. Expiry values are normalized to
+ * epoch ms by toEpochMillis() at the mapping sites (comps arrive as Firestore Timestamps).
  * NOTE: client-side reads are public, so this is a UX paywall, not a security boundary.
  */
 export interface ProEntitlement {
@@ -115,7 +142,7 @@ export function isProEntitled(p?: ProEntitlement | null): boolean {
   if (!p) return false;
   const now = Date.now();
   const real = p.isPro === true && (p.proExpires == null || p.proExpires > now);
-  const comp = p.proOverride === true && (p.proOverrideExpires == null || p.proOverrideExpires > now);
+  const comp = p.proOverride === true && p.proOverrideExpires != null && p.proOverrideExpires > now;
   return real || comp;
 }
 
@@ -162,8 +189,8 @@ export async function getProfileLite(uid: string): Promise<ProfileLite | null> {
     return {
       canonicalId, name: u.name ?? "", username: u.username ?? "", profileImageUrl: safeHttp(u.profileImageUrl),
       writer: u.writer === true || u.role === "writer", homeCourseName: (u.homeCourseName as string) || undefined,
-      isPro: u.isPro === true, proExpires: typeof u.proExpires === "number" ? u.proExpires : undefined,
-      proOverride: u.proOverride === true, proOverrideExpires: typeof u.proOverrideExpires === "number" ? u.proOverrideExpires : undefined,
+      isPro: u.isPro === true, proExpires: toEpochMillis(u.proExpires),
+      proOverride: u.proOverride === true, proOverrideExpires: toEpochMillis(u.proOverrideExpires),
     };
   } catch {
     return null;
@@ -288,9 +315,9 @@ export async function getDashboard(uid: string): Promise<Dashboard | null> {
     throwingStyle: u.throwingStyle,
     armSpeed: u.armSpeed,
     proOverride: u.proOverride,
-    proOverrideExpires: u.proOverrideExpires,
+    proOverrideExpires: toEpochMillis(u.proOverrideExpires),
     isPro: u.isPro === true,
-    proExpires: typeof u.proExpires === "number" ? u.proExpires : undefined,
+    proExpires: toEpochMillis(u.proExpires),
   };
 
   const iqCurrent = typeof u.gameIQ === "number" && u.gameIQ > 0 ? u.gameIQ : u.previousGameIQ ?? 0;
