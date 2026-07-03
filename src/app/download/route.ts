@@ -47,15 +47,23 @@ async function trackScan(source: string, platform: string) {
 export async function GET(request: NextRequest) {
   const ua = request.headers.get("user-agent") ?? "";
   // `?s=` lets each physical sign carry its own tag; defaults to the tee sign.
-  const source = request.nextUrl.searchParams.get("s") ?? "teesign";
+  // Sanitize — this value flows into the outbound store URLs.
+  const source =
+    (request.nextUrl.searchParams.get("s") ?? "teesign")
+      .replace(/[^a-z0-9_-]/gi, "")
+      .slice(0, 40) || "teesign";
 
   let target: string;
   let platform: string;
   if (/Android/i.test(ua)) {
-    target = GOOGLE_PLAY;
+    // Play Install Referrer — the app reads this via InstallReferrerClient on first
+    // launch and stamps `acquisitionSource` on the user doc, enabling scan -> Pro attribution.
+    const referrer = encodeURIComponent(`utm_source=${source}&utm_medium=sign`);
+    target = `${GOOGLE_PLAY}&referrer=${referrer}`;
     platform = "android";
   } else if (/iPhone|iPad|iPod/i.test(ua)) {
-    target = APP_STORE;
+    // `ct` = App Store campaign token; shows sign-driven installs in App Store Connect.
+    target = `${APP_STORE}?ct=${encodeURIComponent(source)}`;
     platform = "ios";
   } else {
     target = `${SITE}/`;
