@@ -41,9 +41,9 @@ const TIERS = [
 const LADDER = [
   { n: "5", tier: "Starter", reward: "1 Year of Radius Pro", desc: "A full year of Caddy's Picks, Game IQ, and insights — on the house.", gate: "" },
   { n: "10", tier: "Builder", reward: "2 Years of Radius Pro", desc: "Double up — two full years of everything Pro has to offer.", gate: "" },
-  { n: "25", tier: "Craftsman", reward: "Radius Gear Bundle", desc: "Custom Radius kit — hat, sticker, and a bag patch.", gate: "" },
+  { n: "25", tier: "Craftsman", reward: "Radius Gear Bundle", desc: "An exclusive custom Radius kit — our thanks, in physical form.", gate: "" },
   { n: "50", tier: "Architect", reward: "Premium Tournament Bag", desc: "A premium tournament bag of your pick, up to $200 — Squatch-tier quality.", gate: "Requires courses in 2+ states" },
-  { n: "100", tier: "Legend", reward: "Lifetime Radius Pro", desc: "Pro features for life, plus founding Course Architect status in the app.", gate: "Requires courses in 5+ states", top: true },
+  { n: "100", tier: "Legend", reward: "Lifetime Radius Pro", desc: "Pro features for life — our highest honor for a founding mapper.", gate: "Requires courses in 5+ states", top: true },
 ];
 
 const STEPS = [
@@ -146,9 +146,9 @@ export default function RewardsPage() {
           <div className="mt-8 space-y-3">
             {LADDER.map((r) => (
               <div key={r.n} className={`flex flex-col gap-4 rounded-2xl border p-5 sm:flex-row sm:items-center ${r.top ? "border-[var(--gold)]/50 bg-[var(--gold)]/[0.07]" : "border-white/10 bg-white/[0.03]"}`}>
-                <div className="flex w-full shrink-0 items-baseline gap-2 sm:w-32">
+                <div className="flex w-full shrink-0 items-baseline gap-2 sm:w-auto sm:min-w-[8.5rem]">
                   <span className="font-[family-name:var(--font-heading)] text-4xl font-extrabold text-[var(--gold)]">{r.n}</span>
-                  <span className="text-xs uppercase tracking-[0.14em] text-[var(--sage-dim)]">courses</span>
+                  <span className="whitespace-nowrap text-xs uppercase tracking-[0.14em] text-[var(--sage-dim)]">courses</span>
                 </div>
                 <div className="flex-1">
                   <div className="flex flex-wrap items-center gap-2">
