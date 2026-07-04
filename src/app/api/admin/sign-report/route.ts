@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
+import { scansBySource } from "@/lib/gaData";
 
 // Admin-only funnel: users tallied by `acquisitionSource` (the tee-sign QR tag the apps stamp),
 // with Pro conversions. Token-verified server-side; the raw user data never reaches the browser.
@@ -62,14 +63,40 @@ export async function GET(request: NextRequest) {
     map.set(src, t);
   });
 
-  const rows = [...map.values()].sort((a, b) => {
-    if (a.source === NONE) return 1;
-    if (b.source === NONE) return -1;
-    return b.users - a.users;
-  });
+  // Fold in GA scan counts by source (last 90 days). Null if GA access isn't granted yet.
+  const scans = await scansBySource(90);
+  const scansAvailable = scans !== null;
+
+  // Union of sources from Firestore users and GA scans (ignore GA's "(not set)" bucket).
+  const sources = new Set<string>(map.keys());
+  if (scans) {
+    for (const s of Object.keys(scans)) {
+      if (s && s !== "(not set)") sources.add(s);
+    }
+  }
+
+  const rows = [...sources]
+    .map((source) => {
+      const t = map.get(source) ?? { source, users: 0, proNow: 0, everPro: 0 };
+      return {
+        source,
+        // untagged Firestore bucket predates tagging → no scan figure
+        scans: scans && source !== NONE ? scans[source] ?? 0 : null,
+        users: t.users,
+        proNow: t.proNow,
+        everPro: t.everPro,
+      };
+    })
+    .sort((a, b) => {
+      if (a.source === NONE) return 1;
+      if (b.source === NONE) return -1;
+      const av = scansAvailable ? a.scans ?? 0 : a.users;
+      const bv = scansAvailable ? b.scans ?? 0 : b.users;
+      return bv - av;
+    });
 
   return NextResponse.json(
-    { rows, scanned, generatedAt: Date.now() },
+    { rows, scanned, scansAvailable, generatedAt: Date.now() },
     { headers: { "Cache-Control": "no-store" } },
   );
 }

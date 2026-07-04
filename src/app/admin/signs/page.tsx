@@ -7,7 +7,7 @@ import { useAuth } from "@/components/AuthProvider";
 const ADMIN_EMAIL = "tripp4137@gmail.com";
 const NONE = "(untagged / pre-tracking)";
 
-type Row = { source: string; users: number; proNow: number; everPro: number };
+type Row = { source: string; scans: number | null; users: number; proNow: number; everPro: number };
 type State = "loading" | "ready" | "forbidden" | "error" | "unconfigured";
 
 export default function AdminSignsPage() {
@@ -16,6 +16,7 @@ export default function AdminSignsPage() {
   const [state, setState] = useState<State>("loading");
   const [rows, setRows] = useState<Row[]>([]);
   const [scanned, setScanned] = useState(0);
+  const [scansAvailable, setScansAvailable] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -30,9 +31,10 @@ export default function AdminSignsPage() {
       if (res.status === 503) return setState("unconfigured");
       if (res.status === 403) return setState("forbidden");
       if (!res.ok) return setState("error");
-      const data = (await res.json()) as { rows: Row[]; scanned: number };
+      const data = (await res.json()) as { rows: Row[]; scanned: number; scansAvailable?: boolean };
       setRows(data.rows ?? []);
       setScanned(data.scanned ?? 0);
+      setScansAvailable(!!data.scansAvailable);
       setState("ready");
     } catch {
       setState("error");
@@ -55,8 +57,8 @@ export default function AdminSignsPage() {
   }, [loading, user, router, load]);
 
   const totals = rows.reduce(
-    (a, r) => ({ users: a.users + r.users, proNow: a.proNow + r.proNow, everPro: a.everPro + r.everPro }),
-    { users: 0, proNow: 0, everPro: 0 },
+    (a, r) => ({ scans: a.scans + (r.scans ?? 0), users: a.users + r.users, proNow: a.proNow + r.proNow, everPro: a.everPro + r.everPro }),
+    { scans: 0, users: 0, proNow: 0, everPro: 0 },
   );
   const conv = (p: number, u: number) => (u > 0 ? `${((p / u) * 100).toFixed(1)}%` : "—");
 
@@ -124,6 +126,7 @@ export default function AdminSignsPage() {
                   <thead>
                     <tr style={{ background: "rgba(244,241,232,0.04)", textAlign: "left" }}>
                       <th style={thStyle}>Source</th>
+                      <th style={{ ...thStyle, textAlign: "right" }}>Scans</th>
                       <th style={{ ...thStyle, textAlign: "right" }}>Users</th>
                       <th style={{ ...thStyle, textAlign: "right" }}>Pro now</th>
                       <th style={{ ...thStyle, textAlign: "right" }}>Ever Pro</th>
@@ -134,6 +137,7 @@ export default function AdminSignsPage() {
                     {rows.map((r) => (
                       <tr key={r.source} style={{ borderTop: "1px solid rgba(244,241,232,0.07)", opacity: r.source === NONE ? 0.6 : 1 }}>
                         <td style={{ ...tdStyle, fontWeight: r.source === NONE ? 400 : 600, color: r.source === NONE ? "#9fb0a2" : "#F4F1E8" }}>{r.source}</td>
+                        <td style={{ ...tdStyle, textAlign: "right" }}>{r.scans == null ? "—" : r.scans.toLocaleString()}</td>
                         <td style={{ ...tdStyle, textAlign: "right" }}>{r.users.toLocaleString()}</td>
                         <td style={{ ...tdStyle, textAlign: "right", color: "#4FE07E", fontWeight: 600 }}>{r.proNow.toLocaleString()}</td>
                         <td style={{ ...tdStyle, textAlign: "right" }}>{r.everPro.toLocaleString()}</td>
@@ -142,6 +146,7 @@ export default function AdminSignsPage() {
                     ))}
                     <tr style={{ borderTop: "2px solid rgba(244,241,232,0.16)", fontWeight: 700 }}>
                       <td style={tdStyle}>Total</td>
+                      <td style={{ ...tdStyle, textAlign: "right" }}>{scansAvailable ? totals.scans.toLocaleString() : "—"}</td>
                       <td style={{ ...tdStyle, textAlign: "right" }}>{totals.users.toLocaleString()}</td>
                       <td style={{ ...tdStyle, textAlign: "right", color: "#4FE07E" }}>{totals.proNow.toLocaleString()}</td>
                       <td style={{ ...tdStyle, textAlign: "right" }}>{totals.everPro.toLocaleString()}</td>
@@ -159,8 +164,10 @@ export default function AdminSignsPage() {
               )}
 
               <div style={{ marginTop: 20, fontSize: 13, color: "#8a958c", lineHeight: 1.7 }}>
-                <p><b style={{ color: "#c9d4cb" }}>Users</b> = accounts attributed to that source · <b style={{ color: "#c9d4cb" }}>Pro now</b> = active subscription · <b style={{ color: "#c9d4cb" }}>Ever Pro</b> = ever converted.</p>
-                <p>Raw <b style={{ color: "#c9d4cb" }}>scans</b> (and scans-by-city) live in Google Analytics under the <code style={codeStyle}>qr_scan</code> event.</p>
+                <p><b style={{ color: "#c9d4cb" }}>Scans</b> = QR scans (GA, last 90d) · <b style={{ color: "#c9d4cb" }}>Users</b> = accounts attributed · <b style={{ color: "#c9d4cb" }}>Pro now</b> = active sub · <b style={{ color: "#c9d4cb" }}>Ever Pro</b> = ever converted · <b style={{ color: "#c9d4cb" }}>Conv %</b> = Pro / Users.</p>
+                {!scansAvailable && (
+                  <p style={{ color: "#E8B560" }}>Scan counts are hidden until the service account has <b>Viewer</b> access to the radius-dg GA4 property (GA Admin &rarr; Property Access Management &rarr; add the service-account email). Everything else works without it.</p>
+                )}
                 <p>iOS QR installs bucket as <code style={codeStyle}>organic</code> (Apple can&rsquo;t pass the tag); Android carries the real source. · {scanned.toLocaleString()} user docs scanned.</p>
               </div>
             </>
