@@ -279,9 +279,19 @@ export async function getDashboard(uid: string): Promise<Dashboard | null> {
   ]);
   if (!userSnap.exists()) return null;
   const u = userSnap.data();
+  // The app writes the authoritative relativeToPar to `recentRounds`. Our recompute from throw logs
+  // can disagree when an OB penalty is encoded ambiguously — e.g. a throw tagged result:"OB" PLUS a
+  // manual "Score" placeholder stroke for the same penalty, which the recompute counts twice (turning
+  // a real -1 into E). Prefer the app's value by round id; the recompute stays as the fallback for
+  // older rounds not in the capped recentRounds list.
+  const appRelById = new Map<string, number>();
+  for (const r of asArray(u.recentRounds)) {
+    const id = typeof r?.id === "string" ? r.id : "";
+    if (id && typeof r?.relativeToPar === "number") appRelById.set(id, r.relativeToPar);
+  }
   // Prefer the full iOS-style userBackups subcollection; fall back to the denormalized recentRounds
   // field that Android writes to the user doc (so cross-platform users still get rounds/stats/heatmap).
-  let roundMetas: RoundMeta[] = decodedRounds.map((r) => ({ roundId: r.roundId, date: r.date, courseName: r.courseName, scoreToPar: r.relativeToPar, holesPlayed: r.holesPlayed }));
+  let roundMetas: RoundMeta[] = decodedRounds.map((r) => ({ roundId: r.roundId, date: r.date, courseName: r.courseName, scoreToPar: (r.roundId && appRelById.has(r.roundId)) ? appRelById.get(r.roundId)! : r.relativeToPar, holesPlayed: r.holesPlayed }));
   if (roundMetas.length === 0) {
     roundMetas = asArray(u.recentRounds)
       .map((r) => ({
