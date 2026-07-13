@@ -1,8 +1,12 @@
 import Link from "next/link";
 import Image from "next/image";
 
+// Community goal: 10,000 disc golfers by the end of 2026.
+const GOAL = 10000;
+
 // Counts come from the server (home page) — reliable transport, baked into the HTML.
 export default function CommunityBand({ playerCount = 0, regionCount = 0 }: { playerCount?: number; regionCount?: number }) {
+  const goalPct = Math.min(100, (playerCount / GOAL) * 100);
   return (
     <section id="community" className="bg-[#faf8f3] text-[#16221b]">
       <div className="mx-auto max-w-7xl px-6 py-20 md:py-28">
@@ -46,6 +50,25 @@ export default function CommunityBand({ playerCount = 0, regionCount = 0 }: { pl
                   </div>
                 )}
               </div>
+              {playerCount > 0 && (
+                <div className="mt-8 max-w-md">
+                  <div className="flex items-baseline justify-between">
+                    <div className="font-[family-name:var(--font-heading)] text-sm font-extrabold tracking-tight">Road to 10,000</div>
+                    <div className="text-sm font-bold text-[#9a7a3a]">{Math.round(goalPct)}% there</div>
+                  </div>
+                  <div
+                    role="progressbar"
+                    aria-label="Progress toward 10,000 disc golfers"
+                    aria-valuenow={playerCount}
+                    aria-valuemin={0}
+                    aria-valuemax={GOAL}
+                    className="mt-2.5 h-2.5 overflow-hidden rounded-full bg-[#16221b]/[0.08]"
+                  >
+                    <div className="h-full rounded-full bg-[linear-gradient(90deg,#e3a94d,var(--gold))]" style={{ width: `${goalPct}%` }} />
+                  </div>
+                  <p className="mt-2.5 text-sm text-[#6b7a70]">10,000 disc golfers by the end of 2026 — every player counts.</p>
+                </div>
+              )}
               {/* Cross-platform note as a supporting line. */}
               <p className="mt-6 text-sm text-[#6b7a70]">
                 <span className="font-[family-name:var(--font-heading)] font-extrabold text-[#16221b]">iOS · Android · Web</span> — one account, everywhere
