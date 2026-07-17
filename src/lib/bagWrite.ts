@@ -29,24 +29,70 @@ function decodeJsonArray(v: unknown): any[] {
   return [];
 }
 
+const dataDoc = (cid: string) => doc(db, `userBackups/${cid}/data/current`);
+
+/**
+ * Read the LIVE data/current doc. Every myBagJSON mutation below is read-merge-write: it fetches
+ * the current cloud bag at save time and applies ONLY its own mutation (replace/remove/append one
+ * entry by id), never writing a full array from the caller's page-load React snapshot. A tab left
+ * open while the user edits on their phone would otherwise silently revert the phone's changes
+ * under a fresh lastUpdated. Callers keep optimistic local state; only the persisted write is
+ * built from fresh cloud state.
+ */
+async function readCurrent(uid: string): Promise<{ ref: ReturnType<typeof dataDoc>; data: Record<string, unknown>; bag: RawDisc[] }> {
+  const cid = await resolveCanonicalId(uid);
+  const ref = dataDoc(cid);
+  const snap = await getDoc(ref);
+  const data = (snap.exists() ? snap.data() : {}) as Record<string, unknown>;
+  return { ref, data, bag: decodeJsonArray(data.myBagJSON) as RawDisc[] };
+}
+
 /** Merge-write ONLY favoriteDiscs + lastUpdated (matches the app's bag write contract). */
 export async function setFavorites(uid: string, favoriteIds: string[]): Promise<void> {
   const cid = await resolveCanonicalId(uid);
   await setDoc(doc(db, `userBackups/${cid}/data/current`), { favoriteDiscs: favoriteIds, lastUpdated: Date.now() }, { merge: true });
 }
 
+/** Append one fresh bag entry to the CLOUD bag (duplicate same-name copies allowed, like the apps). */
+export async function appendDisc(uid: string, raw: RawDisc): Promise<void> {
+  const { ref, bag } = await readCurrent(uid);
+  await setDoc(ref, { myBagJSON: encodeBag([...bag, raw]), lastUpdated: Date.now() }, { merge: true });
+}
+
 /**
- * Merge-write ONLY myBagJSON + lastUpdated (+ deletedBagDiscIds tombstones). Pass the full raw
- * disc array (lossless). When discs are removed, pass their ids as `removedIds` so they are added
- * to the shared `deletedBagDiscIds` tombstone list (via arrayUnion) — REQUIRED for the deletion to
- * propagate: iOS/Android merge the bag by id and re-add any disc the cloud is missing UNLESS its id
- * is tombstoned. arrayUnion preserves tombstones written by other devices.
+ * Edit-as-replace, one atomic write: swap the old id's entry for `replacement` (which carries a NEW
+ * id) in the fresh cloud bag, tombstone the old id (REQUIRED — iOS/Android re-add any non-tombstoned
+ * id they still hold), and carry the disc's photo across the id swap. Photos live in
+ * `discPhotoUrls` keyed by disc id (the iOS/Android contract), so without the carry the new id has
+ * no photo and the disc turns photoless on Android after the next sync. The old key is KEPT (other
+ * devices may still reference the old id); keys are never deleted here. The nested-map shape is
+ * deliberate: setDoc({ discPhotoUrls: { [newId]: url } }, { merge: true }) recursively merges maps,
+ * adding ONE key without replacing the map — the same behavior iOS's setData(merge:true) mirror
+ * relies on — and keeps bag + tombstone + photo in a single write (updateDoc dot-paths would work
+ * for the key but would split the write or change every field's semantics).
+ * If the old id is no longer in the cloud bag (edited/removed elsewhere since page load), the
+ * replacement is appended — the user is explicitly editing this disc right now, so their intent is
+ * that it exists with these values.
  */
-export async function saveBag(uid: string, discs: RawDisc[], removedIds?: string[]): Promise<void> {
-  const cid = await resolveCanonicalId(uid);
-  const payload: Record<string, unknown> = { myBagJSON: encodeBag(discs), lastUpdated: Date.now() };
-  if (removedIds && removedIds.length) payload.deletedBagDiscIds = arrayUnion(...removedIds);
-  await setDoc(doc(db, `userBackups/${cid}/data/current`), payload, { merge: true });
+export async function replaceDisc(uid: string, oldId: string, replacement: RawDisc): Promise<void> {
+  const { ref, data, bag } = await readCurrent(uid);
+  const next = bag.some((r) => r?.id === oldId) ? bag.map((r) => (r?.id === oldId ? replacement : r)) : [...bag, replacement];
+  const payload: Record<string, unknown> = { myBagJSON: encodeBag(next), deletedBagDiscIds: arrayUnion(oldId), lastUpdated: Date.now() };
+  const photos = data.discPhotoUrls;
+  const url = photos && typeof photos === "object" ? (photos as Record<string, unknown>)[oldId] : undefined;
+  if (typeof url === "string" && url) payload.discPhotoUrls = { [replacement.id]: url };
+  await setDoc(ref, payload, { merge: true });
+}
+
+/**
+ * Remove one disc from the CLOUD bag by id + tombstone it. The tombstone (arrayUnion into the
+ * shared `deletedBagDiscIds`) is REQUIRED for the deletion to propagate: iOS/Android merge the bag
+ * by id and re-add any disc the cloud is missing UNLESS its id is tombstoned. arrayUnion preserves
+ * tombstones written by other devices.
+ */
+export async function removeDiscById(uid: string, id: string): Promise<void> {
+  const { ref, bag } = await readCurrent(uid);
+  await setDoc(ref, { myBagJSON: encodeBag(bag.filter((r) => r?.id !== id)), deletedBagDiscIds: arrayUnion(id), lastUpdated: Date.now() }, { merge: true });
 }
 
 /**
@@ -55,12 +101,7 @@ export async function saveBag(uid: string, discs: RawDisc[], removedIds?: string
  * matches the app shape (duplicate copies of the same disc are allowed, exactly like the apps).
  */
 export async function addDiscToBag(uid: string, discName: string): Promise<void> {
-  const cid = await resolveCanonicalId(uid);
-  const ref = dataDoc(cid);
-  const snap = await getDoc(ref);
-  const existing = (snap.exists() ? decodeJsonArray(snap.data().myBagJSON) : []) as RawDisc[];
-  const next = [...existing, newDisc(discName)];
-  await setDoc(ref, { myBagJSON: encodeBag(next), lastUpdated: Date.now() }, { merge: true });
+  await appendDisc(uid, newDisc(discName));
 }
 
 // Collection & Lost: bag/collection/lost are kept mutually exclusive BY NAME (matches the apps).
@@ -68,24 +109,23 @@ export async function addDiscToBag(uid: string, discName: string): Promise<void>
 // removing it from the other list (arrayRemove). NO tombstone — move-back works because the name
 // leaves the list and the disc reappears in myBagJSON. The apps reconcile the bag against these
 // lists by name on adopt, so the disc lands in exactly one place.
-const dataDoc = (cid: string) => doc(db, `userBackups/${cid}/data/current`);
 
-/** Move a bag disc into the collection. Pass the bag WITHOUT the moved disc. */
-export async function moveToCollection(uid: string, bagWithout: RawDisc[], discName: string): Promise<void> {
-  const cid = await resolveCanonicalId(uid);
-  await setDoc(dataDoc(cid), { myBagJSON: encodeBag(bagWithout), myCollection: arrayUnion(discName), lostDiscs: arrayRemove(discName), lastUpdated: Date.now() }, { merge: true });
+/** Move a bag disc into the collection. Removes ONLY that id from the fresh cloud bag. */
+export async function moveToCollection(uid: string, discId: string, discName: string): Promise<void> {
+  const { ref, bag } = await readCurrent(uid);
+  await setDoc(ref, { myBagJSON: encodeBag(bag.filter((r) => r?.id !== discId)), myCollection: arrayUnion(discName), lostDiscs: arrayRemove(discName), lastUpdated: Date.now() }, { merge: true });
 }
 
-/** Mark a bag disc as lost. Pass the bag WITHOUT the disc. */
-export async function markAsLost(uid: string, bagWithout: RawDisc[], discName: string): Promise<void> {
-  const cid = await resolveCanonicalId(uid);
-  await setDoc(dataDoc(cid), { myBagJSON: encodeBag(bagWithout), lostDiscs: arrayUnion(discName), myCollection: arrayRemove(discName), lastUpdated: Date.now() }, { merge: true });
+/** Mark a bag disc as lost. Removes ONLY that id from the fresh cloud bag. */
+export async function markAsLost(uid: string, discId: string, discName: string): Promise<void> {
+  const { ref, bag } = await readCurrent(uid);
+  await setDoc(ref, { myBagJSON: encodeBag(bag.filter((r) => r?.id !== discId)), lostDiscs: arrayUnion(discName), myCollection: arrayRemove(discName), lastUpdated: Date.now() }, { merge: true });
 }
 
-/** Recover a collection/lost disc back into the bag. Pass the bag WITH the fresh disc added. */
-export async function recoverToBag(uid: string, bagWith: RawDisc[], discName: string): Promise<void> {
-  const cid = await resolveCanonicalId(uid);
-  await setDoc(dataDoc(cid), { myBagJSON: encodeBag(bagWith), myCollection: arrayRemove(discName), lostDiscs: arrayRemove(discName), lastUpdated: Date.now() }, { merge: true });
+/** Recover a collection/lost disc back into the bag. Appends ONLY the fresh entry to the cloud bag. */
+export async function recoverToBag(uid: string, raw: RawDisc, discName: string): Promise<void> {
+  const { ref, bag } = await readCurrent(uid);
+  await setDoc(ref, { myBagJSON: encodeBag([...bag, raw]), myCollection: arrayRemove(discName), lostDiscs: arrayRemove(discName), lastUpdated: Date.now() }, { merge: true });
 }
 
 /** Permanently remove a disc from the collection AND lost lists (it's not in the bag). */
@@ -123,14 +163,12 @@ export interface CustomDiscInput {
  * Create a custom disc (one not in the catalog) exactly as the apps do: union it into
  * `customDiscsJSON` by name (add-or-update, never clobbering other custom discs), and either add a
  * `myBagJSON` entry (dest "bag") or its name to `myCollection` (dest "collection"). Reads the doc
- * first to merge the existing custom-disc array. `nextBag` is the full bag array INCLUDING the new
- * entry (built by the caller) — used only when dest === "bag".
+ * first to merge the existing custom-disc array. `newEntry` is the single fresh bag entry (built by
+ * the caller) appended to the FRESH cloud bag — used only when dest === "bag".
  */
-export async function addCustomDisc(uid: string, custom: CustomDiscInput, dest: "bag" | "collection", nextBag: RawDisc[]): Promise<void> {
-  const cid = await resolveCanonicalId(uid);
-  const ref = dataDoc(cid);
-  const snap = await getDoc(ref);
-  const existing = snap.exists() ? decodeJsonArray(snap.data().customDiscsJSON) : [];
+export async function addCustomDisc(uid: string, custom: CustomDiscInput, dest: "bag" | "collection", newEntry?: RawDisc): Promise<void> {
+  const { ref, data, bag } = await readCurrent(uid);
+  const existing = decodeJsonArray(data.customDiscsJSON);
   const byName = new Map<string, Record<string, unknown>>();
   for (const c of existing) { const n = c?.name; if (n) byName.set(String(n).toLowerCase(), c); }
   // Only the 7 cross-platform fields — no id/isCustom/createdAt (clients infer/ignore those).
@@ -144,7 +182,10 @@ export async function addCustomDisc(uid: string, custom: CustomDiscInput, dest: 
     fade: custom.fade,
   });
   const payload: Record<string, unknown> = { customDiscsJSON: encodeJsonB64([...byName.values()]), lastUpdated: Date.now() };
-  if (dest === "bag") payload.myBagJSON = encodeBag(nextBag);
-  else payload.myCollection = arrayUnion(custom.name);
+  if (dest === "bag") {
+    if (newEntry) payload.myBagJSON = encodeBag([...bag, newEntry]);
+  } else {
+    payload.myCollection = arrayUnion(custom.name);
+  }
   await setDoc(ref, payload, { merge: true });
 }

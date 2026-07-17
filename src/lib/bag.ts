@@ -222,7 +222,7 @@ export async function getBag(uid: string): Promise<Bag> {
   const throwCounts = asObject(userSnap.exists() ? userSnap.data().discThrowCounts : {});
   const armSpeed = userSnap.exists() ? (userSnap.data().armSpeed as string | undefined) : undefined;
   const favoriteIds: string[] = (Array.isArray(data.favoriteDiscs) ? data.favoriteDiscs : []).map((x: unknown) => String(x));
-  const photoMap = asObject(data.discPhotoUrls); // discName -> Storage URL
+  const photoMap = asObject(data.discPhotoUrls); // disc id -> Storage URL (legacy entries keyed by discName)
 
   const discs: FlightDisc[] = rawBag.map((d, i) => {
     const name = (d?.discName ?? d?.name ?? "Disc").toString();
@@ -256,7 +256,7 @@ export async function getBag(uid: string): Promise<Bag> {
       throwCount: Number(throwCounts[name]) || 0,
       known,
       isFavorite: favoriteIds.includes((d?.id ?? "").toString()),
-      photoUrl: safeHttp(photoMap[name]),
+      photoUrl: safeHttp(photoMap[(d?.id ?? "").toString()] ?? photoMap[name]),
       outcomes: outcomeMap.get(name),
     };
   });

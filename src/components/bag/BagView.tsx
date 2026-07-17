@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { type Bag, type Cat, type Tier, type FlightDisc, type RawDisc, type DbDisc, CAT_META, TIER_META, tierFor, normCat, plasticColor } from "@/lib/bag";
-import { setFavorites, saveBag, newDisc, freshId, moveToCollection, markAsLost, recoverToBag, deleteStoredDisc, addCustomDisc, type CustomDiscInput } from "@/lib/bagWrite";
+import { setFavorites, appendDisc, replaceDisc, removeDiscById, newDisc, freshId, moveToCollection, markAsLost, recoverToBag, deleteStoredDisc, addCustomDisc, type CustomDiscInput } from "@/lib/bagWrite";
 import FlightChart from "@/components/bag/FlightChart";
 import DiscDetail from "@/components/bag/DiscDetail";
 import DiscGraphic from "@/components/bag/DiscGraphic";
@@ -12,7 +12,7 @@ import { CountUp } from "@/components/dashboard/charts";
 import { usePro } from "@/lib/usePro";
 import ProGate from "@/components/ProGate";
 
-// Add disc from the web (catalog search modal -> saveBag merge). Verified cross-platform.
+// Add disc from the web (catalog search modal -> appendDisc merge). Verified cross-platform.
 const SHOW_ADD_DISC = true;
 
 type SortKey = "speed" | "stability" | "throws" | "name";
@@ -178,14 +178,18 @@ export default function BagView({ bag, uid }: { bag: Bag; uid: string }) {
     // the old id and re-add the disc under a NEW id carrying the edits — the two operations the apps
     // apply UNCONDITIONALLY (tombstone removes, new cloud id appends). Throw stats are keyed by disc
     // NAME, so nothing is lost. Every other raw field is preserved.
+    const oldRaw = rawDiscs.find((r) => r.id === d.id);
+    if (!oldRaw) return;
     const newId = freshId();
+    const replacement: RawDisc = { ...oldRaw, id: newId, nickname, wear: { ...(oldRaw.wear || {}), condition: patch.condition, customSpeed: c.speed, customGlide: c.glide, customTurn: c.turn, customFade: c.fade } };
     const nextDiscs = discs.map((x) => (x.id === d.id ? { ...x, id: newId, nickname, condition: patch.condition, ...customPatch } : x));
-    const nextRaw = rawDiscs.map((r) => (r.id === d.id ? { ...r, id: newId, nickname, wear: { ...(r.wear || {}), condition: patch.condition, customSpeed: c.speed, customGlide: c.glide, customTurn: c.turn, customFade: c.fade } } : r));
+    const nextRaw = rawDiscs.map((r) => (r.id === d.id ? replacement : r));
     setDiscs(nextDiscs);
     setRawDiscs(nextRaw);
     if (selected?.id === d.id) setSelected({ ...selected, id: newId, nickname, condition: patch.condition, ...customPatch });
-    // Single atomic write: new bag (with new id) + tombstone the old id.
-    saveBag(uid, nextRaw, [d.id]).catch(() => { setDiscs(discs); setRawDiscs(rawDiscs); });
+    // Single atomic write against the FRESH cloud bag: replace old id -> new entry, tombstone the
+    // old id, and carry the disc's id-keyed photo URL to the new id (see replaceDisc).
+    replaceDisc(uid, d.id, replacement).catch(() => { setDiscs(discs); setRawDiscs(rawDiscs); });
     // Carry a favorite over to the new id (web/Android favorite by id) so editing doesn't unfavorite it.
     if (d.isFavorite) setFavorites(uid, nextDiscs.filter((x) => x.isFavorite).map((x) => x.id)).catch(() => {});
   };
@@ -198,7 +202,7 @@ export default function BagView({ bag, uid }: { bag: Bag; uid: string }) {
     setRawDiscs(nextRaw);
     setSelected(null);
     // Tombstone the id so iOS/Android honor the deletion instead of re-adding it from their local bag.
-    saveBag(uid, nextRaw, [d.id]).catch(() => { setDiscs(discs); setRawDiscs(rawDiscs); });
+    removeDiscById(uid, d.id).catch(() => { setDiscs(discs); setRawDiscs(rawDiscs); });
   };
 
   // Move a bag disc out to collection/lost. Bag/collection/lost are mutually exclusive BY NAME.
@@ -213,7 +217,7 @@ export default function BagView({ bag, uid }: { bag: Bag; uid: string }) {
     setLost((cur) => dest === "lost" ? (cur.some((c) => c.name.toLowerCase() === nameKey) ? cur : [...cur, stored]) : cur.filter((c) => c.name.toLowerCase() !== nameKey));
     setSelected(null);
     const revert = () => { setDiscs(discs); setRawDiscs(rawDiscs); setCollection(collection); setLost(lost); };
-    (dest === "collection" ? moveToCollection(uid, nextRaw, d.name) : markAsLost(uid, nextRaw, d.name)).catch(revert);
+    (dest === "collection" ? moveToCollection(uid, d.id, d.name) : markAsLost(uid, d.id, d.name)).catch(revert);
   };
 
   // Recover a collection/lost disc back into the bag (fresh bag entry under a new id, by name).
@@ -227,7 +231,7 @@ export default function BagView({ bag, uid }: { bag: Bag; uid: string }) {
     setRawDiscs(nextRaw);
     setCollection((cur) => cur.filter((c) => c.name.toLowerCase() !== nameKey));
     setLost((cur) => cur.filter((c) => c.name.toLowerCase() !== nameKey));
-    recoverToBag(uid, nextRaw, d.name).catch(() => { setDiscs(discs); setRawDiscs(rawDiscs); setCollection(collection); setLost(lost); });
+    recoverToBag(uid, raw, d.name).catch(() => { setDiscs(discs); setRawDiscs(rawDiscs); setCollection(collection); setLost(lost); });
   };
 
   // Permanently delete a disc that's in collection/lost (not in the bag).
@@ -252,7 +256,7 @@ export default function BagView({ bag, uid }: { bag: Bag; uid: string }) {
     setDiscs(nextDiscs);
     setRawDiscs(nextRaw);
     setShowAdd(false);
-    saveBag(uid, nextRaw).catch(() => { setDiscs(discs); setRawDiscs(rawDiscs); });
+    appendDisc(uid, raw).catch(() => { setDiscs(discs); setRawDiscs(rawDiscs); });
   };
 
   // Create a custom disc (writes customDiscsJSON union + bag/collection), then reflect it locally.
@@ -269,10 +273,10 @@ export default function BagView({ bag, uid }: { bag: Bag; uid: string }) {
       const nextRaw = [...rawDiscs, raw];
       setDiscs([...discs, fd]);
       setRawDiscs(nextRaw);
-      addCustomDisc(uid, custom, "bag", nextRaw).catch(() => { setDiscs(discs); setRawDiscs(rawDiscs); });
+      addCustomDisc(uid, custom, "bag", raw).catch(() => { setDiscs(discs); setRawDiscs(rawDiscs); });
     } else {
       setCollection([...collection, fd]);
-      addCustomDisc(uid, custom, "collection", rawDiscs).catch(() => setCollection(collection));
+      addCustomDisc(uid, custom, "collection").catch(() => setCollection(collection));
     }
   };
 
