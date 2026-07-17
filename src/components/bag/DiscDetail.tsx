@@ -75,6 +75,9 @@ export default function DiscDetail({ disc, onClose, onToggleFav, onSave, onRemov
   const [ct, setCt] = useState(disc.customTurn?.toString() ?? "");
   const [cf, setCf] = useState(disc.customFade?.toString() ?? "");
   const [confirmRemove, setConfirmRemove] = useState(false);
+  // Stale discPhotoUrls entries can point at deleted Storage files — fall back to the drawn disc.
+  const [brokenUrl, setBrokenUrl] = useState<string | null>(null);
+  const photoUrl = disc.photoUrl && disc.photoUrl !== brokenUrl ? disc.photoUrl : undefined;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && (editing ? setEditing(false) : onClose());
     window.addEventListener("keydown", onKey);
@@ -140,9 +143,9 @@ export default function DiscDetail({ disc, onClose, onToggleFav, onSave, onRemov
           <div className="relative">
             <div className="pointer-events-none absolute left-1/2 top-1/2 h-44 w-44 -translate-x-1/2 -translate-y-1/2 rounded-full opacity-50 blur-[40px]" style={{ background: disc.color }} />
             <div className="relative drop-shadow-[0_18px_34px_rgba(0,0,0,0.5)]">
-              {disc.photoUrl ? (
+              {photoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={disc.photoUrl} alt={disc.name} className="h-36 w-36 rounded-full object-cover ring-2 ring-white/15" />
+                <img src={photoUrl} alt={disc.name} onError={() => setBrokenUrl(photoUrl)} className="h-36 w-36 rounded-full object-cover ring-2 ring-white/15" />
               ) : (
                 <DiscGraphic color={disc.color} speed={disc.speed} size={140} />
               )}

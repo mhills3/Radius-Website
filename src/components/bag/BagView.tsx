@@ -98,6 +98,11 @@ function Star({ filled }: { filled: boolean }) {
 }
 
 function DiscToken({ d, onClick, onFav }: { d: FlightDisc; onClick: () => void; onFav: () => void }) {
+  // Stale discPhotoUrls entries can point at deleted Storage files (photo deletes never prune the
+  // map) — fall back to the drawn disc when the image fails, keyed by URL so a reused component
+  // instance can't hide a different disc's good photo.
+  const [brokenUrl, setBrokenUrl] = useState<string | null>(null);
+  const photoUrl = d.photoUrl && d.photoUrl !== brokenUrl ? d.photoUrl : undefined;
   return (
     <div className="group relative flex flex-col items-center gap-2 text-center">
       <button onClick={onFav} aria-label="Favorite" className={`absolute right-1 top-0 z-10 grid h-6 w-6 place-items-center rounded-full bg-[var(--bg-deep)]/85 ring-1 ring-white/10 backdrop-blur transition-opacity ${d.isFavorite ? "text-[var(--gold)] opacity-100" : "text-[var(--sage-dim)] opacity-0 hover:text-[var(--cream)] group-hover:opacity-100"}`}>
@@ -106,9 +111,9 @@ function DiscToken({ d, onClick, onFav }: { d: FlightDisc; onClick: () => void; 
       <button onClick={onClick} className="flex flex-col items-center gap-2">
         <div className="transition-transform duration-200 group-hover:-translate-y-1">
           <div className="drop-shadow-[0_8px_16px_rgba(0,0,0,0.35)]">
-            {d.photoUrl ? (
+            {photoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={d.photoUrl} alt={d.name} className="h-[88px] w-[88px] rounded-full object-cover ring-2 ring-white/15" />
+              <img src={photoUrl} alt={d.name} onError={() => setBrokenUrl(photoUrl)} className="h-[88px] w-[88px] rounded-full object-cover ring-2 ring-white/15" />
             ) : (
               <DiscGraphic color={d.color} speed={d.speed} size={88} />
             )}
@@ -125,12 +130,14 @@ function DiscToken({ d, onClick, onFav }: { d: FlightDisc; onClick: () => void; 
 }
 
 function DiscListRow({ d, onClick }: { d: FlightDisc; onClick: () => void }) {
+  const [brokenUrl, setBrokenUrl] = useState<string | null>(null);
+  const photoUrl = d.photoUrl && d.photoUrl !== brokenUrl ? d.photoUrl : undefined;
   return (
     <button onClick={onClick} className="grid w-full grid-cols-[1.6fr_repeat(5,minmax(0,0.6fr))_0.8fr] items-center gap-2 border-t border-white/[0.06] px-4 py-3 text-left transition-colors hover:bg-white/[0.03] sm:grid-cols-[2fr_repeat(5,minmax(0,0.55fr))_0.7fr]">
       <div className="flex items-center gap-2.5">
-        {d.photoUrl ? (
+        {photoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={d.photoUrl} alt="" className="h-6 w-6 shrink-0 rounded-full object-cover" />
+          <img src={photoUrl} alt="" onError={() => setBrokenUrl(photoUrl)} className="h-6 w-6 shrink-0 rounded-full object-cover" />
         ) : (
           <span className="h-6 w-6 shrink-0 rounded-full" style={{ background: d.color }} />
         )}
