@@ -19,7 +19,8 @@ const HTML = `
 <p>The information we collect and the way it is stored is largely the same across platforms, but some details differ by operating system and app store. Where a practice is specific to iOS or Android, we say so.</p>
 
 <h2>Information We Collect</h2>
-<p><strong>Account Information:</strong> When you create an account, we collect your name, email address, username, and profile photo. Depending on the sign-in method you choose, we may receive a basic account identifier from Apple or Google to authenticate you.</p>
+<p><strong>Account Information:</strong> When you create an account, we collect your name, email address, username, and profile photo. During signup we also ask for your gender, which we use to place you in the appropriate division for rankings, leaderboards, and other competitive features. Depending on the sign-in method you choose, we may receive a basic account identifier from Apple or Google to authenticate you.</p>
+<p><strong>Player Profile Details:</strong> Information you add to your player profile, such as your throwing hand, throwing style, arm speed, bio, and home course. These details personalize features like Caddy recommendations and your public profile.</p>
 <p><strong>Gameplay Data:</strong> We collect data related to your disc golf rounds, including scores, disc selections, course information, hole-by-hole performance, and Game IQ metrics (distance control, accuracy, and putting scores).</p>
 <p><strong>Bag and Disc Data:</strong> Information about the discs in your bag, including disc names, manufacturers, flight numbers, nicknames, condition, and usage statistics.</p>
 <p><strong>Photos and Camera:</strong> With your permission, we access your camera and photo library so you can scan discs with the Disc Scanner, set a profile photo, and add course or gallery photos. Images you choose to upload are stored as described in "How Your Data Is Stored and Synced." We only access photos you select or capture for these features.</p>
@@ -44,6 +45,7 @@ const HTML = `
   <li>Calculate and update your Game IQ performance metrics</li>
   <li>Display satellite course maps and real-time weather data</li>
   <li>Enable community features such as the Discover feed, forums, local meetups, course building, and player connections</li>
+  <li>Place you in the appropriate division for rankings, leaderboards, and other competitive features</li>
   <li>Sync your data across your devices and platforms (iOS, Android, and web)</li>
   <li>Improve and personalize your experience</li>
   <li>Diagnose crashes, monitor performance, and understand aggregate feature usage</li>
@@ -165,5 +167,5 @@ Email: <a href="mailto:info@radiusdiscgolf.com">info@radiusdiscgolf.com</a></p>
 `;
 
 export default function PrivacyPage() {
-  return <LegalLayout title="Privacy Policy" updated="Last updated: June 13, 2026" html={HTML} />;
+  return <LegalLayout title="Privacy Policy" updated="Last updated: July 20, 2026" html={HTML} />;
 }
