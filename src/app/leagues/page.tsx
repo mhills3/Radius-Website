@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
-import { createLeague, getMyLeagues, getAllLeagues, getUpcomingEvents, LEAGUE_FORMATS, START_FORMATS, type League, type LeagueEvent } from "@/lib/leagues";
-import { inputCls, FieldLabel, SectionTitle, Segmented, btnGold, btnGhost, card, IconCalendar, IconPin, IconDisc } from "@/components/leagues/ui";
+import { createLeague, getMyLeagues, getAllLeagues, getUpcomingEvents, getEntries, LEAGUE_FORMATS, START_FORMATS, type League, type LeagueEvent, type EventEntry } from "@/lib/leagues";
+import { resolveCanonicalId } from "@/lib/account";
+import { inputCls, FieldLabel, SectionTitle, Segmented, btnGold, btnGhost, card, cardHover, Avatar, IconCalendar, IconDisc } from "@/components/leagues/ui";
 
 const MON = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 const MONTH_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -14,19 +15,21 @@ const dayKey = (ms: number) => { const d = new Date(ms); return `${d.getFullYear
 function DateBlock({ ms }: { ms: number }) {
   const d = new Date(ms);
   return (
-    <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-[var(--gold-dim)] leading-none">
-      <div className="text-center">
-        <div className="font-[family-name:var(--font-heading)] text-xl font-extrabold text-[var(--gold)]">{d.getDate()}</div>
-        <div className="mt-0.5 text-[9px] font-bold tracking-[0.15em] text-[var(--gold)]/70">{MON[d.getMonth()]}</div>
+    <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-[var(--card-raised)] leading-none">
+      <div className="text-center font-mono">
+        <div className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-[var(--cream-38)]">{MON[d.getMonth()]}</div>
+        <div className="mt-0.5 text-[26px] font-bold text-[var(--cream)]">{d.getDate()}</div>
       </div>
     </div>
   );
 }
 
+const KIND_CHIP: Record<string, string> = { league: "LEAGUE", tournament: "TOURNAMENT", clinic: "CLINIC", cleanup: "CLEANUP", social: "SOCIAL" };
+
 function Emblem({ name, size = 52 }: { name: string; size?: number }) {
   return (
     <span
-      className="grid shrink-0 place-items-center rounded-2xl bg-[var(--gold-dim)] font-[family-name:var(--font-heading)] font-extrabold text-[var(--gold)] ring-1 ring-[var(--gold)]/20"
+      className="grid shrink-0 place-items-center rounded-2xl bg-[var(--accent-green)] font-[family-name:var(--font-heading)] font-extrabold text-[var(--cream)] ring-1 ring-[var(--hair)]"
       style={{ width: size, height: size, fontSize: size * 0.42 }}
     >{(name || "?").charAt(0).toUpperCase()}</span>
   );
@@ -61,10 +64,10 @@ function Calendar({ eventDays, selected, onSelect, initial }: { eventDays: Set<s
               onClick={() => has && onSelect(isSel ? null : k)}
               disabled={!has && !isSel}
               className={`relative mx-auto grid h-8 w-8 place-items-center rounded-full text-xs font-semibold transition-colors
-                ${isSel ? "bg-[var(--gold)] text-[#16221b]" : isToday ? "ring-1 ring-[var(--gold)]/50 text-[var(--cream)]" : has ? "text-[var(--cream)] hover:bg-white/[0.07]" : "text-[var(--sage-dim)]/50"}`}
+                ${isSel ? "bg-[var(--gold-dim)] font-bold text-[var(--gold)]" : isToday ? "ring-1 ring-[var(--hair-strong)] text-[var(--cream)]" : has ? "text-[var(--cream)] hover:bg-[var(--card-raised)]" : "text-[var(--cream-38)]/60"}`}
             >
               {n}
-              {has && !isSel && <span className="absolute bottom-0.5 h-1 w-1 rounded-full bg-[var(--gold)]" />}
+              {has && !isSel && <span className="absolute bottom-0.5 h-1 w-1 rounded-full bg-[var(--blue)]" />}
             </button>
           );
         })}
@@ -90,12 +93,26 @@ export default function LeaguesPage() {
   const [description, setDescription] = useState("");
   const [err, setErr] = useState("");
   const [today] = useState(() => new Date());
+  const [cid, setCid] = useState<string | null>(null);
+  const [live, setLive] = useState<{ ev: LeagueEvent; top: EventEntry[] } | null>(null);
 
   useEffect(() => {
     getAllLeagues().then(setAll).catch(() => {});
     getUpcomingEvents().then(setUpcoming).catch(() => {});
   }, []);
-  useEffect(() => { if (user) getMyLeagues(user.uid).then(setMine).catch(() => {}); }, [user]);
+  useEffect(() => { if (user) { getMyLeagues(user.uid).then(setMine).catch(() => {}); resolveCanonicalId(user.uid).then(setCid).catch(() => {}); } }, [user]);
+  // Live tile: an event is "live" when its start time has passed, it isn't done,
+  // and players have checked in. Real windows only; no tile otherwise.
+  useEffect(() => {
+    const nowMs = Date.now();
+    const liveEv = upcoming.find((e) => e.status !== "complete" && e.date <= nowMs && nowMs <= e.date + 6 * 3600_000 && e.entryCount > 0);
+    if (!liveEv) { Promise.resolve().then(() => setLive(null)); return; }
+    getEntries(liveEv.id).then((en) => {
+      const scored = en.filter((x) => (typeof x.score === "number" || (x.holeScores?.some((h) => h > 0))) && !x.dnf)
+        .sort((a, b) => ((a.score ?? a.holeScores!.reduce((p, c) => p + c, 0)) + (a.penalty ?? 0)) - ((b.score ?? b.holeScores!.reduce((p, c) => p + c, 0)) + (b.penalty ?? 0)));
+      setLive({ ev: liveEv, top: scored.slice(0, 3) });
+    }).catch(() => setLive(null));
+  }, [upcoming]);
 
   const slugOf = useMemo(() => new Map(all.map((l) => [l.id, l.slug])), [all]);
   const eventDays = useMemo(() => new Set(upcoming.map((e) => dayKey(e.date))), [upcoming]);
@@ -130,9 +147,9 @@ export default function LeaguesPage() {
       {/* Header */}
       <section className="flex flex-wrap items-end justify-between gap-6 pb-8 pt-14">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[var(--gold)]">Radius Events</p>
-          <h1 className="mt-2 font-[family-name:var(--font-heading)] text-4xl font-extrabold tracking-tight text-[var(--cream)]">Find your next event</h1>
-          <p className="mt-2 max-w-md text-sm leading-relaxed text-[var(--sage)]">League nights, tournaments, and clinics — live leaderboards, honest handicaps, bag tags that move. Free for everyone.</p>
+          <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--blue)]">Events</p>
+          <h1 className="mt-2 font-[family-name:var(--font-heading)] text-4xl font-extrabold tracking-tight text-[var(--cream)]">Where the local scene plays.</h1>
+          <p className="mt-2 max-w-md text-sm leading-relaxed text-[var(--cream-60)]">Leagues, weeklies, and tournaments near you. Register in one tap, pay in the app, and score live on real course maps.</p>
         </div>
         {user ? (
           <Link href="/leagues/new" className={btnGold}>Create an event</Link>
@@ -186,11 +203,37 @@ export default function LeaguesPage() {
             {dayFilter && <button onClick={() => setDayFilter(null)} className="mt-3 w-full rounded-full bg-white/[0.05] py-2 text-xs font-bold text-[var(--sage)] transition-colors hover:text-[var(--cream)]">Clear day filter</button>}
           </div>
           <div>
+            {live && (
+              <Link href={slugOf.get(live.ev.leagueId) ? `/leagues/${slugOf.get(live.ev.leagueId)}/e/${live.ev.id}` : "#"} className={`${card} ${cardHover} mb-4 block p-5`}>
+                <div className="flex items-center gap-2.5">
+                  <span className="live-dot h-2 w-2 rounded-full bg-[var(--blue)]" />
+                  <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--blue)]">Live now</span>
+                  <span className="min-w-0 flex-1 truncate text-right font-[family-name:var(--font-heading)] text-sm font-bold text-[var(--cream)]">{live.ev.name}</span>
+                </div>
+                {live.top.length > 0 && (
+                  <div className="mt-3 grid gap-1.5">
+                    {live.top.map((e, i) => {
+                      const you = cid != null && e.id === cid;
+                      const total = (e.score ?? e.holeScores!.filter((h) => h > 0).reduce((p, c) => p + c, 0)) + (e.penalty ?? 0);
+                      return (
+                        <div key={e.id} className={`flex items-center gap-2.5 rounded-lg px-2 py-1 text-sm ${you ? "bg-[var(--gold-dim)]" : ""}`}>
+                          <span className="w-4 text-right font-mono text-xs font-bold text-[var(--cream-38)]">{i + 1}</span>
+                          <Avatar url={e.photo} name={e.name} size={22} ring={false} />
+                          <span className="min-w-0 flex-1 truncate font-semibold text-[var(--cream)]">{e.name}</span>
+                          {you && <span className="rounded-full bg-[var(--gold)] px-1.5 py-0.5 font-mono text-[8px] font-bold text-[#141B16]">YOU</span>}
+                          <span className={`font-mono text-sm font-bold ${you ? "text-[var(--gold)]" : "text-[var(--blue)]"}`}>{total}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </Link>
+            )}
             {shownEvents.length === 0 ? (
               <div className={`${card} grid place-items-center px-6 py-16 text-center`}>
-                <span className="grid h-14 w-14 place-items-center rounded-full bg-[var(--gold-dim)] text-[var(--gold)]"><IconCalendar className="h-6 w-6" /></span>
+                <span className="grid h-14 w-14 place-items-center rounded-full bg-[var(--card-raised)] text-[var(--blue)]"><IconCalendar className="h-6 w-6" /></span>
                 <p className="mt-4 font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">{upcoming.length === 0 ? "No upcoming events" : "Nothing matches"}</p>
-                <p className="mt-1 max-w-xs text-sm text-[var(--sage-dim)]">{upcoming.length === 0 ? "Start a league and schedule the season — it takes about a minute." : "Try clearing the search or the day filter."}</p>
+                <p className="mt-1 max-w-xs text-sm text-[var(--sage-dim)]">{upcoming.length === 0 ? "Create one in about a minute." : "Clear the search or day filter."}</p>
               </div>
             ) : (
               <div className="grid gap-3">
@@ -200,25 +243,26 @@ export default function LeaguesPage() {
                     <>
                       <DateBlock ms={ev.date} />
                       <div className="min-w-0 flex-1">
-                        <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--gold)]">{ev.leagueName}</div>
-                        <div className="mt-0.5 truncate font-[family-name:var(--font-heading)] font-bold text-[var(--cream)]">{ev.name}</div>
-                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-[var(--sage)]">
-                          {ev.courseName && <span className="inline-flex items-center gap-1.5"><IconPin className="h-3.5 w-3.5 shrink-0" /> {ev.courseName}</span>}
-                          <span>{fmtTime(ev.date)}</span>
-                          {ev.roundCount > 1 && <span className="text-[var(--gold)]">{ev.roundCount} rounds</span>}
-                          {ev.kind && ev.kind !== "league" && <span className="uppercase tracking-wide text-[var(--sage-dim)]">{ev.kind}</span>}
-                          {ev.buyIn && <span>${ev.buyIn} buy-in</span>}
-                          <span>{ev.entryCount} in</span>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 truncate font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">{ev.name}</div>
+                          <span className="shrink-0 rounded-full border border-[var(--blue-dim)] px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--blue)]">{KIND_CHIP[ev.kind ?? ""] ?? "EVENT"}</span>
+                        </div>
+                        <div className="mt-0.5 truncate text-[13px] text-[var(--cream-60)]">
+                          {ev.leagueName}{ev.courseName ? ` · ${ev.courseName}` : ""} · {weekday(ev.date)} {fmtTime(ev.date)}
+                        </div>
+                        <div className="mt-3 flex gap-7 font-mono">
+                          <span><span className="block text-sm font-bold text-[var(--cream)]">{ev.buyIn ? `$${ev.buyIn}` : "Free"}</span><span className="block text-[10px] uppercase tracking-[0.12em] text-[var(--cream-38)]">Buy-in</span></span>
+                          <span><span className="block text-sm font-bold text-[var(--cream)]">{ev.format}</span><span className="block text-[10px] uppercase tracking-[0.12em] text-[var(--cream-38)]">Format</span></span>
+                          <span><span className="block text-sm font-bold text-[var(--blue)]">{ev.entryCount}</span><span className="block text-[10px] uppercase tracking-[0.12em] text-[var(--cream-38)]">Players</span></span>
+                          {ev.roundCount > 1 && <span><span className="block text-sm font-bold text-[var(--cream)]">{ev.roundCount}×{ev.holes}</span><span className="block text-[10px] uppercase tracking-[0.12em] text-[var(--cream-38)]">Rounds</span></span>}
                         </div>
                       </div>
-                      <span className="shrink-0 rounded-full bg-white/[0.05] px-2.5 py-1 text-[10px] font-bold text-[var(--text-body)] ring-1 ring-white/[0.06]">{weekday(ev.date)}</span>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-4 w-4 shrink-0 text-[var(--sage-dim)] transition-all group-hover:translate-x-0.5 group-hover:text-[var(--gold)]"><path d="M9 6l6 6-6 6" /></svg>
                     </>
                   );
                   return slug ? (
-                    <Link key={ev.id} href={`/leagues/${slug}/e/${ev.id}`} className={`${card} group flex items-center gap-4 p-4 transition-all hover:-translate-y-0.5 hover:border-[var(--gold)]/30`}>{inner}</Link>
+                    <Link key={ev.id} href={`/leagues/${slug}/e/${ev.id}`} className={`${card} ${cardHover} group flex items-start gap-4 p-5`}>{inner}</Link>
                   ) : (
-                    <div key={ev.id} className={`${card} flex items-center gap-4 p-4`}>{inner}</div>
+                    <div key={ev.id} className={`${card} flex items-start gap-4 p-5`}>{inner}</div>
                   );
                 })}
               </div>
@@ -237,12 +281,12 @@ export default function LeaguesPage() {
             <SectionTitle>All leagues</SectionTitle>
             {others.length === 0 && all.length === 0 ? (
               <div className={`${card} grid place-items-center px-6 py-16 text-center`}>
-                <span className="grid h-14 w-14 place-items-center rounded-full bg-[var(--gold-dim)] text-[var(--gold)]"><IconDisc className="h-6 w-6" /></span>
+                <span className="grid h-14 w-14 place-items-center rounded-full bg-[var(--card-raised)] text-[var(--blue)]"><IconDisc className="h-6 w-6" /></span>
                 <p className="mt-4 font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">No leagues yet</p>
-                <p className="mt-1 max-w-xs text-sm text-[var(--sage-dim)]">Be the first — your weekly crew deserves better than a spreadsheet.</p>
+                <p className="mt-1 max-w-xs text-sm text-[var(--sage-dim)]">Start the first one from Create an event.</p>
               </div>
             ) : others.length === 0 ? (
-              <p className="text-sm text-[var(--sage-dim)]">{needle ? "No other leagues match." : "You're running every league on Radius so far. Legend."}</p>
+              <p className="text-sm text-[var(--sage-dim)]">{needle ? "No other leagues match." : "You run every league on Radius so far."}</p>
             ) : (
               <div className="grid gap-3">{others.map((l) => <LeagueCard key={l.id} l={l} />)}</div>
             )}
@@ -255,7 +299,7 @@ export default function LeaguesPage() {
 
 function LeagueCard({ l, mine }: { l: League; mine?: boolean }) {
   return (
-    <Link href={`/leagues/${l.slug}`} className={`${card} group flex items-center gap-4 p-5 transition-all hover:-translate-y-0.5 hover:border-[var(--gold)]/30`}>
+    <Link href={`/leagues/${l.slug}`} className={`${card} ${cardHover} group flex items-center gap-4 p-5`}>
       <Emblem name={l.name} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
@@ -265,7 +309,7 @@ function LeagueCard({ l, mine }: { l: League; mine?: boolean }) {
         <div className="mt-0.5 truncate text-sm text-[var(--sage)]">{l.courseName || "Rotating courses"} · {l.settings.format}</div>
       </div>
       <div className="shrink-0 text-right">
-        <div className="font-mono text-xl font-extrabold text-[var(--cream)]">{l.memberCount}</div>
+        <div className="font-mono text-xl font-extrabold text-[var(--blue)]">{l.memberCount}</div>
         <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--sage-dim)]">member{l.memberCount === 1 ? "" : "s"}</div>
       </div>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-4 w-4 shrink-0 text-[var(--sage-dim)] transition-all group-hover:translate-x-0.5 group-hover:text-[var(--gold)]"><path d="M9 6l6 6-6 6" /></svg>
