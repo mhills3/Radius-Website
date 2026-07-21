@@ -29,6 +29,16 @@ export function freshId(): string {
 export const LEAGUE_FORMATS = ["Singles", "Doubles"] as const;
 export const START_FORMATS = ["Shotgun", "Tee times", "Flex"] as const;
 
+/** Event kinds — discovery categories AND behavior hints (league = weekly repeat, tournament = multi-round). */
+export const EVENT_KINDS = [
+  { key: "league", label: "League / Weekly", icon: "📅", blurb: "A recurring league night — schedule the whole season at once." },
+  { key: "tournament", label: "Tournament", icon: "🏆", blurb: "One-off or multi-round competition with cumulative scoring." },
+  { key: "glow", label: "Glow round", icon: "🌙", blurb: "After-dark round with glow discs and lit baskets." },
+  { key: "clinic", label: "Clinic", icon: "🎯", blurb: "Instruction and practice — form work, putting, field sessions." },
+  { key: "cleanup", label: "Course cleanup", icon: "🧹", blurb: "Work day — trimming, trash, tee pads. The course thanks you." },
+  { key: "social", label: "Social round", icon: "🤝", blurb: "Casual meetup round — no pressure, no standings." },
+] as const;
+
 export const DEFAULT_DIVISIONS = ["Open"];
 export const SUGGESTED_DIVISIONS = ["Open", "FPO", "Advanced", "Intermediate", "Rec", "Juniors"];
 
@@ -54,6 +64,7 @@ export interface League {
   settings: LeagueSettings;
   memberCount: number;
   acePotBalance?: number; // running ace-pot ledger (director-maintained until an ace pays out)
+  logoUrl?: string;       // league logo (Storage: leagueLogos/{uid}/{leagueId}.jpg)
   createdAt: number;
   lastUpdated: number;
 }
@@ -79,6 +90,11 @@ export interface LeagueEvent {
   status: "scheduled" | "active" | "complete" | "cancelled";
   roundCount: number; // 1 = weekly league night; >1 = multi-round event (cumulative total)
   buyIn?: number;     // dollars per player; the paid toggle × buyIn = collected pot
+  kind?: string;        // EVENT_KINDS key — discovery category
+  isPrivate?: boolean;  // private events are link/search-only, excluded from discovery
+  description?: string; // event-specific notes (markdown-lite)
+  contactEmail?: string;
+  contactPhone?: string;
   entryCount: number;
   createdAt: number;
 }
@@ -169,8 +185,29 @@ function toLeague(id: string, d: any): League {
     },
     memberCount: Number(d.memberCount) || 0,
     acePotBalance: typeof d.acePotBalance === "number" ? d.acePotBalance : undefined,
+    logoUrl: (d.logoUrl as string) || undefined,
     createdAt: Number(d.createdAt) || 0, lastUpdated: Number(d.lastUpdated) || 0,
   };
+}
+
+// ---- Course search (wizard "Where" step) ----
+// One cached sweep of the public course directory (name/city/state only via the
+// REST mask — ~1.4k tiny rows), then instant client-side filtering.
+export interface CourseHit { id: string; name: string; city?: string; state?: string }
+let courseCache: CourseHit[] | null = null;
+export async function searchCourses(qText: string, max = 8): Promise<CourseHit[]> {
+  if (!courseCache) {
+    const { fsList } = await import("./firestoreRest");
+    const rows = await fsList("courses", { mask: ["name", "city", "state", "isDraft", "reviewStatus"], max: 2500 });
+    courseCache = rows
+      .filter((r) => r.name && r.isDraft !== true && r.reviewStatus !== "pending" && r.reviewStatus !== "rejected")
+      .map((r) => ({ id: r.id as string, name: String(r.name), city: (r.city as string) || undefined, state: (r.state as string) || undefined }));
+  }
+  const needle = qText.trim().toLowerCase();
+  if (!needle) return [];
+  return courseCache
+    .filter((c) => `${c.name} ${c.city ?? ""} ${c.state ?? ""}`.toLowerCase().includes(needle))
+    .slice(0, max);
 }
 
 export async function getLeagueBySlug(slug: string): Promise<League | null> {
@@ -210,6 +247,10 @@ export async function setAcePot(leagueId: string, balance: number): Promise<void
   await setDoc(doc(db, "leagues", leagueId), { acePotBalance: balance, lastUpdated: Date.now() }, { merge: true });
 }
 
+export async function setLeagueLogo(leagueId: string, logoUrl: string): Promise<void> {
+  await setDoc(doc(db, "leagues", leagueId), { logoUrl, lastUpdated: Date.now() }, { merge: true });
+}
+
 /** Promote/demote a member. Directors join/leave adminIds; the owner can't be demoted here. */
 export async function setMemberRole(leagueId: string, memberId: string, role: "director" | "member"): Promise<void> {
   await setDoc(doc(db, "leagues", leagueId, "members", memberId), { role }, { merge: true });
@@ -236,7 +277,7 @@ export async function getLeagueMembers(leagueId: string): Promise<LeagueMember[]
 // ---- Events ----
 
 /** Create one event per date (recurring = the caller passes every date in the season). */
-export async function createEvents(uid: string, league: League, input: { name: string; dates: number[]; courseId?: string; courseName?: string; format?: string; startFormat?: string; roundCount?: number; buyIn?: number }): Promise<LeagueEvent[]> {
+export async function createEvents(uid: string, league: League, input: { name: string; dates: number[]; courseId?: string; courseName?: string; format?: string; startFormat?: string; roundCount?: number; buyIn?: number; kind?: string; isPrivate?: boolean; description?: string; contactEmail?: string; contactPhone?: string }): Promise<LeagueEvent[]> {
   const now = Date.now();
   const out: LeagueEvent[] = [];
   for (const date of input.dates) {
@@ -251,6 +292,10 @@ export async function createEvents(uid: string, league: League, input: { name: s
       startFormat: input.startFormat ?? league.settings.startFormat,
       status: "scheduled", roundCount: Math.max(1, Math.min(input.roundCount ?? 1, 6)),
       buyIn: input.buyIn && input.buyIn > 0 ? input.buyIn : undefined,
+      kind: input.kind, isPrivate: input.isPrivate || undefined,
+      description: input.description?.trim() || undefined,
+      contactEmail: input.contactEmail?.trim() || undefined,
+      contactPhone: input.contactPhone?.trim() || undefined,
       entryCount: 0, createdAt: now,
     };
     await setDoc(doc(db, "leagueEvents", id), JSON.parse(JSON.stringify(ev)), { merge: true });
@@ -269,6 +314,11 @@ function toEvent(id: string, d: any): LeagueEvent {
     status: (d.status ?? "scheduled") as LeagueEvent["status"],
     roundCount: Math.max(1, Number(d.roundCount) || 1),
     buyIn: Number(d.buyIn) > 0 ? Number(d.buyIn) : undefined,
+    kind: (d.kind as string) || undefined,
+    isPrivate: d.isPrivate === true,
+    description: (d.description as string) || undefined,
+    contactEmail: (d.contactEmail as string) || undefined,
+    contactPhone: (d.contactPhone as string) || undefined,
     entryCount: Number(d.entryCount) || 0, createdAt: Number(d.createdAt) || 0,
   };
 }
@@ -293,7 +343,8 @@ export async function getUpcomingEvents(max = 60): Promise<LeagueEvent[]> {
   try {
     const cutoff = Date.now() - 12 * 3600_000;
     const snap = await getDocs(query(collection(db, "leagueEvents"), where("date", ">=", cutoff), orderBy("date", "asc"), limit(max)));
-    return snap.docs.map((d) => toEvent(d.id, d.data())).filter((e) => e.status !== "cancelled");
+    // Private events are link/search-only — never surfaced in discovery.
+    return snap.docs.map((d) => toEvent(d.id, d.data())).filter((e) => e.status !== "cancelled" && !e.isPrivate);
   } catch { return []; }
 }
 

@@ -135,7 +135,7 @@ export default function LeaguesPage() {
           <p className="mt-2 max-w-md text-sm leading-relaxed text-[var(--sage)]">Weekly leagues and tournaments — live leaderboards, honest handicaps, bag tags that move. Free for everyone.</p>
         </div>
         {user ? (
-          <button onClick={() => setCreating((c) => !c)} className={btnGold}>{creating ? "Close" : "＋ Start a league"}</button>
+          <Link href="/leagues/new" className={btnGold}>＋ Create an event</Link>
         ) : (
           <Link href="/login" className={btnGold}>Sign in to start a league</Link>
         )}
