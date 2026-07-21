@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRole, isLeagueAdmin, LEAGUE_FORMATS, START_FORMATS, type League, type LeagueEvent, type LeagueMember, type StandingRow } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
-import { inputCls, FieldLabel, Segmented, Avatar, Pos, btnGold, btnGhost, card, IconCalendar, IconUsers, IconPlus, IconPin } from "@/components/leagues/ui";
+import { inputCls, FieldLabel, Segmented, Avatar, Pos, btnGold, btnGhost, card, cardHover, IconCalendar, IconUsers, IconPlus, IconPin } from "@/components/leagues/ui";
 
 // ─── League tools: the director console (UDisc "League tools" equivalent).
 // Persistent sidebar, dashboard-first, every admin control in one place.
@@ -136,15 +136,19 @@ export default function LeagueManagePage() {
   );
 
   const EventRow = ({ ev }: { ev: LeagueEvent }) => (
-    <Link href={`/leagues/${league.slug}/e/${ev.id}`} className={`${card} group flex items-center gap-3.5 p-3.5 transition-all hover:border-[var(--gold)]/30`}>
-      <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[var(--gold-dim)] font-[family-name:var(--font-heading)] text-sm font-extrabold leading-none text-[var(--gold)]">
+    <Link href={`/leagues/${league.slug}/e/${ev.id}`} className={`${card} ${cardHover} group flex items-center gap-3.5 p-3.5`}>
+      <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[var(--card-raised)] font-mono text-sm font-bold leading-none text-[var(--cream)]">
         {new Date(ev.date).getDate()}
       </div>
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-bold text-[var(--cream)]">{ev.name}</div>
         <div className="truncate text-xs text-[var(--sage-dim)]">{fmtDate(ev.date)} · {ev.entryCount} in</div>
       </div>
-      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${ev.status === "complete" ? "bg-white/[0.06] text-[var(--sage-dim)]" : ev.status === "cancelled" ? "bg-[#f08c8c]/15 text-[#f08c8c]" : "bg-[var(--gold-dim)] text-[var(--gold)]"}`}>{ev.status}</span>
+      {ev.status === "scheduled" && Date.now() >= ev.date && Date.now() <= ev.date + 6 * 3600_000 && ev.entryCount > 0 ? (
+        <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--blue-dim)] px-2 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.1em] text-[var(--blue)]"><span className="live-dot h-1 w-1 rounded-full bg-[var(--blue)]" />Live</span>
+      ) : (
+        <span className={`shrink-0 rounded-full border px-2 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.1em] ${ev.status === "cancelled" ? "border-[#f08c8c]/25 text-[#f08c8c]" : "border-[var(--hair)] text-[var(--cream-60)]"}`}>{ev.status}</span>
+      )}
     </Link>
   );
 
@@ -166,7 +170,7 @@ export default function LeagueManagePage() {
             <button
               key={n.key}
               onClick={() => setSection(n.key)}
-              className={`shrink-0 rounded-xl px-4 py-2.5 text-left text-sm font-bold transition-colors ${section === n.key ? "bg-[var(--gold-dim)] text-[var(--gold)]" : "text-[var(--sage)] hover:bg-white/[0.04] hover:text-[var(--cream)]"}`}
+              className={`shrink-0 rounded-xl px-4 py-2.5 text-left text-sm font-bold transition-colors ${section === n.key ? "bg-[var(--gold-dim)] text-[var(--gold)]" : "text-[var(--cream-60)] hover:bg-[var(--card)] hover:text-[var(--cream)]"}`}
             >{n.label}</button>
           ))}
         </nav>
@@ -179,42 +183,45 @@ export default function LeagueManagePage() {
               <div className={`${card} p-6`}>
                 <h2 className="font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">League setup · {checklist.filter((c) => c.done).length}/{checklist.length} complete</h2>
                 <div className="mt-4 grid gap-2">
-                  {checklist.map((c) => (
-                    <button key={c.label} onClick={() => setSection(c.go)} className="group flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-left transition-colors hover:border-[var(--gold)]/30">
-                      <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[10px] font-bold ${c.done ? "bg-[var(--gold)] text-[#16221b]" : "border-2 border-white/20 text-transparent"}`}>✓</span>
+                  {checklist.map((c, ci) => {
+                    const isNext = !c.done && checklist.findIndex((x) => !x.done) === ci;
+                    return (
+                    <button key={c.label} onClick={() => setSection(c.go)} className={`group flex items-center gap-3 rounded-xl border border-[var(--hair)] bg-[var(--forest)] px-4 py-3 text-left transition-colors hover:border-[var(--hair-strong)] ${isNext ? "border-l-[3px] border-l-[var(--gold)] bg-[var(--gold-dim)]/40" : ""}`}>
+                      <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[10px] font-bold ${c.done ? "bg-[var(--gold)] text-[#141B16]" : "border border-[var(--hair-strong)] text-transparent"}`}>✓</span>
                       <span className="min-w-0 flex-1">
-                        <span className={`block text-sm font-bold ${c.done ? "text-[var(--sage)] line-through decoration-white/30" : "text-[var(--cream)]"}`}>{c.label}</span>
-                        <span className="block text-xs text-[var(--sage-dim)]">{c.hint}</span>
+                        <span className={`block text-sm font-bold ${c.done ? "text-[var(--cream-38)] line-through decoration-[var(--hair-strong)]" : "text-[var(--cream)]"}`}>{c.label}</span>
+                        <span className="block text-xs text-[var(--cream-38)]">{c.hint}</span>
                       </span>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-4 w-4 shrink-0 text-[var(--sage-dim)] group-hover:text-[var(--gold)]"><path d="M9 6l6 6-6 6" /></svg>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-4 w-4 shrink-0 text-[var(--cream-38)] group-hover:text-[var(--gold)]"><path d="M9 6l6 6-6 6" /></svg>
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
               {/* Quick navigation */}
               <div className="grid gap-3 sm:grid-cols-3">
-                <Link href="/leagues/new" className={`${card} group p-5 transition-all hover:-translate-y-0.5 hover:border-[var(--gold)]/30`}>
-                  <span className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--gold-dim)] text-[var(--gold)]"><IconPlus /></span>
+                <Link href="/leagues/new" className={`${card} ${cardHover} group p-5`}>
+                  <span className="grid h-11 w-11 place-items-center rounded-xl bg-[var(--gold-dim)] text-[var(--gold)]"><IconPlus /></span>
                   <div className="mt-3 font-[family-name:var(--font-heading)] font-bold text-[var(--cream)]">Create event</div>
-                  <div className="mt-0.5 text-xs text-[var(--sage-dim)]">List a night, a season, or a tournament.</div>
+                  <div className="mt-0.5 text-xs text-[var(--cream-60)]">List a night, a season, or a tournament.</div>
                 </Link>
-                <button onClick={() => setSection("events")} className={`${card} group p-5 text-left transition-all hover:-translate-y-0.5 hover:border-[var(--gold)]/30`}>
-                  <span className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--gold-dim)] text-[var(--gold)]"><IconCalendar /></span>
+                <button onClick={() => setSection("events")} className={`${card} ${cardHover} group p-5 text-left`}>
+                  <span className="grid h-11 w-11 place-items-center rounded-xl bg-[var(--gold-dim)] text-[var(--gold)]"><IconCalendar /></span>
                   <div className="mt-3 font-[family-name:var(--font-heading)] font-bold text-[var(--cream)]">All events</div>
-                  <div className="mt-0.5 text-xs text-[var(--sage-dim)]">{upcoming.length} upcoming · {past.length} past</div>
+                  <div className="mt-0.5 text-xs text-[var(--cream-60)]">{upcoming.length} upcoming · {past.length} past</div>
                 </button>
-                <button onClick={() => setSection("members")} className={`${card} group p-5 text-left transition-all hover:-translate-y-0.5 hover:border-[var(--gold)]/30`}>
-                  <span className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--gold-dim)] text-[var(--gold)]"><IconUsers /></span>
+                <button onClick={() => setSection("members")} className={`${card} ${cardHover} group p-5 text-left`}>
+                  <span className="grid h-11 w-11 place-items-center rounded-xl bg-[var(--gold-dim)] text-[var(--gold)]"><IconUsers /></span>
                   <div className="mt-3 font-[family-name:var(--font-heading)] font-bold text-[var(--cream)]">Members</div>
-                  <div className="mt-0.5 text-xs text-[var(--sage-dim)]">{members.length} member{members.length === 1 ? "" : "s"} · manage roles</div>
+                  <div className="mt-0.5 text-xs text-[var(--cream-60)]">{members.length} member{members.length === 1 ? "" : "s"} · manage roles</div>
                 </button>
               </div>
 
               {/* Upcoming */}
               <div>
                 <h3 className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--gold)]">Upcoming events</h3>
-                {upcoming.length === 0 ? <p className="text-sm text-[var(--sage-dim)]">Nothing scheduled — hit Create event.</p> : <div className="grid gap-2.5">{upcoming.slice(0, 5).map((ev) => <EventRow key={ev.id} ev={ev} />)}</div>}
+                {upcoming.length === 0 ? <p className="text-sm text-[var(--sage-dim)]">Nothing scheduled. Create the first event.</p> : <div className="grid gap-2.5">{upcoming.slice(0, 5).map((ev) => <EventRow key={ev.id} ev={ev} />)}</div>}
               </div>
             </div>
           )}
@@ -244,7 +251,7 @@ export default function LeagueManagePage() {
                   )}
                 </div>
               ))}
-              {members.length === 0 && <p className="p-6 text-sm text-[var(--sage-dim)]">No members yet — share an event check-in link.</p>}
+              {members.length === 0 && <p className="p-6 text-sm text-[var(--sage-dim)]">No members yet. Share an event check-in link.</p>}
             </div>
           )}
 
