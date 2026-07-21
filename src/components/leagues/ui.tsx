@@ -100,6 +100,10 @@ export const IconDisc = ({ className }: IconProps) => (
 );
 export const IconDollar = ({ className }: IconProps) => <I className={className} d="M12 2v20M17 5.5H9.8a3.3 3.3 0 0 0 0 6.6h4.4a3.3 3.3 0 0 1 0 6.6H6.5" />;
 
+/** "1 player", "3 players" — the one pluralizer for every count label in the flow. */
+export const plural = (n: number, one: string, many?: string) => `${n} ${n === 1 ? one : (many ?? one + "s")}`;
+export const pluralWord = (n: number, one: string, many?: string) => (n === 1 ? one : (many ?? one + "s"));
+
 export const btnGold =
   "rounded-[10px] bg-[var(--gold)] px-6 py-3 font-[family-name:var(--font-heading)] text-sm font-extrabold text-[#141B16] transition-all duration-150 hover:-translate-y-px hover:shadow-[0_8px_24px_rgba(232,181,96,0.28)] disabled:cursor-not-allowed disabled:opacity-50";
 export const btnGhost =
