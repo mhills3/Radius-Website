@@ -93,9 +93,9 @@ export default function SeedPage() {
       }
 
       say("Complete tournament (full board + payouts)…");
-      const done = await mkEvent({ name: "Birchwood Fall Classic", kind: "tournament", date: now - 3 * D, courseId: rc(1)?.id, courseName: rc(1)?.name ?? "Birchwood DGC", roundCount: 2, buyIn: 45, capacity: 72, entryCount: 8, status: "complete", description: "Two rounds on the full layout. Tee assignments drop the night before.\n- CTP on 7 and 14\n- Ace pot carries" , contactEmail: "demo@radiusdiscgolf.com" });
-      const finals = [[54, 52], [55, 53], [54, 55], [56, 54], [57, 55], [55, 58], [58, 57], [60, 59]];
-      for (let i = 0; i < 8; i++) {
+      const done = await mkEvent({ name: "Birchwood Fall Classic", kind: "tournament", date: now - 3 * D, courseId: rc(1)?.id, courseName: rc(1)?.name ?? "Birchwood DGC", roundCount: 2, buyIn: 45, capacity: 72, entryCount: 14, status: "complete", description: "Two rounds on the full layout. Tee assignments drop the night before.\n- CTP on 7 and 14\n- Ace pot carries" , contactEmail: "demo@radiusdiscgolf.com" });
+      const finals = [[54, 51], [53, 53], [55, 52], [54, 54], [56, 53], [55, 55], [57, 54], [56, 56], [58, 55], [57, 57], [59, 56], [58, 58], [60, 57], [59, 59]];
+      for (let i = 0; i < 14; i++) {
         const isYou = i === 2;
         const [r1, r2] = finals[i];
         await mkEntry(done, isYou ? cid : freshId(), {
@@ -105,9 +105,9 @@ export default function SeedPage() {
         });
       }
 
-      say("Filling weekly (38%)…");
-      const thu = await mkEvent({ name: "Thursday Night Flights", kind: "league", date: now + 2 * D, courseId: rc(2)?.id, courseName: rc(2)?.name ?? "Maudslay State Park", buyIn: 10, capacity: 40, entryCount: 15 });
-      for (let i = 0; i < 15; i++) await mkEntry(thu, freshId(), { name: FAKE[(i + 3) % FAKE.length], division: DIVS[i % 3] });
+      say("Scheduled weekly (6 checked in, no cap)…");
+      const thu = await mkEvent({ name: "Thursday Night Flights", kind: "league", date: now + 2 * D, courseId: rc(2)?.id, courseName: rc(2)?.name ?? "Maudslay State Park", buyIn: 10, entryCount: 6 });
+      for (let i = 0; i < 6; i++) await mkEntry(thu, freshId(), { name: FAKE[(i + 3) % FAKE.length], division: DIVS[i % 3] });
 
       say("Open tournament (just opened)…");
       const open = await mkEvent({ name: "Granite Coast Open", kind: "tournament", date: now + 6 * D, courseId: rc(3)?.id, courseName: rc(3)?.name ?? "Pye Brook Park", roundCount: 2, buyIn: 55, capacity: 84, entryCount: 9 });

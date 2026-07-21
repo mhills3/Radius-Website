@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Radius · Event Detail v2 + Calendar v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --forest:#141B16; --card:#1A2821; --card-raised:#203028; --accent-green:#2D4A3E;
+  --gold:#E8B560; --gold-dim:rgba(232,181,96,.14);
+  --blue:#8FBDE3; --blue-dim:rgba(143,189,227,.12);
+  --cream:#F4F1E8; --cream-60:rgba(244,241,232,.60); --cream-38:rgba(244,241,232,.38);
+  --hair:rgba(244,241,232,.08); --hair-strong:rgba(244,241,232,.14);
+  --mono:'JetBrains Mono',monospace; --sora:'Sora',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--forest);color:var(--cream);font-family:var(--sora);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+button{font-family:var(--sora);cursor:pointer}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:4px}
+.wrap{max-width:1200px;margin:0 auto;padding:0 40px}
+
+.topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;
+  padding:0 40px;height:64px;background:rgba(20,27,22,.88);backdrop-filter:blur(14px);border-bottom:1px solid var(--hair)}
+.wordmark{font-weight:800;font-size:18px}
+.wordmark .dot{color:var(--gold)}
+.topnav{display:flex;gap:28px;font-size:13.5px;color:var(--cream-60)}
+.topnav .active{color:var(--cream);position:relative}
+.topnav .active::after{content:'';position:absolute;left:0;right:0;bottom:-22px;height:2px;background:var(--gold)}
+.avatar-btn{width:34px;height:34px;border-radius:50%;background:var(--accent-green);border:1px solid var(--hair-strong)}
+
+/* =====================================================
+   PHOTO HERO — production: course cover photo
+===================================================== */
+.hero{position:relative;height:340px;overflow:hidden}
+.hero .photo{position:absolute;inset:0;background:
+  radial-gradient(500px 260px at 70% 30%,#2b3f2a 0%,transparent 65%),
+  radial-gradient(420px 300px at 20% 80%,#20301f 0%,transparent 70%),
+  linear-gradient(160deg,#233524 0%,#182618 55%,#141B16 100%)}
+.hero .photo svg{position:absolute;inset:0;width:100%;height:100%;opacity:.55}
+.hero::after{content:'';position:absolute;inset:0;background:
+  linear-gradient(180deg,rgba(20,27,22,.35) 0%,rgba(20,27,22,.15) 35%,rgba(20,27,22,.85) 78%,#141B16 100%)}
+.hero-content{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;justify-content:space-between;
+  padding:28px 0 30px}
+.crumb{font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;color:var(--cream-60)}
+.crumb a:hover{color:var(--cream)}
+.title-row{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.hero h1{font-size:clamp(30px,3.6vw,44px);font-weight:800;letter-spacing:-.015em;line-height:1.05}
+.status{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;
+  border:1px solid var(--hair-strong);border-radius:999px;padding:6px 13px;color:var(--cream-60);
+  background:rgba(20,27,22,.5);backdrop-filter:blur(6px)}
+.chips{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;height:32px;padding:0 14px;border:1px solid var(--hair-strong);
+  border-radius:999px;color:var(--cream-60);background:rgba(20,27,22,.45);backdrop-filter:blur(6px);font-size:12px}
+.pill.mono{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em}
+.pill.gold{color:var(--gold);border-color:rgba(232,181,96,.4)}
+.course-tag{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--cream-60);
+  display:flex;align-items:center;gap:8px}
+.course-tag b{color:var(--cream);font-weight:500}
+
+/* tabs */
+.tabs{display:flex;gap:34px;border-bottom:1px solid var(--hair);margin-top:6px}
+.tab{padding:16px 2px;font-size:14.5px;font-weight:600;color:var(--cream-60);position:relative;background:none;border:none}
+.tab.on{color:var(--cream)}
+.tab.on::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--gold)}
+.tab .n{font-family:var(--mono);font-size:11px;color:var(--cream-38);margin-left:6px}
+
+/* body */
+.detail-body{display:grid;grid-template-columns:1fr 350px;gap:44px;padding:36px 0 90px;align-items:start}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);margin-bottom:14px}
+.eyebrow.blue{color:var(--blue)}
+.section{margin-bottom:40px}
+.section p{color:var(--cream-60);max-width:600px;font-size:14.5px}
+
+/* final results */
+.results{border:1px solid var(--hair);border-radius:16px;overflow:hidden;background:var(--card)}
+.r-row{display:grid;grid-template-columns:56px 1fr 90px 90px;align-items:center;height:56px;
+  padding:0 22px;border-bottom:1px solid var(--hair);font-size:14px}
+.r-row:last-child{border-bottom:none}
+.r-row.head{height:42px;font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--cream-38);background:rgba(0,0,0,.16)}
+.r-row .pos{font-family:var(--mono);color:var(--cream-38)}
+.r-row .pos.first{color:var(--cream)}
+.r-row .player{font-weight:600;display:flex;align-items:center;gap:11px}
+.pav{width:30px;height:30px;border-radius:50%;background:var(--accent-green);
+  display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.r-row .rds,.r-row .tot{font-family:var(--mono);text-align:right;color:var(--cream-60)}
+.r-row .tot{font-weight:700;font-size:15px;color:var(--blue)}
+.r-row.you{background:linear-gradient(90deg,rgba(232,181,96,.13),rgba(232,181,96,.04));border-left:3px solid var(--gold);padding-left:19px}
+.r-row.you .pos,.r-row.you .tot{color:var(--gold)}
+.r-row.you .pav{background:var(--gold);color:#1A2821}
+.r-row.you .player::after{content:'You';font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;
+  color:var(--gold);border:1px solid rgba(232,181,96,.4);border-radius:4px;padding:2px 6px}
+.results-foot{display:flex;justify-content:space-between;align-items:center;padding:13px 22px;background:rgba(0,0,0,.12)}
+.results-foot a{font-size:13px;color:var(--cream-60);font-weight:600}
+.results-foot a:hover{color:var(--cream)}
+.results-foot .meta{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;color:var(--cream-38)}
+
+.contact{font-size:14px;color:var(--cream-60)}
+.contact a{color:var(--gold);font-weight:600}
+
+/* rail */
+.rail{display:flex;flex-direction:column;gap:16px}
+.rcard{background:var(--card);border:1px solid var(--hair);border-radius:16px;padding:24px}
+.rcard .eyebrow{margin-bottom:16px}
+.winner{display:flex;align-items:center;gap:14px}
+.winner .pav{width:44px;height:44px;font-size:14px;border:2px solid var(--gold)}
+.winner .nm{font-weight:700;font-size:16px}
+.winner .sc{font-family:var(--mono);font-size:13px;color:var(--gold);margin-top:2px}
+.wstat{display:flex;gap:24px;margin-top:18px;padding-top:16px;border-top:1px solid var(--hair)}
+.ws .v{font-family:var(--mono);font-size:16px;font-weight:700}
+.ws .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;color:var(--cream-38);text-transform:uppercase;margin-top:3px}
+.sched{border-left:1px solid var(--hair-strong);margin-left:5px;padding-left:22px}
+.sl .t{font-weight:600;font-size:14.5px;position:relative}
+.sl .t::before{content:'';position:absolute;left:-27px;top:6px;width:8px;height:8px;border-radius:50%;
+  background:var(--forest);border:2px solid var(--blue)}
+.sl .when{font-family:var(--mono);font-size:12px;color:var(--blue);margin-top:4px}
+.sl .d{font-size:12.5px;color:var(--cream-60);margin-top:3px}
+.staff-row{display:flex;align-items:center;gap:12px}
+.staff-row .nm{font-weight:600;flex:1}
+.role{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;color:var(--gold);
+  border:1px solid rgba(232,181,96,.4);border-radius:4px;padding:3px 7px}
+
+/* =====================================================
+   CALENDAR v2 COMPONENT
+===================================================== */
+.divider-label{display:flex;align-items:center;gap:16px;margin:70px 0 26px;
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;color:var(--cream-38)}
+.divider-label::before,.divider-label::after{content:'';flex:1;height:1px;background:var(--hair)}
+
+.cal{background:var(--card);border:1px solid var(--hair);border-radius:16px;padding:24px;max-width:380px}
+.cal-top{display:flex;justify-content:space-between;align-items:center}
+.cal-top .m{font-size:16px;font-weight:700}
+.cal-top .m span{font-family:var(--mono);font-weight:400;font-size:13px;color:var(--cream-38);margin-left:7px}
+.cal-nav{display:flex;gap:8px}
+.cal-nav button{width:30px;height:30px;border-radius:50%;border:1px solid var(--hair);background:none;
+  color:var(--cream-60);font-size:14px;line-height:1;transition:all .15s ease}
+.cal-nav button:hover{border-color:var(--hair-strong);color:var(--cream)}
+.cal-sub{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--cream-38);
+  text-transform:uppercase;margin:8px 0 16px}
+.cal-sub b{color:var(--blue);font-weight:500}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center}
+.dow{font-family:var(--mono);font-size:9px;letter-spacing:.12em;color:var(--cream-38);padding:6px 0}
+.day{font-family:var(--mono);font-size:12.5px;color:var(--cream-60);height:40px;border-radius:10px;
+  position:relative;display:flex;align-items:center;justify-content:center;transition:background .12s ease;cursor:pointer}
+.day:hover{background:rgba(244,241,232,.04)}
+.day.dim{color:var(--cream-38);opacity:.4}
+.day.today{box-shadow:inset 0 0 0 1px var(--hair-strong);color:var(--cream)}
+.day.has::after{content:'';position:absolute;left:50%;transform:translateX(-50%);bottom:5px;
+  width:4px;height:4px;border-radius:50%;background:var(--blue)}
+.day.has.two::after{width:12px;border-radius:2px}
+.day.sel{background:var(--gold-dim);color:var(--gold);box-shadow:inset 0 0 0 1px rgba(232,181,96,.35)}
+.day.sel.has::after{background:var(--gold)}
+.upnext{margin-top:16px;padding-top:16px;border-top:1px solid var(--hair);display:flex;align-items:center;gap:13px;
+  border-radius:0 0 10px 10px;cursor:pointer}
+.upnext .dt{font-family:var(--mono);text-align:center;line-height:1.1;min-width:34px}
+.upnext .dt .mm{font-size:8.5px;letter-spacing:.16em;color:var(--cream-38);text-transform:uppercase}
+.upnext .dt .dd{font-size:16px;font-weight:700;margin-top:1px}
+.upnext .info{flex:1;min-width:0}
+.upnext .nm{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.upnext .mt{font-family:var(--mono);font-size:10px;color:var(--cream-38);letter-spacing:.06em;margin-top:2px}
+.upnext .go{color:var(--cream-38);font-size:15px}
+
+.foot{border-top:1px solid var(--hair);padding:24px 40px;margin-top:60px;display:flex;justify-content:space-between;
+  font-family:var(--mono);font-size:11px;color:var(--cream-38);letter-spacing:.08em}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (max-width:980px){.detail-body{grid-template-columns:1fr}.hero{height:280px}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wordmark">Radius<span class="dot">.</span></div>
+  <nav class="topnav">
+    <a href="#">Dashboard</a><a href="#">My Bag</a><a href="#" class="active">Events</a>
+    <a href="#">Community</a><a href="#">Courses</a><a href="#">Discs</a>
+  </nav>
+  <div class="avatar-btn"></div>
+</header>
+
+<!-- ================= EVENT DETAIL v2 ================= -->
+<div class="hero">
+  <div class="photo">
+    <!-- production: course cover photo, object-fit cover. This SVG is the no-photo fallback. -->
+    <svg viewBox="0 0 1400 340" preserveAspectRatio="xMidYMid slice" fill="none">
+      <path d="M-20 250 C 260 210, 520 270, 820 235 S 1250 190, 1420 220" stroke="rgba(244,241,232,.08)"/>
+      <path d="M-20 180 C 300 155, 560 205, 860 170 S 1260 130, 1420 155" stroke="rgba(244,241,232,.06)"/>
+      <path d="M200 300 C 360 240, 520 200, 700 130" stroke="rgba(232,181,96,.4)" stroke-width="1.5" stroke-dasharray="1 6" stroke-linecap="round"/>
+      <circle cx="200" cy="300" r="3.5" fill="rgba(232,181,96,.7)"/>
+      <circle cx="700" cy="130" r="5" stroke="rgba(232,181,96,.7)"/>
+    </svg>
+  </div>
+  <div class="wrap hero-content">
+    <div class="crumb"><a href="#">← EVENTS</a></div>
+    <div>
+      <div class="course-tag">📍 <b>Gordon Conwell</b> · SOUTH HAMILTON, MA</div>
+      <div class="title-row" style="margin-top:10px">
+        <h1>Northshore Disc Club</h1>
+        <span class="status">Complete</span>
+      </div>
+      <div class="chips">
+        <span class="pill mono">Fri, Jul 24 · 5:30 PM</span>
+        <span class="pill">Singles · Flex</span>
+        <span class="pill mono">2 × 18 holes</span>
+        <span class="pill">League · Weekly</span>
+        <span class="pill gold">Free</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="tabs">
+    <button class="tab on">Recap</button>
+    <button class="tab">Scores</button>
+    <button class="tab">Players <span class="n">14</span></button>
+    <button class="tab">Chat <span class="n">6</span></button>
+  </div>
+
+  <div class="detail-body">
+    <div>
+      <div class="section">
+        <div class="eyebrow">Final results</div>
+        <div class="results">
+          <div class="r-row head"><span>Pos</span><span>Player</span><span style="text-align:right">Rds</span><span style="text-align:right">Total</span></div>
+          <div class="r-row"><span class="pos first">1</span><span class="player"><i class="pav">JW</i>J. Whitmore</span><span class="rds">54 · 51</span><span class="tot">-11</span></div>
+          <div class="r-row"><span class="pos">2</span><span class="player"><i class="pav">AC</i>A. Castellano</span><span class="rds">53 · 53</span><span class="tot">-10</span></div>
+          <div class="r-row you"><span class="pos">3</span><span class="player"><i class="pav">MH</i>Mikey</span><span class="rds">55 · 52</span><span class="tot">-9</span></div>
+          <div class="r-row"><span class="pos">4</span><span class="player"><i class="pav">DR</i>D. Rourke</span><span class="rds">54 · 54</span><span class="tot">-8</span></div>
+          <div class="results-foot">
+            <a href="#">View full leaderboard →</a>
+            <span class="meta">14 PLAYERS · 2 ROUNDS</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="eyebrow blue">About this league</div>
+        <p>Weekly singles at Gordon Conwell, flex start between 5:00 and 6:00. Two rounds of 18, best round counts toward season points. All skill levels, tags in play.</p>
+      </div>
+
+      <div class="contact">Contact: <a href="mailto:mikey@radiusdiscgolf.com">mikey@radiusdiscgolf.com</a></div>
+    </div>
+
+    <aside class="rail">
+      <div class="rcard">
+        <div class="eyebrow">Winner</div>
+        <div class="winner">
+          <i class="pav">JW</i>
+          <div>
+            <div class="nm">J. Whitmore</div>
+            <div class="sc">-11 · rounds of 54, 51</div>
+          </div>
+        </div>
+        <div class="wstat">
+          <div class="ws"><div class="v">14</div><div class="k">Field</div></div>
+          <div class="ws"><div class="v">-11</div><div class="k">Hot round</div></div>
+          <div class="ws"><div class="v">36</div><div class="k">Holes</div></div>
+        </div>
+      </div>
+
+      <div class="rcard">
+        <div class="eyebrow blue">Schedule</div>
+        <div class="sched">
+          <div class="sl">
+            <div class="t">Rounds 1 and 2</div>
+            <div class="when">Fri, Jul 24 · 5:30 PM</div>
+            <div class="d">18 holes per round · Flex · Gordon Conwell</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rcard">
+        <div class="eyebrow">Staff</div>
+        <div class="staff-row">
+          <i class="pav">M</i>
+          <span class="nm">Mikey</span>
+          <span class="role">Owner</span>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ================= CALENDAR v2 ================= -->
+  <div class="divider-label">COMPONENT · CALENDAR V2 (DISCOVERY PAGE)</div>
+
+  <div class="cal">
+    <div class="cal-top">
+      <div class="m">July <span>2026</span></div>
+      <div class="cal-nav"><button>‹</button><button>›</button></div>
+    </div>
+    <div class="cal-sub"><b>2 events</b> this month</div>
+    <div class="cal-grid">
+      <span class="dow">S</span><span class="dow">M</span><span class="dow">T</span><span class="dow">W</span><span class="dow">T</span><span class="dow">F</span><span class="dow">S</span>
+      <span class="day dim">28</span><span class="day dim">29</span><span class="day dim">30</span><span class="day">1</span><span class="day">2</span><span class="day">3</span><span class="day">4</span>
+      <span class="day">5</span><span class="day">6</span><span class="day">7</span><span class="day">8</span><span class="day">9</span><span class="day">10</span><span class="day">11</span>
+      <span class="day">12</span><span class="day">13</span><span class="day">14</span><span class="day">15</span><span class="day">16</span><span class="day">17</span><span class="day">18</span>
+      <span class="day">19</span><span class="day">20</span><span class="day today">21</span><span class="day">22</span><span class="day">23</span><span class="day sel has">24</span><span class="day">25</span>
+      <span class="day">26</span><span class="day">27</span><span class="day">28</span><span class="day">29</span><span class="day">30</span><span class="day has">31</span><span class="day dim">1</span>
+    </div>
+    <div class="upnext">
+      <div class="dt"><div class="mm">Jul</div><div class="dd">24</div></div>
+      <div class="info">
+        <div class="nm">Northshore Disc Club</div>
+        <div class="mt">GORDON CONWELL · FRI 5:30 PM</div>
+      </div>
+      <span class="go">›</span>
+    </div>
+  </div>
+</div>
+
+<footer class="foot">
+  <span>RADIUS · THE HOME OF DISC GOLF</span>
+  <span>EVENT DETAIL V2 + CALENDAR V2</span>
+</footer>
+</body>
+</html>

@@ -4,11 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { getLeagueBySlug, getLeagueMembers, getEvent, getCards, checkIn, updateEntry, removeEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, reassignBagTags, computeStandings, computeHandicaps, applyHandicaps, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCoursePars, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember } from "@/lib/leagues";
+import { getLeagueBySlug, getLeagueMembers, getEvent, getCards, checkIn, updateEntry, removeEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, reassignBagTags, computeStandings, computeHandicaps, applyHandicaps, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCoursePars, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { SectionTitle, Avatar, Pos, btnGold, btnGhost, card, IconPin, IconDisc, IconEyeOff, IconUsers } from "@/components/leagues/ui";
 
-const fmtDate = (ms: number) => new Date(ms).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+const pillWord = "inline-flex h-8 items-center rounded-full border border-[var(--hair-strong)] bg-[rgba(20,27,22,0.45)] px-3.5 text-xs text-[var(--cream-60)] backdrop-blur-[6px]";
+const pillMono = "inline-flex h-8 items-center rounded-full border border-[var(--hair-strong)] bg-[rgba(20,27,22,0.45)] px-3.5 font-mono text-[11.5px] tracking-[0.06em] text-[var(--cream-60)] backdrop-blur-[6px]";
+const fmtDate = (ms: number) => { const d = new Date(ms); return `${d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })} · ${d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`; };
 const adminInput = "rounded-lg border border-white/10 bg-white/[0.05] px-2 py-1.5 text-right font-mono text-sm text-[var(--cream)] outline-none transition-colors focus:border-[var(--gold)]";
 
 // Renders the wizard's markdown-lite description: **bold**, _italic_, "- " bullets.
@@ -43,15 +45,16 @@ function Desc({ text }: { text: string }) {
 }
 
 function StatusChip({ status, liveNow }: { status: LeagueEvent["status"]; liveNow?: boolean }) {
+  const frost = "rounded-full border bg-[rgba(20,27,22,0.5)] px-[13px] py-1.5 font-mono text-[10.5px] font-semibold uppercase tracking-[0.16em] backdrop-blur-[6px]";
   if (liveNow || status === "active") {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--blue-dim)] px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--blue)]">
+      <span className={`inline-flex items-center gap-1.5 border-[rgba(143,189,227,.4)] text-[var(--blue)] ${frost}`}>
         <span className="live-dot h-1.5 w-1.5 rounded-full bg-[var(--blue)]" /> Live
       </span>
     );
   }
-  const tone = status === "cancelled" ? "text-[#f08c8c] border-[#f08c8c]/25" : "text-[var(--cream-60)] border-[var(--hair)]";
-  return <span className={`rounded-full border px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] ${tone}`}>{status}</span>;
+  const tone = status === "cancelled" ? "text-[#f08c8c] border-[#f08c8c]/25" : "text-[var(--cream-60)] border-[var(--hair-strong)]";
+  return <span className={`${frost} ${tone}`}>{status}</span>;
 }
 
 export default function LeagueEventPage() {
@@ -75,6 +78,13 @@ export default function LeagueEventPage() {
   const [pars, setPars] = useState<number[] | null>(null);
   const [teamSize, setTeamSize] = useState(2);
   const [messages, setMessages] = useState<EventMessage[]>([]);
+  const [courseMeta, setCourseMeta] = useState<CourseMeta | null>(null);
+  const [coverLoaded, setCoverLoaded] = useState(false);
+  useEffect(() => {
+    const cId = event?.courseId;
+    if (!cId) return;
+    getCourseMeta([cId]).then((m) => setCourseMeta(m.get(cId) ?? null)).catch(() => {});
+  }, [event?.courseId]);
   const [chatText, setChatText] = useState("");
   const [sending, setSending] = useState(false);
 
@@ -281,38 +291,63 @@ export default function LeagueEventPage() {
   };
 
   return (
-    <main className="mx-auto max-w-4xl px-5 pb-28">
-      {/* Header */}
-      <section className="relative pb-8 pt-14">
-        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[190px] overflow-hidden" style={{ maskImage: "linear-gradient(to bottom, black 55%, transparent 100%)", WebkitMaskImage: "linear-gradient(to bottom, black 55%, transparent 100%)" }}>
-          <svg viewBox="0 0 900 200" className="h-full w-full" fill="none" preserveAspectRatio="xMidYMid slice">
-            <path d="M-20 50 C 140 15, 260 90, 420 65 S 720 25, 920 55" stroke="var(--cream)" strokeOpacity="0.06" strokeWidth="1.25" />
-            <path d="M-20 95 C 120 60, 300 135, 470 105 S 760 65, 920 100" stroke="var(--blue)" strokeOpacity="0.06" strokeWidth="1.25" />
-            <path d="M-20 140 C 160 105, 320 180, 500 145 S 780 110, 920 140" stroke="var(--cream)" strokeOpacity="0.05" strokeWidth="1.25" />
-            <path d="M-20 180 C 180 150, 360 215, 540 185 S 800 155, 920 180" stroke="var(--gold)" strokeOpacity="0.06" strokeWidth="1.25" />
-          </svg>
-        </div>
-        <div className="relative">
-        <Link href={`/leagues/${slug}`} className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--cream-38)] transition-colors hover:text-[var(--gold)]">← {event.leagueName}</Link>
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <h1 className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-tight text-[var(--cream)] sm:text-4xl">{event.name}</h1>
-          <StatusChip status={event.status} liveNow={liveNow} />
-        </div>
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-          <span className="inline-flex h-8 items-center rounded-full border border-[var(--hair-strong)] px-3.5 font-mono text-[11.5px] tracking-[0.04em] text-[var(--cream-60)]">{fmtDate(event.date)}</span>
-          {event.courseName && <span className="inline-flex items-center gap-1.5 inline-flex h-8 items-center rounded-full border border-[var(--hair-strong)] px-3.5 font-[family-name:var(--font-heading)] text-xs text-[var(--cream-60)]"><IconPin className="h-3.5 w-3.5 shrink-0" /> {event.courseName}</span>}
-          <span className="inline-flex h-8 items-center rounded-full border border-[var(--hair-strong)] px-3.5 font-[family-name:var(--font-heading)] text-xs text-[var(--cream-60)]">{event.format} · {event.startFormat}</span>
-          <span className="inline-flex h-8 items-center rounded-full border border-[var(--hair-strong)] px-3.5 font-[family-name:var(--font-heading)] text-xs text-[var(--cream-60)]">{event.holes} holes{event.roundCount > 1 ? " / round" : ""}</span>
-          {event.buyIn && <span className="inline-flex h-8 items-center rounded-full bg-[var(--gold-dim)] px-3.5 font-mono text-[11.5px] font-semibold tracking-[0.04em] text-[var(--gold)]">${event.buyIn} buy-in</span>}
-          {event.roundCount > 1 && <span className="inline-flex h-8 items-center rounded-full border border-[var(--hair-strong)] px-3.5 font-[family-name:var(--font-heading)] text-xs text-[var(--cream-60)]">{event.roundCount} rounds</span>}
-          {event.kind && EVENT_KINDS.find((k) => k.key === event.kind) && (
-            <span className="inline-flex h-8 items-center rounded-full border border-[var(--hair-strong)] px-3.5 font-[family-name:var(--font-heading)] text-xs text-[var(--cream-60)]">{EVENT_KINDS.find((k) => k.key === event.kind)!.label}</span>
-          )}
-          {event.isPrivate && (
-            <span className="inline-flex items-center gap-1.5 inline-flex h-8 items-center rounded-full border border-[var(--hair-strong)] px-3.5 font-[family-name:var(--font-heading)] text-xs text-[var(--cream-60)]"><IconEyeOff className="h-3.5 w-3.5" /> Private. Link only</span>
+    <main className="pb-28">
+      {/* Photo hero — course cover melts into the page (reference scrim); decoration
+          exists ONLY inside the no-photo contour fallback */}
+      <section className="relative h-[280px] overflow-hidden md:h-[340px]">
+        <div aria-hidden className="absolute inset-0" style={{ background: "radial-gradient(500px 260px at 70% 30%, #2b3f2a 0%, transparent 65%), radial-gradient(420px 300px at 20% 80%, #20301f 0%, transparent 70%), linear-gradient(160deg, #233524 0%, #182618 55%, #141B16 100%)" }}>
+          {!courseMeta?.cover && (
+            <svg viewBox="0 0 1400 340" preserveAspectRatio="xMidYMid slice" fill="none" className="absolute inset-0 h-full w-full opacity-[0.55]">
+              <path d="M-20 250 C 260 210, 520 270, 820 235 S 1250 190, 1420 220" stroke="rgba(244,241,232,.08)" />
+              <path d="M-20 180 C 300 155, 560 205, 860 170 S 1260 130, 1420 155" stroke="rgba(244,241,232,.06)" />
+              <path d="M200 300 C 360 240, 520 200, 700 130" stroke="rgba(232,181,96,.4)" strokeWidth="1.5" strokeDasharray="1 6" strokeLinecap="round" />
+              <circle cx="200" cy="300" r="3.5" fill="rgba(232,181,96,.7)" />
+              <circle cx="700" cy="130" r="5" stroke="rgba(232,181,96,.7)" />
+            </svg>
           )}
         </div>
+        {courseMeta?.cover && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={courseMeta.cover} alt="" decoding="async" onLoad={() => setCoverLoaded(true)} onError={() => setCourseMeta((m) => (m ? { ...m, cover: undefined } : m))} className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${coverLoaded ? "opacity-100" : "opacity-0"}`} />
+        )}
+        <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(20,27,22,.35) 0%, rgba(20,27,22,.15) 35%, rgba(20,27,22,.85) 78%, #141B16 100%)" }} />
+        <div className="relative z-[2] mx-auto flex h-full max-w-4xl flex-col justify-between px-5 pb-[30px] pt-7">
+          <div>
+            <Link href="/leagues" className="font-mono text-[11.5px] tracking-[0.1em] text-[var(--cream-60)] transition-colors hover:text-[var(--cream)]">← EVENTS</Link>
+          </div>
+          <div>
+            {event.courseName && (
+              <div className="flex items-center gap-2 font-mono text-[11px] tracking-[0.12em] text-[var(--cream-60)]">
+                <IconPin className="h-3.5 w-3.5 shrink-0" />
+                <span className="font-medium text-[var(--cream)]">{event.courseName}</span>
+                {(courseMeta?.city || courseMeta?.state) && <span className="uppercase">· {[courseMeta?.city, courseMeta?.state].filter(Boolean).join(", ")}</span>}
+              </div>
+            )}
+            <div className="mt-2.5 flex flex-wrap items-center gap-4">
+              <h1 className="font-[family-name:var(--font-heading)] text-[clamp(30px,3.6vw,44px)] font-extrabold leading-[1.05] tracking-[-0.015em] text-[var(--cream)]">{event.name}</h1>
+              <StatusChip status={event.status} liveNow={liveNow} />
+            </div>
+            <div className="mt-4 flex flex-wrap items-center gap-2.5">
+              <span className={`${pillMono}`}>{fmtDate(event.date)}</span>
+              <span className={`${pillWord}`}>{event.format} · {event.startFormat}</span>
+              <span className={`${pillMono}`}>{event.roundCount > 1 ? `${event.roundCount} × ${event.holes} holes` : `${event.holes} holes`}</span>
+              {event.kind && EVENT_KINDS.find((k) => k.key === event.kind) && (
+                <span className={`${pillWord}`}>{EVENT_KINDS.find((k) => k.key === event.kind)!.label}</span>
+              )}
+              {event.buyIn ? (
+                <span className={`${pillMono} border-[rgba(232,181,96,.4)] text-[var(--gold)]`}>${event.buyIn}</span>
+              ) : (
+                <span className={`${pillWord} border-[rgba(232,181,96,.4)] text-[var(--gold)]`}>Free</span>
+              )}
+              {event.isPrivate && (
+                <span className={`${pillWord} gap-1.5`}><IconEyeOff className="h-3.5 w-3.5" /> Private. Link only</span>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
 
+      <div className="mx-auto max-w-4xl px-5">
         {open && (
           <div className="mt-6 flex flex-wrap items-center gap-2.5">
             {user ? (
@@ -354,8 +389,6 @@ export default function LeagueEventPage() {
           </div>
         )}
         {hcpNote && <p className="mt-3 text-xs text-[var(--gold)]">{hcpNote}</p>}
-        </div>
-      </section>
 
       {/* Tabs — UDisc event-page structure: About / Scores / Participants / Schedule→Chat */}
       <nav className="mb-8 flex gap-1 border-b border-white/[0.07]">
@@ -815,6 +848,7 @@ export default function LeagueEventPage() {
         )}
       </section>
       )}
+      </div>
     </main>
   );
 }

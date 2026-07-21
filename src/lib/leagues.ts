@@ -195,21 +195,33 @@ function toLeague(id: string, d: any): League {
 // ---- Course search (wizard "Where" step) ----
 // One cached sweep of the public course directory (name/city/state only via the
 // REST mask — ~1.4k tiny rows), then instant client-side filtering.
-/** Cover photo URLs for course docs, masked REST read, cached for the session. */
-const coverCache = new Map<string, string | null>();
-export async function getCourseCovers(ids: string[]): Promise<Map<string, string>> {
+/** Course presentation metadata (cover photo, city/state), masked REST read, session-cached. */
+export interface CourseMeta { cover?: string; city?: string; state?: string }
+const courseMetaCache = new Map<string, CourseMeta | null>();
+export async function getCourseMeta(ids: string[]): Promise<Map<string, CourseMeta>> {
   const wanted = [...new Set(ids.filter(Boolean))];
-  const missing = wanted.filter((id) => !coverCache.has(id));
+  const missing = wanted.filter((id) => !courseMetaCache.has(id));
   if (missing.length) {
     const { fsGet } = await import("./firestoreRest");
     await Promise.all(missing.map(async (id) => {
-      const d = await fsGet(`courses/${id}`, ["coverPhotoUrl"]);
-      const url = typeof d?.coverPhotoUrl === "string" && /^https?:\/\//.test(d.coverPhotoUrl) ? d.coverPhotoUrl : null;
-      coverCache.set(id, url);
+      const d = await fsGet(`courses/${id}`, ["coverPhotoUrl", "city", "state"]);
+      if (!d) { courseMetaCache.set(id, null); return; }
+      const url = typeof d.coverPhotoUrl === "string" && /^https?:\/\//.test(d.coverPhotoUrl) ? d.coverPhotoUrl : undefined;
+      courseMetaCache.set(id, {
+        cover: url,
+        city: typeof d.city === "string" && d.city ? d.city : undefined,
+        state: typeof d.state === "string" && d.state ? d.state : undefined,
+      });
     }));
   }
+  const out = new Map<string, CourseMeta>();
+  for (const id of wanted) { const m = courseMetaCache.get(id); if (m) out.set(id, m); }
+  return out;
+}
+export async function getCourseCovers(ids: string[]): Promise<Map<string, string>> {
+  const meta = await getCourseMeta(ids);
   const out = new Map<string, string>();
-  for (const id of wanted) { const u = coverCache.get(id); if (u) out.set(id, u); }
+  for (const [id, m] of meta) if (m.cover) out.set(id, m.cover);
   return out;
 }
 
