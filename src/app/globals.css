@@ -71,6 +71,22 @@ html { scroll-behavior: smooth; }
   outline: 2px solid var(--gold);
   outline-offset: 2px;
 }
+@keyframes ringPulse {
+  from { transform: scale(0.4); opacity: 0.9; }
+  to { transform: scale(1.6); opacity: 0; }
+}
+.events-scope .pulse-ring { position: relative; }
+.events-scope .pulse-ring::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  border: 1px solid var(--blue);
+  animation: ringPulse 2.2s ease-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .events-scope .pulse-ring::after { animation: none; }
+}
 @keyframes livePulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(143,189,227,0.45); }
   50% { box-shadow: 0 0 0 5px rgba(143,189,227,0); }

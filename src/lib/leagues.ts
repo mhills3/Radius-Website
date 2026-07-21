@@ -89,6 +89,7 @@ export interface LeagueEvent {
   status: "scheduled" | "active" | "complete" | "cancelled";
   roundCount: number; // 1 = weekly league night; >1 = multi-round event (cumulative total)
   holes: number;      // holes per round (9 / 18 / custom) — context for every score
+  capacity?: number;  // field cap; fill bars and spots-remaining render only when set
   buyIn?: number;     // dollars per player; the paid toggle × buyIn = collected pot
   kind?: string;        // EVENT_KINDS key — discovery category
   isPrivate?: boolean;  // private events are link/search-only, excluded from discovery
@@ -278,7 +279,7 @@ export async function getLeagueMembers(leagueId: string): Promise<LeagueMember[]
 // ---- Events ----
 
 /** Create one event per date (recurring = the caller passes every date in the season). */
-export async function createEvents(uid: string, league: League, input: { name: string; dates: number[]; courseId?: string; courseName?: string; format?: string; startFormat?: string; roundCount?: number; holes?: number; buyIn?: number; kind?: string; isPrivate?: boolean; description?: string; contactEmail?: string; contactPhone?: string }): Promise<LeagueEvent[]> {
+export async function createEvents(uid: string, league: League, input: { name: string; dates: number[]; courseId?: string; courseName?: string; format?: string; startFormat?: string; roundCount?: number; holes?: number; capacity?: number; buyIn?: number; kind?: string; isPrivate?: boolean; description?: string; contactEmail?: string; contactPhone?: string }): Promise<LeagueEvent[]> {
   const now = Date.now();
   const out: LeagueEvent[] = [];
   for (const date of input.dates) {
@@ -293,6 +294,7 @@ export async function createEvents(uid: string, league: League, input: { name: s
       startFormat: input.startFormat ?? league.settings.startFormat,
       status: "scheduled", roundCount: Math.max(1, Math.min(input.roundCount ?? 1, 6)),
       holes: Math.max(1, Math.min(input.holes ?? 18, 36)),
+      capacity: input.capacity && input.capacity > 0 ? Math.floor(input.capacity) : undefined,
       buyIn: input.buyIn && input.buyIn > 0 ? input.buyIn : undefined,
       kind: input.kind, isPrivate: input.isPrivate || undefined,
       description: input.description?.trim() || undefined,
@@ -316,6 +318,7 @@ function toEvent(id: string, d: any): LeagueEvent {
     status: (d.status ?? "scheduled") as LeagueEvent["status"],
     roundCount: Math.max(1, Number(d.roundCount) || 1),
     holes: Number(d.holes) > 0 ? Number(d.holes) : 18,
+    capacity: Number(d.capacity) > 0 ? Number(d.capacity) : undefined,
     buyIn: Number(d.buyIn) > 0 ? Number(d.buyIn) : undefined,
     kind: (d.kind as string) || undefined,
     isPrivate: d.isPrivate === true,
@@ -592,6 +595,29 @@ export async function reassignBagTags(league: League, eventId: string): Promise<
 /** The league's latest event that has any scores — the "current leaderboard". */
 export function latestScoredEvent(events: LeagueEvent[]): LeagueEvent | undefined {
   return [...events].reverse().find((e) => e.status === "complete" || e.status === "active");
+}
+
+// Per-hole pars from the event's course doc (holes[] or first layout) — powers
+// birdie/eagle/bogey dot coloring with REAL data only. Cached per course.
+const parCache = new Map<string, number[] | null>();
+export async function getCoursePars(courseId: string): Promise<number[] | null> {
+  if (parCache.has(courseId)) return parCache.get(courseId)!;
+  try {
+    const snap = await getDoc(doc(db, "courses", courseId));
+    let pars: number[] | null = null;
+    if (snap.exists()) {
+      const d = snap.data();
+      const holeList = Array.isArray(d.holes) && d.holes.length ? d.holes
+        : Array.isArray(d.layouts) && d.layouts[0]?.holes?.length ? d.layouts[0].holes : null;
+      if (holeList) {
+        pars = [...holeList]
+          .sort((a, b) => (Number(a.holeNumber) || 0) - (Number(b.holeNumber) || 0))
+          .map((h) => Number(h.par) > 0 ? Number(h.par) : 3);
+      }
+    }
+    parCache.set(courseId, pars);
+    return pars;
+  } catch { parCache.set(courseId, null); return null; }
 }
 
 // ---- Standings ----

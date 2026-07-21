@@ -68,6 +68,7 @@ export default function EventWizard() {
   const [customPlace, setCustomPlace] = useState("");
   const [byAddress, setByAddress] = useState(false);
   const [buyIn, setBuyIn] = useState("");
+  const [capacity, setCapacity] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -158,6 +159,7 @@ export default function EventWizard() {
         roundCount: isLeagueKind ? 1 : nCount,
         holes: holesN,
         buyIn: Number(buyIn) > 0 ? Number(buyIn) : undefined,
+        capacity: Number(capacity) > 0 ? Number(capacity) : undefined,
         kind, isPrivate, description: desc,
         contactEmail: email, contactPhone: phone,
       });
@@ -405,10 +407,16 @@ export default function EventWizard() {
 
           {step === "money" && (
             <div className="grid gap-5">
-              <label className="block">
-                <FieldLabel>Buy-in per player ($)</FieldLabel>
-                <input inputMode="numeric" value={buyIn} onChange={(e) => setBuyIn(e.target.value)} placeholder="0 — free event" className={`${inputCls} max-w-[200px]`} autoFocus />
-              </label>
+              <div className="flex flex-wrap gap-5">
+                <label className="block">
+                  <FieldLabel>Buy-in per player ($)</FieldLabel>
+                  <input inputMode="numeric" value={buyIn} onChange={(e) => setBuyIn(e.target.value)} placeholder="0, free event" className={`${inputCls} w-[180px]`} autoFocus />
+                </label>
+                <label className="block">
+                  <FieldLabel>Field cap <span className="normal-case tracking-normal text-[var(--cream-38)]">optional</span></FieldLabel>
+                  <input inputMode="numeric" value={capacity} onChange={(e) => setCapacity(e.target.value)} placeholder="72" className={`${inputCls} w-[140px]`} />
+                </label>
+              </div>
               <p className="max-w-md text-xs leading-relaxed text-[var(--sage-dim)]">Set a buy-in and the event gets a money board: who&apos;s paid, pot collected, payouts, and what&apos;s left. Leave it blank for a free event.</p>
             </div>
           )}
@@ -465,7 +473,7 @@ export default function EventWizard() {
                 { label: "Event dates", value: date ? `${new Date(`${date}T${time}`).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}${isLeagueKind && nCount > 1 ? ` · weekly × ${nCount}` : ""}${!isLeagueKind && nCount > 1 ? ` · ${nCount} rounds` : ""}` : "—", idx: 2 },
                 { label: "Holes per round", value: String(holesN), idx: 2 },
                 { label: "Event location", value: placeName || "—", idx: 3 },
-                { label: "Buy-in", value: Number(buyIn) > 0 ? `$${buyIn} per player` : "Free event", idx: 4 },
+                { label: "Buy-in", value: `${Number(buyIn) > 0 ? `$${buyIn} per player` : "Free event"}${Number(capacity) > 0 ? ` · cap ${capacity}` : ""}`, idx: 4 },
                 { label: "Contact information", value: [email.trim(), phone.trim()].filter(Boolean).join(" · ") || "Not listed", idx: 5 },
                 { label: "Logo", value: logoFile ? logoFile.name : "None", idx: 6 },
                 { label: "Staff", value: profile?.name || "You", idx: -1 },

@@ -57,6 +57,7 @@ export default function LeagueManagePage() {
   const [rounds, setRounds] = useState(1);
   const [buyIn, setBuyIn] = useState("");
   const [holes, setHoles] = useState(18);
+  const [cap, setCap] = useState("");
 
   useEffect(() => {
     getLeagueBySlug(slug).then((l) => {
@@ -117,7 +118,7 @@ export default function LeagueManagePage() {
     try {
       const base = new Date(`${startDate}T${startTime || "17:30"}`);
       const dates = Array.from({ length: Math.max(1, Math.min(weeks, 26)) }, (_, i) => base.getTime() + i * 7 * 24 * 3600_000);
-      const created = await createEvents(user.uid, league, { name: evName, dates, roundCount: rounds, holes, buyIn: Number(buyIn) > 0 ? Number(buyIn) : undefined, kind: "league" });
+      const created = await createEvents(user.uid, league, { name: evName, dates, roundCount: rounds, holes, buyIn: Number(buyIn) > 0 ? Number(buyIn) : undefined, capacity: Number(cap) > 0 ? Number(cap) : undefined, kind: "league" });
       setEvents((prev) => [...prev, ...created].sort((a, b) => a.date - b.date));
       setEvName("");
     } finally { setBusy(false); }
@@ -267,6 +268,7 @@ export default function LeagueManagePage() {
                   <div><FieldLabel>Rounds</FieldLabel><Segmented options={["1", "2", "3"]} value={String(rounds)} onChange={(v) => setRounds(Number(v))} /></div>
                   <div><FieldLabel>Holes per round</FieldLabel><Segmented options={["9", "18"]} value={String(holes)} onChange={(v) => setHoles(Number(v))} /></div>
                   <label className="block"><FieldLabel>Buy-in ($)</FieldLabel><input inputMode="numeric" value={buyIn} onChange={(e) => setBuyIn(e.target.value)} placeholder="0" className={inputCls} /></label>
+                  <label className="block"><FieldLabel>Field cap</FieldLabel><input inputMode="numeric" value={cap} onChange={(e) => setCap(e.target.value)} placeholder="none" className={inputCls} /></label>
                 </div>
                 <button onClick={schedule} disabled={!startDate || busy} className={`${btnGold} mt-5`}>{busy ? "Scheduling…" : weeks > 1 ? `Create ${weeks} events` : "Create event"}</button>
               </div>

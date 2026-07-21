@@ -35,10 +35,10 @@ export function Segmented({ options, value, onChange }: { options: string[]; val
   );
 }
 
-export function Avatar({ url, name, size = 36, ring = true }: { url?: string; name: string; size?: number; ring?: boolean }) {
+export function Avatar({ url, name, size = 36, ring = true, gold = false }: { url?: string; name: string; size?: number; ring?: boolean; gold?: boolean }) {
   return (
     <span
-      className={`relative grid shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--accent-green)] text-xs font-bold text-[var(--cream)] ${ring ? "ring-2 ring-[var(--hair)]" : ""}`}
+      className={`relative grid shrink-0 place-items-center overflow-hidden rounded-full text-xs font-bold ${gold ? "bg-[var(--gold)] text-[#1A2821]" : "bg-[var(--accent-green)] text-[var(--cream)]"} ${ring ? "ring-2 ring-[var(--hair)]" : ""}`}
       style={{ width: size, height: size }}
     >
       {(name || "?").charAt(0).toUpperCase()}

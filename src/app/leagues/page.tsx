@@ -144,18 +144,57 @@ export default function LeaguesPage() {
 
   return (
     <main className="mx-auto max-w-5xl px-5 pb-28">
-      {/* Header */}
-      <section className="flex flex-wrap items-end justify-between gap-6 pb-8 pt-14">
-        <div>
-          <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--blue)]">Events</p>
-          <h1 className="mt-2 font-[family-name:var(--font-heading)] text-4xl font-extrabold tracking-tight text-[var(--cream)]">Where the local scene plays.</h1>
-          <p className="mt-2 max-w-md text-sm leading-relaxed text-[var(--cream-60)]">Leagues, weeklies, and tournaments near you. Register in one tap, pay in the app, and score live on real course maps.</p>
+      {/* Hero — reference: rings motif, hero-grid, legend, live tile right */}
+      <section className="relative overflow-hidden border-b border-[var(--hair)] pb-14 pt-[68px]">
+        <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden opacity-50">
+          <svg className="absolute -top-[260px] right-[-180px]" width="900" height="900" viewBox="0 0 900 900" fill="none">
+            <circle cx="450" cy="450" r="440" stroke="rgba(244,241,232,.05)" />
+            <circle cx="450" cy="450" r="340" stroke="rgba(244,241,232,.06)" />
+            <circle cx="450" cy="450" r="240" stroke="rgba(143,189,227,.10)" />
+            <circle cx="450" cy="450" r="140" stroke="rgba(232,181,96,.12)" />
+            <circle cx="450" cy="450" r="4" fill="rgba(232,181,96,.5)" />
+          </svg>
         </div>
-        {user ? (
-          <Link href="/leagues/new" className={btnGold}>Create an event</Link>
-        ) : (
-          <Link href="/login" className={btnGold}>Sign in to start a league</Link>
-        )}
+        <div className={`relative grid items-center gap-14 ${live ? "lg:grid-cols-[1.1fr_0.9fr]" : ""}`}>
+          <div>
+            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--blue)]">Events</p>
+            <h1 className="mt-3 font-[family-name:var(--font-heading)] text-[clamp(34px,4.4vw,52px)] font-extrabold leading-[1.06] tracking-[-0.015em] text-[var(--cream)]">Where the local scene plays.</h1>
+            <p className="mt-4 max-w-[520px] text-base leading-relaxed text-[var(--cream-60)]">Leagues, weeklies, and tournaments near you. Register in one tap, pay in the app, and score live on real course maps.</p>
+            <div className="mt-8 flex items-center gap-7 font-mono text-[11.5px] tracking-[0.08em] text-[var(--cream-60)]">
+              <span className="flex items-center gap-2"><i className="h-[9px] w-[9px] rounded-full bg-[var(--blue)]" />The field</span>
+              <span className="flex items-center gap-2"><i className="h-[9px] w-[9px] rounded-full bg-[var(--gold)]" />You</span>
+            </div>
+          </div>
+          {live && (
+            <Link href={slugOf.get(live.ev.leagueId) ? `/leagues/${slugOf.get(live.ev.leagueId)}/e/${live.ev.id}` : "#"} className="relative block overflow-hidden rounded-2xl border border-[var(--hair)] bg-[var(--card)] p-6 transition-colors hover:border-[var(--hair-strong)]">
+              <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(600px 300px at 80% -10%, rgba(143,189,227,.10), transparent 60%)" }} />
+              <div className="relative">
+                <span className="inline-flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--blue)]">
+                  <i className="pulse-ring h-2 w-2 rounded-full bg-[var(--blue)]" />Live now
+                </span>
+                <h3 className="mt-3.5 font-[family-name:var(--font-heading)] text-[19px] font-bold text-[var(--cream)]">{live.ev.name}</h3>
+                <div className="text-[13px] text-[var(--cream-60)]">{live.ev.courseName ? `${live.ev.courseName} · ` : ""}Round in progress</div>
+                {live.top.length > 0 && (
+                  <div className="mt-5 border-t border-[var(--hair)]">
+                    {live.top.map((e, i) => {
+                      const you = cid != null && e.id === cid;
+                      const total = (e.score ?? e.holeScores!.filter((h) => h > 0).reduce((p, c) => p + c, 0)) + (e.penalty ?? 0);
+                      const thru = typeof e.score !== "number" ? (e.thruHole ?? e.holeScores?.filter((h) => h > 0).length) : null;
+                      return (
+                        <div key={e.id} className={`grid grid-cols-[34px_1fr_62px_62px] items-center border-b border-[var(--hair)] px-1 py-[11px] text-[13.5px] ${you ? "rounded-lg border-b-transparent bg-[var(--gold-dim)]" : ""}`}>
+                          <span className="font-mono text-[var(--cream-38)]">{i + 1}</span>
+                          <span className="flex items-center gap-2 font-semibold text-[var(--cream)]">{e.name}{you && <span className="rounded border border-[rgba(232,181,96,.4)] px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.14em] text-[var(--gold)]">You</span>}</span>
+                          <span className="text-right font-mono text-xs text-[var(--cream-38)]">{thru ? `THRU ${thru}` : ""}</span>
+                          <span className={`text-right font-mono font-bold ${you ? "text-[var(--gold)]" : "text-[var(--blue)]"}`}>{total}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </Link>
+          )}
+        </div>
       </section>
 
       {/* Create */}
@@ -193,7 +232,12 @@ export default function LeaguesPage() {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--sage-dim)]"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tab === "Events" ? "Search events, leagues, or courses" : "Search leagues or courses"} className={`${inputCls} pl-11`} />
         </div>
-        {tab === "Events" && <span className="text-sm text-[var(--sage-dim)]"><span className="font-mono font-bold text-[var(--cream)]">{shownEvents.length}</span> event{shownEvents.length === 1 ? "" : "s"}</span>}
+        {tab === "Events" && <span className="text-sm text-[var(--cream-38)]"><span className="font-mono font-bold text-[var(--cream)]">{shownEvents.length}</span> event{shownEvents.length === 1 ? "" : "s"}</span>}
+        {user ? (
+          <Link href="/leagues/new" className={btnGold}>Create an event</Link>
+        ) : (
+          <Link href="/login" className={btnGold}>Sign in</Link>
+        )}
       </section>
 
       {tab === "Events" ? (
@@ -203,32 +247,6 @@ export default function LeaguesPage() {
             {dayFilter && <button onClick={() => setDayFilter(null)} className="mt-3 w-full rounded-full bg-white/[0.05] py-2 text-xs font-bold text-[var(--sage)] transition-colors hover:text-[var(--cream)]">Clear day filter</button>}
           </div>
           <div>
-            {live && (
-              <Link href={slugOf.get(live.ev.leagueId) ? `/leagues/${slugOf.get(live.ev.leagueId)}/e/${live.ev.id}` : "#"} className={`${card} ${cardHover} mb-4 block p-5`}>
-                <div className="flex items-center gap-2.5">
-                  <span className="live-dot h-2 w-2 rounded-full bg-[var(--blue)]" />
-                  <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--blue)]">Live now</span>
-                  <span className="min-w-0 flex-1 truncate text-right font-[family-name:var(--font-heading)] text-sm font-bold text-[var(--cream)]">{live.ev.name}</span>
-                </div>
-                {live.top.length > 0 && (
-                  <div className="mt-3 grid gap-1.5">
-                    {live.top.map((e, i) => {
-                      const you = cid != null && e.id === cid;
-                      const total = (e.score ?? e.holeScores!.filter((h) => h > 0).reduce((p, c) => p + c, 0)) + (e.penalty ?? 0);
-                      return (
-                        <div key={e.id} className={`flex items-center gap-2.5 rounded-lg px-2 py-1 text-sm ${you ? "bg-[var(--gold-dim)]" : ""}`}>
-                          <span className="w-4 text-right font-mono text-xs font-bold text-[var(--cream-38)]">{i + 1}</span>
-                          <Avatar url={e.photo} name={e.name} size={22} ring={false} />
-                          <span className="min-w-0 flex-1 truncate font-semibold text-[var(--cream)]">{e.name}</span>
-                          {you && <span className="rounded-full bg-[var(--gold)] px-1.5 py-0.5 font-mono text-[8px] font-bold text-[#141B16]">YOU</span>}
-                          <span className={`font-mono text-sm font-bold ${you ? "text-[var(--gold)]" : "text-[var(--blue)]"}`}>{total}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </Link>
-            )}
             {shownEvents.length === 0 ? (
               <div className={`${card} grid place-items-center px-6 py-16 text-center`}>
                 <span className="grid h-14 w-14 place-items-center rounded-full bg-[var(--card-raised)] text-[var(--blue)]"><IconCalendar className="h-6 w-6" /></span>
@@ -256,6 +274,18 @@ export default function LeaguesPage() {
                           <span><span className="block font-mono text-[15px] font-bold text-[var(--blue)]">{ev.entryCount}</span><span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Players</span></span>
                           {ev.roundCount > 1 && <span><span className="block font-mono text-[15px] font-bold text-[var(--cream)]">{ev.roundCount}×{ev.holes}</span><span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Rounds</span></span>}
                         </div>
+                        {ev.capacity && (() => {
+                          const pct = Math.min(100, Math.round((ev.entryCount / ev.capacity!) * 100));
+                          const hot = pct >= 75;
+                          return (
+                            <div className="mt-4">
+                              <div className="h-[3px] overflow-hidden rounded-[2px] bg-[var(--hair)]">
+                                <i className={`block h-full rounded-[2px] ${hot ? "bg-[var(--gold)]" : "bg-[var(--blue)]"}`} style={{ width: `${pct}%` }} />
+                              </div>
+                              <div className="mt-2 font-mono text-[10.5px] tracking-[0.06em] text-[var(--cream-38)]"><b className="font-medium text-[var(--cream-60)]">{ev.entryCount} of {ev.capacity}</b> registered{hot ? " · filling fast" : ""}</div>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </>
                   );
