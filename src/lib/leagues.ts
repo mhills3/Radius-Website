@@ -33,7 +33,6 @@ export const START_FORMATS = ["Shotgun", "Tee times", "Flex"] as const;
 export const EVENT_KINDS = [
   { key: "league", label: "League / Weekly", icon: "📅", blurb: "A recurring league night — schedule the whole season at once." },
   { key: "tournament", label: "Tournament", icon: "🏆", blurb: "One-off or multi-round competition with cumulative scoring." },
-  { key: "glow", label: "Glow round", icon: "🌙", blurb: "After-dark round with glow discs and lit baskets." },
   { key: "clinic", label: "Clinic", icon: "🎯", blurb: "Instruction and practice — form work, putting, field sessions." },
   { key: "cleanup", label: "Course cleanup", icon: "🧹", blurb: "Work day — trimming, trash, tee pads. The course thanks you." },
   { key: "social", label: "Social round", icon: "🤝", blurb: "Casual meetup round — no pressure, no standings." },

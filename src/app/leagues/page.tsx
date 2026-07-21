@@ -130,9 +130,9 @@ export default function LeaguesPage() {
       {/* Header */}
       <section className="flex flex-wrap items-end justify-between gap-6 pb-8 pt-14">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[var(--gold)]">Radius Leagues</p>
-          <h1 className="mt-2 font-[family-name:var(--font-heading)] text-4xl font-extrabold tracking-tight text-[var(--cream)]">Find your league night</h1>
-          <p className="mt-2 max-w-md text-sm leading-relaxed text-[var(--sage)]">Weekly leagues and tournaments — live leaderboards, honest handicaps, bag tags that move. Free for everyone.</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[var(--gold)]">Radius Events</p>
+          <h1 className="mt-2 font-[family-name:var(--font-heading)] text-4xl font-extrabold tracking-tight text-[var(--cream)]">Find your next event</h1>
+          <p className="mt-2 max-w-md text-sm leading-relaxed text-[var(--sage)]">League nights, tournaments, and clinics — live leaderboards, honest handicaps, bag tags that move. Free for everyone.</p>
         </div>
         {user ? (
           <Link href="/leagues/new" className={btnGold}>＋ Create an event</Link>
