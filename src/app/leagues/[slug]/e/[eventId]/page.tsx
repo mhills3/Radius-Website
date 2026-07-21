@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { getLeagueBySlug, getEvent, getEntries, getCards, checkIn, updateEntry, removeEntry, generateCards, setEventStatus, computeStandings, isLeagueAdmin, eventPoints, type League, type LeagueEvent, type EventEntry, type EventCard } from "@/lib/leagues";
+import { getLeagueBySlug, getEvent, getCards, checkIn, updateEntry, removeEntry, generateCards, setEventStatus, computeStandings, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, type League, type LeagueEvent, type EventEntry, type EventCard } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 
 const fmtDate = (ms: number) => new Date(ms).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
@@ -21,15 +21,18 @@ export default function LeagueEventPage() {
   const [cardSize, setCardSize] = useState(4);
   const [scoreDraft, setScoreDraft] = useState<Record<string, string>>({});
   const [copied, setCopied] = useState(false);
+  const [division, setDivision] = useState("");
+  const [divFilter, setDivFilter] = useState("");
 
-  const reload = async (evId: string) => {
-    const [en, ca] = await Promise.all([getEntries(evId), getCards(evId)]);
-    setEntries(en); setCards(ca);
-  };
+  // Entries stream in live via onSnapshot (the same channel the apps' hole-score
+  // mirror will write into); only cards need explicit reloads.
+  const reload = async (evId: string) => setCards(await getCards(evId));
 
   useEffect(() => {
     getLeagueBySlug(slug).then(setLeague).catch(() => {});
     getEvent(eventId).then((ev) => { setEvent(ev ?? null); if (ev) reload(ev.id); }).catch(() => setEvent(null));
+    const unsub = subscribeEntries(eventId, setEntries);
+    return unsub;
   }, [slug, eventId]);
   useEffect(() => { if (user) resolveCanonicalId(user.uid).then(setCid).catch(() => {}); }, [user]);
 
@@ -40,7 +43,7 @@ export default function LeagueEventPage() {
   const doCheckIn = async () => {
     if (!user || !event || busy) return;
     setBusy(true);
-    try { await checkIn(user.uid, event); await reload(event.id); } finally { setBusy(false); }
+    try { await checkIn(user.uid, event, division || undefined); } finally { setBusy(false); }
   };
 
   const doGenerate = async () => {
@@ -55,7 +58,6 @@ export default function LeagueEventPage() {
     const score = raw === "" || raw == null ? undefined : Number(raw);
     if (score != null && !Number.isFinite(score)) return;
     await updateEntry(event.id, entryId, { score });
-    await reload(event.id);
   };
 
   const complete = async () => {
@@ -64,7 +66,7 @@ export default function LeagueEventPage() {
     try {
       await setEventStatus(event.id, "complete");
       setEvent({ ...event, status: "complete" });
-      await computeStandings(league.id);
+      await computeStandings(league.id, league.settings.bestN);
     } finally { setBusy(false); }
   };
 
@@ -85,21 +87,23 @@ export default function LeagueEventPage() {
   const patchEntry = async (entryId: string, patch: Parameters<typeof updateEntry>[2]) => {
     if (!event) return;
     await updateEntry(event.id, entryId, patch);
-    await reload(event.id);
   };
 
   const dropEntry = async (entryId: string) => {
     if (!event) return;
     await removeEntry(event.id, entryId);
-    await reload(event.id);
   };
 
   if (event === undefined) return <main className="mx-auto max-w-3xl px-5 pt-10 text-sm text-[var(--sage-dim)]">Loading…</main>;
   if (event === null) return <main className="mx-auto max-w-3xl px-5 pt-10"><p className="text-sm text-[var(--sage-dim)]">Event not found.</p></main>;
 
   const nameOf = (id: string) => entries.find((e) => e.id === id)?.name ?? "Player";
-  const ranked = [...entries].filter((e) => typeof e.score === "number" && !e.dnf).sort((a, b) => (a.score! + (a.penalty ?? 0)) - (b.score! + (b.penalty ?? 0)));
-  const unscored = entries.filter((e) => !ranked.includes(e));
+  const divisions = league?.settings.divisions ?? [];
+  const shown = divFilter ? entries.filter((e) => e.division === divFilter) : entries;
+  // Final score ranks first-class; a live in-progress total (mirrored hole scores) ranks too.
+  const scoreOf = (e: EventEntry) => (typeof e.score === "number" ? e.score : liveTotal(e));
+  const ranked = [...shown].filter((e) => scoreOf(e) != null && !e.dnf).sort((a, b) => (scoreOf(a)! + (a.penalty ?? 0)) - (scoreOf(b)! + (b.penalty ?? 0)));
+  const unscored = shown.filter((e) => !ranked.includes(e));
 
   return (
     <main className="mx-auto max-w-3xl px-5 pb-24 pt-10">
@@ -115,8 +119,18 @@ export default function LeagueEventPage() {
       {event.status !== "complete" && event.status !== "cancelled" && (
         <div className="mt-5 flex flex-wrap items-center gap-3">
           {user ? (
-            me ? <span className="rounded-full bg-[#5fcf80]/15 px-4 py-2 text-sm font-bold text-[#5fcf80]">✓ You&apos;re checked in</span>
-               : <button onClick={doCheckIn} disabled={busy} className="rounded-full bg-[var(--gold)] px-6 py-2.5 text-sm font-bold text-[#16221b] transition-colors hover:bg-[var(--gold-bright)] disabled:opacity-50">{busy ? "…" : "Check in"}</button>
+            me ? <span className="rounded-full bg-[#5fcf80]/15 px-4 py-2 text-sm font-bold text-[#5fcf80]">✓ You&apos;re checked in{me.division ? ` · ${me.division}` : ""}</span>
+               : (
+              <span className="flex items-center gap-2">
+                {divisions.length > 1 && (
+                  <select value={division} onChange={(e) => setDivision(e.target.value)} className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm text-[var(--cream)] outline-none focus:border-[var(--gold)]">
+                    <option value="">Division…</option>
+                    {divisions.map((d) => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                )}
+                <button onClick={doCheckIn} disabled={busy || (divisions.length > 1 && !division)} className="rounded-full bg-[var(--gold)] px-6 py-2.5 text-sm font-bold text-[#16221b] transition-colors hover:bg-[var(--gold-bright)] disabled:opacity-50">{busy ? "…" : "Check in"}</button>
+              </span>
+            )
           ) : (
             <p className="text-sm text-[var(--sage-dim)]"><Link href="/login" className="font-bold text-[var(--gold)] hover:underline">Sign in</Link> to check in.</p>
           )}
@@ -132,20 +146,32 @@ export default function LeagueEventPage() {
 
       {/* Leaderboard */}
       <section className="mt-8">
-        <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-[var(--gold)]">Leaderboard · {entries.length} player{entries.length === 1 ? "" : "s"}</h2>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-xs font-bold uppercase tracking-wide text-[var(--gold)]">Leaderboard · {entries.length} player{entries.length === 1 ? "" : "s"}</h2>
+          {divisions.length > 1 && entries.some((e) => e.division) && (
+            <div className="flex flex-wrap gap-1.5">
+              <button onClick={() => setDivFilter("")} className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide transition-colors ${!divFilter ? "bg-[var(--gold-dim)] text-[var(--gold)]" : "bg-white/[0.05] text-[var(--sage-dim)] hover:text-[var(--cream)]"}`}>All</button>
+              {divisions.map((d) => (
+                <button key={d} onClick={() => setDivFilter(divFilter === d ? "" : d)} className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide transition-colors ${divFilter === d ? "bg-[var(--gold-dim)] text-[var(--gold)]" : "bg-white/[0.05] text-[var(--sage-dim)] hover:text-[var(--cream)]"}`}>{d}</button>
+              ))}
+            </div>
+          )}
+        </div>
         {entries.length === 0 && <p className="text-sm text-[var(--sage-dim)]">Nobody has checked in yet.</p>}
         {entries.length > 0 && (
           <div className="overflow-hidden rounded-2xl border border-white/[0.07]">
             {[...ranked, ...unscored].map((e, i) => (
               <div key={e.id} className="flex items-center gap-3 border-b border-white/[0.05] bg-white/[0.02] px-4 py-2.5 text-sm last:border-b-0">
-                <span className="w-6 text-right font-mono text-xs text-[var(--sage-dim)]">{typeof e.score === "number" ? i + 1 : "—"}</span>
+                <span className="w-6 text-right font-mono text-xs text-[var(--sage-dim)]">{scoreOf(e) != null && !e.dnf ? i + 1 : "—"}</span>
                 <span className="grid h-7 w-7 shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--bg-mid)] text-[10px] font-bold text-[var(--cream)]">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   {e.photo ? <img src={e.photo} alt="" className="h-full w-full object-cover" /> : (e.name || "?").charAt(0).toUpperCase()}
                 </span>
                 <span className="min-w-0 flex-1 truncate font-semibold text-[var(--cream)]">
                   {e.username ? <Link href={`/u/${e.username}`} className="hover:underline">{e.name}</Link> : e.name}
+                  {e.division && !divFilter && <span className="ml-2 rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[var(--sage-dim)]">{e.division}</span>}
                   {e.dnf && <span className="ml-2 rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[var(--sage-dim)]">DNF</span>}
+                  {typeof e.score !== "number" && liveTotal(e) != null && <span className="ml-2 rounded-full bg-[#5fcf80]/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-[#5fcf80]">thru {e.thruHole ?? e.holeScores!.filter((n) => n > 0).length}</span>}
                 </span>
                 {!admin && (e.penalty ?? 0) > 0 && <span className="font-mono text-xs text-[#f08c8c]">+{e.penalty}</span>}
                 {event.status === "complete" && typeof e.score === "number" && <span className="font-mono text-xs text-[var(--gold)]">{points.get(e.id) ?? ""} pts</span>}
@@ -178,7 +204,7 @@ export default function LeagueEventPage() {
                     <button onClick={() => dropEntry(e.id)} title="Remove from event" className="rounded-full px-1.5 py-1 text-xs text-[var(--sage-dim)] transition-colors hover:text-[#f08c8c]">✕</button>
                   </span>
                 ) : (
-                  <span className="w-12 text-right font-mono font-bold text-[var(--cream)]">{typeof e.score === "number" ? e.score : ""}</span>
+                  <span className="w-12 text-right font-mono font-bold text-[var(--cream)]">{scoreOf(e) ?? ""}</span>
                 )}
               </div>
             ))}

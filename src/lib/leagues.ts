@@ -1,5 +1,5 @@
 import { db } from "./firebase";
-import { collection, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, deleteField, query, where, orderBy, limit } from "firebase/firestore";
+import { collection, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, deleteField, onSnapshot, query, where, orderBy, limit } from "firebase/firestore";
 import { getProfileLite, resolveCanonicalId } from "./account";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -29,10 +29,15 @@ export function freshId(): string {
 export const LEAGUE_FORMATS = ["Singles", "Doubles"] as const;
 export const START_FORMATS = ["Shotgun", "Tee times", "Flex"] as const;
 
+export const DEFAULT_DIVISIONS = ["Open"];
+export const SUGGESTED_DIVISIONS = ["Open", "FPO", "Advanced", "Intermediate", "Rec", "Juniors"];
+
 export interface LeagueSettings {
   format: string;      // LEAGUE_FORMATS
   startFormat: string; // START_FORMATS
   description: string;
+  divisions?: string[]; // PDGA-style or custom; players pick one at check-in when >1
+  bestN?: number;       // season standings count each player's best N event scores (0/undefined = all)
 }
 export interface League {
   id: string;
@@ -79,7 +84,7 @@ export interface EventEntry {
   checkedInAt: number;
   paid?: boolean;
   cardId?: string;
-  // Scores: Phase 1 is director-entered on web; publishedRoundId/leagueEventId
+  // Scores: director-entered on web today; publishedRoundId/leagueEventId
   // auto-attach arrives with the app-side stamp.
   score?: number;       // total strokes
   scoreToPar?: number;
@@ -87,6 +92,13 @@ export interface EventEntry {
   startingScore?: number;
   dnf?: boolean;
   publishedRoundId?: string;
+  // LIVE SCORING CONTRACT (app-side stamp target, Phase 2+): while a round is in
+  // progress, the SCORER's app mirrors the card's hole scores onto each cardmate's
+  // entry doc: holeScores (index 0 = hole 1; 0/absent = not played) + thruHole.
+  // Web subscribes and renders "thru N" live; `score` stays authoritative once the
+  // round publishes. Directors never edit these fields.
+  holeScores?: number[];
+  thruHole?: number;
 }
 export interface EventCard {
   id: string;
@@ -97,6 +109,7 @@ export interface EventCard {
 export interface StandingRow {
   id: string;
   name: string;
+  division?: string;
   played: number;
   points: number;
   bestToPar?: number;
@@ -136,7 +149,11 @@ function toLeague(id: string, d: any): League {
     courseId: d.courseId || undefined, courseName: d.courseName || undefined,
     adminIds: Array.isArray(d.adminIds) ? d.adminIds : [],
     createdById: d.createdById ?? "", createdByName: d.createdByName ?? "",
-    settings: { format: d.settings?.format ?? "Singles", startFormat: d.settings?.startFormat ?? "Shotgun", description: d.settings?.description ?? "" },
+    settings: {
+      format: d.settings?.format ?? "Singles", startFormat: d.settings?.startFormat ?? "Shotgun", description: d.settings?.description ?? "",
+      divisions: Array.isArray(d.settings?.divisions) && d.settings.divisions.length ? d.settings.divisions : DEFAULT_DIVISIONS,
+      bestN: Number(d.settings?.bestN) || undefined,
+    },
     memberCount: Number(d.memberCount) || 0, createdAt: Number(d.createdAt) || 0, lastUpdated: Number(d.lastUpdated) || 0,
   };
 }
@@ -166,6 +183,11 @@ export async function getAllLeagues(max = 50): Promise<League[]> {
 
 export function isLeagueAdmin(league: League, cid?: string | null): boolean {
   return !!cid && league.adminIds.includes(cid);
+}
+
+/** Director-side league settings update (field-scoped; never touches adminIds/identity). */
+export async function updateLeagueSettings(leagueId: string, settings: LeagueSettings): Promise<void> {
+  await setDoc(doc(db, "leagues", leagueId), { settings: JSON.parse(JSON.stringify(settings)), lastUpdated: Date.now() }, { merge: true });
 }
 
 export async function getLeagueMembers(leagueId: string): Promise<LeagueMember[]> {
@@ -267,26 +289,44 @@ export async function checkIn(uid: string, event: LeagueEvent, division?: string
   return { id: profile.canonicalId, name: profile.name, username: profile.username || undefined, photo: profile.profileImageUrl, division, checkedInAt: now };
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function toEntry(id: string, e: any): EventEntry {
+  return {
+    id, name: (e.name ?? "Player") as string, username: (e.username as string) || undefined,
+    photo: (e.photo as string) || undefined, division: (e.division as string) || undefined,
+    checkedInAt: Number(e.checkedInAt) || 0, paid: e.paid === true,
+    cardId: (e.cardId as string) || undefined,
+    score: typeof e.score === "number" ? e.score : undefined,
+    scoreToPar: typeof e.scoreToPar === "number" ? e.scoreToPar : undefined,
+    penalty: typeof e.penalty === "number" ? e.penalty : undefined,
+    startingScore: typeof e.startingScore === "number" ? e.startingScore : undefined,
+    dnf: e.dnf === true, publishedRoundId: (e.publishedRoundId as string) || undefined,
+    holeScores: Array.isArray(e.holeScores) ? (e.holeScores as number[]) : undefined,
+    thruHole: typeof e.thruHole === "number" ? e.thruHole : undefined,
+  };
+}
+
 export async function getEntries(eventId: string): Promise<EventEntry[]> {
   try {
     const snap = await getDocs(query(collection(db, "leagueEvents", eventId, "entries"), limit(200)));
-    return snap.docs
-      .map((d) => {
-        const e = d.data();
-        return {
-          id: d.id, name: (e.name ?? "Player") as string, username: (e.username as string) || undefined,
-          photo: (e.photo as string) || undefined, division: (e.division as string) || undefined,
-          checkedInAt: Number(e.checkedInAt) || 0, paid: e.paid === true,
-          cardId: (e.cardId as string) || undefined,
-          score: typeof e.score === "number" ? e.score : undefined,
-          scoreToPar: typeof e.scoreToPar === "number" ? e.scoreToPar : undefined,
-          penalty: typeof e.penalty === "number" ? e.penalty : undefined,
-          startingScore: typeof e.startingScore === "number" ? e.startingScore : undefined,
-          dnf: e.dnf === true, publishedRoundId: (e.publishedRoundId as string) || undefined,
-        };
-      })
-      .sort((a, b) => a.checkedInAt - b.checkedInAt);
+    return snap.docs.map((d) => toEntry(d.id, d.data())).sort((a, b) => a.checkedInAt - b.checkedInAt);
   } catch { return []; }
+}
+
+/** Live leaderboard: subscribe to the event's entries; fires on every score/entry write. */
+export function subscribeEntries(eventId: string, cb: (entries: EventEntry[]) => void): () => void {
+  return onSnapshot(
+    query(collection(db, "leagueEvents", eventId, "entries"), limit(200)),
+    (snap) => cb(snap.docs.map((d) => toEntry(d.id, d.data())).sort((a, b) => a.checkedInAt - b.checkedInAt)),
+    () => { /* keep last good state on listener errors */ }
+  );
+}
+
+/** Live total for an in-progress entry: sum of mirrored hole scores. */
+export function liveTotal(e: EventEntry): number | undefined {
+  if (!e.holeScores?.length) return undefined;
+  const played = e.holeScores.filter((n) => n > 0);
+  return played.length ? played.reduce((a, b) => a + b, 0) : undefined;
 }
 
 /** Director-side per-entry updates (paid flag, division moves, score entry, penalties, DNF). */
@@ -346,21 +386,25 @@ export function eventPoints(entries: EventEntry[]): Map<string, number> {
   return out;
 }
 
-export async function computeStandings(leagueId: string): Promise<StandingRow[]> {
+export async function computeStandings(leagueId: string, bestN?: number): Promise<StandingRow[]> {
   const events = (await getLeagueEvents(leagueId)).filter((e) => e.status === "complete");
-  const rows = new Map<string, StandingRow>();
+  const perPlayer = new Map<string, { name: string; division?: string; eventPts: number[]; bestToPar?: number }>();
   for (const ev of events) {
     const entries = await getEntries(ev.id);
     const pts = eventPoints(entries);
     for (const e of entries) {
-      const row = rows.get(e.id) ?? { id: e.id, name: e.name, played: 0, points: 0 };
-      row.played += 1;
-      row.points += pts.get(e.id) ?? 0;
-      if (typeof e.scoreToPar === "number") row.bestToPar = row.bestToPar == null ? e.scoreToPar : Math.min(row.bestToPar, e.scoreToPar);
-      rows.set(e.id, row);
+      const p = perPlayer.get(e.id) ?? { name: e.name, eventPts: [] };
+      p.eventPts.push(pts.get(e.id) ?? 0);
+      if (e.division) p.division = e.division; // latest event's division wins
+      if (typeof e.scoreToPar === "number") p.bestToPar = p.bestToPar == null ? e.scoreToPar : Math.min(p.bestToPar, e.scoreToPar);
+      perPlayer.set(e.id, p);
     }
   }
-  const list = [...rows.values()].sort((a, b) => b.points - a.points);
-  await setDoc(doc(db, "leagues", leagueId, "standings", "current"), { players: JSON.parse(JSON.stringify(list)), updatedAt: Date.now() }, { merge: true });
+  // best-N: only a player's top N event scores count toward the season (0/undefined = all).
+  const list: StandingRow[] = [...perPlayer.entries()].map(([id, p]) => {
+    const counted = bestN && bestN > 0 ? [...p.eventPts].sort((a, b) => b - a).slice(0, bestN) : p.eventPts;
+    return { id, name: p.name, division: p.division, played: p.eventPts.length, points: counted.reduce((a, b) => a + b, 0), bestToPar: p.bestToPar };
+  }).sort((a, b) => b.points - a.points);
+  await setDoc(doc(db, "leagues", leagueId, "standings", "current"), { players: JSON.parse(JSON.stringify(list)), bestN: bestN ?? null, updatedAt: Date.now() }, { merge: true });
   return list;
 }

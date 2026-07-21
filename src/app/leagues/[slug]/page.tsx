@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, createEvents, computeStandings, isLeagueAdmin, type League, type LeagueEvent, type LeagueMember, type StandingRow } from "@/lib/leagues";
+import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, createEvents, computeStandings, updateLeagueSettings, isLeagueAdmin, type League, type LeagueEvent, type LeagueMember, type StandingRow } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 
 const fmtDate = (ms: number) => new Date(ms).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
@@ -19,6 +19,12 @@ export default function LeaguePage() {
   const [members, setMembers] = useState<LeagueMember[]>([]);
   const [standings, setStandings] = useState<StandingRow[]>([]);
   const [cid, setCid] = useState<string | null>(null);
+
+  // League settings (director only)
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [divisionsDraft, setDivisionsDraft] = useState("");
+  const [bestNDraft, setBestNDraft] = useState("");
+  const [descDraft, setDescDraft] = useState("");
 
   // Event scheduler (director only)
   const [schedOpen, setSchedOpen] = useState(false);
@@ -35,7 +41,10 @@ export default function LeaguePage() {
       if (l) {
         getLeagueEvents(l.id).then(setEvents).catch(() => {});
         getLeagueMembers(l.id).then(setMembers).catch(() => {});
-        computeStandings(l.id).then(setStandings).catch(() => {});
+        computeStandings(l.id, l.settings.bestN).then(setStandings).catch(() => {});
+        setDivisionsDraft((l.settings.divisions ?? []).join(", "));
+        setBestNDraft(l.settings.bestN ? String(l.settings.bestN) : "");
+        setDescDraft(l.settings.description);
       }
     }).catch(() => setLeague(null));
   }, [slug]);
@@ -87,11 +96,47 @@ export default function LeaguePage() {
           {league.settings.description && <p className="mt-3 max-w-xl whitespace-pre-wrap text-sm text-[var(--text-body)]">{league.settings.description}</p>}
         </div>
         {admin && (
-          <button onClick={() => setSchedOpen((o) => !o)} className="shrink-0 rounded-full bg-[var(--gold)] px-5 py-2.5 text-sm font-bold text-[#16221b] transition-colors hover:bg-[var(--gold-bright)]">
-            {schedOpen ? "Cancel" : "Schedule events"}
-          </button>
+          <div className="flex shrink-0 gap-2">
+            <button onClick={() => { setSettingsOpen((o) => !o); setSchedOpen(false); }} className="rounded-full border border-white/15 px-5 py-2.5 text-sm font-bold text-[var(--cream)] transition-colors hover:bg-white/[0.06]">
+              {settingsOpen ? "Close" : "Settings"}
+            </button>
+            <button onClick={() => { setSchedOpen((o) => !o); setSettingsOpen(false); }} className="rounded-full bg-[var(--gold)] px-5 py-2.5 text-sm font-bold text-[#16221b] transition-colors hover:bg-[var(--gold-bright)]">
+              {schedOpen ? "Cancel" : "Schedule events"}
+            </button>
+          </div>
         )}
       </div>
+
+      {admin && settingsOpen && (
+        <div className="mt-6 space-y-3 rounded-2xl border border-white/[0.07] bg-white/[0.03] p-5">
+          <label className="block text-xs font-bold uppercase tracking-wide text-[var(--sage)]">Divisions <span className="font-normal normal-case text-[var(--sage-dim)]">— comma-separated; players pick one at check-in</span>
+            <input value={divisionsDraft} onChange={(e) => setDivisionsDraft(e.target.value)} placeholder="Open, FPO, Rec" className={field + " mt-1.5"} />
+          </label>
+          <label className="block text-xs font-bold uppercase tracking-wide text-[var(--sage)]">Best rounds counted <span className="font-normal normal-case text-[var(--sage-dim)]">— season standings use each player&apos;s best N events (blank = all)</span>
+            <input inputMode="numeric" value={bestNDraft} onChange={(e) => setBestNDraft(e.target.value)} placeholder="all" className={field + " mt-1.5 max-w-[120px]"} />
+          </label>
+          <label className="block text-xs font-bold uppercase tracking-wide text-[var(--sage)]">Description
+            <textarea value={descDraft} onChange={(e) => setDescDraft(e.target.value)} rows={2} className={field + " mt-1.5"} />
+          </label>
+          <button
+            onClick={async () => {
+              if (!league || busy) return;
+              setBusy(true);
+              try {
+                const divisions = divisionsDraft.split(",").map((s) => s.trim()).filter(Boolean);
+                const bestN = Number(bestNDraft) > 0 ? Math.floor(Number(bestNDraft)) : undefined;
+                const settings = { ...league.settings, divisions: divisions.length ? divisions : undefined, bestN, description: descDraft.trim() };
+                await updateLeagueSettings(league.id, settings);
+                setLeague({ ...league, settings: { ...settings, divisions: divisions.length ? divisions : ["Open"] } });
+                computeStandings(league.id, bestN).then(setStandings).catch(() => {});
+                setSettingsOpen(false);
+              } finally { setBusy(false); }
+            }}
+            disabled={busy}
+            className="rounded-full bg-[var(--gold)] px-6 py-2.5 text-sm font-bold text-[#16221b] transition-colors hover:bg-[var(--gold-bright)] disabled:opacity-50"
+          >{busy ? "Saving…" : "Save settings"}</button>
+        </div>
+      )}
 
       {admin && schedOpen && (
         <div className="mt-6 space-y-3 rounded-2xl border border-white/[0.07] bg-white/[0.03] p-5">
@@ -125,7 +170,7 @@ export default function LeaguePage() {
             {standings.map((s, i) => (
               <div key={s.id} className="flex items-center gap-3 border-b border-white/[0.05] bg-white/[0.02] px-4 py-2.5 text-sm last:border-b-0">
                 <span className="w-6 text-right font-mono text-xs text-[var(--sage-dim)]">{i + 1}</span>
-                <span className="min-w-0 flex-1 truncate font-semibold text-[var(--cream)]">{s.name}</span>
+                <span className="min-w-0 flex-1 truncate font-semibold text-[var(--cream)]">{s.name}{s.division && <span className="ml-2 rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[var(--sage-dim)]">{s.division}</span>}</span>
                 <span className="text-xs text-[var(--sage-dim)]">{s.played} played{s.bestToPar != null ? ` · best ${fmtToPar(s.bestToPar)}` : ""}</span>
                 <span className="w-12 text-right font-mono font-bold text-[var(--gold)]">{s.points}</span>
               </div>
