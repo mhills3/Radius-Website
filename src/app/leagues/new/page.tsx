@@ -17,8 +17,8 @@ type StepKey = "type" | "league" | "details" | "when" | "where" | "money" | "con
 const optionCard = (selected: boolean) =>
   `group flex w-full items-center gap-4 rounded-2xl border p-5 text-left transition-all ${
     selected
-      ? "border-[var(--gold)] bg-[var(--gold-dim)] shadow-[0_8px_28px_rgba(246,193,101,0.12)]"
-      : "border-white/[0.09] bg-white/[0.03] hover:-translate-y-0.5 hover:border-white/25"
+      ? "border-[var(--gold)] bg-gradient-to-br from-[rgba(246,193,101,0.16)] to-[rgba(246,193,101,0.05)] shadow-[0_10px_34px_rgba(246,193,101,0.14)]"
+      : "border-white/[0.09] bg-gradient-to-b from-white/[0.055] to-white/[0.02] hover:-translate-y-0.5 hover:border-[var(--gold)]/40 hover:shadow-[0_8px_24px_rgba(0,0,0,0.3)]"
   }`;
 
 function Radio({ on }: { on: boolean }) {
@@ -179,16 +179,70 @@ export default function EventWizard() {
     );
   }
 
+  const STEP_META: { key: StepKey; label: string; value?: string }[] = [
+    { key: "type", label: "Event type", value: kindMeta?.label },
+    { key: "league", label: "Who runs it", value: chosenLeague?.name ?? (leagueChoice === "new" ? newLeagueName.trim() || undefined : undefined) },
+    { key: "details", label: "Details", value: evName.trim() || undefined },
+    { key: "when", label: "Schedule", value: date ? `${new Date(`${date}T${time}`).toLocaleDateString(undefined, { month: "short", day: "numeric" })}${isLeagueKind && nCount > 1 ? ` · ×${nCount}` : !isLeagueKind && nCount > 1 ? ` · ${nCount} rds` : ""}` : undefined },
+    { key: "where", label: "Location", value: placeName || undefined },
+    { key: "money", label: "Buy-in", value: Number(buyIn) > 0 ? `$${buyIn}` : undefined },
+    { key: "contact", label: "Contact", value: email.trim() || phone.trim() || undefined },
+    { key: "logo", label: "Logo", value: logoFile ? "Added" : undefined },
+    { key: "review", label: "Review" },
+  ];
+
   return (
     <div className="relative">
-      <main className="mx-auto grid min-h-[80vh] max-w-6xl gap-10 px-5 pb-36 pt-14 lg:grid-cols-[1fr_1.15fr] lg:gap-16">
-        {/* Question */}
+      {/* Wizard backdrop: pronounced gold corner glow + forest counter-glow + range rings */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(1100px 700px at -8% -10%, rgba(246,193,101,0.16), transparent 58%)," +
+            "radial-gradient(800px 600px at 108% 112%, rgba(95,207,128,0.07), transparent 58%)",
+        }}
+      />
+      <svg viewBox="0 0 480 480" aria-hidden className="pointer-events-none absolute -left-40 top-[52%] hidden h-[440px] w-[440px] lg:block" fill="none">
+        {[90, 150, 210].map((r, i) => (
+          <circle key={r} cx="240" cy="240" r={r} stroke="var(--gold)" strokeOpacity={0.1 - i * 0.025} strokeWidth="1.5" strokeDasharray={i === 0 ? undefined : "3 7"} />
+        ))}
+        <circle cx="240" cy="150" r="5" fill="var(--gold)" fillOpacity="0.5" />
+        <circle cx="330" cy="300" r="4" fill="#5fcf80" fillOpacity="0.5" />
+      </svg>
+
+      <main className="relative mx-auto grid min-h-[80vh] max-w-6xl gap-10 px-5 pb-36 pt-14 lg:grid-cols-[1fr_1.15fr] lg:gap-16">
+        {/* Question + step rail */}
         <div className="lg:pt-16">
           <Link href="/leagues" className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--sage-dim)] transition-colors hover:text-[var(--gold)]">← Events</Link>
-          <h1 key={step} className="mt-5 max-w-md font-[family-name:var(--font-heading)] text-4xl font-extrabold leading-[1.06] tracking-tight text-[var(--cream)] animate-[fadeIn_0.3s_ease] sm:text-5xl">
+          <p className="mt-6 text-[11px] font-bold uppercase tracking-[0.22em] text-[var(--gold)]">Step {stepIdx + 1} of {steps.length}</p>
+          <h1 key={step} className="mt-3 max-w-md font-[family-name:var(--font-heading)] text-4xl font-extrabold leading-[1.06] tracking-tight text-[var(--cream)] animate-[fadeIn_0.3s_ease] sm:text-5xl">
             {QUESTION[step].title}
           </h1>
           {QUESTION[step].sub && <p className="mt-4 max-w-sm text-sm leading-relaxed text-[var(--sage)]">{QUESTION[step].sub}</p>}
+
+          {/* Answer rail: what you've locked in so far */}
+          <ol className="mt-10 hidden max-w-xs space-y-1 lg:block">
+            {STEP_META.map((s, i) => {
+              const done = i < stepIdx;
+              const current = i === stepIdx;
+              return (
+                <li key={s.key}>
+                  <button
+                    onClick={() => done && setStepIdx(i)}
+                    disabled={!done}
+                    className={`group flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left transition-colors ${done ? "hover:bg-white/[0.04]" : ""}`}
+                  >
+                    <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[9px] font-bold transition-colors ${
+                      current ? "bg-[var(--gold)] text-[#16221b]" : done ? "bg-[var(--gold-dim)] text-[var(--gold)]" : "bg-white/[0.05] text-[var(--sage-dim)]"
+                    }`}>{done ? "✓" : i + 1}</span>
+                    <span className={`text-xs font-bold ${current ? "text-[var(--cream)]" : done ? "text-[var(--sage)] group-hover:text-[var(--cream)]" : "text-[var(--sage-dim)]/60"}`}>{s.label}</span>
+                    {done && s.value && <span className="ml-auto max-w-[140px] truncate text-[11px] text-[var(--sage-dim)]">{s.value}</span>}
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
         </div>
 
         {/* Answer */}
@@ -197,7 +251,7 @@ export default function EventWizard() {
             <div className="grid gap-3">
               {EVENT_KINDS.map((k) => (
                 <button key={k.key} onClick={() => setKind(k.key)} className={optionCard(kind === k.key)}>
-                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white/[0.05] text-xl">{k.icon}</span>
+                  <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-xl text-xl ring-1 transition-colors ${kind === k.key ? "bg-[var(--gold)]/20 ring-[var(--gold)]/30" : "bg-[var(--gold-dim)] ring-white/[0.06]"}`}>{k.icon}</span>
                   <span className="min-w-0">
                     <span className="block font-[family-name:var(--font-heading)] font-bold text-[var(--cream)]">{k.label}</span>
                     <span className="mt-0.5 block text-xs text-[var(--sage)]">{k.blurb}</span>
