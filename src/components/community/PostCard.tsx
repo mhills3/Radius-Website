@@ -11,27 +11,40 @@ const fmtScore = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`);
 const scoreColor = (n: number) => (n < 0 ? "#5fcf80" : n === 0 ? "var(--cream)" : "#f08c8c");
 
 function Avatar({ url, name, size = 40 }: { url?: string; name: string; size?: number }) {
+  // Initial sits underneath; the photo overlays it and removes itself on load error, so a broken
+  // photo URL falls back cleanly to the letter instead of a broken-image icon.
   return (
-    <span className="grid shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--bg-mid)] text-sm font-bold text-[var(--cream)] ring-1 ring-white/10" style={{ width: size, height: size }}>
+    <span className="relative grid shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--bg-mid)] text-sm font-bold text-[var(--cream)] ring-1 ring-white/10" style={{ width: size, height: size }}>
+      {(name || "?").charAt(0).toUpperCase()}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      {url ? <img src={url} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" /> : (name || "?").charAt(0).toUpperCase()}
+      {url && <img src={url} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" onError={(e) => e.currentTarget.remove()} />}
     </span>
   );
 }
 
 export default function PostCard({ post, rank, myReaction, onReact, onOpen }: { post: FeedPost; rank?: RankInfo; myReaction?: string; onReact: (type: string) => void; onOpen: () => void }) {
+  // Author identity is clickable — link by handle (denormalized on the post, else the author's
+  // current user doc via rank); avatar falls back to the current profile photo the same way.
+  const handle = post.authorHandle || rank?.username;
+  const authorRow = (
+    <>
+      <Avatar url={post.authorPhotoUrl || rank?.photo} name={post.authorName} />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          <span className="truncate text-sm font-bold text-[var(--cream)] group-hover/author:underline">{post.authorName}</span>
+          <RankPill rank={rank} />
+        </div>
+        <div className="truncate text-xs text-[var(--sage-dim)]">{handle ? `@${handle} · ` : ""}{timeAgo(post.createdAt)}</div>
+      </div>
+    </>
+  );
   return (
     <article className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-4 transition-colors hover:border-white/[0.12]">
-      <div className="flex items-center gap-3">
-        <Avatar url={post.authorPhotoUrl} name={post.authorName} />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
-            <span className="truncate text-sm font-bold text-[var(--cream)]">{post.authorName}</span>
-            <RankPill rank={rank} />
-          </div>
-          <div className="truncate text-xs text-[var(--sage-dim)]">{post.authorHandle ? `@${post.authorHandle} · ` : ""}{timeAgo(post.createdAt)}</div>
-        </div>
-      </div>
+      {handle ? (
+        <Link href={`/u/${handle}`} onClick={(e) => e.stopPropagation()} className="group/author flex items-center gap-3">{authorRow}</Link>
+      ) : (
+        <div className="flex items-center gap-3">{authorRow}</div>
+      )}
 
       {post.text && <MentionText text={post.text} tagged={post.taggedUsers} className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-[var(--text-body)]" />}
 

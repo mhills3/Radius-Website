@@ -16,7 +16,7 @@ import {
   arrayRemove,
   deleteField,
 } from "firebase/firestore";
-import { getProfileLite } from "./account";
+import { getProfileLite, resolveCanonicalId } from "./account";
 import { createNotification } from "./notifications";
 import type { MentionUser } from "./leaderboard";
 
@@ -349,8 +349,17 @@ export async function getProfilePhotos(ids: string[]): Promise<Map<string, strin
   }
   await Promise.all(need.slice(0, 60).map(async (id) => {
     try {
-      const s = await getDoc(doc(db, "users", id));
-      const url = s.exists() ? safeHttp(s.data().profileImageUrl) : undefined;
+      // Comments written by the apps can carry a raw auth uid while the user's real doc lives
+      // under their canonical id — resolve the alias before giving up, or the photo looks missing.
+      let s = await getDoc(doc(db, "users", id));
+      let url = s.exists() ? safeHttp(s.data().profileImageUrl) : undefined;
+      if (!url) {
+        const cid = await resolveCanonicalId(id);
+        if (cid !== id) {
+          s = await getDoc(doc(db, "users", cid));
+          url = s.exists() ? safeHttp(s.data().profileImageUrl) : undefined;
+        }
+      }
       photoCache.set(id, url ?? null);
       if (url) out.set(id, url);
     } catch { photoCache.set(id, null); }

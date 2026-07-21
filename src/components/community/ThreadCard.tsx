@@ -1,18 +1,33 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { type Thread, type RankInfo, categoryColor } from "@/lib/community";
 import { timeAgo } from "@/lib/feed";
 import RankPill from "@/components/community/RankPill";
 
 export default function ThreadCard({ thread, rank }: { thread: Thread; rank?: RankInfo; onOpen?: () => void }) {
   const cc = categoryColor(thread.category);
+  const router = useRouter();
+  // The whole card is a link to the thread, so the author can't be a nested <a> — navigate
+  // to their profile imperatively instead.
+  const handle = thread.authorHandle || rank?.username;
   return (
     <Link href={`/community/thread/${thread.id}`} className="block w-full rounded-2xl border border-white/[0.07] bg-white/[0.03] p-4 text-left transition-all hover:-translate-y-0.5 hover:border-white/[0.12]">
       <div className="flex items-center gap-2">
         <span className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide" style={{ background: `${cc}26`, color: cc }}>{thread.category}</span>
         <span className="flex min-w-0 items-center gap-1.5 truncate text-xs text-[var(--sage-dim)]">
-          <span className="truncate font-semibold text-[var(--text-body)]">{thread.authorName}</span>
+          {handle ? (
+            <span
+              role="link"
+              tabIndex={0}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(`/u/${handle}`); }}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); router.push(`/u/${handle}`); } }}
+              className="truncate font-semibold text-[var(--text-body)] hover:underline"
+            >{thread.authorName}</span>
+          ) : (
+            <span className="truncate font-semibold text-[var(--text-body)]">{thread.authorName}</span>
+          )}
           <RankPill rank={rank} />
           <span>· {timeAgo(thread.createdAt)}</span>
         </span>

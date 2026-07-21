@@ -1,7 +1,7 @@
 import { db } from "./firebase";
 import { collection, getDocs, getDoc, doc, setDoc, updateDoc, increment, query, orderBy, limit } from "firebase/firestore";
 import { rankForIQ } from "./rank";
-import { getProfileLite } from "./account";
+import { getProfileLite, resolveCanonicalId } from "./account";
 
 function uuid(): string {
   return typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -133,6 +133,7 @@ export interface Reply {
   authorName: string;
   authorHandle?: string;
   authorPhotoUrl?: string;
+  authorId?: string;
   text: string;
   createdAt: number;
 }
@@ -147,6 +148,7 @@ export async function getThreadReplies(threadId: string): Promise<Reply[]> {
           authorName: (r.authorName ?? "Radius player") as string,
           authorHandle: (r.authorHandle as string | undefined)?.replace(/^@/, ""),
           authorPhotoUrl: safeHttp(r.authorPhotoUrl),
+          authorId: (r.createdById ?? r.authorId) as string | undefined,
           text: (r.text ?? r.body ?? "") as string,
           createdAt: ms(r.createdAt ?? r.date),
         };
@@ -225,11 +227,13 @@ export async function createMeetup(uid: string, input: { courseName: string; des
 }
 
 // ---- Author ranks (the disc-golf identity layer) ----
+// Rank fields are optional: every author with a user doc gets an entry (name/photo/username are
+// used as fallbacks for profile links + avatars), but only players with a Game IQ get rank fields.
 export interface RankInfo {
-  tier: string;
-  color: string;
-  level: number;
-  iq: number;
+  tier?: string;
+  color?: string;
+  level?: number;
+  iq?: number;
   name?: string;
   photo?: string;
   username?: string;
@@ -240,13 +244,24 @@ export async function getRanksFor(ids: string[]): Promise<Map<string, RankInfo>>
   await Promise.all(
     unique.map(async (id) => {
       try {
-        const s = await getDoc(doc(db, "users", id));
-        if (!s.exists()) return;
+        // App-written content can carry a raw auth uid while the user doc lives under the
+        // canonical id — resolve the alias before giving up (same fix as comment avatars).
+        let s = await getDoc(doc(db, "users", id));
+        if (!s.exists()) {
+          const cid = await resolveCanonicalId(id);
+          if (cid === id) return;
+          s = await getDoc(doc(db, "users", cid));
+          if (!s.exists()) return;
+        }
         const u = s.data();
+        const base: RankInfo = { name: u.name as string | undefined, photo: safeHttp(u.profileImageUrl), username: (u.username as string) || undefined };
         const iq = typeof u.gameIQ === "number" && u.gameIQ > 0 ? u.gameIQ : u.previousGameIQ ?? 0;
-        if (!iq) return;
-        const r = rankForIQ(iq);
-        out.set(id, { tier: r.tier, color: r.color, level: r.level, iq, name: u.name as string | undefined, photo: safeHttp(u.profileImageUrl), username: (u.username as string) || undefined });
+        if (iq) {
+          const r = rankForIQ(iq);
+          out.set(id, { ...base, tier: r.tier, color: r.color, level: r.level, iq });
+        } else {
+          out.set(id, base);
+        }
       } catch {
         /* skip */
       }

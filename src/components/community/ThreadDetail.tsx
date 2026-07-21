@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { type Thread, type Reply, type RankInfo, getThreadReplies, addReply, categoryColor } from "@/lib/community";
+import { type Thread, type Reply, type RankInfo, getThreadReplies, getRanksFor, addReply, categoryColor } from "@/lib/community";
 import { timeAgo } from "@/lib/feed";
 import RankPill from "@/components/community/RankPill";
 
@@ -21,6 +21,8 @@ export default function ThreadDetail({ thread, rank, uid, onClose }: { thread: T
   const [replies, setReplies] = useState<Reply[] | null>(null);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
+  // Current user-doc identity per reply author — fallback for missing denormalized photo/handle.
+  const [identities, setIdentities] = useState<Map<string, RankInfo>>(new Map());
   const submit = async () => {
     if (!uid || !text.trim() || busy) return;
     setBusy(true);
@@ -30,7 +32,11 @@ export default function ThreadDetail({ thread, rank, uid, onClose }: { thread: T
     } finally { setBusy(false); }
   };
   useEffect(() => {
-    getThreadReplies(thread.id).then(setReplies).catch(() => setReplies([]));
+    getThreadReplies(thread.id).then((list) => {
+      setReplies(list);
+      const ids = list.map((r) => r.authorId).filter(Boolean) as string[];
+      if (ids.length) getRanksFor(ids).then(setIdentities).catch(() => {});
+    }).catch(() => setReplies([]));
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -52,8 +58,18 @@ export default function ThreadDetail({ thread, rank, uid, onClose }: { thread: T
           <div className="border-b border-white/[0.07] p-5">
             <h2 className="font-[family-name:var(--font-heading)] text-2xl font-extrabold leading-tight tracking-tight">{thread.title}</h2>
             <div className="mt-2 flex items-center gap-2 text-sm text-[var(--sage-dim)]">
-              <Avatar url={thread.authorPhotoUrl} name={thread.authorName} size={28} />
-              <span className="font-semibold text-[var(--text-body)]">{thread.authorName}</span>
+              {(() => {
+                const handle = thread.authorHandle || rank?.username;
+                const inner = (
+                  <>
+                    <Avatar url={thread.authorPhotoUrl || rank?.photo} name={thread.authorName} size={28} />
+                    <span className="font-semibold text-[var(--text-body)] group-hover/author:underline">{thread.authorName}</span>
+                  </>
+                );
+                return handle
+                  ? <Link href={`/u/${handle}`} className="group/author flex items-center gap-2">{inner}</Link>
+                  : <span className="flex items-center gap-2">{inner}</span>;
+              })()}
               <RankPill rank={rank} />
               <span>· {timeAgo(thread.createdAt)}</span>
             </div>
@@ -83,18 +99,29 @@ export default function ThreadDetail({ thread, rank, uid, onClose }: { thread: T
             {replies === null && <p className="text-sm text-[var(--sage-dim)]">Loading…</p>}
             {replies !== null && replies.length === 0 && <p className="text-sm text-[var(--sage-dim)]">No replies yet.</p>}
             <div className="space-y-4">
-              {replies?.map((r) => (
+              {replies?.map((r) => {
+                const who = r.authorId ? identities.get(r.authorId) : undefined;
+                const handle = r.authorHandle || who?.username;
+                const nameEl = (
+                  <>{r.authorName}{handle ? <span className="ml-1.5 text-xs font-normal text-[var(--sage-dim)]">@{handle}</span> : null}</>
+                );
+                return (
                 <div key={r.id} className="flex gap-3">
-                  <Avatar url={r.authorPhotoUrl} name={r.authorName} size={32} />
+                  {handle ? (
+                    <Link href={`/u/${handle}`} aria-label={`${r.authorName}'s profile`}><Avatar url={r.authorPhotoUrl || who?.photo} name={r.authorName} size={32} /></Link>
+                  ) : (
+                    <Avatar url={r.authorPhotoUrl || who?.photo} name={r.authorName} size={32} />
+                  )}
                   <div className="min-w-0 flex-1">
                     <div className="rounded-2xl bg-white/[0.05] px-3.5 py-2.5">
-                      <div className="text-sm font-bold text-[var(--cream)]">{r.authorName}{r.authorHandle ? <span className="ml-1.5 text-xs font-normal text-[var(--sage-dim)]">@{r.authorHandle}</span> : null}</div>
+                      <div className="text-sm font-bold text-[var(--cream)]">{handle ? <Link href={`/u/${handle}`} className="hover:underline">{nameEl}</Link> : nameEl}</div>
                       <div className="whitespace-pre-wrap text-[14px] leading-relaxed text-[var(--text-body)]">{r.text}</div>
                     </div>
                     <div className="mt-1 pl-1 text-xs text-[var(--sage-dim)]">{timeAgo(r.createdAt)}</div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

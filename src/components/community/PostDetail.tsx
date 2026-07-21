@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { type FeedPost, type Comment, getComments, addComment, toggleCommentLike, getLikedCommentIds, timeAgo } from "@/lib/feed";
+import { getRanksFor, type RankInfo } from "@/lib/community";
 import { createNotification } from "@/lib/notifications";
 import { type MentionUser } from "@/lib/leaderboard";
 import ReactionBar from "@/components/community/ReactionBar";
@@ -33,14 +34,21 @@ export default function PostDetail({ post, uid, myReaction, onReact, onClose, on
   const [pickerOpen, setPickerOpen] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [liked, setLiked] = useState<Set<string>>(new Set());
+  // Current user-doc identity (photo/username) per author id — fallback for denormalized
+  // authorPhotoUrl/authorHandle that older app-written posts and comments never stored.
+  const [identities, setIdentities] = useState<Map<string, RankInfo>>(new Map());
 
   useEffect(() => {
-    getComments(post.id).then(setComments).catch(() => setComments([]));
+    getComments(post.id).then((list) => {
+      setComments(list);
+      const ids = [post.authorId, ...list.map((c) => c.authorId)].filter(Boolean) as string[];
+      if (ids.length) getRanksFor(ids).then(setIdentities).catch(() => {});
+    }).catch(() => setComments([]));
     if (uid) getLikedCommentIds(uid, post.id).then(setLiked).catch(() => {});
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [post.id, onClose, uid]);
+  }, [post.id, post.authorId, onClose, uid]);
 
   const likeComment = (c: Comment) => {
     if (!uid) return;
@@ -72,12 +80,22 @@ export default function PostDetail({ post, uid, myReaction, onReact, onClose, on
     } finally { setBusy(false); }
   };
 
-  const Bubble = ({ c, isReply }: { c: Comment; isReply?: boolean }) => (
+  const Bubble = ({ c, isReply }: { c: Comment; isReply?: boolean }) => {
+    const who = c.authorId ? identities.get(c.authorId) : undefined;
+    const handle = c.authorHandle || who?.username;
+    const nameEl = (
+      <>{c.authorName}{handle ? <span className="ml-1.5 text-xs font-normal text-[var(--sage-dim)]">@{handle}</span> : null}</>
+    );
+    return (
     <div className="flex gap-3">
-      <Avatar url={c.authorPhotoUrl} name={c.authorName} size={isReply ? 28 : 32} />
+      {handle ? (
+        <Link href={`/u/${handle}`} aria-label={`${c.authorName}'s profile`}><Avatar url={c.authorPhotoUrl || who?.photo} name={c.authorName} size={isReply ? 28 : 32} /></Link>
+      ) : (
+        <Avatar url={c.authorPhotoUrl || who?.photo} name={c.authorName} size={isReply ? 28 : 32} />
+      )}
       <div className="min-w-0 flex-1">
         <div className="rounded-2xl bg-white/[0.05] px-3.5 py-2.5">
-          <div className="text-sm font-bold text-[var(--cream)]">{c.authorName}{c.authorHandle ? <span className="ml-1.5 text-xs font-normal text-[var(--sage-dim)]">@{c.authorHandle}</span> : null}</div>
+          <div className="text-sm font-bold text-[var(--cream)]">{handle ? <Link href={`/u/${handle}`} className="hover:underline">{nameEl}</Link> : nameEl}</div>
           <MentionText text={c.text} tagged={c.taggedUsers} className="whitespace-pre-wrap text-[14px] leading-relaxed text-[var(--text-body)]" />
           {c.taggedUsers && c.taggedUsers.length > 0 && (
             <div className="mt-1 flex flex-wrap gap-x-1 text-xs text-[#4d94fa]">{c.taggedUsers.map((u) => <Link key={u.id} href={`/u/${u.username}`} className="hover:underline">@{u.username}</Link>)}</div>
@@ -93,6 +111,18 @@ export default function PostDetail({ post, uid, myReaction, onReact, onClose, on
         </div>
       </div>
     </div>
+    );
+  };
+
+  const postHandle = post.authorHandle || (post.authorId ? identities.get(post.authorId)?.username : undefined);
+  const postAuthorRow = (
+    <>
+      <Avatar url={post.authorPhotoUrl || (post.authorId ? identities.get(post.authorId)?.photo : undefined)} name={post.authorName} size={40} />
+      <div className="min-w-0">
+        <div className="truncate text-sm font-bold group-hover/author:underline">{post.authorName}</div>
+        <div className="truncate text-xs text-[var(--sage-dim)]">{postHandle ? `@${postHandle} · ` : ""}{timeAgo(post.createdAt)}</div>
+      </div>
+    </>
   );
 
   return (
@@ -108,13 +138,11 @@ export default function PostDetail({ post, uid, myReaction, onReact, onClose, on
 
         <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="border-b border-white/[0.07] p-5">
-            <div className="flex items-center gap-3">
-              <Avatar url={post.authorPhotoUrl} name={post.authorName} size={40} />
-              <div className="min-w-0">
-                <div className="truncate text-sm font-bold">{post.authorName}</div>
-                <div className="truncate text-xs text-[var(--sage-dim)]">{post.authorHandle ? `@${post.authorHandle} · ` : ""}{timeAgo(post.createdAt)}</div>
-              </div>
-            </div>
+            {postHandle ? (
+              <Link href={`/u/${postHandle}`} className="group/author flex items-center gap-3">{postAuthorRow}</Link>
+            ) : (
+              <div className="flex items-center gap-3">{postAuthorRow}</div>
+            )}
             {post.text && <MentionText text={post.text} tagged={post.taggedUsers} className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-[var(--text-body)]" />}
             {post.linkedCourseName && (
               <div className="mt-3 flex items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.03] p-3">
