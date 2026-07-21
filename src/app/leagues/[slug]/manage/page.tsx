@@ -138,12 +138,13 @@ export default function LeagueManagePage() {
 
   const EventRow = ({ ev }: { ev: LeagueEvent }) => (
     <Link href={`/leagues/${league.slug}/e/${ev.id}`} className={`${card} ${cardHover} group flex items-center gap-3.5 p-3.5`}>
-      <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[var(--card-raised)] font-mono text-sm font-bold leading-none text-[var(--cream)]">
-        {new Date(ev.date).getDate()}
+      <div className="w-9 shrink-0 font-mono leading-[1.15]">
+        <div className="text-[9.5px] uppercase tracking-[0.2em] text-[var(--cream-38)]">{new Date(ev.date).toLocaleDateString(undefined, { month: "short" })}</div>
+        <div className="text-[20px] font-bold text-[var(--cream)]">{new Date(ev.date).getDate()}</div>
       </div>
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-bold text-[var(--cream)]">{ev.name}</div>
-        <div className="truncate text-xs text-[var(--sage-dim)]">{fmtDate(ev.date)} · {ev.entryCount} in</div>
+        <div className="truncate text-xs text-[var(--cream-38)]">{fmtDate(ev.date)}{ev.entryCount > 0 ? <> · <span className="font-mono">{ev.entryCount}</span> in</> : ""}</div>
       </div>
       {ev.status === "scheduled" && Date.now() >= ev.date && Date.now() <= ev.date + 6 * 3600_000 && ev.entryCount > 0 ? (
         <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--blue-dim)] px-2 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.1em] text-[var(--blue)]"><span className="live-dot h-1 w-1 rounded-full bg-[var(--blue)]" />Live</span>
@@ -187,8 +188,8 @@ export default function LeagueManagePage() {
                   {checklist.map((c, ci) => {
                     const isNext = !c.done && checklist.findIndex((x) => !x.done) === ci;
                     return (
-                    <button key={c.label} onClick={() => setSection(c.go)} className={`group flex items-center gap-3 rounded-xl border border-[var(--hair)] bg-[var(--forest)] px-4 py-3 text-left transition-colors hover:border-[var(--hair-strong)] ${isNext ? "border-l-[3px] border-l-[var(--gold)] bg-[var(--gold-dim)]/40" : ""}`}>
-                      <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[10px] font-bold ${c.done ? "bg-[var(--gold)] text-[#141B16]" : "border border-[var(--hair-strong)] text-transparent"}`}>✓</span>
+                    <button key={c.label} onClick={() => setSection(c.go)} className={`group flex items-center gap-3 rounded-xl border border-[var(--hair)] bg-[var(--forest)] px-4 py-3 text-left transition-colors hover:border-[var(--hair-strong)] ${isNext ? "border-l-[3px] border-l-[rgba(232,181,96,0.45)]" : ""}`}>
+                      <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[10px] font-bold ${c.done ? "bg-[var(--gold)] text-[#141B16]" : isNext ? "border border-[var(--gold)]/60 text-transparent" : "border border-[var(--hair-strong)] text-transparent"}`}>✓</span>
                       <span className="min-w-0 flex-1">
                         <span className={`block text-sm font-bold ${c.done ? "text-[var(--cream-38)] line-through decoration-[var(--hair-strong)]" : "text-[var(--cream)]"}`}>{c.label}</span>
                         <span className="block text-xs text-[var(--cream-38)]">{c.hint}</span>
@@ -203,17 +204,17 @@ export default function LeagueManagePage() {
               {/* Quick navigation */}
               <div className="grid gap-3 sm:grid-cols-3">
                 <Link href="/leagues/new" className={`${card} ${cardHover} group p-5`}>
-                  <span className="grid h-11 w-11 place-items-center rounded-xl bg-[var(--gold-dim)] text-[var(--gold)]"><IconPlus /></span>
+                  <span className="grid h-11 w-11 place-items-center rounded-[10px] bg-[var(--gold-dim)] text-[var(--gold)]"><IconPlus /></span>
                   <div className="mt-3 font-[family-name:var(--font-heading)] font-bold text-[var(--cream)]">Create event</div>
                   <div className="mt-0.5 text-xs text-[var(--cream-60)]">List a night, a season, or a tournament.</div>
                 </Link>
                 <button onClick={() => setSection("events")} className={`${card} ${cardHover} group p-6 text-left`}>
-                  <span className="grid h-11 w-11 place-items-center rounded-xl bg-[var(--gold-dim)] text-[var(--gold)]"><IconCalendar /></span>
+                  <span className="grid h-11 w-11 place-items-center rounded-[10px] bg-[var(--gold-dim)] text-[var(--gold)]"><IconCalendar /></span>
                   <div className="mt-3 font-[family-name:var(--font-heading)] font-bold text-[var(--cream)]">All events</div>
                   <div className="mt-0.5 text-xs text-[var(--cream-60)]">{upcoming.length} upcoming · {past.length} past</div>
                 </button>
                 <button onClick={() => setSection("members")} className={`${card} ${cardHover} group p-6 text-left`}>
-                  <span className="grid h-11 w-11 place-items-center rounded-xl bg-[var(--gold-dim)] text-[var(--gold)]"><IconUsers /></span>
+                  <span className="grid h-11 w-11 place-items-center rounded-[10px] bg-[var(--gold-dim)] text-[var(--gold)]"><IconUsers /></span>
                   <div className="mt-3 font-[family-name:var(--font-heading)] font-bold text-[var(--cream)]">Members</div>
                   <div className="mt-0.5 text-xs text-[var(--cream-60)]">{members.length} member{members.length === 1 ? "" : "s"} · manage roles</div>
                 </button>
