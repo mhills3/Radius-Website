@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, createEvents, computeStandings, updateLeagueSettings, isLeagueAdmin, type League, type LeagueEvent, type LeagueMember, type StandingRow } from "@/lib/leagues";
+import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRole, isLeagueAdmin, type League, type LeagueEvent, type LeagueMember, type StandingRow } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 
 const fmtDate = (ms: number) => new Date(ms).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
@@ -27,6 +27,8 @@ export default function LeaguePage() {
   const [descDraft, setDescDraft] = useState("");
   const [hcpPctDraft, setHcpPctDraft] = useState("");
   const [hcpCapDraft, setHcpCapDraft] = useState("");
+  const [bagTagsDraft, setBagTagsDraft] = useState(false);
+  const [acePotDraft, setAcePotDraft] = useState("");
 
   // Event scheduler (director only)
   const [schedOpen, setSchedOpen] = useState(false);
@@ -34,6 +36,8 @@ export default function LeaguePage() {
   const [startDate, setStartDate] = useState("");
   const [startTime, setStartTime] = useState("17:30");
   const [weeks, setWeeks] = useState(1);
+  const [rounds, setRounds] = useState(1);
+  const [buyIn, setBuyIn] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
@@ -49,6 +53,8 @@ export default function LeaguePage() {
         setDescDraft(l.settings.description);
         setHcpPctDraft(l.settings.handicapPercent ? String(l.settings.handicapPercent) : "");
         setHcpCapDraft(l.settings.handicapCap ? String(l.settings.handicapCap) : "");
+        setBagTagsDraft(l.settings.bagTags === true);
+        setAcePotDraft(l.acePotBalance != null ? String(l.acePotBalance) : "");
       }
     }).catch(() => setLeague(null));
   }, [slug]);
@@ -65,7 +71,7 @@ export default function LeaguePage() {
     try {
       const base = new Date(`${startDate}T${startTime || "17:30"}`);
       const dates = Array.from({ length: Math.max(1, Math.min(weeks, 26)) }, (_, i) => base.getTime() + i * 7 * 24 * 3600_000);
-      const created = await createEvents(user.uid, league, { name: evName, dates });
+      const created = await createEvents(user.uid, league, { name: evName, dates, roundCount: rounds, buyIn: Number(buyIn) > 0 ? Number(buyIn) : undefined });
       setEvents((prev) => [...prev, ...created].sort((a, b) => a.date - b.date));
       setSchedOpen(false); setEvName("");
     } catch (e) {
@@ -97,6 +103,7 @@ export default function LeaguePage() {
         <div>
           <h1 className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-tight text-[var(--cream)]">{league.name}</h1>
           <p className="mt-1 text-sm text-[var(--sage)]">{league.courseName ? `${league.courseName} · ` : ""}{league.settings.format} · {league.settings.startFormat} · run by {league.createdByName}</p>
+          {(league.acePotBalance ?? 0) > 0 && <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[var(--gold-dim)] px-3 py-1 text-xs font-bold text-[var(--gold)]">🎯 Ace pot · ${league.acePotBalance}</p>}
           {league.settings.description && <p className="mt-3 max-w-xl whitespace-pre-wrap text-sm text-[var(--text-body)]">{league.settings.description}</p>}
         </div>
         {admin && (
@@ -128,6 +135,15 @@ export default function LeaguePage() {
             </label>
           </div>
           <p className="text-xs text-[var(--sage-dim)]">The handicap formula is public: handicap = % × average of (player score − field average) over the player&apos;s last 5 league rounds, capped. Directors can override any player&apos;s adjustment on the event page.</p>
+          <div className="flex flex-wrap items-end gap-4">
+            <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[var(--sage)]">
+              <input type="checkbox" checked={bagTagsDraft} onChange={(e) => setBagTagsDraft(e.target.checked)} className="h-4 w-4 accent-[var(--gold)]" />
+              Bag tags <span className="font-normal normal-case text-[var(--sage-dim)]">— tags reassign by finish when an event completes</span>
+            </label>
+            <label className="block text-xs font-bold uppercase tracking-wide text-[var(--sage)]">Ace pot balance ($)
+              <input inputMode="numeric" value={acePotDraft} onChange={(e) => setAcePotDraft(e.target.value)} placeholder="0" className={field + " mt-1.5 max-w-[120px]"} />
+            </label>
+          </div>
           <label className="block text-xs font-bold uppercase tracking-wide text-[var(--sage)]">Description
             <textarea value={descDraft} onChange={(e) => setDescDraft(e.target.value)} rows={2} className={field + " mt-1.5"} />
           </label>
@@ -140,9 +156,11 @@ export default function LeaguePage() {
                 const bestN = Number(bestNDraft) > 0 ? Math.floor(Number(bestNDraft)) : undefined;
                 const handicapPercent = Number(hcpPctDraft) > 0 ? Math.min(150, Math.floor(Number(hcpPctDraft))) : undefined;
                 const handicapCap = Number(hcpCapDraft) > 0 ? Math.floor(Number(hcpCapDraft)) : undefined;
-                const settings = { ...league.settings, divisions: divisions.length ? divisions : undefined, bestN, handicapPercent, handicapCap, description: descDraft.trim() };
+                const settings = { ...league.settings, divisions: divisions.length ? divisions : undefined, bestN, handicapPercent, handicapCap, bagTags: bagTagsDraft, description: descDraft.trim() };
                 await updateLeagueSettings(league.id, settings);
-                setLeague({ ...league, settings: { ...settings, divisions: divisions.length ? divisions : ["Open"] } });
+                const acePot = Number(acePotDraft) >= 0 && acePotDraft.trim() !== "" ? Number(acePotDraft) : undefined;
+                if (acePot !== league.acePotBalance && acePot != null) await setAcePot(league.id, acePot);
+                setLeague({ ...league, acePotBalance: acePot ?? league.acePotBalance, settings: { ...settings, divisions: divisions.length ? divisions : ["Open"] } });
                 computeStandings(league.id, bestN).then(setStandings).catch(() => {});
                 setSettingsOpen(false);
               } finally { setBusy(false); }
@@ -163,7 +181,18 @@ export default function LeaguePage() {
               repeat weekly ×
               <input type="number" min={1} max={26} value={weeks} onChange={(e) => setWeeks(Number(e.target.value) || 1)} className={field + " w-20"} />
             </label>
+            <label className="flex items-center gap-2 text-sm text-[var(--sage)]">
+              rounds
+              <select value={rounds} onChange={(e) => setRounds(Number(e.target.value))} className={field + " w-20"}>
+                {[1, 2, 3, 4].map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </label>
+            <label className="flex items-center gap-2 text-sm text-[var(--sage)]">
+              buy-in $
+              <input inputMode="numeric" value={buyIn} onChange={(e) => setBuyIn(e.target.value)} placeholder="0" className={field + " w-20"} />
+            </label>
           </div>
+          {rounds > 1 && <p className="text-xs text-[var(--sage-dim)]">Multi-round event: the leaderboard totals all {rounds} rounds (tournament-style cumulative scoring).</p>}
           {weeks > 1 && <p className="text-xs text-[var(--sage-dim)]">This will create {weeks} events, one per week.</p>}
           {err && <p className="text-sm text-[#f08c8c]">{err}</p>}
           <button onClick={schedule} disabled={!startDate || busy} className="rounded-full bg-[var(--gold)] px-6 py-2.5 text-sm font-bold text-[#16221b] transition-colors hover:bg-[var(--gold-bright)] disabled:cursor-not-allowed disabled:opacity-50">
@@ -211,7 +240,20 @@ export default function LeaguePage() {
                 {m.photo ? <img src={m.photo} alt="" className="h-full w-full object-cover" /> : (m.name || "?").charAt(0).toUpperCase()}
               </span>
               {m.username ? <Link href={`/u/${m.username}`} className="hover:underline">{m.name}</Link> : m.name}
+              {typeof m.tag === "number" && <span className="rounded-full bg-white/[0.08] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[var(--cream)]">#{m.tag}</span>}
               {m.role !== "member" && <span className="rounded-full bg-[var(--gold-dim)] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[var(--gold)]">{m.role}</span>}
+              {admin && m.role !== "owner" && (
+                <button
+                  onClick={async () => {
+                    const role = m.role === "director" ? "member" : "director";
+                    await setMemberRole(league.id, m.id, role);
+                    setMembers((cur) => cur.map((x) => (x.id === m.id ? { ...x, role } : x)));
+                    setLeague({ ...league, adminIds: role === "director" ? [...league.adminIds, m.id] : league.adminIds.filter((id) => id !== m.id) });
+                  }}
+                  title={m.role === "director" ? "Demote to member" : "Promote to director"}
+                  className="text-[10px] font-bold text-[var(--sage-dim)] hover:text-[var(--gold)]"
+                >{m.role === "director" ? "demote" : "promote"}</button>
+              )}
             </span>
           ))}
         </div>

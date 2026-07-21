@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { getLeagueBySlug, getEvent, getCards, checkIn, updateEntry, removeEntry, generateCards, setEventStatus, computeStandings, computeHandicaps, applyHandicaps, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, type League, type LeagueEvent, type EventEntry, type EventCard } from "@/lib/leagues";
+import { getLeagueBySlug, getEvent, getCards, checkIn, updateEntry, removeEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, reassignBagTags, computeStandings, computeHandicaps, applyHandicaps, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, type League, type LeagueEvent, type EventEntry, type EventCard } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 
 const fmtDate = (ms: number) => new Date(ms).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
@@ -66,7 +66,21 @@ export default function LeagueEventPage() {
     try {
       await setEventStatus(event.id, "complete");
       setEvent({ ...event, status: "complete" });
+      if (league.settings.bagTags) {
+        const changes = await reassignBagTags(league, event.id);
+        if (changes.length) setHcpNote(`Bag tags reassigned by finish — new tags shown next to each player.`);
+      }
       await computeStandings(league.id, league.settings.bestN);
+    } finally { setBusy(false); }
+  };
+
+  const addRound = async () => {
+    if (!event || busy) return;
+    setBusy(true);
+    try {
+      const roundCount = Math.min(event.roundCount + 1, 6);
+      await updateEventConfig(event.id, { roundCount });
+      setEvent({ ...event, roundCount });
     } finally { setBusy(false); }
   };
 
@@ -126,7 +140,7 @@ export default function LeagueEventPage() {
       <div className="mt-2 flex items-start justify-between gap-4">
         <div>
           <h1 className="font-[family-name:var(--font-heading)] text-2xl font-extrabold tracking-tight text-[var(--cream)]">{event.name}</h1>
-          <p className="mt-1 text-sm text-[var(--sage)]">{fmtDate(event.date)}{event.courseName ? ` · ${event.courseName}` : ""} · {event.format} · {event.startFormat}</p>
+          <p className="mt-1 text-sm text-[var(--sage)]">{fmtDate(event.date)}{event.courseName ? ` · ${event.courseName}` : ""} · {event.format} · {event.startFormat}{event.roundCount > 1 ? ` · ${event.roundCount} rounds` : ""}{event.buyIn ? ` · $${event.buyIn} buy-in` : ""}</p>
         </div>
         <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${event.status === "complete" ? "bg-white/[0.06] text-[var(--sage-dim)]" : event.status === "cancelled" ? "bg-[#f08c8c]/15 text-[#f08c8c]" : event.status === "active" ? "bg-[#5fcf80]/15 text-[#5fcf80]" : "bg-[var(--gold-dim)] text-[var(--gold)]"}`}>{event.status}</span>
       </div>
@@ -153,6 +167,7 @@ export default function LeagueEventPage() {
           {admin && (
             <>
               <button onClick={doHandicaps} disabled={busy} title="handicap = % × avg(player − field) over last 5 league rounds, capped — set % and cap in league settings" className="rounded-full border border-white/15 px-5 py-2.5 text-sm font-bold text-[var(--cream)] transition-colors hover:bg-white/[0.06] disabled:opacity-50">Apply handicaps</button>
+              {event.roundCount < 6 && <button onClick={addRound} disabled={busy} className="rounded-full border border-white/15 px-5 py-2.5 text-sm font-bold text-[var(--cream)] transition-colors hover:bg-white/[0.06] disabled:opacity-50">Add round {event.roundCount + 1}</button>}
               <button onClick={complete} disabled={busy} className="rounded-full border border-white/15 px-5 py-2.5 text-sm font-bold text-[var(--cream)] transition-colors hover:bg-white/[0.06] disabled:opacity-50">Complete event</button>
               <button onClick={cancel} disabled={busy} className="rounded-full px-4 py-2.5 text-sm font-semibold text-[#f08c8c] transition-colors hover:bg-[#f08c8c]/10 disabled:opacity-50">Cancel event</button>
             </>
@@ -160,6 +175,17 @@ export default function LeagueEventPage() {
         </div>
       )}
       {hcpNote && <p className="mt-2 text-xs text-[var(--sage)]">{hcpNote}</p>}
+
+      {event.buyIn && (
+        <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-2xl border border-white/[0.07] bg-white/[0.03] px-5 py-3.5 text-sm">
+          <span className="text-xs font-bold uppercase tracking-wide text-[var(--gold)]">💰 Money</span>
+          <span className="text-[var(--text-body)]">Buy-in <span className="font-mono font-bold text-[var(--cream)]">${event.buyIn}</span></span>
+          <span className="text-[var(--text-body)]">Paid <span className="font-mono font-bold text-[var(--cream)]">{entries.filter((e) => e.paid).length}/{entries.length}</span></span>
+          <span className="text-[var(--text-body)]">Collected <span className="font-mono font-bold text-[var(--cream)]">${entries.filter((e) => e.paid).length * event.buyIn}</span></span>
+          <span className="text-[var(--text-body)]">Paid out <span className="font-mono font-bold text-[var(--cream)]">${entries.reduce((a, e) => a + (e.payout ?? 0), 0)}</span></span>
+          <span className="text-[var(--text-body)]">Remaining <span className="font-mono font-bold text-[var(--gold)]">${entries.filter((e) => e.paid).length * event.buyIn - entries.reduce((a, e) => a + (e.payout ?? 0), 0)}</span></span>
+        </div>
+      )}
 
       {/* Leaderboard */}
       <section className="mt-8">
@@ -186,6 +212,8 @@ export default function LeagueEventPage() {
                 </span>
                 <span className="min-w-0 flex-1 truncate font-semibold text-[var(--cream)]">
                   {e.username ? <Link href={`/u/${e.username}`} className="hover:underline">{e.name}</Link> : e.name}
+                  {typeof e.tag === "number" && <span className="ml-2 rounded-full bg-white/[0.08] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[var(--cream)]" title="Bag tag">#{e.tag}</span>}
+                  {(e.payout ?? 0) > 0 && <span className="ml-2 rounded-full bg-[#5fcf80]/15 px-1.5 py-0.5 font-mono text-[10px] font-bold text-[#5fcf80]" title="Payout">${e.payout}</span>}
                   {e.division && !divFilter && <span className="ml-2 rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[var(--sage-dim)]">{e.division}</span>}
                   {e.dnf && <span className="ml-2 rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[var(--sage-dim)]">DNF</span>}
                   {(e.startingScore ?? 0) !== 0 && <span className="ml-2 rounded-full bg-[var(--gold-dim)] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[var(--gold)]" title="Handicap adjustment added to the total">HCP {e.startingScore! > 0 ? `+${e.startingScore}` : e.startingScore}</span>}
@@ -223,21 +251,58 @@ export default function LeagueEventPage() {
                       onKeyDown={(ev2) => { if (ev2.key === "Enter") (ev2.target as HTMLInputElement).blur(); }}
                       className="w-12 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-right font-mono text-xs text-[var(--gold)] outline-none focus:border-[var(--gold)]"
                     />
-                    <input
-                      inputMode="numeric"
-                      defaultValue={e.score ?? ""}
-                      placeholder="—"
-                      onChange={(ev2) => setScoreDraft((s) => ({ ...s, [e.id]: ev2.target.value }))}
-                      onBlur={() => saveScore(e.id)}
-                      onKeyDown={(ev2) => { if (ev2.key === "Enter") (ev2.target as HTMLInputElement).blur(); }}
-                      className="w-14 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-right font-mono text-sm text-[var(--cream)] outline-none focus:border-[var(--gold)]"
-                    />
+                    {event.roundCount > 1 ? (
+                      Array.from({ length: event.roundCount }, (_, ri) => (
+                        <input
+                          key={`${e.id}-r${ri}-${e.roundScores?.[ri] ?? ""}`}
+                          inputMode="numeric"
+                          defaultValue={e.roundScores?.[ri] || ""}
+                          placeholder={`R${ri + 1}`}
+                          title={`Round ${ri + 1} total`}
+                          onBlur={(ev2) => {
+                            const raw = ev2.target.value.trim();
+                            const v = raw === "" ? undefined : Number(raw);
+                            if (v === undefined || Number.isFinite(v)) setRoundScore(event.id, e, ri, v, event.roundCount);
+                          }}
+                          onKeyDown={(ev2) => { if (ev2.key === "Enter") (ev2.target as HTMLInputElement).blur(); }}
+                          className="w-12 rounded-lg border border-white/10 bg-white/[0.04] px-1.5 py-1 text-right font-mono text-xs text-[var(--cream)] outline-none focus:border-[var(--gold)]"
+                        />
+                      ))
+                    ) : (
+                      <input
+                        inputMode="numeric"
+                        defaultValue={e.score ?? ""}
+                        placeholder="—"
+                        onChange={(ev2) => setScoreDraft((s) => ({ ...s, [e.id]: ev2.target.value }))}
+                        onBlur={() => saveScore(e.id)}
+                        onKeyDown={(ev2) => { if (ev2.key === "Enter") (ev2.target as HTMLInputElement).blur(); }}
+                        className="w-14 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-right font-mono text-sm text-[var(--cream)] outline-none focus:border-[var(--gold)]"
+                      />
+                    )}
                     <button onClick={() => dropEntry(e.id)} title="Remove from event" className="rounded-full px-1.5 py-1 text-xs text-[var(--sage-dim)] transition-colors hover:text-[#f08c8c]">✕</button>
                   </span>
                 ) : (
-                  <span className="w-14 text-right font-mono font-bold text-[var(--cream)]">
-                    {scoreOf(e) != null && anyHcp && !e.dnf ? adjOf(e) : scoreOf(e) ?? ""}
-                    {scoreOf(e) != null && anyHcp && (e.startingScore ?? 0) !== 0 && <span className="ml-1 text-[10px] font-normal text-[var(--sage-dim)]">({scoreOf(e)})</span>}
+                  <span className="flex items-center gap-1.5">
+                    {admin && event.status === "complete" && (
+                      <input
+                        key={`${e.id}-pay-${e.payout ?? ""}`}
+                        inputMode="numeric"
+                        defaultValue={e.payout ?? ""}
+                        placeholder="$"
+                        title="Payout — director ledger"
+                        onBlur={(ev2) => {
+                          const raw = ev2.target.value.trim();
+                          const v = raw === "" ? undefined : Number(raw);
+                          if (v === undefined || Number.isFinite(v)) patchEntry(e.id, { payout: v });
+                        }}
+                        onKeyDown={(ev2) => { if (ev2.key === "Enter") (ev2.target as HTMLInputElement).blur(); }}
+                        className="w-12 rounded-lg border border-white/10 bg-white/[0.04] px-1.5 py-1 text-right font-mono text-xs text-[#5fcf80] outline-none focus:border-[var(--gold)]"
+                      />
+                    )}
+                    <span className="w-14 text-right font-mono font-bold text-[var(--cream)]">
+                      {scoreOf(e) != null && anyHcp && !e.dnf ? adjOf(e) : scoreOf(e) ?? ""}
+                      {scoreOf(e) != null && anyHcp && (e.startingScore ?? 0) !== 0 && <span className="ml-1 text-[10px] font-normal text-[var(--sage-dim)]">({scoreOf(e)})</span>}
+                    </span>
                   </span>
                 )}
               </div>

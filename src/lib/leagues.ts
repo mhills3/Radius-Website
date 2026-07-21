@@ -1,5 +1,5 @@
 import { db } from "./firebase";
-import { collection, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, deleteField, onSnapshot, query, where, orderBy, limit } from "firebase/firestore";
+import { collection, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, deleteField, arrayUnion, arrayRemove, onSnapshot, query, where, orderBy, limit } from "firebase/firestore";
 import { getProfileLite, resolveCanonicalId } from "./account";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -40,6 +40,7 @@ export interface LeagueSettings {
   bestN?: number;       // season standings count each player's best N event scores (0/undefined = all)
   handicapPercent?: number; // % of a player's field-relative average applied (default 90)
   handicapCap?: number;     // max |strokes| a handicap may reach (0/undefined = uncapped)
+  bagTags?: boolean;        // run a real tag ladder: tags reassign by finish on event completion
 }
 export interface League {
   id: string;
@@ -52,6 +53,7 @@ export interface League {
   createdByName: string;
   settings: LeagueSettings;
   memberCount: number;
+  acePotBalance?: number; // running ace-pot ledger (director-maintained until an ace pays out)
   createdAt: number;
   lastUpdated: number;
 }
@@ -61,6 +63,7 @@ export interface LeagueMember {
   username?: string;
   photo?: string;
   role: "owner" | "director" | "member";
+  tag?: number; // bag-tag number currently held (tag-ladder leagues)
   joinedAt: number;
 }
 export interface LeagueEvent {
@@ -74,6 +77,8 @@ export interface LeagueEvent {
   format: string;
   startFormat: string;
   status: "scheduled" | "active" | "complete" | "cancelled";
+  roundCount: number; // 1 = weekly league night; >1 = multi-round event (cumulative total)
+  buyIn?: number;     // dollars per player; the paid toggle × buyIn = collected pot
   entryCount: number;
   createdAt: number;
 }
@@ -88,10 +93,13 @@ export interface EventEntry {
   cardId?: string;
   // Scores: director-entered on web today; publishedRoundId/leagueEventId
   // auto-attach arrives with the app-side stamp.
-  score?: number;       // total strokes
+  score?: number;       // total strokes (multi-round events: sum of roundScores)
+  roundScores?: number[]; // per-round totals for multi-round events (index 0 = round 1)
   scoreToPar?: number;
   penalty?: number;
   startingScore?: number;
+  payout?: number;      // dollars paid out to this player (director ledger)
+  tag?: number;         // bag tag brought INTO the event (snapshot at check-in/assignment)
   dnf?: boolean;
   publishedRoundId?: string;
   // LIVE SCORING CONTRACT (app-side stamp target, Phase 2+): while a round is in
@@ -157,8 +165,11 @@ function toLeague(id: string, d: any): League {
       bestN: Number(d.settings?.bestN) || undefined,
       handicapPercent: Number(d.settings?.handicapPercent) || undefined,
       handicapCap: Number(d.settings?.handicapCap) || undefined,
+      bagTags: d.settings?.bagTags === true,
     },
-    memberCount: Number(d.memberCount) || 0, createdAt: Number(d.createdAt) || 0, lastUpdated: Number(d.lastUpdated) || 0,
+    memberCount: Number(d.memberCount) || 0,
+    acePotBalance: typeof d.acePotBalance === "number" ? d.acePotBalance : undefined,
+    createdAt: Number(d.createdAt) || 0, lastUpdated: Number(d.lastUpdated) || 0,
   };
 }
 
@@ -194,6 +205,17 @@ export async function updateLeagueSettings(leagueId: string, settings: LeagueSet
   await setDoc(doc(db, "leagues", leagueId), { settings: JSON.parse(JSON.stringify(settings)), lastUpdated: Date.now() }, { merge: true });
 }
 
+/** Ace-pot ledger write (director-maintained running balance). */
+export async function setAcePot(leagueId: string, balance: number): Promise<void> {
+  await setDoc(doc(db, "leagues", leagueId), { acePotBalance: balance, lastUpdated: Date.now() }, { merge: true });
+}
+
+/** Promote/demote a member. Directors join/leave adminIds; the owner can't be demoted here. */
+export async function setMemberRole(leagueId: string, memberId: string, role: "director" | "member"): Promise<void> {
+  await setDoc(doc(db, "leagues", leagueId, "members", memberId), { role }, { merge: true });
+  await updateDoc(doc(db, "leagues", leagueId), { adminIds: role === "director" ? arrayUnion(memberId) : arrayRemove(memberId), lastUpdated: Date.now() });
+}
+
 export async function getLeagueMembers(leagueId: string): Promise<LeagueMember[]> {
   try {
     const snap = await getDocs(query(collection(db, "leagues", leagueId, "members"), limit(200)));
@@ -203,6 +225,7 @@ export async function getLeagueMembers(leagueId: string): Promise<LeagueMember[]
         return {
           id: d.id, name: (m.name ?? "Player") as string, username: (m.username as string) || undefined,
           photo: (m.photo as string) || undefined, role: (m.role ?? "member") as LeagueMember["role"],
+          tag: typeof m.tag === "number" ? m.tag : undefined,
           joinedAt: Number(m.joinedAt) || 0,
         };
       })
@@ -213,7 +236,7 @@ export async function getLeagueMembers(leagueId: string): Promise<LeagueMember[]
 // ---- Events ----
 
 /** Create one event per date (recurring = the caller passes every date in the season). */
-export async function createEvents(uid: string, league: League, input: { name: string; dates: number[]; courseId?: string; courseName?: string; format?: string; startFormat?: string }): Promise<LeagueEvent[]> {
+export async function createEvents(uid: string, league: League, input: { name: string; dates: number[]; courseId?: string; courseName?: string; format?: string; startFormat?: string; roundCount?: number; buyIn?: number }): Promise<LeagueEvent[]> {
   const now = Date.now();
   const out: LeagueEvent[] = [];
   for (const date of input.dates) {
@@ -226,7 +249,9 @@ export async function createEvents(uid: string, league: League, input: { name: s
       courseName: input.courseName ?? league.courseName,
       format: input.format ?? league.settings.format,
       startFormat: input.startFormat ?? league.settings.startFormat,
-      status: "scheduled", entryCount: 0, createdAt: now,
+      status: "scheduled", roundCount: Math.max(1, Math.min(input.roundCount ?? 1, 6)),
+      buyIn: input.buyIn && input.buyIn > 0 ? input.buyIn : undefined,
+      entryCount: 0, createdAt: now,
     };
     await setDoc(doc(db, "leagueEvents", id), JSON.parse(JSON.stringify(ev)), { merge: true });
     out.push(ev);
@@ -242,8 +267,18 @@ function toEvent(id: string, d: any): LeagueEvent {
     date: Number(d.date) || 0, courseId: d.courseId || undefined, courseName: d.courseName || undefined,
     format: d.format ?? "Singles", startFormat: d.startFormat ?? "Shotgun",
     status: (d.status ?? "scheduled") as LeagueEvent["status"],
+    roundCount: Math.max(1, Number(d.roundCount) || 1),
+    buyIn: Number(d.buyIn) > 0 ? Number(d.buyIn) : undefined,
     entryCount: Number(d.entryCount) || 0, createdAt: Number(d.createdAt) || 0,
   };
+}
+
+/** Director event-config tweaks (add a round, set the buy-in). */
+export async function updateEventConfig(eventId: string, patch: { roundCount?: number; buyIn?: number | null }): Promise<void> {
+  const upd: Record<string, unknown> = {};
+  if (patch.roundCount != null) upd.roundCount = Math.max(1, Math.min(patch.roundCount, 6));
+  if (patch.buyIn !== undefined) upd.buyIn = patch.buyIn && patch.buyIn > 0 ? patch.buyIn : deleteField();
+  await updateDoc(doc(db, "leagueEvents", eventId), upd);
 }
 
 export async function getLeagueEvents(leagueId: string): Promise<LeagueEvent[]> {
@@ -301,9 +336,12 @@ function toEntry(id: string, e: any): EventEntry {
     checkedInAt: Number(e.checkedInAt) || 0, paid: e.paid === true,
     cardId: (e.cardId as string) || undefined,
     score: typeof e.score === "number" ? e.score : undefined,
+    roundScores: Array.isArray(e.roundScores) ? (e.roundScores as number[]) : undefined,
     scoreToPar: typeof e.scoreToPar === "number" ? e.scoreToPar : undefined,
     penalty: typeof e.penalty === "number" ? e.penalty : undefined,
     startingScore: typeof e.startingScore === "number" ? e.startingScore : undefined,
+    payout: typeof e.payout === "number" ? e.payout : undefined,
+    tag: typeof e.tag === "number" ? e.tag : undefined,
     dnf: e.dnf === true, publishedRoundId: (e.publishedRoundId as string) || undefined,
     holeScores: Array.isArray(e.holeScores) ? (e.holeScores as number[]) : undefined,
     thruHole: typeof e.thruHole === "number" ? e.thruHole : undefined,
@@ -333,12 +371,25 @@ export function liveTotal(e: EventEntry): number | undefined {
   return played.length ? played.reduce((a, b) => a + b, 0) : undefined;
 }
 
-/** Director-side per-entry updates (paid flag, division moves, score entry, penalties, DNF). */
-export async function updateEntry(eventId: string, entryId: string, patch: Partial<Pick<EventEntry, "paid" | "division" | "score" | "scoreToPar" | "penalty" | "startingScore" | "dnf">>): Promise<void> {
+/** Director-side per-entry updates (paid flag, division moves, score entry, penalties, DNF, payouts). */
+export async function updateEntry(eventId: string, entryId: string, patch: Partial<Pick<EventEntry, "paid" | "division" | "score" | "scoreToPar" | "penalty" | "startingScore" | "payout" | "dnf">>): Promise<void> {
   // undefined → deleteField so clearing a score/penalty actually removes the key.
   const upd: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(patch)) upd[k] = v === undefined ? deleteField() : v;
   await updateDoc(doc(db, "leagueEvents", eventId, "entries", entryId), upd);
+}
+
+/** Multi-round score entry: write one round's total; `score` stays the cumulative sum. */
+export async function setRoundScore(eventId: string, entry: EventEntry, roundIdx: number, value: number | undefined, roundCount: number): Promise<void> {
+  const rounds = [...(entry.roundScores ?? Array.from({ length: roundCount }, () => 0))];
+  while (rounds.length < roundCount) rounds.push(0);
+  rounds[roundIdx] = value ?? 0;
+  const played = rounds.filter((n) => n > 0);
+  const total = played.length ? played.reduce((a, b) => a + b, 0) : undefined;
+  await updateDoc(doc(db, "leagueEvents", eventId, "entries", entry.id), {
+    roundScores: rounds,
+    score: total ?? deleteField(),
+  });
 }
 
 // ---- Cards ----
@@ -372,6 +423,38 @@ export async function getCards(eventId: string): Promise<EventCard[]> {
       .filter((x): x is EventCard => x !== null)
       .sort((a, b) => a.number - b.number);
   } catch { return []; }
+}
+
+// ---- Bag tags ----
+//
+// A REAL tag ladder (UDisc ships a free-text column): every tag-holding
+// participant throws their tag in; the best adjusted finisher takes the lowest
+// tag, and so on. Players without a tag join the ladder at the bottom, numbered
+// past the league's current max, in finish order. Runs on event completion when
+// settings.bagTags is on; writes both the member's current tag and the entry's
+// outgoing tag so the event page shows who took what home.
+
+export interface TagChange { playerId: string; name: string; from?: number; to: number; }
+
+export async function reassignBagTags(league: League, eventId: string): Promise<TagChange[]> {
+  if (!league.settings.bagTags) return [];
+  const [members, entries] = await Promise.all([getLeagueMembers(league.id), getEntries(eventId)]);
+  if (!entries.length) return [];
+  const tagOf = new Map(members.filter((m) => typeof m.tag === "number").map((m) => [m.id, m.tag!]));
+  const adj = (e: EventEntry) => (typeof e.score === "number" && !e.dnf ? e.score + (e.penalty ?? 0) + (e.startingScore ?? 0) : Number.POSITIVE_INFINITY);
+  const ranked = [...entries].sort((a, b) => adj(a) - adj(b));
+  const pool = ranked.filter((e) => tagOf.has(e.id)).map((e) => tagOf.get(e.id)!).sort((a, b) => a - b);
+  let nextNew = Math.max(0, ...members.map((m) => m.tag ?? 0)) + 1;
+  const changes: TagChange[] = [];
+  let poolIdx = 0;
+  for (const e of ranked) {
+    const from = tagOf.get(e.id);
+    const to = from != null ? pool[poolIdx++] : nextNew++;
+    changes.push({ playerId: e.id, name: e.name, from, to });
+    await setDoc(doc(db, "leagues", league.id, "members", e.id), { tag: to }, { merge: true });
+    await setDoc(doc(db, "leagueEvents", eventId, "entries", e.id), { tag: to }, { merge: true });
+  }
+  return changes;
 }
 
 // ---- Standings ----
