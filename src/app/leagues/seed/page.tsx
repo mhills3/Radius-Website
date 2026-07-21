@@ -8,7 +8,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
-import { doc, setDoc, getDocs, collection, query, where, orderBy, limit, deleteDoc } from "firebase/firestore";
+import { doc, setDoc, getDocs, collection, query, where, orderBy, startAt, limit, deleteDoc } from "firebase/firestore";
 import { useAuth } from "@/components/AuthProvider";
 import { resolveCanonicalId } from "@/lib/account";
 import { freshId } from "@/lib/leagues";
@@ -46,7 +46,7 @@ export default function SeedPage() {
       // covers make the discovery photo strips reviewable with demo data.
       let real: { id: string; name: string }[] = [];
       try {
-        const snap = await getDocs(query(collection(db, "courses"), orderBy("coverPhotoUrl"), limit(10)));
+        const snap = await getDocs(query(collection(db, "courses"), orderBy("coverPhotoUrl"), startAt("http"), limit(20)));
         real = snap.docs
           .filter((d) => /^https?:\/\//.test(String(d.data().coverPhotoUrl)) && d.data().name)
           .map((d) => ({ id: d.id, name: String(d.data().name) }));
@@ -64,10 +64,12 @@ export default function SeedPage() {
 
       const mkEvent = async (ev: Record<string, unknown>) => {
         const id = freshId();
-        await setDoc(doc(db, "leagueEvents", id), {
+        const data: Record<string, unknown> = {
           id, leagueId, leagueName: "North Shore Demo Circuit", format: "Singles", startFormat: "Shotgun",
           holes: 18, roundCount: 1, status: "scheduled", createdAt: now, seedTag: DEMO_TAG, ...ev,
-        });
+        };
+        for (const k of Object.keys(data)) if (data[k] === undefined) delete data[k];
+        await setDoc(doc(db, "leagueEvents", id), data);
         return id;
       };
       const mkEntry = (evId: string, entryId: string, e: Record<string, unknown>) =>
