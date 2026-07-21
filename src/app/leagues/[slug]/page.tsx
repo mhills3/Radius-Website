@@ -6,10 +6,31 @@ import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRole, isLeagueAdmin, type League, type LeagueEvent, type LeagueMember, type StandingRow } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
+import { inputCls, FieldLabel, SectionTitle, Segmented, Avatar, Pos, btnGold, btnGhost, card } from "@/components/leagues/ui";
 
-const fmtDate = (ms: number) => new Date(ms).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 const fmtTime = (ms: number) => new Date(ms).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 const fmtToPar = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`);
+const MON = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+
+function DateBlock({ ms }: { ms: number }) {
+  const d = new Date(ms);
+  return (
+    <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-[var(--gold-dim)] leading-none">
+      <div className="text-center">
+        <div className="font-[family-name:var(--font-heading)] text-xl font-extrabold text-[var(--gold)]">{d.getDate()}</div>
+        <div className="mt-0.5 text-[9px] font-bold tracking-[0.15em] text-[var(--gold)]/70">{MON[d.getMonth()]}</div>
+      </div>
+    </div>
+  );
+}
+
+function StatusChip({ status }: { status: LeagueEvent["status"] }) {
+  const cls = status === "complete" ? "bg-white/[0.06] text-[var(--sage-dim)]"
+    : status === "cancelled" ? "bg-[#f08c8c]/15 text-[#f08c8c]"
+    : status === "active" ? "bg-[#5fcf80]/15 text-[#5fcf80]"
+    : "bg-[var(--gold-dim)] text-[var(--gold)]";
+  return <span className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.1em] ${cls}`}>{status}</span>;
+}
 
 export default function LeaguePage() {
   const { slug } = useParams<{ slug: string }>();
@@ -64,6 +85,7 @@ export default function LeaguePage() {
   const [now] = useState(() => Date.now());
   const upcoming = events.filter((e) => e.status !== "complete" && e.status !== "cancelled" && e.date > now - 12 * 3600_000);
   const past = events.filter((e) => !upcoming.includes(e)).reverse();
+  const photoOf = useMemo(() => new Map(members.map((m) => [m.id, m.photo])), [members]);
 
   const schedule = async () => {
     if (!user || !league || !startDate || busy) return;
@@ -79,167 +101,198 @@ export default function LeaguePage() {
     } finally { setBusy(false); }
   };
 
-  if (league === undefined) return <main className="mx-auto max-w-3xl px-5 pt-10 text-sm text-[var(--sage-dim)]">Loading…</main>;
-  if (league === null) return <main className="mx-auto max-w-3xl px-5 pt-10"><p className="text-sm text-[var(--sage-dim)]">League not found. <Link href="/leagues" className="text-[var(--gold)] hover:underline">All leagues</Link></p></main>;
+  const saveSettings = async () => {
+    if (!league || busy) return;
+    setBusy(true);
+    try {
+      const divisions = divisionsDraft.split(",").map((s) => s.trim()).filter(Boolean);
+      const bestN = Number(bestNDraft) > 0 ? Math.floor(Number(bestNDraft)) : undefined;
+      const handicapPercent = Number(hcpPctDraft) > 0 ? Math.min(150, Math.floor(Number(hcpPctDraft))) : undefined;
+      const handicapCap = Number(hcpCapDraft) > 0 ? Math.floor(Number(hcpCapDraft)) : undefined;
+      const settings = { ...league.settings, divisions: divisions.length ? divisions : undefined, bestN, handicapPercent, handicapCap, bagTags: bagTagsDraft, description: descDraft.trim() };
+      await updateLeagueSettings(league.id, settings);
+      const acePot = Number(acePotDraft) >= 0 && acePotDraft.trim() !== "" ? Number(acePotDraft) : undefined;
+      if (acePot !== league.acePotBalance && acePot != null) await setAcePot(league.id, acePot);
+      setLeague({ ...league, acePotBalance: acePot ?? league.acePotBalance, settings: { ...settings, divisions: divisions.length ? divisions : ["Open"] } });
+      computeStandings(league.id, bestN).then(setStandings).catch(() => {});
+      setSettingsOpen(false);
+    } finally { setBusy(false); }
+  };
 
-  const field = "w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm text-[var(--cream)] placeholder-[var(--sage-dim)] outline-none focus:border-[var(--gold)]";
+  if (league === undefined) return <main className="mx-auto max-w-4xl px-5 pt-16 text-sm text-[var(--sage-dim)]">Loading…</main>;
+  if (league === null) return (
+    <main className="mx-auto max-w-4xl px-5 pt-16">
+      <p className="text-sm text-[var(--sage-dim)]">League not found. <Link href="/leagues" className="font-bold text-[var(--gold)] hover:underline">All leagues</Link></p>
+    </main>
+  );
 
   const EventRow = ({ ev }: { ev: LeagueEvent }) => (
-    <Link href={`/leagues/${league.slug}/e/${ev.id}`} className="flex items-center gap-4 rounded-2xl border border-white/[0.07] bg-white/[0.03] p-4 transition-all hover:-translate-y-0.5 hover:border-white/[0.12]">
-      <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-[var(--gold-dim)] text-center">
-        <span className="text-xs font-bold leading-tight text-[var(--gold)]">{fmtDate(ev.date).split(", ")[1] ?? fmtDate(ev.date)}</span>
-      </div>
+    <Link href={`/leagues/${league.slug}/e/${ev.id}`} className={`${card} group flex items-center gap-4 p-4 transition-all hover:-translate-y-0.5 hover:border-[var(--gold)]/30`}>
+      <DateBlock ms={ev.date} />
       <div className="min-w-0 flex-1">
-        <div className="truncate font-bold text-[var(--cream)]">{ev.name}</div>
-        <div className="truncate text-xs text-[var(--sage-dim)]">{fmtDate(ev.date)} · {fmtTime(ev.date)}{ev.courseName ? ` · ${ev.courseName}` : ""} · {ev.entryCount} checked in</div>
+        <div className="truncate font-[family-name:var(--font-heading)] font-bold text-[var(--cream)]">{ev.name}</div>
+        <div className="mt-0.5 truncate text-xs text-[var(--sage)]">
+          {fmtTime(ev.date)}{ev.courseName ? ` · ${ev.courseName}` : ""}{ev.roundCount > 1 ? ` · ${ev.roundCount} rounds` : ""}{ev.buyIn ? ` · $${ev.buyIn}` : ""} · {ev.entryCount} in
+        </div>
       </div>
-      <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${ev.status === "complete" ? "bg-white/[0.06] text-[var(--sage-dim)]" : ev.status === "cancelled" ? "bg-[#f08c8c]/15 text-[#f08c8c]" : ev.status === "active" ? "bg-[#5fcf80]/15 text-[#5fcf80]" : "bg-[var(--gold-dim)] text-[var(--gold)]"}`}>{ev.status}</span>
+      <StatusChip status={ev.status} />
     </Link>
   );
 
+  const top3 = standings.slice(0, 3);
+  const rest = standings.slice(3);
+
   return (
-    <main className="mx-auto max-w-3xl px-5 pb-24 pt-10">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-tight text-[var(--cream)]">{league.name}</h1>
-          <p className="mt-1 text-sm text-[var(--sage)]">{league.courseName ? `${league.courseName} · ` : ""}{league.settings.format} · {league.settings.startFormat} · run by {league.createdByName}</p>
-          {(league.acePotBalance ?? 0) > 0 && <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[var(--gold-dim)] px-3 py-1 text-xs font-bold text-[var(--gold)]">🎯 Ace pot · ${league.acePotBalance}</p>}
-          {league.settings.description && <p className="mt-3 max-w-xl whitespace-pre-wrap text-sm text-[var(--text-body)]">{league.settings.description}</p>}
+    <main className="mx-auto max-w-4xl px-5 pb-28">
+      {/* Hero */}
+      <section className="pb-10 pt-14">
+        <Link href="/leagues" className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--sage-dim)] transition-colors hover:text-[var(--gold)]">← Leagues</Link>
+        <div className="mt-4 flex flex-wrap items-start justify-between gap-6">
+          <div className="min-w-0">
+            <h1 className="font-[family-name:var(--font-heading)] text-4xl font-extrabold tracking-tight text-[var(--cream)] sm:text-5xl">{league.name}</h1>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              {league.courseName && <span className="rounded-full bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-[var(--text-body)] ring-1 ring-white/[0.06]">⛳ {league.courseName}</span>}
+              <span className="rounded-full bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-[var(--text-body)] ring-1 ring-white/[0.06]">{league.settings.format}</span>
+              <span className="rounded-full bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-[var(--text-body)] ring-1 ring-white/[0.06]">{league.settings.startFormat}</span>
+              {(league.acePotBalance ?? 0) > 0 && <span className="rounded-full bg-[var(--gold-dim)] px-3 py-1.5 text-xs font-bold text-[var(--gold)] ring-1 ring-[var(--gold)]/20">🎯 Ace pot ${league.acePotBalance}</span>}
+            </div>
+            {league.settings.description && <p className="mt-4 max-w-xl whitespace-pre-wrap text-sm leading-relaxed text-[var(--sage)]">{league.settings.description}</p>}
+            <p className="mt-3 text-xs text-[var(--sage-dim)]">Run by {league.createdByName} · {members.length} member{members.length === 1 ? "" : "s"}</p>
+          </div>
+          {admin && (
+            <div className="flex shrink-0 gap-2.5">
+              <button onClick={() => { setSettingsOpen((o) => !o); setSchedOpen(false); }} className={btnGhost}>{settingsOpen ? "Close" : "Settings"}</button>
+              <button onClick={() => { setSchedOpen((o) => !o); setSettingsOpen(false); }} className={btnGold}>{schedOpen ? "Cancel" : "Schedule events"}</button>
+            </div>
+          )}
         </div>
-        {admin && (
-          <div className="flex shrink-0 gap-2">
-            <button onClick={() => { setSettingsOpen((o) => !o); setSchedOpen(false); }} className="rounded-full border border-white/15 px-5 py-2.5 text-sm font-bold text-[var(--cream)] transition-colors hover:bg-white/[0.06]">
-              {settingsOpen ? "Close" : "Settings"}
-            </button>
-            <button onClick={() => { setSchedOpen((o) => !o); setSettingsOpen(false); }} className="rounded-full bg-[var(--gold)] px-5 py-2.5 text-sm font-bold text-[#16221b] transition-colors hover:bg-[var(--gold-bright)]">
-              {schedOpen ? "Cancel" : "Schedule events"}
-            </button>
-          </div>
-        )}
-      </div>
-
-      {admin && settingsOpen && (
-        <div className="mt-6 space-y-3 rounded-2xl border border-white/[0.07] bg-white/[0.03] p-5">
-          <label className="block text-xs font-bold uppercase tracking-wide text-[var(--sage)]">Divisions <span className="font-normal normal-case text-[var(--sage-dim)]">— comma-separated; players pick one at check-in</span>
-            <input value={divisionsDraft} onChange={(e) => setDivisionsDraft(e.target.value)} placeholder="Open, FPO, Rec" className={field + " mt-1.5"} />
-          </label>
-          <label className="block text-xs font-bold uppercase tracking-wide text-[var(--sage)]">Best rounds counted <span className="font-normal normal-case text-[var(--sage-dim)]">— season standings use each player&apos;s best N events (blank = all)</span>
-            <input inputMode="numeric" value={bestNDraft} onChange={(e) => setBestNDraft(e.target.value)} placeholder="all" className={field + " mt-1.5 max-w-[120px]"} />
-          </label>
-          <div className="flex flex-wrap gap-4">
-            <label className="block text-xs font-bold uppercase tracking-wide text-[var(--sage)]">Handicap % <span className="font-normal normal-case text-[var(--sage-dim)]">— of field-relative average (default 90)</span>
-              <input inputMode="numeric" value={hcpPctDraft} onChange={(e) => setHcpPctDraft(e.target.value)} placeholder="90" className={field + " mt-1.5 max-w-[120px]"} />
-            </label>
-            <label className="block text-xs font-bold uppercase tracking-wide text-[var(--sage)]">Handicap cap <span className="font-normal normal-case text-[var(--sage-dim)]">— max strokes (blank = uncapped)</span>
-              <input inputMode="numeric" value={hcpCapDraft} onChange={(e) => setHcpCapDraft(e.target.value)} placeholder="none" className={field + " mt-1.5 max-w-[120px]"} />
-            </label>
-          </div>
-          <p className="text-xs text-[var(--sage-dim)]">The handicap formula is public: handicap = % × average of (player score − field average) over the player&apos;s last 5 league rounds, capped. Directors can override any player&apos;s adjustment on the event page.</p>
-          <div className="flex flex-wrap items-end gap-4">
-            <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[var(--sage)]">
-              <input type="checkbox" checked={bagTagsDraft} onChange={(e) => setBagTagsDraft(e.target.checked)} className="h-4 w-4 accent-[var(--gold)]" />
-              Bag tags <span className="font-normal normal-case text-[var(--sage-dim)]">— tags reassign by finish when an event completes</span>
-            </label>
-            <label className="block text-xs font-bold uppercase tracking-wide text-[var(--sage)]">Ace pot balance ($)
-              <input inputMode="numeric" value={acePotDraft} onChange={(e) => setAcePotDraft(e.target.value)} placeholder="0" className={field + " mt-1.5 max-w-[120px]"} />
-            </label>
-          </div>
-          <label className="block text-xs font-bold uppercase tracking-wide text-[var(--sage)]">Description
-            <textarea value={descDraft} onChange={(e) => setDescDraft(e.target.value)} rows={2} className={field + " mt-1.5"} />
-          </label>
-          <button
-            onClick={async () => {
-              if (!league || busy) return;
-              setBusy(true);
-              try {
-                const divisions = divisionsDraft.split(",").map((s) => s.trim()).filter(Boolean);
-                const bestN = Number(bestNDraft) > 0 ? Math.floor(Number(bestNDraft)) : undefined;
-                const handicapPercent = Number(hcpPctDraft) > 0 ? Math.min(150, Math.floor(Number(hcpPctDraft))) : undefined;
-                const handicapCap = Number(hcpCapDraft) > 0 ? Math.floor(Number(hcpCapDraft)) : undefined;
-                const settings = { ...league.settings, divisions: divisions.length ? divisions : undefined, bestN, handicapPercent, handicapCap, bagTags: bagTagsDraft, description: descDraft.trim() };
-                await updateLeagueSettings(league.id, settings);
-                const acePot = Number(acePotDraft) >= 0 && acePotDraft.trim() !== "" ? Number(acePotDraft) : undefined;
-                if (acePot !== league.acePotBalance && acePot != null) await setAcePot(league.id, acePot);
-                setLeague({ ...league, acePotBalance: acePot ?? league.acePotBalance, settings: { ...settings, divisions: divisions.length ? divisions : ["Open"] } });
-                computeStandings(league.id, bestN).then(setStandings).catch(() => {});
-                setSettingsOpen(false);
-              } finally { setBusy(false); }
-            }}
-            disabled={busy}
-            className="rounded-full bg-[var(--gold)] px-6 py-2.5 text-sm font-bold text-[#16221b] transition-colors hover:bg-[var(--gold-bright)] disabled:opacity-50"
-          >{busy ? "Saving…" : "Save settings"}</button>
-        </div>
-      )}
-
-      {admin && schedOpen && (
-        <div className="mt-6 space-y-3 rounded-2xl border border-white/[0.07] bg-white/[0.03] p-5">
-          <input value={evName} onChange={(e) => setEvName(e.target.value)} placeholder={`Event name (default: ${league.name})`} className={field} />
-          <div className="flex flex-wrap gap-3">
-            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={field + " max-w-[180px]"} />
-            <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className={field + " max-w-[140px]"} />
-            <label className="flex items-center gap-2 text-sm text-[var(--sage)]">
-              repeat weekly ×
-              <input type="number" min={1} max={26} value={weeks} onChange={(e) => setWeeks(Number(e.target.value) || 1)} className={field + " w-20"} />
-            </label>
-            <label className="flex items-center gap-2 text-sm text-[var(--sage)]">
-              rounds
-              <select value={rounds} onChange={(e) => setRounds(Number(e.target.value))} className={field + " w-20"}>
-                {[1, 2, 3, 4].map((n) => <option key={n} value={n}>{n}</option>)}
-              </select>
-            </label>
-            <label className="flex items-center gap-2 text-sm text-[var(--sage)]">
-              buy-in $
-              <input inputMode="numeric" value={buyIn} onChange={(e) => setBuyIn(e.target.value)} placeholder="0" className={field + " w-20"} />
-            </label>
-          </div>
-          {rounds > 1 && <p className="text-xs text-[var(--sage-dim)]">Multi-round event: the leaderboard totals all {rounds} rounds (tournament-style cumulative scoring).</p>}
-          {weeks > 1 && <p className="text-xs text-[var(--sage-dim)]">This will create {weeks} events, one per week.</p>}
-          {err && <p className="text-sm text-[#f08c8c]">{err}</p>}
-          <button onClick={schedule} disabled={!startDate || busy} className="rounded-full bg-[var(--gold)] px-6 py-2.5 text-sm font-bold text-[#16221b] transition-colors hover:bg-[var(--gold-bright)] disabled:cursor-not-allowed disabled:opacity-50">
-            {busy ? "Scheduling…" : weeks > 1 ? `Create ${weeks} events` : "Create event"}
-          </button>
-        </div>
-      )}
-
-      <section className="mt-8">
-        <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-[var(--gold)]">Upcoming</h2>
-        {upcoming.length === 0 && <p className="text-sm text-[var(--sage-dim)]">Nothing scheduled yet.</p>}
-        <div className="space-y-3">{upcoming.map((ev) => <EventRow key={ev.id} ev={ev} />)}</div>
       </section>
 
-      {standings.length > 0 && (
-        <section className="mt-8">
-          <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-[var(--gold)]">Season standings</h2>
-          <div className="overflow-hidden rounded-2xl border border-white/[0.07]">
-            {standings.map((s, i) => (
-              <div key={s.id} className="flex items-center gap-3 border-b border-white/[0.05] bg-white/[0.02] px-4 py-2.5 text-sm last:border-b-0">
-                <span className="w-6 text-right font-mono text-xs text-[var(--sage-dim)]">{i + 1}</span>
-                <span className="min-w-0 flex-1 truncate font-semibold text-[var(--cream)]">{s.name}{s.division && <span className="ml-2 rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[var(--sage-dim)]">{s.division}</span>}</span>
-                <span className="text-xs text-[var(--sage-dim)]">{s.played} played{s.bestToPar != null ? ` · best ${fmtToPar(s.bestToPar)}` : ""}</span>
-                <span className="w-12 text-right font-mono font-bold text-[var(--gold)]">{s.points}</span>
-              </div>
-            ))}
+      {/* Settings */}
+      {admin && settingsOpen && (
+        <section className={`${card} mb-10 p-6 sm:p-8`}>
+          <h2 className="font-[family-name:var(--font-heading)] text-xl font-bold text-[var(--cream)]">League settings</h2>
+          <div className="mt-6 grid gap-5 sm:grid-cols-2">
+            <label className="block sm:col-span-2">
+              <FieldLabel>Divisions <span className="normal-case tracking-normal text-[var(--sage-dim)]">— comma-separated; players pick one at check-in</span></FieldLabel>
+              <input value={divisionsDraft} onChange={(e) => setDivisionsDraft(e.target.value)} placeholder="Open, FPO, Rec" className={inputCls} />
+            </label>
+            <label className="block">
+              <FieldLabel>Best rounds counted</FieldLabel>
+              <input inputMode="numeric" value={bestNDraft} onChange={(e) => setBestNDraft(e.target.value)} placeholder="all" className={inputCls} />
+            </label>
+            <label className="block">
+              <FieldLabel>Ace pot balance ($)</FieldLabel>
+              <input inputMode="numeric" value={acePotDraft} onChange={(e) => setAcePotDraft(e.target.value)} placeholder="0" className={inputCls} />
+            </label>
+            <label className="block">
+              <FieldLabel>Handicap %</FieldLabel>
+              <input inputMode="numeric" value={hcpPctDraft} onChange={(e) => setHcpPctDraft(e.target.value)} placeholder="90" className={inputCls} />
+            </label>
+            <label className="block">
+              <FieldLabel>Handicap cap (strokes)</FieldLabel>
+              <input inputMode="numeric" value={hcpCapDraft} onChange={(e) => setHcpCapDraft(e.target.value)} placeholder="none" className={inputCls} />
+            </label>
+            <label className="flex items-center gap-3 sm:col-span-2">
+              <input type="checkbox" checked={bagTagsDraft} onChange={(e) => setBagTagsDraft(e.target.checked)} className="h-4 w-4 accent-[var(--gold)]" />
+              <span className="text-sm font-semibold text-[var(--cream)]">Bag tags</span>
+              <span className="text-xs text-[var(--sage-dim)]">tags reassign by finish when an event completes</span>
+            </label>
+            <label className="block sm:col-span-2">
+              <FieldLabel>Description</FieldLabel>
+              <textarea value={descDraft} onChange={(e) => setDescDraft(e.target.value)} rows={2} className={inputCls} />
+            </label>
           </div>
+          <p className="mt-4 text-xs leading-relaxed text-[var(--sage-dim)]">Handicaps are public math: <span className="font-mono text-[var(--sage)]">% × avg(player − field) over last 5 rounds</span>, capped. You can override any player on the event page.</p>
+          <button onClick={saveSettings} disabled={busy} className={`${btnGold} mt-6`}>{busy ? "Saving…" : "Save settings"}</button>
         </section>
       )}
 
+      {/* Scheduler */}
+      {admin && schedOpen && (
+        <section className={`${card} mb-10 p-6 sm:p-8`}>
+          <h2 className="font-[family-name:var(--font-heading)] text-xl font-bold text-[var(--cream)]">Schedule events</h2>
+          <p className="mt-1 text-sm text-[var(--sage-dim)]">One event or a whole season — weekly repeats land on the same day and time.</p>
+          <div className="mt-6 grid gap-5 sm:grid-cols-3">
+            <label className="block sm:col-span-3">
+              <FieldLabel>Event name <span className="normal-case tracking-normal text-[var(--sage-dim)]">— defaults to “{league.name}”</span></FieldLabel>
+              <input value={evName} onChange={(e) => setEvName(e.target.value)} placeholder={league.name} className={inputCls} />
+            </label>
+            <label className="block"><FieldLabel>First date</FieldLabel><input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} /></label>
+            <label className="block"><FieldLabel>Tee time</FieldLabel><input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} /></label>
+            <label className="block"><FieldLabel>Repeat weekly ×</FieldLabel><input type="number" min={1} max={26} value={weeks} onChange={(e) => setWeeks(Number(e.target.value) || 1)} className={inputCls} /></label>
+            <div><FieldLabel>Rounds</FieldLabel><Segmented options={["1", "2", "3", "4"]} value={String(rounds)} onChange={(v) => setRounds(Number(v))} /></div>
+            <label className="block"><FieldLabel>Buy-in ($)</FieldLabel><input inputMode="numeric" value={buyIn} onChange={(e) => setBuyIn(e.target.value)} placeholder="0" className={inputCls} /></label>
+          </div>
+          {weeks > 1 && <p className="mt-4 text-xs text-[var(--gold)]">This creates {weeks} events, one per week.</p>}
+          {rounds > 1 && <p className="mt-1 text-xs text-[var(--sage-dim)]">Multi-round: the leaderboard totals all {rounds} rounds — tournament-style.</p>}
+          {err && <p className="mt-3 text-sm text-[#f08c8c]">{err}</p>}
+          <button onClick={schedule} disabled={!startDate || busy} className={`${btnGold} mt-6`}>{busy ? "Scheduling…" : weeks > 1 ? `Create ${weeks} events` : "Create event"}</button>
+        </section>
+      )}
+
+      {/* Upcoming */}
+      <section className="mb-12">
+        <SectionTitle>Upcoming</SectionTitle>
+        {upcoming.length === 0 ? (
+          <div className={`${card} px-6 py-10 text-center`}>
+            <p className="text-sm text-[var(--sage-dim)]">Nothing on the calendar{admin ? " — schedule the season above." : " yet."}</p>
+          </div>
+        ) : (
+          <div className="grid gap-3">{upcoming.map((ev) => <EventRow key={ev.id} ev={ev} />)}</div>
+        )}
+      </section>
+
+      {/* Standings */}
+      {standings.length > 0 && (
+        <section className="mb-12">
+          <SectionTitle right={league.settings.bestN ? <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--sage-dim)]">best {league.settings.bestN} count</span> : undefined}>Season standings</SectionTitle>
+          {top3.length > 0 && (
+            <div className="mb-4 grid grid-cols-3 gap-3">
+              {[top3[1], top3[0], top3[2]].map((s, col) => s ? (
+                <div key={s.id} className={`${card} relative flex flex-col items-center px-3 pb-4 text-center ${col === 1 ? "pt-5 ring-1 ring-[var(--gold)]/25" : "mt-3 pt-4"}`}>
+                  <Pos n={col === 1 ? 1 : col === 0 ? 2 : 3} />
+                  <Avatar url={photoOf.get(s.id)} name={s.name} size={col === 1 ? 52 : 42} />
+                  <div className="mt-2 w-full truncate px-1 text-sm font-bold text-[var(--cream)]">{s.name}</div>
+                  {s.division && <div className="text-[9px] font-bold uppercase tracking-wide text-[var(--sage-dim)]">{s.division}</div>}
+                  <div className={`mt-1 font-mono font-extrabold ${col === 1 ? "text-2xl text-[var(--gold)]" : "text-lg text-[var(--cream)]"}`}>{s.points}</div>
+                  <div className="text-[9px] font-bold uppercase tracking-wide text-[var(--sage-dim)]">pts · {s.played} played</div>
+                </div>
+              ) : <div key={col} />)}
+            </div>
+          )}
+          {rest.length > 0 && (
+            <div className={`${card} overflow-hidden`}>
+              {rest.map((s, i) => (
+                <div key={s.id} className="flex items-center gap-3.5 border-b border-white/[0.05] px-4 py-3 text-sm last:border-b-0">
+                  <Pos n={i + 4} />
+                  <Avatar url={photoOf.get(s.id)} name={s.name} size={30} />
+                  <span className="min-w-0 flex-1 truncate font-semibold text-[var(--cream)]">{s.name}{s.division && <span className="ml-2 rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[var(--sage-dim)]">{s.division}</span>}</span>
+                  <span className="hidden text-xs text-[var(--sage-dim)] sm:inline">{s.played} played{s.bestToPar != null ? ` · best ${fmtToPar(s.bestToPar)}` : ""}</span>
+                  <span className="w-12 text-right font-mono text-base font-extrabold text-[var(--cream)]">{s.points}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Past */}
       {past.length > 0 && (
-        <section className="mt-8">
-          <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-[var(--gold)]">Past events</h2>
-          <div className="space-y-3">{past.map((ev) => <EventRow key={ev.id} ev={ev} />)}</div>
+        <section className="mb-12">
+          <SectionTitle>Past events</SectionTitle>
+          <div className="grid gap-3">{past.map((ev) => <EventRow key={ev.id} ev={ev} />)}</div>
         </section>
       )}
 
-      <section className="mt-8">
-        <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-[var(--gold)]">Members · {members.length}</h2>
+      {/* Members */}
+      <section>
+        <SectionTitle>Members · {members.length}</SectionTitle>
         <div className="flex flex-wrap gap-2">
           {members.map((m) => (
-            <span key={m.id} className="inline-flex items-center gap-2 rounded-full bg-white/[0.05] py-1 pl-1 pr-3 text-sm text-[var(--text-body)]">
-              <span className="grid h-6 w-6 place-items-center overflow-hidden rounded-full bg-[var(--bg-mid)] text-[10px] font-bold text-[var(--cream)]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                {m.photo ? <img src={m.photo} alt="" className="h-full w-full object-cover" /> : (m.name || "?").charAt(0).toUpperCase()}
-              </span>
-              {m.username ? <Link href={`/u/${m.username}`} className="hover:underline">{m.name}</Link> : m.name}
+            <span key={m.id} className="inline-flex items-center gap-2 rounded-full bg-white/[0.04] py-1.5 pl-1.5 pr-3.5 text-sm text-[var(--text-body)] ring-1 ring-white/[0.06]">
+              <Avatar url={m.photo} name={m.name} size={26} ring={false} />
+              {m.username ? <Link href={`/u/${m.username}`} className="font-semibold text-[var(--cream)] hover:underline">{m.name}</Link> : <span className="font-semibold text-[var(--cream)]">{m.name}</span>}
               {typeof m.tag === "number" && <span className="rounded-full bg-white/[0.08] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[var(--cream)]">#{m.tag}</span>}
               {m.role !== "member" && <span className="rounded-full bg-[var(--gold-dim)] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[var(--gold)]">{m.role}</span>}
               {admin && m.role !== "owner" && (
@@ -251,7 +304,7 @@ export default function LeaguePage() {
                     setLeague({ ...league, adminIds: role === "director" ? [...league.adminIds, m.id] : league.adminIds.filter((id) => id !== m.id) });
                   }}
                   title={m.role === "director" ? "Demote to member" : "Promote to director"}
-                  className="text-[10px] font-bold text-[var(--sage-dim)] hover:text-[var(--gold)]"
+                  className="text-[10px] font-bold text-[var(--sage-dim)] transition-colors hover:text-[var(--gold)]"
                 >{m.role === "director" ? "demote" : "promote"}</button>
               )}
             </span>
