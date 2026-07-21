@@ -8,7 +8,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
-import { doc, setDoc, getDocs, collection, query, where, deleteDoc } from "firebase/firestore";
+import { doc, setDoc, getDocs, collection, query, where, orderBy, limit, deleteDoc } from "firebase/firestore";
 import { useAuth } from "@/components/AuthProvider";
 import { resolveCanonicalId } from "@/lib/account";
 import { freshId } from "@/lib/leagues";
@@ -41,6 +41,18 @@ export default function SeedPage() {
       const leagueSlug = `demo-north-shore-circuit-${leagueId.slice(0, 6).toLowerCase()}`;
       setSlug(leagueSlug);
 
+      say("Finding photogenic courses…");
+      // orderBy on coverPhotoUrl returns only docs that HAVE the field — real
+      // covers make the discovery photo strips reviewable with demo data.
+      let real: { id: string; name: string }[] = [];
+      try {
+        const snap = await getDocs(query(collection(db, "courses"), orderBy("coverPhotoUrl"), limit(10)));
+        real = snap.docs
+          .filter((d) => /^https?:\/\//.test(String(d.data().coverPhotoUrl)) && d.data().name)
+          .map((d) => ({ id: d.id, name: String(d.data().name) }));
+      } catch { say("(no photo courses found — strips will show the contour fallback)"); }
+      const rc = (i: number) => real.length ? real[i % real.length] : null;
+
       say("Creating demo league…");
       await setDoc(doc(db, "leagues", leagueId), {
         id: leagueId, name: "North Shore Demo Circuit", slug: leagueSlug,
@@ -62,7 +74,7 @@ export default function SeedPage() {
         setDoc(doc(db, "leagueEvents", evId, "entries", entryId), { checkedInAt: now - 2 * H, seedTag: DEMO_TAG, ...e });
 
       say("Live event (you are T3)…");
-      const live = await mkEvent({ name: "Cape Ann Weekly · Wk 12", kind: "league", date: now - 1.5 * H, courseName: "Stage Fort Park", buyIn: 10, capacity: 24, entryCount: 19 });
+      const live = await mkEvent({ name: "Cape Ann Weekly · Wk 12", kind: "league", date: now - 1.5 * H, courseId: rc(0)?.id, courseName: rc(0)?.name ?? "Stage Fort Park", buyIn: 10, capacity: 24, entryCount: 19 });
       const liveScores = [
         { holes: [3,3,2,3,3,2,3,3,3,2,3,3,3,2], thru: 14 },
         { holes: [3,2,3,3,3,3,2,3,3,3,2,3,3,3,3], thru: 15 },
@@ -81,7 +93,7 @@ export default function SeedPage() {
       }
 
       say("Complete tournament (full board + payouts)…");
-      const done = await mkEvent({ name: "Birchwood Fall Classic", kind: "tournament", date: now - 3 * D, courseName: "Birchwood DGC", roundCount: 2, buyIn: 45, capacity: 72, entryCount: 8, status: "complete", description: "Two rounds on the full layout. Tee assignments drop the night before.\n- CTP on 7 and 14\n- Ace pot carries" , contactEmail: "demo@radiusdiscgolf.com" });
+      const done = await mkEvent({ name: "Birchwood Fall Classic", kind: "tournament", date: now - 3 * D, courseId: rc(1)?.id, courseName: rc(1)?.name ?? "Birchwood DGC", roundCount: 2, buyIn: 45, capacity: 72, entryCount: 8, status: "complete", description: "Two rounds on the full layout. Tee assignments drop the night before.\n- CTP on 7 and 14\n- Ace pot carries" , contactEmail: "demo@radiusdiscgolf.com" });
       const finals = [[54, 52], [55, 53], [54, 55], [56, 54], [57, 55], [55, 58], [58, 57], [60, 59]];
       for (let i = 0; i < 8; i++) {
         const isYou = i === 2;
@@ -94,15 +106,15 @@ export default function SeedPage() {
       }
 
       say("Filling weekly (38%)…");
-      const thu = await mkEvent({ name: "Thursday Night Flights", kind: "league", date: now + 2 * D, courseName: "Maudslay State Park", buyIn: 10, capacity: 40, entryCount: 15 });
+      const thu = await mkEvent({ name: "Thursday Night Flights", kind: "league", date: now + 2 * D, courseId: rc(2)?.id, courseName: rc(2)?.name ?? "Maudslay State Park", buyIn: 10, capacity: 40, entryCount: 15 });
       for (let i = 0; i < 15; i++) await mkEntry(thu, freshId(), { name: FAKE[(i + 3) % FAKE.length], division: DIVS[i % 3] });
 
       say("Open tournament (just opened)…");
-      const open = await mkEvent({ name: "Granite Coast Open", kind: "tournament", date: now + 6 * D, courseName: "Pye Brook Park", roundCount: 2, buyIn: 55, capacity: 84, entryCount: 9 });
+      const open = await mkEvent({ name: "Granite Coast Open", kind: "tournament", date: now + 6 * D, courseId: rc(3)?.id, courseName: rc(3)?.name ?? "Pye Brook Park", roundCount: 2, buyIn: 55, capacity: 84, entryCount: 9 });
       for (let i = 0; i < 9; i++) await mkEntry(open, freshId(), { name: FAKE[(i + 9) % FAKE.length] });
 
       say("Doubles with teams…");
-      const dbl = await mkEvent({ name: "Sunday Doubles", kind: "social", format: "Doubles", date: now + 5 * D, courseName: "Borderland State Park", buyIn: 12, capacity: 24, entryCount: 10 });
+      const dbl = await mkEvent({ name: "Sunday Doubles", kind: "social", format: "Doubles", date: now + 5 * D, courseId: rc(4)?.id, courseName: rc(4)?.name ?? "Borderland State Park", buyIn: 12, capacity: 24, entryCount: 10 });
       for (let i = 0; i < 10; i++) await mkEntry(dbl, freshId(), { name: FAKE[(i + 12) % FAKE.length], teamId: Math.floor(i / 2) + 1 });
 
       say("Empty league night (zero-state)…");

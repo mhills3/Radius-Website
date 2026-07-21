@@ -3,24 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
-import { createLeague, getMyLeagues, getAllLeagues, getUpcomingEvents, getEntries, LEAGUE_FORMATS, START_FORMATS, type League, type LeagueEvent, type EventEntry } from "@/lib/leagues";
+import { createLeague, getMyLeagues, getAllLeagues, getUpcomingEvents, getEntries, getCourseCovers, LEAGUE_FORMATS, START_FORMATS, type League, type LeagueEvent, type EventEntry } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
-import { inputCls, FieldLabel, SectionTitle, Segmented, btnGold, btnGhost, card, cardHover, Avatar, plural, pluralWord, IconCalendar, IconDisc } from "@/components/leagues/ui";
+import { inputCls, FieldLabel, SectionTitle, Segmented, btnGold, btnGhost, card, cardHover, pluralWord, IconCalendar, IconDisc } from "@/components/leagues/ui";
 
-const MON = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 const MONTH_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const DAY = ["S", "M", "T", "W", "T", "F", "S"];
 const dayKey = (ms: number) => { const d = new Date(ms); return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; };
 
-function DateBlock({ ms }: { ms: number }) {
-  const d = new Date(ms);
-  return (
-    <div className="w-11 shrink-0 font-mono leading-[1.15]">
-      <div className="text-[10.5px] uppercase tracking-[0.2em] text-[var(--cream-38)]">{MON[d.getMonth()]}</div>
-      <div className="text-[26px] font-bold text-[var(--cream)]">{d.getDate()}</div>
-    </div>
-  );
-}
 
 const KIND_CHIP: Record<string, string> = { league: "LEAGUE", tournament: "TOURNAMENT", clinic: "CLINIC", cleanup: "CLEANUP", social: "SOCIAL" };
 
@@ -34,6 +24,39 @@ function Emblem({ name, size = 52 }: { name: string; size?: number }) {
 }
 
 /** Month calendar with activity dots — click a marked day to filter the list. */
+/** Card photo strip: course cover with dissolve-into-card gradients, contour
+    fallback when no photo exists or the URL is dead, frosted date chip overlay. */
+function CourseStrip({ url, ms }: { url?: string; ms: number }) {
+  const [loaded, setLoaded] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const d = new Date(ms);
+  return (
+    <div className="relative h-[120px] overflow-hidden sm:h-auto sm:min-h-[132px]">
+      <div aria-hidden className="absolute inset-0" style={{ background: "linear-gradient(135deg, #1E2E26 0%, #1A2821 45%, #16211B 100%)" }}>
+        <div className="absolute inset-0" style={{ background: "radial-gradient(420px 200px at 20% 0%, rgba(45,74,62,.5), transparent 70%)" }} />
+        <svg className="absolute inset-0 h-full w-full" viewBox="0 0 440 264" preserveAspectRatio="xMidYMid slice" fill="none" aria-hidden>
+          <path d="M-20 210 C 60 190, 120 230, 200 200 S 340 165, 460 195" stroke="rgba(244,241,232,.06)" />
+          <path d="M-20 160 C 70 145, 130 185, 210 155 S 345 120, 460 150" stroke="rgba(244,241,232,.07)" />
+          <path d="M-20 110 C 80 100, 140 135, 220 110 S 350 78, 460 102" stroke="rgba(143,189,227,.10)" />
+          <path d="M-20 60 C 90 58, 150 88, 230 65 S 355 38, 460 58" stroke="rgba(232,181,96,.08)" />
+        </svg>
+      </div>
+      {url && !failed && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={url} alt="" loading="lazy" decoding="async" onLoad={() => setLoaded(true)} onError={() => setFailed(true)}
+          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${loaded ? "opacity-100" : "opacity-0"}`} />
+      )}
+      <div aria-hidden className="absolute inset-0 bg-[rgba(20,27,22,0.25)]" />
+      <div aria-hidden className="absolute inset-0 hidden sm:block" style={{ background: "linear-gradient(90deg, transparent 55%, rgba(26,40,33,.92) 100%)" }} />
+      <div aria-hidden className="absolute inset-0 sm:hidden" style={{ background: "linear-gradient(180deg, transparent 55%, rgba(26,40,33,.92) 100%)" }} />
+      <div className="absolute left-3 top-3 min-w-[46px] rounded-xl border border-[var(--hair)] bg-[rgba(20,27,22,0.85)] px-2 py-1.5 text-center backdrop-blur-[6px]">
+        <div className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[var(--cream-60)]">{d.toLocaleDateString(undefined, { month: "short" })}</div>
+        <div className="font-mono text-[19px] font-bold leading-[1.1] text-[var(--cream)]">{d.getDate()}</div>
+      </div>
+    </div>
+  );
+}
+
 function Calendar({ eventDays, selected, onSelect, initial }: { eventDays: Set<string>; selected: string | null; onSelect: (k: string | null) => void; initial: Date }) {
   const [view, setView] = useState(() => new Date(initial.getFullYear(), initial.getMonth(), 1));
   const today = initial;
@@ -112,6 +135,12 @@ export default function LeaguesPage() {
     }).catch(() => setLive(null));
   }, [upcoming]);
 
+  const [covers, setCovers] = useState<Map<string, string>>(new Map());
+  useEffect(() => {
+    const ids = upcoming.map((e) => e.courseId).filter((x): x is string => !!x);
+    if (ids.length) getCourseCovers(ids).then(setCovers).catch(() => {});
+  }, [upcoming]);
+
   const slugOf = useMemo(() => new Map(all.map((l) => [l.id, l.slug])), [all]);
   const eventDays = useMemo(() => new Set(upcoming.map((e) => dayKey(e.date))), [upcoming]);
 
@@ -142,58 +171,21 @@ export default function LeaguesPage() {
 
   return (
     <main className="mx-auto max-w-5xl px-5 pb-28">
-      {/* Hero — reference: rings motif, hero-grid, legend, live tile right */}
-      <section className="relative overflow-hidden border-b border-[var(--hair)] pb-[64px] pt-[84px]">
-        <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden opacity-50">
-          <svg className="absolute" style={{ right: -300, top: -300 }} width="900" height="900" viewBox="0 0 900 900" fill="none">
-            <circle cx="450" cy="450" r="440" stroke="rgba(244,241,232,.05)" />
-            <circle cx="450" cy="450" r="340" stroke="rgba(244,241,232,.06)" />
-            <circle cx="450" cy="450" r="240" stroke="rgba(143,189,227,.10)" />
-            <circle cx="450" cy="450" r="140" stroke="rgba(232,181,96,.12)" />
-            <circle cx="450" cy="450" r="4" fill="rgba(232,181,96,.5)" />
-          </svg>
+      {/* Compact page header — one hairline, ends above the controls row */}
+      <header className="flex flex-wrap items-end justify-between gap-4 border-b border-[var(--hair)] pb-6 pt-10">
+        <div>
+          <h1 className="font-[family-name:var(--font-heading)] text-[28px] font-extrabold tracking-[-0.01em] text-[var(--cream)]">Events</h1>
+          <p className="mt-1 text-sm text-[var(--cream-60)]">Leagues, weeklies, and tournaments near you.</p>
         </div>
-        <div className={`relative grid items-center gap-14 ${live ? "lg:grid-cols-[1.1fr_0.9fr]" : ""}`}>
-          <div>
-            <p className="mb-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--blue)]">Events</p>
-            <h1 className="max-w-[700px] font-[family-name:var(--font-heading)] text-[clamp(34px,4.4vw,52px)] font-extrabold leading-[1.06] tracking-[-0.015em] text-[var(--cream)]">Where the local scene plays.</h1>
-            <p className="mt-4 max-w-[520px] text-base leading-relaxed text-[var(--cream-60)]">Leagues, weeklies, and tournaments near you. Register in one tap, pay in the app, and score live on real course maps.</p>
-          </div>
-          {live && (
-            <Link href={slugOf.get(live.ev.leagueId) ? `/leagues/${slugOf.get(live.ev.leagueId)}/e/${live.ev.id}` : "#"} className="relative block overflow-hidden rounded-2xl border border-[var(--hair)] bg-[var(--card)] p-6 transition-colors hover:border-[var(--hair-strong)]">
-              <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(600px 300px at 80% -10%, rgba(143,189,227,.10), transparent 60%)" }} />
-              <div className="relative">
-                <span className="inline-flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--blue)]">
-                  <i className="pulse-ring h-2 w-2 rounded-full bg-[var(--blue)]" />Live now
-                </span>
-                <h3 className="mt-3.5 font-[family-name:var(--font-heading)] text-[19px] font-bold text-[var(--cream)]">{live.ev.name}</h3>
-                <div className="text-[13px] text-[var(--cream-60)]">{live.ev.courseName ? `${live.ev.courseName} · ` : ""}Round in progress</div>
-                {live.top.length > 0 && (
-                  <div className="mt-5 border-t border-[var(--hair)]">
-                    {live.top.map((e, i) => {
-                      const you = cid != null && e.id === cid;
-                      const total = (e.score ?? e.holeScores!.filter((h) => h > 0).reduce((p, c) => p + c, 0)) + (e.penalty ?? 0);
-                      const thru = typeof e.score !== "number" ? (e.thruHole ?? e.holeScores?.filter((h) => h > 0).length) : null;
-                      return (
-                        <div key={e.id} className={`grid grid-cols-[34px_1fr_62px_62px] items-center border-b border-[var(--hair)] px-1 py-[11px] text-[13.5px] ${you ? "rounded-lg border-b-transparent bg-[var(--gold-dim)]" : ""}`}>
-                          <span className="font-mono text-[var(--cream-38)]">{i + 1}</span>
-                          <span className="flex items-center gap-2 font-semibold text-[var(--cream)]">{e.name}{you && <span className="rounded border border-[rgba(232,181,96,.4)] px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.14em] text-[var(--gold)]">You</span>}</span>
-                          <span className="text-right font-mono text-xs text-[var(--cream-38)]">{thru ? `THRU ${thru}` : ""}</span>
-                          <span className={`text-right font-mono font-bold ${you ? "text-[var(--gold)]" : "text-[var(--blue)]"}`}>{total}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-                <div className="mt-4 flex items-center gap-6 font-mono text-[10.5px] tracking-[0.08em] text-[var(--cream-38)]">
-                  <span className="flex items-center gap-2"><i className="h-2 w-2 rounded-full bg-[var(--blue)]" />The field</span>
-                  <span className="flex items-center gap-2"><i className="h-2 w-2 rounded-full bg-[var(--gold)]" />You</span>
-                </div>
-              </div>
-            </Link>
+        <div className="flex items-center gap-4">
+          {tab === "Events" && <span className="font-mono text-xs uppercase tracking-[0.1em] text-[var(--cream-38)]">{shownEvents.length} upcoming</span>}
+          {user ? (
+            <Link href="/leagues/new" className={`${btnGold} inline-flex h-11 items-center`}>Create an event</Link>
+          ) : (
+            <Link href="/login" className={`${btnGold} inline-flex h-11 items-center`}>Sign in</Link>
           )}
         </div>
-      </section>
+      </header>
 
       {/* Create */}
       {creating && (
@@ -223,19 +215,13 @@ export default function LeaguesPage() {
         </section>
       )}
 
-      {/* Controls */}
-      <section className="mb-8 flex min-h-12 flex-wrap items-center gap-3">
-        <Segmented options={["Events", "Leagues"]} value={tab} onChange={(t) => { setTab(t); setDayFilter(null); }} />
+      {/* Controls — every control 44px, no hairline touches this row */}
+      <section className="mb-6 mt-6 flex flex-wrap items-center gap-3">
+        <Segmented tall options={["Events", "Leagues"]} value={tab} onChange={(t) => { setTab(t); setDayFilter(null); }} />
         <div className="relative min-w-[220px] flex-1">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--sage-dim)]"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tab === "Events" ? "Search events, leagues, or courses" : "Search leagues or courses"} className={`${inputCls} h-12 pl-11`} />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tab === "Events" ? "Search events, leagues, or courses" : "Search leagues or courses"} className={`${inputCls} h-11 pl-11`} />
         </div>
-        {tab === "Events" && <span className="font-mono text-xs uppercase tracking-[0.08em] text-[var(--cream-38)]">{plural(shownEvents.length, "event")}</span>}
-        {user ? (
-          <Link href="/leagues/new" className={btnGold}>Create an event</Link>
-        ) : (
-          <Link href="/login" className={btnGold}>Sign in</Link>
-        )}
       </section>
 
       {tab === "Events" ? (
@@ -245,6 +231,39 @@ export default function LeaguesPage() {
             {dayFilter && <button onClick={() => setDayFilter(null)} className="mt-3 w-full rounded-full bg-white/[0.05] py-2 text-xs font-bold text-[var(--sage)] transition-colors hover:text-[var(--cream)]">Clear day filter</button>}
           </div>
           <div>
+          {live && (
+              <Link href={slugOf.get(live.ev.leagueId) ? `/leagues/${slugOf.get(live.ev.leagueId)}/e/${live.ev.id}` : "#"} className="relative mb-3 block overflow-hidden rounded-2xl border border-[var(--hair)] bg-[var(--card)] p-6 transition-colors hover:border-[var(--hair-strong)]">
+                <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(600px 300px at 80% -10%, rgba(143,189,227,.10), transparent 60%)" }} />
+                <div className="relative">
+                  <span className="inline-flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--blue)]">
+                    <i className="pulse-ring h-2 w-2 rounded-full bg-[var(--blue)]" />Live now
+                  </span>
+                  <h3 className="mt-3.5 font-[family-name:var(--font-heading)] text-[19px] font-bold text-[var(--cream)]">{live.ev.name}</h3>
+                  <div className="text-[13px] text-[var(--cream-60)]">{live.ev.courseName ? `${live.ev.courseName} · ` : ""}Round in progress</div>
+                  {live.top.length > 0 && (
+                    <div className="mt-5 border-t border-[var(--hair)]">
+                      {live.top.map((e, i) => {
+                        const you = cid != null && e.id === cid;
+                        const total = (e.score ?? e.holeScores!.filter((h) => h > 0).reduce((p, c) => p + c, 0)) + (e.penalty ?? 0);
+                        const thru = typeof e.score !== "number" ? (e.thruHole ?? e.holeScores?.filter((h) => h > 0).length) : null;
+                        return (
+                          <div key={e.id} className={`grid grid-cols-[34px_1fr_62px_62px] items-center border-b border-[var(--hair)] px-1 py-[11px] text-[13.5px] ${you ? "rounded-lg border-b-transparent bg-[var(--gold-dim)]" : ""}`}>
+                            <span className="font-mono text-[var(--cream-38)]">{i + 1}</span>
+                            <span className="flex items-center gap-2 font-semibold text-[var(--cream)]">{e.name}{you && <span className="rounded border border-[rgba(232,181,96,.4)] px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.14em] text-[var(--gold)]">You</span>}</span>
+                            <span className="text-right font-mono text-xs text-[var(--cream-38)]">{thru ? `THRU ${thru}` : ""}</span>
+                            <span className={`text-right font-mono font-bold ${you ? "text-[var(--gold)]" : "text-[var(--blue)]"}`}>{total}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <div className="mt-4 flex items-center gap-6 font-mono text-[10.5px] tracking-[0.08em] text-[var(--cream-38)]">
+                    <span className="flex items-center gap-2"><i className="h-2 w-2 rounded-full bg-[var(--blue)]" />The field</span>
+                    <span className="flex items-center gap-2"><i className="h-2 w-2 rounded-full bg-[var(--gold)]" />You</span>
+                  </div>
+                </div>
+              </Link>
+            )}
             {shownEvents.length === 0 ? (
               <div className={`${card} grid place-items-center px-6 py-16 text-center`}>
                 <span className="grid h-14 w-14 place-items-center rounded-full bg-[var(--card-raised)] text-[var(--blue)]"><IconCalendar className="h-6 w-6" /></span>
@@ -256,21 +275,21 @@ export default function LeaguesPage() {
                 {shownEvents.map((ev) => {
                   const slug = slugOf.get(ev.leagueId);
                   const inner = (
-                    <>
-                      <DateBlock ms={ev.date} />
-                      <div className="min-w-0 flex-1">
+                    <div className="grid sm:grid-cols-[220px_1fr]">
+                      <CourseStrip url={ev.courseId ? covers.get(ev.courseId) : undefined} ms={ev.date} />
+                      <div className="min-w-0 p-6">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 truncate font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">{ev.name}</div>
                           <span className="shrink-0 rounded-full border border-[var(--blue-dim)] px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--blue)]">{KIND_CHIP[ev.kind ?? ""] ?? "EVENT"}</span>
                         </div>
                         <div className="mt-0.5 truncate text-[13px] text-[var(--cream-60)]">
-                          {[ev.leagueName !== ev.name ? ev.leagueName : null, ev.courseName, `${weekday(ev.date)} ${fmtTime(ev.date)}`].filter(Boolean).join(" · ")}
+                          {[ev.leagueName !== ev.name ? ev.leagueName : null, `${weekday(ev.date)} ${fmtTime(ev.date)}`].filter(Boolean).join(" · ")}
                         </div>
                         <div className="mt-5 flex gap-[22px]">
-                          <span><span className={`block text-[15px] font-bold text-[var(--cream)] ${ev.buyIn ? "font-mono" : ""}`}>{ev.buyIn ? `$${ev.buyIn}` : "Free"}</span><span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Buy-in</span></span>
+                          <span><span className={`block text-[15px] font-bold ${ev.buyIn ? "font-mono text-[var(--blue)]" : "text-[var(--cream)]"}`}>{ev.buyIn ? `$${ev.buyIn}` : "Free"}</span><span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Buy-in</span></span>
                           <span><span className="block text-[15px] font-bold text-[var(--cream)]">{ev.format}</span><span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Format</span></span>
                           {ev.entryCount > 0 && <span><span className="block font-mono text-[15px] font-bold text-[var(--blue)]">{ev.entryCount}</span><span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]">{pluralWord(ev.entryCount, "Player")}</span></span>}
-                          {ev.roundCount > 1 && <span><span className="block font-mono text-[15px] font-bold text-[var(--cream)]">{ev.roundCount}×{ev.holes}</span><span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Rounds</span></span>}
+                          {ev.roundCount > 1 && <span><span className="block font-mono text-[15px] font-bold text-[var(--blue)]">{ev.roundCount}×{ev.holes}</span><span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Rounds</span></span>}
                         </div>
                         {!ev.capacity && (
                           <div className="mt-4 font-mono text-[10.5px] tracking-[0.06em] text-[var(--cream-38)]">{ev.entryCount > 0 ? <><b className="font-medium text-[var(--cream-60)]">{ev.entryCount}</b> checked in</> : "Be the first in"}</div>
@@ -288,12 +307,12 @@ export default function LeaguesPage() {
                           );
                         })()}
                       </div>
-                    </>
+                    </div>
                   );
                   return slug ? (
-                    <Link key={ev.id} href={`/leagues/${slug}/e/${ev.id}`} className={`${card} ${cardHover} group flex items-start gap-4 p-6`}>{inner}</Link>
+                    <Link key={ev.id} href={`/leagues/${slug}/e/${ev.id}`} className={`${card} ${cardHover} group block overflow-hidden`}>{inner}</Link>
                   ) : (
-                    <div key={ev.id} className={`${card} flex items-start gap-4 p-6`}>{inner}</div>
+                    <div key={ev.id} className={`${card} overflow-hidden`}>{inner}</div>
                   );
                 })}
               </div>

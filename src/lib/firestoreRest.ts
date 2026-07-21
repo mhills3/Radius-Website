@@ -25,10 +25,11 @@ export function fsDoc(d: any): Record<string, unknown> {
   return out;
 }
 
-/** Fetch a single document, or null. */
-export async function fsGet(path: string): Promise<Record<string, unknown> | null> {
+/** Fetch a single document, or null. Optional mask limits fields returned. */
+export async function fsGet(path: string, mask: string[] = []): Promise<Record<string, unknown> | null> {
   try {
-    const r = await fetch(`${REST_BASE}/${path}?${auth("")}`, { next: { revalidate: 3600 } });
+    const m = mask.map((f) => `mask.fieldPaths=${encodeURIComponent(f)}`).join("&");
+    const r = await fetch(`${REST_BASE}/${path}?${m}${m ? "&" : ""}${auth("")}`, { next: { revalidate: 3600 } });
     if (!r.ok) return null;
     return fsDoc(await r.json());
   } catch {

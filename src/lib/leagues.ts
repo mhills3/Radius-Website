@@ -195,6 +195,24 @@ function toLeague(id: string, d: any): League {
 // ---- Course search (wizard "Where" step) ----
 // One cached sweep of the public course directory (name/city/state only via the
 // REST mask — ~1.4k tiny rows), then instant client-side filtering.
+/** Cover photo URLs for course docs, masked REST read, cached for the session. */
+const coverCache = new Map<string, string | null>();
+export async function getCourseCovers(ids: string[]): Promise<Map<string, string>> {
+  const wanted = [...new Set(ids.filter(Boolean))];
+  const missing = wanted.filter((id) => !coverCache.has(id));
+  if (missing.length) {
+    const { fsGet } = await import("./firestoreRest");
+    await Promise.all(missing.map(async (id) => {
+      const d = await fsGet(`courses/${id}`, ["coverPhotoUrl"]);
+      const url = typeof d?.coverPhotoUrl === "string" && /^https?:\/\//.test(d.coverPhotoUrl) ? d.coverPhotoUrl : null;
+      coverCache.set(id, url);
+    }));
+  }
+  const out = new Map<string, string>();
+  for (const id of wanted) { const u = coverCache.get(id); if (u) out.set(id, u); }
+  return out;
+}
+
 export interface CourseHit { id: string; name: string; city?: string; state?: string }
 let courseCache: CourseHit[] | null = null;
 export async function searchCourses(qText: string, max = 8): Promise<CourseHit[]> {

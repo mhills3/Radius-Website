@@ -20,15 +20,15 @@ export function SectionTitle({ children, right }: { children: React.ReactNode; r
   );
 }
 
-export function Segmented({ options, value, onChange }: { options: string[]; value: string; onChange: (v: string) => void }) {
+export function Segmented({ options, value, onChange, tall }: { options: string[]; value: string; onChange: (v: string) => void; tall?: boolean }) {
   return (
-    <div className="flex w-fit rounded-full bg-[var(--card)] p-1 ring-1 ring-[var(--hair)]">
+    <div className={`flex w-fit rounded-full bg-[var(--card)] ring-1 ring-[var(--hair)] ${tall ? "h-11 p-[3px]" : "p-1"}`}>
       {options.map((o) => (
         <button
           key={o}
           type="button"
           onClick={() => onChange(o)}
-          className={`rounded-full px-4 py-1.5 text-xs font-bold transition-colors ${value === o ? "bg-[var(--gold)] text-[#141B16]" : "text-[var(--cream-60)] hover:text-[var(--cream)]"}`}
+          className={`rounded-full font-bold transition-colors ${tall ? "min-w-[96px] px-4 text-[13px]" : "px-4 py-1.5 text-xs"} ${value === o ? "bg-[var(--gold)] text-[#141B16]" : "text-[var(--cream-60)] hover:text-[var(--cream)]"}`}
         >{o}</button>
       ))}
     </div>
