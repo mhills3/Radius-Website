@@ -15,11 +15,9 @@ const dayKey = (ms: number) => { const d = new Date(ms); return `${d.getFullYear
 function DateBlock({ ms }: { ms: number }) {
   const d = new Date(ms);
   return (
-    <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-[var(--card-raised)] leading-none">
-      <div className="text-center font-mono">
-        <div className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-[var(--cream-38)]">{MON[d.getMonth()]}</div>
-        <div className="mt-0.5 text-[26px] font-bold text-[var(--cream)]">{d.getDate()}</div>
-      </div>
+    <div className="w-11 shrink-0 font-mono leading-[1.15]">
+      <div className="text-[10.5px] uppercase tracking-[0.2em] text-[var(--cream-38)]">{MON[d.getMonth()]}</div>
+      <div className="text-[26px] font-bold text-[var(--cream)]">{d.getDate()}</div>
     </div>
   );
 }
@@ -145,25 +143,12 @@ export default function LeaguesPage() {
   return (
     <main className="mx-auto max-w-5xl px-5 pb-28">
       {/* Hero — reference: rings motif, hero-grid, legend, live tile right */}
-      <section className="relative overflow-hidden border-b border-[var(--hair)] pb-14 pt-[68px]">
-        <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden opacity-50">
-          <svg className="absolute -top-[260px] right-[-180px]" width="900" height="900" viewBox="0 0 900 900" fill="none">
-            <circle cx="450" cy="450" r="440" stroke="rgba(244,241,232,.05)" />
-            <circle cx="450" cy="450" r="340" stroke="rgba(244,241,232,.06)" />
-            <circle cx="450" cy="450" r="240" stroke="rgba(143,189,227,.10)" />
-            <circle cx="450" cy="450" r="140" stroke="rgba(232,181,96,.12)" />
-            <circle cx="450" cy="450" r="4" fill="rgba(232,181,96,.5)" />
-          </svg>
-        </div>
+      <section className="relative overflow-hidden border-b border-[var(--hair)] pb-[64px] pt-[84px]">
         <div className={`relative grid items-center gap-14 ${live ? "lg:grid-cols-[1.1fr_0.9fr]" : ""}`}>
           <div>
             <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--blue)]">Events</p>
-            <h1 className="mt-3 font-[family-name:var(--font-heading)] text-[clamp(34px,4.4vw,52px)] font-extrabold leading-[1.06] tracking-[-0.015em] text-[var(--cream)]">Where the local scene plays.</h1>
+            <h1 className="mt-3 max-w-[700px] font-[family-name:var(--font-heading)] text-[clamp(34px,4.4vw,52px)] font-extrabold leading-[1.06] tracking-[-0.015em] text-[var(--cream)]">Where the local scene plays.</h1>
             <p className="mt-4 max-w-[520px] text-base leading-relaxed text-[var(--cream-60)]">Leagues, weeklies, and tournaments near you. Register in one tap, pay in the app, and score live on real course maps.</p>
-            <div className="mt-8 flex items-center gap-7 font-mono text-[11.5px] tracking-[0.08em] text-[var(--cream-60)]">
-              <span className="flex items-center gap-2"><i className="h-[9px] w-[9px] rounded-full bg-[var(--blue)]" />The field</span>
-              <span className="flex items-center gap-2"><i className="h-[9px] w-[9px] rounded-full bg-[var(--gold)]" />You</span>
-            </div>
           </div>
           {live && (
             <Link href={slugOf.get(live.ev.leagueId) ? `/leagues/${slugOf.get(live.ev.leagueId)}/e/${live.ev.id}` : "#"} className="relative block overflow-hidden rounded-2xl border border-[var(--hair)] bg-[var(--card)] p-6 transition-colors hover:border-[var(--hair-strong)]">
@@ -191,6 +176,10 @@ export default function LeaguesPage() {
                     })}
                   </div>
                 )}
+                <div className="mt-4 flex items-center gap-6 font-mono text-[10.5px] tracking-[0.08em] text-[var(--cream-38)]">
+                  <span className="flex items-center gap-2"><i className="h-2 w-2 rounded-full bg-[var(--blue)]" />The field</span>
+                  <span className="flex items-center gap-2"><i className="h-2 w-2 rounded-full bg-[var(--gold)]" />You</span>
+                </div>
               </div>
             </Link>
           )}
@@ -226,13 +215,13 @@ export default function LeaguesPage() {
       )}
 
       {/* Controls */}
-      <section className="mb-8 flex flex-wrap items-center gap-3">
+      <section className="mb-8 flex min-h-12 flex-wrap items-center gap-3">
         <Segmented options={["Events", "Leagues"]} value={tab} onChange={(t) => { setTab(t); setDayFilter(null); }} />
         <div className="relative min-w-[220px] flex-1">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--sage-dim)]"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tab === "Events" ? "Search events, leagues, or courses" : "Search leagues or courses"} className={`${inputCls} pl-11`} />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tab === "Events" ? "Search events, leagues, or courses" : "Search leagues or courses"} className={`${inputCls} h-12 pl-11`} />
         </div>
-        {tab === "Events" && <span className="text-sm text-[var(--cream-38)]"><span className="font-mono font-bold text-[var(--cream)]">{shownEvents.length}</span> event{shownEvents.length === 1 ? "" : "s"}</span>}
+        {tab === "Events" && <span className="font-mono text-xs uppercase tracking-[0.08em] text-[var(--cream-38)]">{shownEvents.length} event{shownEvents.length === 1 ? "" : "s"}</span>}
         {user ? (
           <Link href="/leagues/new" className={btnGold}>Create an event</Link>
         ) : (
@@ -266,14 +255,17 @@ export default function LeaguesPage() {
                           <span className="shrink-0 rounded-full border border-[var(--blue-dim)] px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--blue)]">{KIND_CHIP[ev.kind ?? ""] ?? "EVENT"}</span>
                         </div>
                         <div className="mt-0.5 truncate text-[13px] text-[var(--cream-60)]">
-                          {ev.leagueName}{ev.courseName ? ` · ${ev.courseName}` : ""} · {weekday(ev.date)} {fmtTime(ev.date)}
+                          {[ev.leagueName !== ev.name ? ev.leagueName : null, ev.courseName, `${weekday(ev.date)} ${fmtTime(ev.date)}`, ev.entryCount === 0 ? "Be the first in" : null].filter(Boolean).join(" · ")}
                         </div>
                         <div className="mt-5 flex gap-[22px]">
                           <span><span className={`block text-[15px] font-bold text-[var(--cream)] ${ev.buyIn ? "font-mono" : ""}`}>{ev.buyIn ? `$${ev.buyIn}` : "Free"}</span><span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Buy-in</span></span>
                           <span><span className="block text-[15px] font-bold text-[var(--cream)]">{ev.format}</span><span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Format</span></span>
-                          <span><span className="block font-mono text-[15px] font-bold text-[var(--blue)]">{ev.entryCount}</span><span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Players</span></span>
+                          {ev.entryCount > 0 && <span><span className="block font-mono text-[15px] font-bold text-[var(--blue)]">{ev.entryCount}</span><span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Players</span></span>}
                           {ev.roundCount > 1 && <span><span className="block font-mono text-[15px] font-bold text-[var(--cream)]">{ev.roundCount}×{ev.holes}</span><span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Rounds</span></span>}
                         </div>
+                        {!ev.capacity && ev.entryCount > 0 && (
+                          <div className="mt-4 font-mono text-[10.5px] tracking-[0.06em] text-[var(--cream-38)]"><b className="font-medium text-[var(--cream-60)]">{ev.entryCount}</b> checked in</div>
+                        )}
                         {ev.capacity && (() => {
                           const pct = Math.min(100, Math.round((ev.entryCount / ev.capacity!) * 100));
                           const hot = pct >= 75;

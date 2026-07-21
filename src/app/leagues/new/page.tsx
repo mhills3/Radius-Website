@@ -207,14 +207,6 @@ export default function EventWizard() {
 
   return (
     <div className="relative">
-      {/* Range rings — signature motif; page stays flat forest */}
-      <svg viewBox="0 0 480 480" aria-hidden className="pointer-events-none absolute -left-40 top-[52%] hidden h-[440px] w-[440px] lg:block" fill="none">
-        {[90, 150, 210].map((r, i) => (
-          <circle key={r} cx="240" cy="240" r={r} stroke="var(--gold)" strokeOpacity={0.1 - i * 0.025} strokeWidth="1.5" strokeDasharray={i === 0 ? undefined : "3 7"} />
-        ))}
-        <circle cx="240" cy="150" r="5" fill="var(--gold)" fillOpacity="0.5" />
-        <circle cx="330" cy="300" r="4" fill="#5fcf80" fillOpacity="0.5" />
-      </svg>
 
       <main className="relative mx-auto grid min-h-[80vh] max-w-6xl gap-10 px-5 pb-36 pt-14 lg:grid-cols-[1fr_1.15fr] lg:gap-16">
         {/* Question + answer rail */}
