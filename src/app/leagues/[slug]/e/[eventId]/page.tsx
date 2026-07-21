@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { getLeagueBySlug, getEvent, getEntries, getCards, checkIn, updateEntry, generateCards, setEventStatus, computeStandings, isLeagueAdmin, eventPoints, type League, type LeagueEvent, type EventEntry, type EventCard } from "@/lib/leagues";
+import { getLeagueBySlug, getEvent, getEntries, getCards, checkIn, updateEntry, removeEntry, generateCards, setEventStatus, computeStandings, isLeagueAdmin, eventPoints, type League, type LeagueEvent, type EventEntry, type EventCard } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 
 const fmtDate = (ms: number) => new Date(ms).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
@@ -20,6 +20,7 @@ export default function LeagueEventPage() {
   const [busy, setBusy] = useState(false);
   const [cardSize, setCardSize] = useState(4);
   const [scoreDraft, setScoreDraft] = useState<Record<string, string>>({});
+  const [copied, setCopied] = useState(false);
 
   const reload = async (evId: string) => {
     const [en, ca] = await Promise.all([getEntries(evId), getCards(evId)]);
@@ -67,12 +68,38 @@ export default function LeagueEventPage() {
     } finally { setBusy(false); }
   };
 
+  const cancel = async () => {
+    if (!event || busy) return;
+    setBusy(true);
+    try { await setEventStatus(event.id, "cancelled"); setEvent({ ...event, status: "cancelled" }); } finally { setBusy(false); }
+  };
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* clipboard unavailable */ }
+  };
+
+  const patchEntry = async (entryId: string, patch: Parameters<typeof updateEntry>[2]) => {
+    if (!event) return;
+    await updateEntry(event.id, entryId, patch);
+    await reload(event.id);
+  };
+
+  const dropEntry = async (entryId: string) => {
+    if (!event) return;
+    await removeEntry(event.id, entryId);
+    await reload(event.id);
+  };
+
   if (event === undefined) return <main className="mx-auto max-w-3xl px-5 pt-10 text-sm text-[var(--sage-dim)]">Loading…</main>;
   if (event === null) return <main className="mx-auto max-w-3xl px-5 pt-10"><p className="text-sm text-[var(--sage-dim)]">Event not found.</p></main>;
 
   const nameOf = (id: string) => entries.find((e) => e.id === id)?.name ?? "Player";
-  const ranked = [...entries].filter((e) => typeof e.score === "number").sort((a, b) => (a.score! + (a.penalty ?? 0)) - (b.score! + (b.penalty ?? 0)));
-  const unscored = entries.filter((e) => typeof e.score !== "number");
+  const ranked = [...entries].filter((e) => typeof e.score === "number" && !e.dnf).sort((a, b) => (a.score! + (a.penalty ?? 0)) - (b.score! + (b.penalty ?? 0)));
+  const unscored = entries.filter((e) => !ranked.includes(e));
 
   return (
     <main className="mx-auto max-w-3xl px-5 pb-24 pt-10">
@@ -82,10 +109,10 @@ export default function LeagueEventPage() {
           <h1 className="font-[family-name:var(--font-heading)] text-2xl font-extrabold tracking-tight text-[var(--cream)]">{event.name}</h1>
           <p className="mt-1 text-sm text-[var(--sage)]">{fmtDate(event.date)}{event.courseName ? ` · ${event.courseName}` : ""} · {event.format} · {event.startFormat}</p>
         </div>
-        <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${event.status === "complete" ? "bg-white/[0.06] text-[var(--sage-dim)]" : event.status === "active" ? "bg-[#5fcf80]/15 text-[#5fcf80]" : "bg-[var(--gold-dim)] text-[var(--gold)]"}`}>{event.status}</span>
+        <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${event.status === "complete" ? "bg-white/[0.06] text-[var(--sage-dim)]" : event.status === "cancelled" ? "bg-[#f08c8c]/15 text-[#f08c8c]" : event.status === "active" ? "bg-[#5fcf80]/15 text-[#5fcf80]" : "bg-[var(--gold-dim)] text-[var(--gold)]"}`}>{event.status}</span>
       </div>
 
-      {event.status !== "complete" && (
+      {event.status !== "complete" && event.status !== "cancelled" && (
         <div className="mt-5 flex flex-wrap items-center gap-3">
           {user ? (
             me ? <span className="rounded-full bg-[#5fcf80]/15 px-4 py-2 text-sm font-bold text-[#5fcf80]">✓ You&apos;re checked in</span>
@@ -93,8 +120,12 @@ export default function LeagueEventPage() {
           ) : (
             <p className="text-sm text-[var(--sage-dim)]"><Link href="/login" className="font-bold text-[var(--gold)] hover:underline">Sign in</Link> to check in.</p>
           )}
+          <button onClick={copyLink} className="rounded-full border border-white/15 px-5 py-2.5 text-sm font-bold text-[var(--cream)] transition-colors hover:bg-white/[0.06]">{copied ? "Copied ✓" : "Copy check-in link"}</button>
           {admin && (
-            <button onClick={complete} disabled={busy} className="rounded-full border border-white/15 px-5 py-2.5 text-sm font-bold text-[var(--cream)] transition-colors hover:bg-white/[0.06] disabled:opacity-50">Complete event</button>
+            <>
+              <button onClick={complete} disabled={busy} className="rounded-full border border-white/15 px-5 py-2.5 text-sm font-bold text-[var(--cream)] transition-colors hover:bg-white/[0.06] disabled:opacity-50">Complete event</button>
+              <button onClick={cancel} disabled={busy} className="rounded-full px-4 py-2.5 text-sm font-semibold text-[#f08c8c] transition-colors hover:bg-[#f08c8c]/10 disabled:opacity-50">Cancel event</button>
+            </>
           )}
         </div>
       )}
@@ -116,18 +147,36 @@ export default function LeagueEventPage() {
                   {e.username ? <Link href={`/u/${e.username}`} className="hover:underline">{e.name}</Link> : e.name}
                   {e.dnf && <span className="ml-2 rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[var(--sage-dim)]">DNF</span>}
                 </span>
-                {(e.penalty ?? 0) > 0 && <span className="font-mono text-xs text-[#f08c8c]">+{e.penalty}</span>}
+                {!admin && (e.penalty ?? 0) > 0 && <span className="font-mono text-xs text-[#f08c8c]">+{e.penalty}</span>}
                 {event.status === "complete" && typeof e.score === "number" && <span className="font-mono text-xs text-[var(--gold)]">{points.get(e.id) ?? ""} pts</span>}
-                {admin && event.status !== "complete" ? (
-                  <input
-                    inputMode="numeric"
-                    defaultValue={e.score ?? ""}
-                    placeholder="—"
-                    onChange={(ev2) => setScoreDraft((s) => ({ ...s, [e.id]: ev2.target.value }))}
-                    onBlur={() => saveScore(e.id)}
-                    onKeyDown={(ev2) => { if (ev2.key === "Enter") (ev2.target as HTMLInputElement).blur(); }}
-                    className="w-16 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-right font-mono text-sm text-[var(--cream)] outline-none focus:border-[var(--gold)]"
-                  />
+                {admin && event.status !== "complete" && event.status !== "cancelled" ? (
+                  <span className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => patchEntry(e.id, { paid: !e.paid })}
+                      title={e.paid ? "Mark unpaid" : "Mark paid"}
+                      className={`rounded-full px-2 py-1 font-mono text-xs font-bold transition-colors ${e.paid ? "bg-[#5fcf80]/15 text-[#5fcf80]" : "bg-white/[0.05] text-[var(--sage-dim)] hover:text-[var(--cream)]"}`}
+                    >$</button>
+                    <button
+                      onClick={() => patchEntry(e.id, { penalty: (e.penalty ?? 0) > 0 ? undefined : 2 })}
+                      title={(e.penalty ?? 0) > 0 ? `Penalty +${e.penalty} — click to clear` : "Add +2 penalty"}
+                      className={`rounded-full px-2 py-1 font-mono text-xs font-bold transition-colors ${(e.penalty ?? 0) > 0 ? "bg-[#f08c8c]/15 text-[#f08c8c]" : "bg-white/[0.05] text-[var(--sage-dim)] hover:text-[var(--cream)]"}`}
+                    >{(e.penalty ?? 0) > 0 ? `+${e.penalty}` : "P"}</button>
+                    <button
+                      onClick={() => patchEntry(e.id, { dnf: !e.dnf })}
+                      title={e.dnf ? "Clear DNF" : "Mark DNF"}
+                      className={`rounded-full px-2 py-1 font-mono text-[10px] font-bold transition-colors ${e.dnf ? "bg-white/[0.1] text-[var(--cream)]" : "bg-white/[0.05] text-[var(--sage-dim)] hover:text-[var(--cream)]"}`}
+                    >DNF</button>
+                    <input
+                      inputMode="numeric"
+                      defaultValue={e.score ?? ""}
+                      placeholder="—"
+                      onChange={(ev2) => setScoreDraft((s) => ({ ...s, [e.id]: ev2.target.value }))}
+                      onBlur={() => saveScore(e.id)}
+                      onKeyDown={(ev2) => { if (ev2.key === "Enter") (ev2.target as HTMLInputElement).blur(); }}
+                      className="w-14 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-right font-mono text-sm text-[var(--cream)] outline-none focus:border-[var(--gold)]"
+                    />
+                    <button onClick={() => dropEntry(e.id)} title="Remove from event" className="rounded-full px-1.5 py-1 text-xs text-[var(--sage-dim)] transition-colors hover:text-[#f08c8c]">✕</button>
+                  </span>
                 ) : (
                   <span className="w-12 text-right font-mono font-bold text-[var(--cream)]">{typeof e.score === "number" ? e.score : ""}</span>
                 )}

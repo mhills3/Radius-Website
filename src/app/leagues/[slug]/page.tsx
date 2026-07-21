@@ -43,7 +43,7 @@ export default function LeaguePage() {
 
   const admin = useMemo(() => !!league && isLeagueAdmin(league, cid), [league, cid]);
   const [now] = useState(() => Date.now());
-  const upcoming = events.filter((e) => e.status !== "complete" && e.date > now - 12 * 3600_000);
+  const upcoming = events.filter((e) => e.status !== "complete" && e.status !== "cancelled" && e.date > now - 12 * 3600_000);
   const past = events.filter((e) => !upcoming.includes(e)).reverse();
 
   const schedule = async () => {
@@ -74,7 +74,7 @@ export default function LeaguePage() {
         <div className="truncate font-bold text-[var(--cream)]">{ev.name}</div>
         <div className="truncate text-xs text-[var(--sage-dim)]">{fmtDate(ev.date)} · {fmtTime(ev.date)}{ev.courseName ? ` · ${ev.courseName}` : ""} · {ev.entryCount} checked in</div>
       </div>
-      <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${ev.status === "complete" ? "bg-white/[0.06] text-[var(--sage-dim)]" : ev.status === "active" ? "bg-[#5fcf80]/15 text-[#5fcf80]" : "bg-[var(--gold-dim)] text-[var(--gold)]"}`}>{ev.status}</span>
+      <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${ev.status === "complete" ? "bg-white/[0.06] text-[var(--sage-dim)]" : ev.status === "cancelled" ? "bg-[#f08c8c]/15 text-[#f08c8c]" : ev.status === "active" ? "bg-[#5fcf80]/15 text-[#5fcf80]" : "bg-[var(--gold-dim)] text-[var(--gold)]"}`}>{ev.status}</span>
     </Link>
   );
 

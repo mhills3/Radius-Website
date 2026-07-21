@@ -1,5 +1,5 @@
 import { db } from "./firebase";
-import { collection, getDocs, getDoc, doc, setDoc, updateDoc, deleteField, query, where, orderBy, limit } from "firebase/firestore";
+import { collection, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, deleteField, query, where, orderBy, limit } from "firebase/firestore";
 import { getProfileLite, resolveCanonicalId } from "./account";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -66,7 +66,7 @@ export interface LeagueEvent {
   courseName?: string;
   format: string;
   startFormat: string;
-  status: "scheduled" | "active" | "complete";
+  status: "scheduled" | "active" | "complete" | "cancelled";
   entryCount: number;
   createdAt: number;
 }
@@ -236,6 +236,13 @@ export async function getEvent(eventId: string): Promise<LeagueEvent | null> {
 
 export async function setEventStatus(eventId: string, status: LeagueEvent["status"]): Promise<void> {
   await setDoc(doc(db, "leagueEvents", eventId), { status }, { merge: true });
+}
+
+/** Remove a checked-in player (director action) and keep the event's entry count honest. */
+export async function removeEntry(eventId: string, entryId: string): Promise<void> {
+  await deleteDoc(doc(db, "leagueEvents", eventId, "entries", entryId));
+  const entries = await getEntries(eventId);
+  await setDoc(doc(db, "leagueEvents", eventId), { entryCount: entries.length }, { merge: true });
 }
 
 // ---- Entries (check-in) ----
