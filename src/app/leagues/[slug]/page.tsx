@@ -93,7 +93,7 @@ export default function LeaguePage() {
     <main className="mx-auto max-w-4xl px-5 pb-28">
       {/* Hero */}
       <section className="pb-10 pt-14">
-        <Link href="/leagues" className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--sage-dim)] transition-colors hover:text-[var(--gold)]">← Events</Link>
+        <Link href="/leagues" className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--cream-38)] transition-colors hover:text-[var(--gold)]">← Events</Link>
         <div className="mt-4 flex flex-wrap items-start justify-between gap-6">
           <div className="min-w-0">
             <h1 className="font-[family-name:var(--font-heading)] text-4xl font-extrabold tracking-tight text-[var(--cream)] sm:text-5xl">{league.name}</h1>

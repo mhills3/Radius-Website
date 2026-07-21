@@ -194,7 +194,7 @@ export default function EventWizard() {
     return (
       <main className="mx-auto grid min-h-[70vh] max-w-2xl place-items-center px-5 text-center">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[var(--gold)]">Radius Events</p>
+          <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--gold)]">Radius Events</p>
           <h1 className="mt-3 font-[family-name:var(--font-heading)] text-4xl font-extrabold tracking-tight text-[var(--cream)]">List your event.<br />Score your event.<br /><span className="text-[var(--gold)]">All with Radius.</span></h1>
           <p className="mx-auto mt-4 max-w-sm text-sm leading-relaxed text-[var(--sage)]">Live leaderboards, honest handicaps, money tracking, and bag tags — free for directors and players.</p>
           <Link href="/login" className={`${btnGold} mt-7 inline-block`}>Sign in to get started</Link>
@@ -217,8 +217,8 @@ export default function EventWizard() {
       <main className="relative mx-auto grid min-h-[80vh] max-w-6xl gap-10 px-5 pb-36 pt-14 lg:grid-cols-[1fr_1.15fr] lg:gap-16">
         {/* Question + answer rail */}
         <div className="lg:pt-16">
-          <Link href="/leagues" className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--sage-dim)] transition-colors hover:text-[var(--gold)]">← Events</Link>
-          <p className="mt-6 text-[11px] font-bold uppercase tracking-[0.22em] text-[var(--gold)]">Step {stepIdx + 1} of {steps.length}</p>
+          <Link href="/leagues" className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--cream-38)] transition-colors hover:text-[var(--gold)]">← Events</Link>
+          <p className="mt-6 font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--gold)]">Step {stepIdx + 1} of {steps.length}</p>
           <h1 key={step} className="mt-3 max-w-md font-[family-name:var(--font-heading)] text-4xl font-extrabold leading-[1.06] tracking-tight text-[var(--cream)] animate-[fadeIn_0.3s_ease] sm:text-5xl">
             {QUESTION[step].title}
           </h1>

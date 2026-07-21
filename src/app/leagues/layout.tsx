@@ -6,10 +6,8 @@ export const metadata: Metadata = {
   alternates: { canonical: "/leagues" },
 };
 
-// All event surfaces live in the dark app world (like /community), not the light
-// marketing chrome — without this shell the dark-token components wash out.
-// The corner washes are the premium backdrop: a gold glow anchored top-left and a
-// faint forest counter-glow bottom-right, fixed behind everything.
+// All event surfaces live in the dark app world under the .events-scope token
+// system: flat forest base, Sora + JetBrains Mono only, two-accent law.
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div className="events-scope relative min-h-screen overflow-x-clip bg-[var(--forest)] text-[var(--cream)]">

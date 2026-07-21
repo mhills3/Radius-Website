@@ -288,23 +288,23 @@ export default function LeagueEventPage() {
           <path d="M-20 245 C 200 215, 380 285, 560 255 S 810 225, 920 250" stroke="var(--blue)" strokeOpacity="0.05" strokeWidth="1.25" />
         </svg>
         <div className="relative">
-        <Link href={`/leagues/${slug}`} className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--sage-dim)] transition-colors hover:text-[var(--gold)]">← {event.leagueName}</Link>
+        <Link href={`/leagues/${slug}`} className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--cream-38)] transition-colors hover:text-[var(--gold)]">← {event.leagueName}</Link>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <h1 className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-tight text-[var(--cream)] sm:text-4xl">{event.name}</h1>
           <StatusChip status={event.status} liveNow={liveNow} />
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-          <span className="rounded-full border border-[var(--hair-strong)] px-3 py-1.5 font-mono text-[11.5px] text-[var(--cream-60)]">{fmtDate(event.date)}</span>
-          {event.courseName && <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--hair-strong)] px-3 py-1.5 font-mono text-[11.5px] text-[var(--cream-60)]"><IconPin className="h-3.5 w-3.5 shrink-0" /> {event.courseName}</span>}
-          <span className="rounded-full border border-[var(--hair-strong)] px-3 py-1.5 font-mono text-[11.5px] text-[var(--cream-60)]">{event.format} · {event.startFormat}</span>
-          <span className="rounded-full border border-[var(--hair-strong)] px-3 py-1.5 font-mono text-[11.5px] text-[var(--cream-60)]">{event.holes} holes{event.roundCount > 1 ? " / round" : ""}</span>
-          {event.buyIn && <span className="rounded-full bg-[var(--gold-dim)] px-3 py-1.5 font-mono text-[11.5px] font-semibold text-[var(--gold)]">${event.buyIn} buy-in</span>}
-          {event.roundCount > 1 && <span className="rounded-full border border-[var(--hair-strong)] px-3 py-1.5 font-mono text-[11.5px] text-[var(--cream-60)]">{event.roundCount} rounds</span>}
+          <span className="rounded-full border border-[var(--hair-strong)] px-3.5 py-[7px] font-mono text-[11.5px] tracking-[0.04em] text-[var(--cream-60)]">{fmtDate(event.date)}</span>
+          {event.courseName && <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--hair-strong)] px-3.5 py-[7px] font-[family-name:var(--font-heading)] text-xs text-[var(--cream-60)]"><IconPin className="h-3.5 w-3.5 shrink-0" /> {event.courseName}</span>}
+          <span className="rounded-full border border-[var(--hair-strong)] px-3.5 py-[7px] font-[family-name:var(--font-heading)] text-xs text-[var(--cream-60)]">{event.format} · {event.startFormat}</span>
+          <span className="rounded-full border border-[var(--hair-strong)] px-3.5 py-[7px] font-[family-name:var(--font-heading)] text-xs text-[var(--cream-60)]">{event.holes} holes{event.roundCount > 1 ? " / round" : ""}</span>
+          {event.buyIn && <span className="rounded-full bg-[var(--gold-dim)] px-3.5 py-[7px] font-mono text-[11.5px] font-semibold tracking-[0.04em] text-[var(--gold)]">${event.buyIn} buy-in</span>}
+          {event.roundCount > 1 && <span className="rounded-full border border-[var(--hair-strong)] px-3.5 py-[7px] font-[family-name:var(--font-heading)] text-xs text-[var(--cream-60)]">{event.roundCount} rounds</span>}
           {event.kind && EVENT_KINDS.find((k) => k.key === event.kind) && (
-            <span className="rounded-full border border-[var(--hair-strong)] px-3 py-1.5 font-mono text-[11.5px] text-[var(--cream-60)]">{EVENT_KINDS.find((k) => k.key === event.kind)!.label}</span>
+            <span className="rounded-full border border-[var(--hair-strong)] px-3.5 py-[7px] font-[family-name:var(--font-heading)] text-xs text-[var(--cream-60)]">{EVENT_KINDS.find((k) => k.key === event.kind)!.label}</span>
           )}
           {event.isPrivate && (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--hair-strong)] px-3 py-1.5 font-mono text-[11.5px] text-[var(--cream-60)]"><IconEyeOff className="h-3.5 w-3.5" /> Private — link only</span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--hair-strong)] px-3.5 py-[7px] font-[family-name:var(--font-heading)] text-xs text-[var(--cream-60)]"><IconEyeOff className="h-3.5 w-3.5" /> Private. Link only</span>
           )}
         </div>
 
@@ -386,12 +386,12 @@ export default function LeagueEventPage() {
                 </div>
                 <div className="mt-4 grid gap-0 text-sm">
                   {divisions.length > 1 && <div className="flex items-center justify-between border-t border-[var(--hair)] py-2.5"><span className="text-[var(--cream-60)]">Divisions</span><span className="font-mono text-[var(--cream)]">{divisions.length}</span></div>}
-                  <div className="flex items-center justify-between border-t border-[var(--hair)] py-2.5"><span className="text-[var(--cream-60)]">Field</span><span className="font-mono text-[var(--blue)]">{entries.length} checked in</span></div>
-                  <div className="flex items-center justify-between border-t border-[var(--hair)] py-2.5"><span className="text-[var(--cream-60)]">Live scoring</span><span className="font-mono text-[var(--cream)]">Included</span></div>
-                  {event.buyIn && <div className="flex items-center justify-between border-t border-[var(--hair)] py-2.5"><span className="text-[var(--cream-60)]">Money board</span><span className="font-mono text-[var(--cream)]">Included</span></div>}
+                  <div className="flex items-center justify-between border-t border-[var(--hair)] py-2.5"><span className="text-[var(--cream-60)]">Field</span><span className="text-[var(--blue)]"><span className="font-mono">{entries.length}</span> checked in</span></div>
+                  <div className="flex items-center justify-between border-t border-[var(--hair)] py-2.5"><span className="text-[var(--cream-60)]">Live scoring</span><span className="text-[var(--cream)]">Included</span></div>
+                  {event.buyIn && <div className="flex items-center justify-between border-t border-[var(--hair)] py-2.5"><span className="text-[var(--cream-60)]">Money board</span><span className="text-[var(--cream)]">Included</span></div>}
                 </div>
                 {user ? (
-                  me ? <div className="mt-4 rounded-[10px] border border-[var(--hair-strong)] py-3 text-center font-mono text-sm font-semibold text-[var(--cream-60)]">Checked in{me.division ? ` · ${me.division}` : ""}</div>
+                  me ? <div className="mt-4 rounded-[10px] border border-[var(--hair-strong)] py-3 text-center text-sm font-semibold text-[var(--cream-60)]">Checked in{me.division ? ` · ${me.division}` : ""}</div>
                      : <button onClick={doCheckIn} disabled={busy || (divisions.length > 1 && !division)} className={`${btnGold} mt-4 w-full text-center`}>{event.buyIn ? `Check in · $${event.buyIn}` : "Check in"}</button>
                 ) : (
                   <Link href="/login" className={`${btnGold} mt-4 block w-full text-center`}>Sign in to check in</Link>

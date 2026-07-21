@@ -39,6 +39,7 @@ html { scroll-behavior: smooth; }
    site keeps the brand-wide palette. Overrides the global custom properties
    for everything inside .events-scope. */
 .events-scope {
+  font-family: var(--font-heading);
   --forest: #141B16;
   --card: #1A2821;
   --card-raised: #203028;

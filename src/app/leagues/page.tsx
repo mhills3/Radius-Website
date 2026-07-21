@@ -250,11 +250,11 @@ export default function LeaguesPage() {
                         <div className="mt-0.5 truncate text-[13px] text-[var(--cream-60)]">
                           {ev.leagueName}{ev.courseName ? ` · ${ev.courseName}` : ""} · {weekday(ev.date)} {fmtTime(ev.date)}
                         </div>
-                        <div className="mt-3 flex gap-7 font-mono">
-                          <span><span className="block text-sm font-bold text-[var(--cream)]">{ev.buyIn ? `$${ev.buyIn}` : "Free"}</span><span className="block text-[10px] uppercase tracking-[0.12em] text-[var(--cream-38)]">Buy-in</span></span>
-                          <span><span className="block text-sm font-bold text-[var(--cream)]">{ev.format}</span><span className="block text-[10px] uppercase tracking-[0.12em] text-[var(--cream-38)]">Format</span></span>
-                          <span><span className="block text-sm font-bold text-[var(--blue)]">{ev.entryCount}</span><span className="block text-[10px] uppercase tracking-[0.12em] text-[var(--cream-38)]">Players</span></span>
-                          {ev.roundCount > 1 && <span><span className="block text-sm font-bold text-[var(--cream)]">{ev.roundCount}×{ev.holes}</span><span className="block text-[10px] uppercase tracking-[0.12em] text-[var(--cream-38)]">Rounds</span></span>}
+                        <div className="mt-3 flex gap-7">
+                          <span><span className={`block text-[15px] font-bold text-[var(--cream)] ${ev.buyIn ? "font-mono" : ""}`}>{ev.buyIn ? `$${ev.buyIn}` : "Free"}</span><span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Buy-in</span></span>
+                          <span><span className="block text-[15px] font-bold text-[var(--cream)]">{ev.format}</span><span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Format</span></span>
+                          <span><span className="block font-mono text-[15px] font-bold text-[var(--blue)]">{ev.entryCount}</span><span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Players</span></span>
+                          {ev.roundCount > 1 && <span><span className="block font-mono text-[15px] font-bold text-[var(--cream)]">{ev.roundCount}×{ev.holes}</span><span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Rounds</span></span>}
                         </div>
                       </div>
                     </>
