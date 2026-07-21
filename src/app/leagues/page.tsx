@@ -268,7 +268,7 @@ export default function LeaguesPage() {
                         <div className="mt-0.5 truncate text-[13px] text-[var(--cream-60)]">
                           {ev.leagueName}{ev.courseName ? ` · ${ev.courseName}` : ""} · {weekday(ev.date)} {fmtTime(ev.date)}
                         </div>
-                        <div className="mt-3 flex gap-7">
+                        <div className="mt-5 flex gap-[22px]">
                           <span><span className={`block text-[15px] font-bold text-[var(--cream)] ${ev.buyIn ? "font-mono" : ""}`}>{ev.buyIn ? `$${ev.buyIn}` : "Free"}</span><span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Buy-in</span></span>
                           <span><span className="block text-[15px] font-bold text-[var(--cream)]">{ev.format}</span><span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Format</span></span>
                           <span><span className="block font-mono text-[15px] font-bold text-[var(--blue)]">{ev.entryCount}</span><span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Players</span></span>
@@ -290,9 +290,9 @@ export default function LeaguesPage() {
                     </>
                   );
                   return slug ? (
-                    <Link key={ev.id} href={`/leagues/${slug}/e/${ev.id}`} className={`${card} ${cardHover} group flex items-start gap-4 p-5`}>{inner}</Link>
+                    <Link key={ev.id} href={`/leagues/${slug}/e/${ev.id}`} className={`${card} ${cardHover} group flex items-start gap-4 p-6`}>{inner}</Link>
                   ) : (
-                    <div key={ev.id} className={`${card} flex items-start gap-4 p-5`}>{inner}</div>
+                    <div key={ev.id} className={`${card} flex items-start gap-4 p-6`}>{inner}</div>
                   );
                 })}
               </div>
@@ -329,7 +329,7 @@ export default function LeaguesPage() {
 
 function LeagueCard({ l, mine }: { l: League; mine?: boolean }) {
   return (
-    <Link href={`/leagues/${l.slug}`} className={`${card} ${cardHover} group flex items-center gap-4 p-5`}>
+    <Link href={`/leagues/${l.slug}`} className={`${card} ${cardHover} group flex items-center gap-4 p-6`}>
       <Emblem name={l.name} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">

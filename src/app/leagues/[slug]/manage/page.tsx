@@ -207,12 +207,12 @@ export default function LeagueManagePage() {
                   <div className="mt-3 font-[family-name:var(--font-heading)] font-bold text-[var(--cream)]">Create event</div>
                   <div className="mt-0.5 text-xs text-[var(--cream-60)]">List a night, a season, or a tournament.</div>
                 </Link>
-                <button onClick={() => setSection("events")} className={`${card} ${cardHover} group p-5 text-left`}>
+                <button onClick={() => setSection("events")} className={`${card} ${cardHover} group p-6 text-left`}>
                   <span className="grid h-11 w-11 place-items-center rounded-xl bg-[var(--gold-dim)] text-[var(--gold)]"><IconCalendar /></span>
                   <div className="mt-3 font-[family-name:var(--font-heading)] font-bold text-[var(--cream)]">All events</div>
                   <div className="mt-0.5 text-xs text-[var(--cream-60)]">{upcoming.length} upcoming · {past.length} past</div>
                 </button>
-                <button onClick={() => setSection("members")} className={`${card} ${cardHover} group p-5 text-left`}>
+                <button onClick={() => setSection("members")} className={`${card} ${cardHover} group p-6 text-left`}>
                   <span className="grid h-11 w-11 place-items-center rounded-xl bg-[var(--gold-dim)] text-[var(--gold)]"><IconUsers /></span>
                   <div className="mt-3 font-[family-name:var(--font-heading)] font-bold text-[var(--cream)]">Members</div>
                   <div className="mt-0.5 text-xs text-[var(--cream-60)]">{members.length} member{members.length === 1 ? "" : "s"} · manage roles</div>

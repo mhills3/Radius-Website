@@ -369,7 +369,7 @@ export default function LeagueEventPage() {
 
       {/* About */}
       {tab === "about" && (
-        <section className="mb-12 grid gap-8 lg:grid-cols-[1.4fr_1fr]">
+        <section className="mb-[44px] grid gap-8 lg:grid-cols-[1.4fr_1fr]">
           <div className="min-w-0">
             {event.description ? <Desc text={event.description} /> : <p className="text-sm text-[var(--cream-38)]">No description yet.{admin && league ? <> <Link href={`/leagues/${league.slug}/manage`} className="text-[var(--cream-60)] underline decoration-[var(--hair-strong)] underline-offset-2 hover:text-[var(--gold)]">Add one from league settings.</Link></> : null}</p>}
             {(event.contactEmail || event.contactPhone) && (
@@ -407,7 +407,7 @@ export default function LeagueEventPage() {
                 </div>
               </div>
             ) : event.status === "complete" && ranked.length > 0 ? (
-              <div className={`${card} p-5`}>
+              <div className={`${card} p-6`}>
                 <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--cream-38)]">Final results</h3>
                 <div className="mt-3 grid gap-2">
                   {ranked.slice(0, 3).map((e, i) => (
@@ -423,7 +423,7 @@ export default function LeagueEventPage() {
               </div>
             ) : null}
             {divisions.length > 1 && (
-              <div className={`${card} p-5`}>
+              <div className={`${card} p-6`}>
                 <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--cream-38)]">Divisions</h3>
                 <div className="mt-3 grid gap-2">
                   {divisions.map((d) => (
@@ -436,7 +436,7 @@ export default function LeagueEventPage() {
                 <p className="mt-3 text-xs text-[var(--sage-dim)]">Pick yours when you check in.</p>
               </div>
             )}
-            <div className={`${card} p-5`}>
+            <div className={`${card} p-6`}>
               <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--cream-38)]">Schedule</h3>
               <div className="mt-4 border-l border-[var(--hair-strong)] pl-4">
                 {Array.from({ length: event.roundCount }, (_, ri) => (
@@ -450,7 +450,7 @@ export default function LeagueEventPage() {
               </div>
             </div>
             {staff.length > 0 && (
-              <div className={`${card} p-5`}>
+              <div className={`${card} p-6`}>
                 <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--cream-38)]">Staff</h3>
                 <div className="mt-3 grid gap-2.5">
                   {staff.map((m) => (
@@ -469,7 +469,7 @@ export default function LeagueEventPage() {
 
       {/* Players */}
       {tab === "players" && (
-        <section className="mb-12">
+        <section className="mb-[44px]">
           {entries.length === 0 ? (
             <div className={`${card} px-6 py-12 text-center text-sm text-[var(--sage-dim)]`}>Nobody has checked in yet.</div>
           ) : (
@@ -494,7 +494,7 @@ export default function LeagueEventPage() {
 
       {/* Money */}
       {tab === "scores" && event.buyIn && (
-        <section className="mb-10 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <section className="mb-[44px] grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
             { label: "Buy-in", value: `$${event.buyIn}` },
             { label: "Paid", value: `${paidCount}/${entries.length}` },
@@ -511,7 +511,7 @@ export default function LeagueEventPage() {
 
       {/* Leaderboard */}
       {tab === "scores" && (
-      <section className="mb-12">
+      <section className="mb-[44px]">
         <SectionTitle
           right={divisions.length > 1 && entries.some((e) => e.division) ? (
             <div className="flex flex-wrap gap-1.5">
@@ -692,7 +692,7 @@ export default function LeagueEventPage() {
 
       {/* Event chat — two-way, per event (UDisc only has one-way admin blasts) */}
       {tab === "chat" && (
-      <section className="mb-12">
+      <section className="mb-[44px]">
         <SectionTitle>Event chat{messages.length > 0 ? ` · ${messages.length}` : ""}</SectionTitle>
         <div className={`${card} flex max-h-[420px] flex-col`}>
           <div className="min-h-[120px] flex-1 space-y-3 overflow-y-auto p-4">
