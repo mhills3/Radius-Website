@@ -205,16 +205,7 @@ export default function EventWizard() {
 
   return (
     <div className="relative">
-      {/* Backdrop: gold corner glow + forest counter-glow + range rings */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(1100px 700px at -8% -10%, rgba(246,193,101,0.16), transparent 58%)," +
-            "radial-gradient(800px 600px at 108% 112%, rgba(95,207,128,0.07), transparent 58%)",
-        }}
-      />
+      {/* Range rings — signature motif; page stays flat forest */}
       <svg viewBox="0 0 480 480" aria-hidden className="pointer-events-none absolute -left-40 top-[52%] hidden h-[440px] w-[440px] lg:block" fill="none">
         {[90, 150, 210].map((r, i) => (
           <circle key={r} cx="240" cy="240" r={r} stroke="var(--gold)" strokeOpacity={0.1 - i * 0.025} strokeWidth="1.5" strokeDasharray={i === 0 ? undefined : "3 7"} />
