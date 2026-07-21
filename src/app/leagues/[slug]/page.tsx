@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRole, isLeagueAdmin, type League, type LeagueEvent, type LeagueMember, type StandingRow } from "@/lib/leagues";
+import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, computeStandings, setMemberRole, isLeagueAdmin, type League, type LeagueEvent, type LeagueMember, type StandingRow } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
-import { inputCls, FieldLabel, SectionTitle, Segmented, Avatar, Pos, btnGold, btnGhost, card, IconPin } from "@/components/leagues/ui";
+import { SectionTitle, Avatar, Pos, btnGold, card, IconPin } from "@/components/leagues/ui";
 
 const fmtTime = (ms: number) => new Date(ms).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 const fmtToPar = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`);
@@ -41,27 +41,6 @@ export default function LeaguePage() {
   const [standings, setStandings] = useState<StandingRow[]>([]);
   const [cid, setCid] = useState<string | null>(null);
 
-  // League settings (director only)
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [divisionsDraft, setDivisionsDraft] = useState("");
-  const [bestNDraft, setBestNDraft] = useState("");
-  const [descDraft, setDescDraft] = useState("");
-  const [hcpPctDraft, setHcpPctDraft] = useState("");
-  const [hcpCapDraft, setHcpCapDraft] = useState("");
-  const [bagTagsDraft, setBagTagsDraft] = useState(false);
-  const [acePotDraft, setAcePotDraft] = useState("");
-
-  // Event scheduler (director only)
-  const [schedOpen, setSchedOpen] = useState(false);
-  const [evName, setEvName] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [startTime, setStartTime] = useState("17:30");
-  const [weeks, setWeeks] = useState(1);
-  const [rounds, setRounds] = useState(1);
-  const [buyIn, setBuyIn] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
-
   useEffect(() => {
     getLeagueBySlug(slug).then((l) => {
       setLeague(l ?? null);
@@ -69,13 +48,6 @@ export default function LeaguePage() {
         getLeagueEvents(l.id).then(setEvents).catch(() => {});
         getLeagueMembers(l.id).then(setMembers).catch(() => {});
         computeStandings(l.id, l.settings.bestN).then(setStandings).catch(() => {});
-        setDivisionsDraft((l.settings.divisions ?? []).join(", "));
-        setBestNDraft(l.settings.bestN ? String(l.settings.bestN) : "");
-        setDescDraft(l.settings.description);
-        setHcpPctDraft(l.settings.handicapPercent ? String(l.settings.handicapPercent) : "");
-        setHcpCapDraft(l.settings.handicapCap ? String(l.settings.handicapCap) : "");
-        setBagTagsDraft(l.settings.bagTags === true);
-        setAcePotDraft(l.acePotBalance != null ? String(l.acePotBalance) : "");
       }
     }).catch(() => setLeague(null));
   }, [slug]);
@@ -88,38 +60,6 @@ export default function LeaguePage() {
   const upcoming = visible.filter((e) => e.status !== "complete" && e.status !== "cancelled" && e.date > now - 12 * 3600_000);
   const past = visible.filter((e) => !upcoming.includes(e)).reverse();
   const photoOf = useMemo(() => new Map(members.map((m) => [m.id, m.photo])), [members]);
-
-  const schedule = async () => {
-    if (!user || !league || !startDate || busy) return;
-    setBusy(true); setErr("");
-    try {
-      const base = new Date(`${startDate}T${startTime || "17:30"}`);
-      const dates = Array.from({ length: Math.max(1, Math.min(weeks, 26)) }, (_, i) => base.getTime() + i * 7 * 24 * 3600_000);
-      const created = await createEvents(user.uid, league, { name: evName, dates, roundCount: rounds, buyIn: Number(buyIn) > 0 ? Number(buyIn) : undefined });
-      setEvents((prev) => [...prev, ...created].sort((a, b) => a.date - b.date));
-      setSchedOpen(false); setEvName("");
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "Couldn't schedule events.");
-    } finally { setBusy(false); }
-  };
-
-  const saveSettings = async () => {
-    if (!league || busy) return;
-    setBusy(true);
-    try {
-      const divisions = divisionsDraft.split(",").map((s) => s.trim()).filter(Boolean);
-      const bestN = Number(bestNDraft) > 0 ? Math.floor(Number(bestNDraft)) : undefined;
-      const handicapPercent = Number(hcpPctDraft) > 0 ? Math.min(150, Math.floor(Number(hcpPctDraft))) : undefined;
-      const handicapCap = Number(hcpCapDraft) > 0 ? Math.floor(Number(hcpCapDraft)) : undefined;
-      const settings = { ...league.settings, divisions: divisions.length ? divisions : undefined, bestN, handicapPercent, handicapCap, bagTags: bagTagsDraft, description: descDraft.trim() };
-      await updateLeagueSettings(league.id, settings);
-      const acePot = Number(acePotDraft) >= 0 && acePotDraft.trim() !== "" ? Number(acePotDraft) : undefined;
-      if (acePot !== league.acePotBalance && acePot != null) await setAcePot(league.id, acePot);
-      setLeague({ ...league, acePotBalance: acePot ?? league.acePotBalance, settings: { ...settings, divisions: divisions.length ? divisions : ["Open"] } });
-      computeStandings(league.id, bestN).then(setStandings).catch(() => {});
-      setSettingsOpen(false);
-    } finally { setBusy(false); }
-  };
 
   if (league === undefined) return <main className="mx-auto max-w-4xl px-5 pt-16 text-sm text-[var(--sage-dim)]">Loading…</main>;
   if (league === null) return (
@@ -162,77 +102,12 @@ export default function LeaguePage() {
             <p className="mt-3 text-xs text-[var(--sage-dim)]">Run by {league.createdByName} · {members.length} member{members.length === 1 ? "" : "s"}</p>
           </div>
           {admin && (
-            <div className="flex shrink-0 gap-2.5">
-              <button onClick={() => { setSettingsOpen((o) => !o); setSchedOpen(false); }} className={btnGhost}>{settingsOpen ? "Close" : "Settings"}</button>
-              <button onClick={() => { setSchedOpen((o) => !o); setSettingsOpen(false); }} className={btnGold}>{schedOpen ? "Cancel" : "Schedule events"}</button>
-            </div>
+            <Link href={`/leagues/${league.slug}/manage`} className={`${btnGold} shrink-0`}>League tools</Link>
           )}
         </div>
       </section>
 
       {/* Settings */}
-      {admin && settingsOpen && (
-        <section className={`${card} mb-10 p-6 sm:p-8`}>
-          <h2 className="font-[family-name:var(--font-heading)] text-xl font-bold text-[var(--cream)]">League settings</h2>
-          <div className="mt-6 grid gap-5 sm:grid-cols-2">
-            <label className="block sm:col-span-2">
-              <FieldLabel>Divisions <span className="normal-case tracking-normal text-[var(--sage-dim)]">— comma-separated; players pick one at check-in</span></FieldLabel>
-              <input value={divisionsDraft} onChange={(e) => setDivisionsDraft(e.target.value)} placeholder="Open, FPO, Rec" className={inputCls} />
-            </label>
-            <label className="block">
-              <FieldLabel>Best rounds counted</FieldLabel>
-              <input inputMode="numeric" value={bestNDraft} onChange={(e) => setBestNDraft(e.target.value)} placeholder="all" className={inputCls} />
-            </label>
-            <label className="block">
-              <FieldLabel>Ace pot balance ($)</FieldLabel>
-              <input inputMode="numeric" value={acePotDraft} onChange={(e) => setAcePotDraft(e.target.value)} placeholder="0" className={inputCls} />
-            </label>
-            <label className="block">
-              <FieldLabel>Handicap %</FieldLabel>
-              <input inputMode="numeric" value={hcpPctDraft} onChange={(e) => setHcpPctDraft(e.target.value)} placeholder="90" className={inputCls} />
-            </label>
-            <label className="block">
-              <FieldLabel>Handicap cap (strokes)</FieldLabel>
-              <input inputMode="numeric" value={hcpCapDraft} onChange={(e) => setHcpCapDraft(e.target.value)} placeholder="none" className={inputCls} />
-            </label>
-            <label className="flex items-center gap-3 sm:col-span-2">
-              <input type="checkbox" checked={bagTagsDraft} onChange={(e) => setBagTagsDraft(e.target.checked)} className="h-4 w-4 accent-[var(--gold)]" />
-              <span className="text-sm font-semibold text-[var(--cream)]">Bag tags</span>
-              <span className="text-xs text-[var(--sage-dim)]">tags reassign by finish when an event completes</span>
-            </label>
-            <label className="block sm:col-span-2">
-              <FieldLabel>Description</FieldLabel>
-              <textarea value={descDraft} onChange={(e) => setDescDraft(e.target.value)} rows={2} className={inputCls} />
-            </label>
-          </div>
-          <p className="mt-4 text-xs leading-relaxed text-[var(--sage-dim)]">Handicaps are public math: <span className="font-mono text-[var(--sage)]">% × avg(player − field) over last 5 rounds</span>, capped. You can override any player on the event page.</p>
-          <button onClick={saveSettings} disabled={busy} className={`${btnGold} mt-6`}>{busy ? "Saving…" : "Save settings"}</button>
-        </section>
-      )}
-
-      {/* Scheduler */}
-      {admin && schedOpen && (
-        <section className={`${card} mb-10 p-6 sm:p-8`}>
-          <h2 className="font-[family-name:var(--font-heading)] text-xl font-bold text-[var(--cream)]">Schedule events</h2>
-          <p className="mt-1 text-sm text-[var(--sage-dim)]">One event or a whole season — weekly repeats land on the same day and time.</p>
-          <div className="mt-6 grid gap-5 sm:grid-cols-3">
-            <label className="block sm:col-span-3">
-              <FieldLabel>Event name <span className="normal-case tracking-normal text-[var(--sage-dim)]">— defaults to “{league.name}”</span></FieldLabel>
-              <input value={evName} onChange={(e) => setEvName(e.target.value)} placeholder={league.name} className={inputCls} />
-            </label>
-            <label className="block"><FieldLabel>First date</FieldLabel><input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} /></label>
-            <label className="block"><FieldLabel>Tee time</FieldLabel><input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} /></label>
-            <label className="block"><FieldLabel>Repeat weekly ×</FieldLabel><input type="number" min={1} max={26} value={weeks} onChange={(e) => setWeeks(Number(e.target.value) || 1)} className={inputCls} /></label>
-            <div><FieldLabel>Rounds</FieldLabel><Segmented options={["1", "2", "3", "4"]} value={String(rounds)} onChange={(v) => setRounds(Number(v))} /></div>
-            <label className="block"><FieldLabel>Buy-in ($)</FieldLabel><input inputMode="numeric" value={buyIn} onChange={(e) => setBuyIn(e.target.value)} placeholder="0" className={inputCls} /></label>
-          </div>
-          {weeks > 1 && <p className="mt-4 text-xs text-[var(--gold)]">This creates {weeks} events, one per week.</p>}
-          {rounds > 1 && <p className="mt-1 text-xs text-[var(--sage-dim)]">Multi-round: the leaderboard totals all {rounds} rounds — tournament-style.</p>}
-          {err && <p className="mt-3 text-sm text-[#f08c8c]">{err}</p>}
-          <button onClick={schedule} disabled={!startDate || busy} className={`${btnGold} mt-6`}>{busy ? "Scheduling…" : weeks > 1 ? `Create ${weeks} events` : "Create event"}</button>
-        </section>
-      )}
-
       {/* Upcoming */}
       <section className="mb-12">
         <SectionTitle>Upcoming</SectionTitle>

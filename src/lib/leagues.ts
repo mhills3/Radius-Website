@@ -26,7 +26,7 @@ export function freshId(): string {
     : `${Date.now()}-${Math.random().toString(36).slice(2)}`.toUpperCase();
 }
 
-export const LEAGUE_FORMATS = ["Singles", "Teams"] as const;
+export const LEAGUE_FORMATS = ["Singles", "Doubles", "Teams"] as const;
 export const START_FORMATS = ["Shotgun", "Tee times", "Flex"] as const;
 
 /** Event kinds — discovery categories AND behavior hints (league = weekly repeat, tournament = multi-round). */
@@ -106,6 +106,7 @@ export interface EventEntry {
   checkedInAt: number;
   paid?: boolean;
   cardId?: string;
+  teamId?: number; // Doubles/Teams events: which team this player is on (1-based)
   // Scores: director-entered on web today; publishedRoundId/leagueEventId
   // auto-attach arrives with the app-side stamp.
   score?: number;       // total strokes (multi-round events: sum of roundScores)
@@ -394,6 +395,7 @@ function toEntry(id: string, e: any): EventEntry {
     photo: (e.photo as string) || undefined, division: (e.division as string) || undefined,
     checkedInAt: Number(e.checkedInAt) || 0, paid: e.paid === true,
     cardId: (e.cardId as string) || undefined,
+    teamId: typeof e.teamId === "number" ? e.teamId : undefined,
     score: typeof e.score === "number" ? e.score : undefined,
     roundScores: Array.isArray(e.roundScores) ? (e.roundScores as number[]) : undefined,
     scoreToPar: typeof e.scoreToPar === "number" ? e.scoreToPar : undefined,
@@ -449,6 +451,74 @@ export async function setRoundScore(eventId: string, entry: EventEntry, roundIdx
     roundScores: rounds,
     score: total ?? deleteField(),
   });
+}
+
+// ---- Teams (Doubles / Teams formats) ----
+
+/** Shuffle checked-in players into teams of `size` (2 for doubles). 1-based team numbers. */
+export async function randomizeTeams(eventId: string, entries: EventEntry[], size = 2): Promise<number> {
+  const shuffled = [...entries].sort(() => Math.random() - 0.5);
+  let teams = 0;
+  for (let i = 0; i < shuffled.length; i += size) {
+    teams++;
+    await Promise.all(shuffled.slice(i, i + size).map((e) =>
+      setDoc(doc(db, "leagueEvents", eventId, "entries", e.id), { teamId: teams }, { merge: true })
+    ));
+  }
+  return teams;
+}
+
+/** Move one player to a team (or null to unassign) — the UDisc "move to team" action. */
+export async function setEntryTeam(eventId: string, entryId: string, teamId: number | null): Promise<void> {
+  await updateDoc(doc(db, "leagueEvents", eventId, "entries", entryId), { teamId: teamId ?? deleteField() });
+}
+
+/** Team score entry: one total per team, written to every member so per-player standings still work. */
+export async function setTeamScore(eventId: string, members: EventEntry[], score: number | undefined): Promise<void> {
+  await Promise.all(members.map((m) =>
+    updateDoc(doc(db, "leagueEvents", eventId, "entries", m.id), { score: score ?? deleteField() })
+  ));
+}
+
+// ---- Event chat ----
+// Mirrors the locals meetup chat contract EXACTLY (meetups/{id}/messages) so the
+// apps can port it 1:1: leagueEvents/{id}/messages/{msgId}.
+
+export interface EventMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderPhoto?: string;
+  text: string;
+  timestamp: number;
+}
+
+export async function sendEventMessage(uid: string, eventId: string, text: string): Promise<void> {
+  const profile = await getProfileLite(uid);
+  if (!profile || !text.trim()) return;
+  const id = freshId();
+  await setDoc(doc(db, "leagueEvents", eventId, "messages", id), {
+    id, eventId,
+    senderId: profile.canonicalId,
+    senderName: profile.name,
+    senderPhoto: profile.profileImageUrl ?? null,
+    text: text.trim().slice(0, 1000),
+    timestamp: Date.now(),
+  });
+}
+
+export function subscribeEventMessages(eventId: string, cb: (msgs: EventMessage[]) => void): () => void {
+  return onSnapshot(
+    query(collection(db, "leagueEvents", eventId, "messages"), orderBy("timestamp", "asc"), limit(200)),
+    (snap) => cb(snap.docs.map((d) => {
+      const m = d.data();
+      return {
+        id: d.id, senderId: (m.senderId as string) ?? "", senderName: (m.senderName as string) ?? "Player",
+        senderPhoto: (m.senderPhoto as string) || undefined, text: (m.text as string) ?? "", timestamp: Number(m.timestamp) || 0,
+      };
+    })),
+    () => { /* keep last good state */ }
+  );
 }
 
 // ---- Cards ----

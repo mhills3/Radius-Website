@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { getLeagueBySlug, getEvent, getCards, checkIn, updateEntry, removeEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, reassignBagTags, computeStandings, computeHandicaps, applyHandicaps, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, type League, type LeagueEvent, type EventEntry, type EventCard } from "@/lib/leagues";
+import { getLeagueBySlug, getEvent, getCards, checkIn, updateEntry, removeEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, reassignBagTags, computeStandings, computeHandicaps, applyHandicaps, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
-import { SectionTitle, Avatar, Pos, btnGold, btnGhost, card, IconPin, IconDisc, IconEyeOff } from "@/components/leagues/ui";
+import { SectionTitle, Avatar, Pos, btnGold, btnGhost, card, IconPin, IconDisc, IconEyeOff, IconUsers } from "@/components/leagues/ui";
 
 const fmtDate = (ms: number) => new Date(ms).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 const adminInput = "rounded-lg border border-white/10 bg-white/[0.05] px-2 py-1.5 text-right font-mono text-sm text-[var(--cream)] outline-none transition-colors focus:border-[var(--gold)]";
@@ -65,14 +65,19 @@ export default function LeagueEventPage() {
   const [division, setDivision] = useState("");
   const [divFilter, setDivFilter] = useState("");
   const [hcpNote, setHcpNote] = useState("");
+  const [teamSize, setTeamSize] = useState(2);
+  const [messages, setMessages] = useState<EventMessage[]>([]);
+  const [chatText, setChatText] = useState("");
+  const [sending, setSending] = useState(false);
 
   const reload = async (evId: string) => setCards(await getCards(evId));
 
   useEffect(() => {
     getLeagueBySlug(slug).then(setLeague).catch(() => {});
     getEvent(eventId).then((ev) => { setEvent(ev ?? null); if (ev) reload(ev.id); }).catch(() => setEvent(null));
-    const unsub = subscribeEntries(eventId, setEntries);
-    return unsub;
+    const unsubEntries = subscribeEntries(eventId, setEntries);
+    const unsubChat = subscribeEventMessages(eventId, setMessages);
+    return () => { unsubEntries(); unsubChat(); };
   }, [slug, eventId]);
   useEffect(() => { if (user) resolveCanonicalId(user.uid).then(setCid).catch(() => {}); }, [user]);
 
@@ -174,6 +179,91 @@ export default function LeagueEventPage() {
   const open = event.status !== "complete" && event.status !== "cancelled";
   const paidCount = entries.filter((e) => e.paid).length;
   const paidOut = entries.reduce((a, e) => a + (e.payout ?? 0), 0);
+  const isTeamFormat = event.format === "Doubles" || event.format === "Teams";
+  const doTeams = async () => {
+    if (busy) return;
+    setBusy(true);
+    try { await randomizeTeams(event.id, entries, event.format === "Doubles" ? 2 : teamSize); } finally { setBusy(false); }
+  };
+  const sendChat = async () => {
+    if (!user || !chatText.trim() || sending) return;
+    setSending(true);
+    try { await sendEventMessage(user.uid, event.id, chatText); setChatText(""); } finally { setSending(false); }
+  };
+  const isDirector = (id: string) => !!league && league.adminIds.includes(id);
+
+  // Doubles/Teams leaderboard: entries grouped by teamId, one shared score per team.
+  const renderTeamBoard = () => {
+    const byTeam = new Map<number, EventEntry[]>();
+    const unassigned: EventEntry[] = [];
+    for (const e of shown) (e.teamId ? (byTeam.get(e.teamId) ?? byTeam.set(e.teamId, []).get(e.teamId)!) : unassigned).push(e);
+    const teamScore = (members: EventEntry[]) => members.find((m) => typeof m.score === "number")?.score;
+    const teams = [...byTeam.entries()]
+      .map(([id, members]) => ({ id, members, score: teamScore(members) }))
+      .sort((a, b) => (a.score ?? Infinity) - (b.score ?? Infinity));
+    const teamNumbers = [...byTeam.keys()].sort((a, b) => a - b);
+    const teamSelect = (e: EventEntry) => (
+      <select
+        value={e.teamId ?? ""}
+        onChange={(ev2) => setEntryTeam(event!.id, e.id, ev2.target.value === "" ? null : Number(ev2.target.value))}
+        title="Move to team"
+        className="rounded-lg border border-white/10 bg-white/[0.05] px-1.5 py-1 text-xs text-[var(--cream)] outline-none focus:border-[var(--gold)]"
+      >
+        <option value="">—</option>
+        {[...new Set([...teamNumbers, teamNumbers.length + 1])].map((n) => <option key={n} value={n}>T{n}</option>)}
+      </select>
+    );
+    return (
+      <div className="grid gap-3">
+        {teams.length === 0 && <div className={`${card} px-6 py-8 text-center text-sm text-[var(--sage-dim)]`}>No teams yet — randomize teams above, or assign players below.</div>}
+        {teams.map((t, i) => (
+          <div key={t.id} className={`${card} flex items-center gap-4 p-4 ${i === 0 && t.score != null ? "ring-1 ring-[var(--gold)]/25" : ""}`}>
+            <Pos n={t.score != null ? i + 1 : undefined} />
+            <span className="flex -space-x-2">
+              {t.members.map((m) => <Avatar key={m.id} url={m.photo} name={m.name} size={32} />)}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-bold text-[var(--cream)]">{t.members.map((m) => m.name).join(" + ")}</span>
+              <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--sage-dim)]">Team {t.id}{t.members.some((m) => m.paid) ? "" : ""}</span>
+            </span>
+            {admin && open && t.members.map((m) => <span key={m.id}>{teamSelect(m)}</span>)}
+            {admin && open ? (
+              <input
+                key={`t${t.id}-${t.score ?? ""}`}
+                inputMode="numeric"
+                defaultValue={t.score ?? ""}
+                placeholder="—"
+                title="Team total"
+                onBlur={(ev2) => {
+                  const raw = ev2.target.value.trim();
+                  const v = raw === "" ? undefined : Number(raw);
+                  if (v === undefined || Number.isFinite(v)) setTeamScore(event!.id, t.members, v);
+                }}
+                onKeyDown={(ev2) => { if (ev2.key === "Enter") (ev2.target as HTMLInputElement).blur(); }}
+                className={`${adminInput} w-16`}
+              />
+            ) : (
+              <span className="w-14 text-right font-mono text-lg font-extrabold text-[var(--cream)]">{t.score ?? ""}</span>
+            )}
+          </div>
+        ))}
+        {unassigned.length > 0 && (
+          <div className={`${card} p-4`}>
+            <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--sage-dim)]">Unassigned · {unassigned.length}</div>
+            <div className="grid gap-2">
+              {unassigned.map((e) => (
+                <div key={e.id} className="flex items-center gap-3 text-sm">
+                  <Avatar url={e.photo} name={e.name} size={26} />
+                  <span className="min-w-0 flex-1 truncate font-semibold text-[var(--cream)]">{e.name}</span>
+                  {admin && open && teamSelect(e)}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <main className="mx-auto max-w-4xl px-5 pb-28">
@@ -228,7 +318,17 @@ export default function LeagueEventPage() {
             <button onClick={copyLink} className={btnGhost}>{copied ? "Copied ✓" : "Copy check-in link"}</button>
             {admin && (
               <>
-                <button onClick={doHandicaps} disabled={busy} title="handicap = % × avg(player − field) over last 5 league rounds, capped" className={btnGhost}>Apply handicaps</button>
+                {isTeamFormat && (
+                <span className="flex items-center gap-2">
+                  {event.format === "Teams" && (
+                    <select value={teamSize} onChange={(e) => setTeamSize(Number(e.target.value))} className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-3 text-sm font-semibold text-[var(--cream)] outline-none focus:border-[var(--gold)]">
+                      {[2, 3, 4].map((n) => <option key={n} value={n}>teams of {n}</option>)}
+                    </select>
+                  )}
+                  <button onClick={doTeams} disabled={busy || entries.length < 2} className={btnGhost}>Randomize teams</button>
+                </span>
+              )}
+              {!isTeamFormat && <button onClick={doHandicaps} disabled={busy} title="handicap = % × avg(player − field) over last 5 league rounds, capped" className={btnGhost}>Apply handicaps</button>}
                 {event.roundCount < 6 && <button onClick={addRound} disabled={busy} className={btnGhost}>Add round {event.roundCount + 1}</button>}
                 <button onClick={complete} disabled={busy} className={btnGhost}>Complete event</button>
                 <button onClick={cancel} disabled={busy} className="rounded-full px-4 py-3 text-sm font-semibold text-[#f08c8c] transition-colors hover:bg-[#f08c8c]/10 disabled:opacity-50">Cancel event</button>
@@ -275,6 +375,8 @@ export default function LeagueEventPage() {
             <p className="mt-3 font-[family-name:var(--font-heading)] font-bold text-[var(--cream)]">Nobody&apos;s checked in yet</p>
             <p className="mt-1 text-sm text-[var(--sage-dim)]">Share the check-in link and watch this fill up.</p>
           </div>
+        ) : isTeamFormat ? (
+          renderTeamBoard()
         ) : (
           <div className={`${card} overflow-hidden`}>
             {[...ranked, ...unscored].map((e, i) => {
@@ -386,6 +488,51 @@ export default function LeagueEventPage() {
         {admin && open && entries.length > 0 && (
           <p className="mt-2.5 text-xs text-[var(--sage-dim)]">Directors enter totals here for now — rounds published from the app attach automatically once the apps stamp league events.</p>
         )}
+      </section>
+
+      {/* Event chat — two-way, per event (UDisc only has one-way admin blasts) */}
+      <section className="mb-12">
+        <SectionTitle>Event chat{messages.length > 0 ? ` · ${messages.length}` : ""}</SectionTitle>
+        <div className={`${card} flex max-h-[420px] flex-col`}>
+          <div className="min-h-[120px] flex-1 space-y-3 overflow-y-auto p-4">
+            {messages.length === 0 && (
+              <div className="grid place-items-center py-8 text-center">
+                <span className="grid h-11 w-11 place-items-center rounded-full bg-[var(--gold-dim)] text-[var(--gold)]"><IconUsers className="h-5 w-5" /></span>
+                <p className="mt-3 text-sm text-[var(--sage-dim)]">No messages yet — updates and trash talk land here.</p>
+              </div>
+            )}
+            {messages.map((m) => (
+              <div key={m.id} className="flex items-start gap-2.5">
+                <Avatar url={m.senderPhoto} name={m.senderName} size={28} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-baseline gap-x-2">
+                    <span className="text-sm font-bold text-[var(--cream)]">{m.senderName}</span>
+                    {isDirector(m.senderId) && <span className="rounded-full bg-[var(--gold-dim)] px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-[var(--gold)]">Director</span>}
+                    <span className="text-[10px] text-[var(--sage-dim)]">{new Date(m.timestamp).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</span>
+                  </div>
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed text-[var(--text-body)]">{m.text}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="border-t border-white/[0.06] p-3">
+            {user && (me || admin) ? (
+              <div className="flex items-end gap-2">
+                <textarea
+                  value={chatText}
+                  onChange={(e) => setChatText(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(); } }}
+                  rows={1}
+                  placeholder="Message the event…"
+                  className="max-h-24 min-h-[42px] w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm text-[var(--cream)] placeholder-[var(--sage-dim)] outline-none focus:border-[var(--gold)]"
+                />
+                <button onClick={sendChat} disabled={!chatText.trim() || sending} className="shrink-0 rounded-full bg-[var(--gold)] px-5 py-2.5 text-sm font-bold text-[#16221b] transition-colors hover:bg-[var(--gold-bright)] disabled:cursor-not-allowed disabled:opacity-50">{sending ? "…" : "Send"}</button>
+              </div>
+            ) : (
+              <p className="py-1 text-center text-xs text-[var(--sage-dim)]">{user ? "Check in to join the event chat." : "Sign in and check in to join the event chat."}</p>
+            )}
+          </div>
+        </div>
       </section>
 
       {/* Cards */}
