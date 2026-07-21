@@ -1,0 +1,86 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// LEAGUES rules block — DRAFT for the Stage-2 lockdown. NOT deployable alone.
+//
+// IMPORTANT: while the live Stage-1 catch-all (`match /{document=**} { allow
+// write: if request.auth != null }`) exists, these rules are ADVISORY ONLY —
+// Firestore grants access if ANY overlapping match allows, so a stricter
+// specific block does nothing until the catch-all is removed. This file is the
+// leagues section to merge into the Stage-2 draft (see RadiusAndroid/
+// firestore-rules-stage2-draft.txt) when that lands, NOT a standalone deploy.
+//
+// Role model:
+//   • league admins = leagues/{id}.adminIds (CANONICAL ids)
+//   • players write their own entry docs (id == their canonical id)
+//   • live scoring: a checked-in player may write cardmates' holeScores/thruHole
+//     (Phase-2 relaxation: any checked-in player in the same event; tighten to
+//     same-card once card membership is stable)
+//
+// canonicalId() costs one get() per evaluation — same pattern Stage 2 already
+// uses for ownership checks.
+// ─────────────────────────────────────────────────────────────────────────────
+
+    function canonicalId() {
+      return exists(/databases/$(database)/documents/canonicalIds/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/canonicalIds/$(request.auth.uid)).data.canonicalId
+        : request.auth.uid;
+    }
+    function isLeagueAdmin(leagueId) {
+      return request.auth != null
+        && canonicalId() in get(/databases/$(database)/documents/leagues/$(leagueId)).data.adminIds;
+    }
+
+    match /leagues/{leagueId} {
+      allow read: if true;
+      // Creator must put ONLY themselves in adminIds at create time.
+      allow create: if request.auth != null
+        && request.resource.data.adminIds == [canonicalId()]
+        && request.resource.data.createdById == canonicalId();
+      allow update: if isLeagueAdmin(leagueId);
+      allow delete: if false; // no hard deletes; add a status field if needed
+
+      match /members/{memberId} {
+        allow read: if true;
+        // Self-join as plain member, or any admin write. Role escalation is
+        // admin-only: a self-write may not set a role other than "member".
+        allow write: if isLeagueAdmin(leagueId)
+          || (request.auth != null && memberId == canonicalId()
+              && request.resource.data.role == "member");
+      }
+
+      match /standings/{seasonId} {
+        allow read: if true;
+        allow write: if isLeagueAdmin(leagueId); // computed doc; web writes best-effort
+      }
+    }
+
+    match /leagueEvents/{eventId} {
+      allow read: if true;
+      allow create, update: if isLeagueAdmin(request.resource.data.leagueId);
+      allow delete: if false; // cancellation is a status write, not a delete
+
+      function eventLeagueId() {
+        return get(/databases/$(database)/documents/leagueEvents/$(eventId)).data.leagueId;
+      }
+      function isCheckedIn() {
+        return request.auth != null
+          && exists(/databases/$(database)/documents/leagueEvents/$(eventId)/entries/$(canonicalId()));
+      }
+
+      match /entries/{entryId} {
+        allow read: if true;
+        // Own check-in; directors anything; live-score mirror from cardmates
+        // (holeScores/thruHole only — never the authoritative score fields).
+        allow create: if request.auth != null && entryId == canonicalId();
+        allow update: if isLeagueAdmin(eventLeagueId())
+          || (request.auth != null && entryId == canonicalId())
+          || (isCheckedIn()
+              && request.resource.data.diff(resource.data).affectedKeys()
+                   .hasOnly(['holeScores', 'thruHole']));
+        allow delete: if isLeagueAdmin(eventLeagueId());
+      }
+
+      match /cards/{cardId} {
+        allow read: if true;
+        allow write: if isLeagueAdmin(eventLeagueId());
+      }
+    }

@@ -25,6 +25,8 @@ export default function LeaguePage() {
   const [divisionsDraft, setDivisionsDraft] = useState("");
   const [bestNDraft, setBestNDraft] = useState("");
   const [descDraft, setDescDraft] = useState("");
+  const [hcpPctDraft, setHcpPctDraft] = useState("");
+  const [hcpCapDraft, setHcpCapDraft] = useState("");
 
   // Event scheduler (director only)
   const [schedOpen, setSchedOpen] = useState(false);
@@ -45,6 +47,8 @@ export default function LeaguePage() {
         setDivisionsDraft((l.settings.divisions ?? []).join(", "));
         setBestNDraft(l.settings.bestN ? String(l.settings.bestN) : "");
         setDescDraft(l.settings.description);
+        setHcpPctDraft(l.settings.handicapPercent ? String(l.settings.handicapPercent) : "");
+        setHcpCapDraft(l.settings.handicapCap ? String(l.settings.handicapCap) : "");
       }
     }).catch(() => setLeague(null));
   }, [slug]);
@@ -115,6 +119,15 @@ export default function LeaguePage() {
           <label className="block text-xs font-bold uppercase tracking-wide text-[var(--sage)]">Best rounds counted <span className="font-normal normal-case text-[var(--sage-dim)]">— season standings use each player&apos;s best N events (blank = all)</span>
             <input inputMode="numeric" value={bestNDraft} onChange={(e) => setBestNDraft(e.target.value)} placeholder="all" className={field + " mt-1.5 max-w-[120px]"} />
           </label>
+          <div className="flex flex-wrap gap-4">
+            <label className="block text-xs font-bold uppercase tracking-wide text-[var(--sage)]">Handicap % <span className="font-normal normal-case text-[var(--sage-dim)]">— of field-relative average (default 90)</span>
+              <input inputMode="numeric" value={hcpPctDraft} onChange={(e) => setHcpPctDraft(e.target.value)} placeholder="90" className={field + " mt-1.5 max-w-[120px]"} />
+            </label>
+            <label className="block text-xs font-bold uppercase tracking-wide text-[var(--sage)]">Handicap cap <span className="font-normal normal-case text-[var(--sage-dim)]">— max strokes (blank = uncapped)</span>
+              <input inputMode="numeric" value={hcpCapDraft} onChange={(e) => setHcpCapDraft(e.target.value)} placeholder="none" className={field + " mt-1.5 max-w-[120px]"} />
+            </label>
+          </div>
+          <p className="text-xs text-[var(--sage-dim)]">The handicap formula is public: handicap = % × average of (player score − field average) over the player&apos;s last 5 league rounds, capped. Directors can override any player&apos;s adjustment on the event page.</p>
           <label className="block text-xs font-bold uppercase tracking-wide text-[var(--sage)]">Description
             <textarea value={descDraft} onChange={(e) => setDescDraft(e.target.value)} rows={2} className={field + " mt-1.5"} />
           </label>
@@ -125,7 +138,9 @@ export default function LeaguePage() {
               try {
                 const divisions = divisionsDraft.split(",").map((s) => s.trim()).filter(Boolean);
                 const bestN = Number(bestNDraft) > 0 ? Math.floor(Number(bestNDraft)) : undefined;
-                const settings = { ...league.settings, divisions: divisions.length ? divisions : undefined, bestN, description: descDraft.trim() };
+                const handicapPercent = Number(hcpPctDraft) > 0 ? Math.min(150, Math.floor(Number(hcpPctDraft))) : undefined;
+                const handicapCap = Number(hcpCapDraft) > 0 ? Math.floor(Number(hcpCapDraft)) : undefined;
+                const settings = { ...league.settings, divisions: divisions.length ? divisions : undefined, bestN, handicapPercent, handicapCap, description: descDraft.trim() };
                 await updateLeagueSettings(league.id, settings);
                 setLeague({ ...league, settings: { ...settings, divisions: divisions.length ? divisions : ["Open"] } });
                 computeStandings(league.id, bestN).then(setStandings).catch(() => {});

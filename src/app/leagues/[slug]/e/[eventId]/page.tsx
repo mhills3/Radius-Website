@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { getLeagueBySlug, getEvent, getCards, checkIn, updateEntry, removeEntry, generateCards, setEventStatus, computeStandings, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, type League, type LeagueEvent, type EventEntry, type EventCard } from "@/lib/leagues";
+import { getLeagueBySlug, getEvent, getCards, checkIn, updateEntry, removeEntry, generateCards, setEventStatus, computeStandings, computeHandicaps, applyHandicaps, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, type League, type LeagueEvent, type EventEntry, type EventCard } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 
 const fmtDate = (ms: number) => new Date(ms).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
@@ -94,6 +94,18 @@ export default function LeagueEventPage() {
     await removeEntry(event.id, entryId);
   };
 
+  const [hcpNote, setHcpNote] = useState("");
+  const doHandicaps = async () => {
+    if (!event || !league || busy) return;
+    setBusy(true);
+    try {
+      const rows = await computeHandicaps(league);
+      if (!rows.length) { setHcpNote("No completed events with 2+ scored players yet — handicaps need history."); return; }
+      const applied = await applyHandicaps(event.id, entries, rows);
+      setHcpNote(applied ? `Applied handicaps to ${applied} player${applied === 1 ? "" : "s"} (editable per player below).` : "Everyone's handicap is 0 — no adjustments written.");
+    } finally { setBusy(false); }
+  };
+
   if (event === undefined) return <main className="mx-auto max-w-3xl px-5 pt-10 text-sm text-[var(--sage-dim)]">Loading…</main>;
   if (event === null) return <main className="mx-auto max-w-3xl px-5 pt-10"><p className="text-sm text-[var(--sage-dim)]">Event not found.</p></main>;
 
@@ -101,9 +113,12 @@ export default function LeagueEventPage() {
   const divisions = league?.settings.divisions ?? [];
   const shown = divFilter ? entries.filter((e) => e.division === divFilter) : entries;
   // Final score ranks first-class; a live in-progress total (mirrored hole scores) ranks too.
+  // Position is by ADJUSTED total: score + penalty + startingScore (the handicap adjustment).
   const scoreOf = (e: EventEntry) => (typeof e.score === "number" ? e.score : liveTotal(e));
-  const ranked = [...shown].filter((e) => scoreOf(e) != null && !e.dnf).sort((a, b) => (scoreOf(a)! + (a.penalty ?? 0)) - (scoreOf(b)! + (b.penalty ?? 0)));
+  const adjOf = (e: EventEntry) => scoreOf(e)! + (e.penalty ?? 0) + (e.startingScore ?? 0);
+  const ranked = [...shown].filter((e) => scoreOf(e) != null && !e.dnf).sort((a, b) => adjOf(a) - adjOf(b));
   const unscored = shown.filter((e) => !ranked.includes(e));
+  const anyHcp = entries.some((e) => (e.startingScore ?? 0) !== 0);
 
   return (
     <main className="mx-auto max-w-3xl px-5 pb-24 pt-10">
@@ -137,12 +152,14 @@ export default function LeagueEventPage() {
           <button onClick={copyLink} className="rounded-full border border-white/15 px-5 py-2.5 text-sm font-bold text-[var(--cream)] transition-colors hover:bg-white/[0.06]">{copied ? "Copied ✓" : "Copy check-in link"}</button>
           {admin && (
             <>
+              <button onClick={doHandicaps} disabled={busy} title="handicap = % × avg(player − field) over last 5 league rounds, capped — set % and cap in league settings" className="rounded-full border border-white/15 px-5 py-2.5 text-sm font-bold text-[var(--cream)] transition-colors hover:bg-white/[0.06] disabled:opacity-50">Apply handicaps</button>
               <button onClick={complete} disabled={busy} className="rounded-full border border-white/15 px-5 py-2.5 text-sm font-bold text-[var(--cream)] transition-colors hover:bg-white/[0.06] disabled:opacity-50">Complete event</button>
               <button onClick={cancel} disabled={busy} className="rounded-full px-4 py-2.5 text-sm font-semibold text-[#f08c8c] transition-colors hover:bg-[#f08c8c]/10 disabled:opacity-50">Cancel event</button>
             </>
           )}
         </div>
       )}
+      {hcpNote && <p className="mt-2 text-xs text-[var(--sage)]">{hcpNote}</p>}
 
       {/* Leaderboard */}
       <section className="mt-8">
@@ -171,6 +188,7 @@ export default function LeagueEventPage() {
                   {e.username ? <Link href={`/u/${e.username}`} className="hover:underline">{e.name}</Link> : e.name}
                   {e.division && !divFilter && <span className="ml-2 rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[var(--sage-dim)]">{e.division}</span>}
                   {e.dnf && <span className="ml-2 rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[var(--sage-dim)]">DNF</span>}
+                  {(e.startingScore ?? 0) !== 0 && <span className="ml-2 rounded-full bg-[var(--gold-dim)] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[var(--gold)]" title="Handicap adjustment added to the total">HCP {e.startingScore! > 0 ? `+${e.startingScore}` : e.startingScore}</span>}
                   {typeof e.score !== "number" && liveTotal(e) != null && <span className="ml-2 rounded-full bg-[#5fcf80]/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-[#5fcf80]">thru {e.thruHole ?? e.holeScores!.filter((n) => n > 0).length}</span>}
                 </span>
                 {!admin && (e.penalty ?? 0) > 0 && <span className="font-mono text-xs text-[#f08c8c]">+{e.penalty}</span>}
@@ -194,6 +212,19 @@ export default function LeagueEventPage() {
                     >DNF</button>
                     <input
                       inputMode="numeric"
+                      defaultValue={e.startingScore ?? ""}
+                      placeholder="hcp"
+                      title="Handicap adjustment (added to total) — director-editable; blank to clear"
+                      onBlur={(ev2) => {
+                        const raw = ev2.target.value.trim();
+                        const v = raw === "" ? undefined : Number(raw);
+                        if (v === undefined || Number.isFinite(v)) patchEntry(e.id, { startingScore: v });
+                      }}
+                      onKeyDown={(ev2) => { if (ev2.key === "Enter") (ev2.target as HTMLInputElement).blur(); }}
+                      className="w-12 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-right font-mono text-xs text-[var(--gold)] outline-none focus:border-[var(--gold)]"
+                    />
+                    <input
+                      inputMode="numeric"
                       defaultValue={e.score ?? ""}
                       placeholder="—"
                       onChange={(ev2) => setScoreDraft((s) => ({ ...s, [e.id]: ev2.target.value }))}
@@ -204,7 +235,10 @@ export default function LeagueEventPage() {
                     <button onClick={() => dropEntry(e.id)} title="Remove from event" className="rounded-full px-1.5 py-1 text-xs text-[var(--sage-dim)] transition-colors hover:text-[#f08c8c]">✕</button>
                   </span>
                 ) : (
-                  <span className="w-12 text-right font-mono font-bold text-[var(--cream)]">{scoreOf(e) ?? ""}</span>
+                  <span className="w-14 text-right font-mono font-bold text-[var(--cream)]">
+                    {scoreOf(e) != null && anyHcp && !e.dnf ? adjOf(e) : scoreOf(e) ?? ""}
+                    {scoreOf(e) != null && anyHcp && (e.startingScore ?? 0) !== 0 && <span className="ml-1 text-[10px] font-normal text-[var(--sage-dim)]">({scoreOf(e)})</span>}
+                  </span>
                 )}
               </div>
             ))}

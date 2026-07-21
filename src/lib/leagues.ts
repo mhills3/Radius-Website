@@ -38,6 +38,8 @@ export interface LeagueSettings {
   description: string;
   divisions?: string[]; // PDGA-style or custom; players pick one at check-in when >1
   bestN?: number;       // season standings count each player's best N event scores (0/undefined = all)
+  handicapPercent?: number; // % of a player's field-relative average applied (default 90)
+  handicapCap?: number;     // max |strokes| a handicap may reach (0/undefined = uncapped)
 }
 export interface League {
   id: string;
@@ -153,6 +155,8 @@ function toLeague(id: string, d: any): League {
       format: d.settings?.format ?? "Singles", startFormat: d.settings?.startFormat ?? "Shotgun", description: d.settings?.description ?? "",
       divisions: Array.isArray(d.settings?.divisions) && d.settings.divisions.length ? d.settings.divisions : DEFAULT_DIVISIONS,
       bestN: Number(d.settings?.bestN) || undefined,
+      handicapPercent: Number(d.settings?.handicapPercent) || undefined,
+      handicapCap: Number(d.settings?.handicapCap) || undefined,
     },
     memberCount: Number(d.memberCount) || 0, createdAt: Number(d.createdAt) || 0, lastUpdated: Number(d.lastUpdated) || 0,
   };
@@ -386,6 +390,66 @@ export function eventPoints(entries: EventEntry[]): Map<string, number> {
   return out;
 }
 
+// ---- Handicaps ----
+//
+// THE TRANSPARENT FORMULA (published on purpose — every director can recompute
+// it by hand, unlike UDisc's "not as simple as an equation"):
+//
+//   handicap = round( percent% × mean( playerScore − fieldAverage, over the
+//                                      player's last 5 completed league events ) )
+//   clamped to ±cap when a cap is set. startingScore = −handicap.
+//
+// Field-relative (score minus that event's field average) so course/layout
+// changes cancel out without needing par data. Directors can override any
+// player's startingScore afterwards — handicaps are a suggestion the director
+// owns, not a black box.
+
+export interface HandicapRow {
+  playerId: string;
+  name: string;
+  diffs: number[];   // playerScore − fieldAvg per counted event (oldest → newest)
+  average: number;   // mean of diffs
+  handicap: number;  // rounded, capped
+  capped: boolean;
+}
+
+export async function computeHandicaps(league: League): Promise<HandicapRow[]> {
+  const percent = league.settings.handicapPercent ?? 90;
+  const cap = league.settings.handicapCap;
+  const events = (await getLeagueEvents(league.id)).filter((e) => e.status === "complete");
+  const history = new Map<string, { name: string; diffs: number[] }>();
+  for (const ev of events) { // chronological (getLeagueEvents sorts by date)
+    const entries = (await getEntries(ev.id)).filter((e) => typeof e.score === "number" && !e.dnf);
+    if (entries.length < 2) continue; // a field of one has no field average
+    const fieldAvg = entries.reduce((a, e) => a + e.score!, 0) / entries.length;
+    for (const e of entries) {
+      const h = history.get(e.id) ?? { name: e.name, diffs: [] };
+      h.diffs.push(e.score! - fieldAvg);
+      history.set(e.id, h);
+    }
+  }
+  return [...history.entries()].map(([playerId, h]) => {
+    const recent = h.diffs.slice(-5);
+    const average = recent.reduce((a, b) => a + b, 0) / recent.length;
+    const raw = Math.round((percent / 100) * average);
+    const handicap = cap && cap > 0 ? Math.max(-cap, Math.min(cap, raw)) : raw;
+    return { playerId, name: h.name, diffs: recent.map((d) => Math.round(d * 10) / 10), average: Math.round(average * 10) / 10, handicap, capped: handicap !== raw };
+  });
+}
+
+/** Write handicaps as startingScore (−handicap) onto this event's checked-in entries. */
+export async function applyHandicaps(eventId: string, entries: EventEntry[], rows: HandicapRow[]): Promise<number> {
+  const byId = new Map(rows.map((r) => [r.playerId, r]));
+  let applied = 0;
+  for (const e of entries) {
+    const r = byId.get(e.id);
+    if (!r || r.handicap === 0) continue;
+    await setDoc(doc(db, "leagueEvents", eventId, "entries", e.id), { startingScore: -r.handicap }, { merge: true });
+    applied++;
+  }
+  return applied;
+}
+
 export async function computeStandings(leagueId: string, bestN?: number): Promise<StandingRow[]> {
   const events = (await getLeagueEvents(leagueId)).filter((e) => e.status === "complete");
   const perPlayer = new Map<string, { name: string; division?: string; eventPts: number[]; bestToPar?: number }>();
@@ -405,6 +469,11 @@ export async function computeStandings(leagueId: string, bestN?: number): Promis
     const counted = bestN && bestN > 0 ? [...p.eventPts].sort((a, b) => b - a).slice(0, bestN) : p.eventPts;
     return { id, name: p.name, division: p.division, played: p.eventPts.length, points: counted.reduce((a, b) => a + b, 0), bestToPar: p.bestToPar };
   }).sort((a, b) => b.points - a.points);
-  await setDoc(doc(db, "leagues", leagueId, "standings", "current"), { players: JSON.parse(JSON.stringify(list)), bestN: bestN ?? null, updatedAt: Date.now() }, { merge: true });
+  // Persisting the computed doc is best-effort: under the Stage-2 rules only
+  // admins may write standings, and a visitor recomputing for display must
+  // still get the list back.
+  try {
+    await setDoc(doc(db, "leagues", leagueId, "standings", "current"), { players: JSON.parse(JSON.stringify(list)), bestN: bestN ?? null, updatedAt: Date.now() }, { merge: true });
+  } catch { /* read-only viewer */ }
   return list;
 }
