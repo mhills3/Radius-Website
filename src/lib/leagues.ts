@@ -288,6 +288,15 @@ export async function getLeagueEvents(leagueId: string): Promise<LeagueEvent[]> 
   } catch { return []; }
 }
 
+/** Discovery: upcoming events across ALL leagues (single-field range+order — no composite index). */
+export async function getUpcomingEvents(max = 60): Promise<LeagueEvent[]> {
+  try {
+    const cutoff = Date.now() - 12 * 3600_000;
+    const snap = await getDocs(query(collection(db, "leagueEvents"), where("date", ">=", cutoff), orderBy("date", "asc"), limit(max)));
+    return snap.docs.map((d) => toEvent(d.id, d.data())).filter((e) => e.status !== "cancelled");
+  } catch { return []; }
+}
+
 export async function getEvent(eventId: string): Promise<LeagueEvent | null> {
   try {
     const s = await getDoc(doc(db, "leagueEvents", eventId));
