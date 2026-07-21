@@ -10,6 +10,7 @@ const COLUMNS: { heading: string; links: { label: string; href: string; external
     links: [
       { label: "Courses", href: "/courses" },
       { label: "Discs", href: "/discs" },
+      { label: "Leagues", href: "/leagues" },
       { label: "Community", href: "/community" },
       { label: "Stories", href: "/stories" },
       { label: "Learn", href: "/learn" },
