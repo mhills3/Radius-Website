@@ -4,12 +4,43 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { getLeagueBySlug, getEvent, getCards, checkIn, updateEntry, removeEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, reassignBagTags, computeStandings, computeHandicaps, applyHandicaps, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, type League, type LeagueEvent, type EventEntry, type EventCard } from "@/lib/leagues";
+import { getLeagueBySlug, getEvent, getCards, checkIn, updateEntry, removeEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, reassignBagTags, computeStandings, computeHandicaps, applyHandicaps, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, type League, type LeagueEvent, type EventEntry, type EventCard } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
-import { SectionTitle, Avatar, Pos, btnGold, btnGhost, card, IconPin, IconDisc } from "@/components/leagues/ui";
+import { SectionTitle, Avatar, Pos, btnGold, btnGhost, card, IconPin, IconDisc, IconEyeOff } from "@/components/leagues/ui";
 
 const fmtDate = (ms: number) => new Date(ms).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 const adminInput = "rounded-lg border border-white/10 bg-white/[0.05] px-2 py-1.5 text-right font-mono text-sm text-[var(--cream)] outline-none transition-colors focus:border-[var(--gold)]";
+
+// Renders the wizard's markdown-lite description: **bold**, _italic_, "- " bullets.
+function Desc({ text }: { text: string }) {
+  const inline = (line: string, key: number) => {
+    const parts = line.split(/(\*\*[^*]+\*\*|_[^_]+_)/g).filter(Boolean);
+    return (
+      <span key={key}>
+        {parts.map((p, i) =>
+          p.startsWith("**") && p.endsWith("**") ? <strong key={i} className="font-bold text-[var(--cream)]">{p.slice(2, -2)}</strong>
+          : p.startsWith("_") && p.endsWith("_") && p.length > 2 ? <em key={i}>{p.slice(1, -1)}</em>
+          : p
+        )}
+      </span>
+    );
+  };
+  const lines = text.split("\n");
+  const out: React.ReactNode[] = [];
+  let bullets: string[] = [];
+  const flush = () => {
+    if (bullets.length) {
+      out.push(<ul key={`ul${out.length}`} className="my-1 list-disc space-y-0.5 pl-5">{bullets.map((b, i) => <li key={i}>{inline(b, i)}</li>)}</ul>);
+      bullets = [];
+    }
+  };
+  lines.forEach((l, i) => {
+    if (l.startsWith("- ")) bullets.push(l.slice(2));
+    else { flush(); if (l.trim()) out.push(<p key={`p${i}`} className="my-1">{inline(l, i)}</p>); }
+  });
+  flush();
+  return <div className="text-sm leading-relaxed text-[var(--text-body)]">{out}</div>;
+}
 
 function StatusChip({ status }: { status: LeagueEvent["status"] }) {
   const cls = status === "complete" ? "bg-white/[0.06] text-[var(--sage-dim)]"
@@ -158,7 +189,22 @@ export default function LeagueEventPage() {
           {event.courseName && <span className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 font-semibold text-[var(--text-body)] ring-1 ring-white/[0.06]"><IconPin className="h-3.5 w-3.5 shrink-0" /> {event.courseName}</span>}
           <span className="rounded-full bg-white/[0.05] px-3 py-1.5 font-semibold text-[var(--text-body)] ring-1 ring-white/[0.06]">{event.format} · {event.startFormat}</span>
           {event.roundCount > 1 && <span className="rounded-full bg-[var(--gold-dim)] px-3 py-1.5 font-bold text-[var(--gold)] ring-1 ring-[var(--gold)]/20">{event.roundCount} rounds</span>}
+          {event.kind && EVENT_KINDS.find((k) => k.key === event.kind) && (
+            <span className="rounded-full bg-white/[0.05] px-3 py-1.5 font-semibold text-[var(--text-body)] ring-1 ring-white/[0.06]">{EVENT_KINDS.find((k) => k.key === event.kind)!.label}</span>
+          )}
+          {event.isPrivate && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 font-semibold text-[var(--sage)] ring-1 ring-white/[0.06]"><IconEyeOff className="h-3.5 w-3.5" /> Private — link only</span>
+          )}
         </div>
+        {event.description && <div className="mt-4 max-w-2xl"><Desc text={event.description} /></div>}
+        {(event.contactEmail || event.contactPhone) && (
+          <p className="mt-3 text-xs text-[var(--sage)]">
+            Contact:{" "}
+            {event.contactEmail && <a href={`mailto:${event.contactEmail}`} className="font-bold text-[var(--gold)] hover:underline">{event.contactEmail}</a>}
+            {event.contactEmail && event.contactPhone && " · "}
+            {event.contactPhone && <a href={`tel:${event.contactPhone}`} className="font-bold text-[var(--gold)] hover:underline">{event.contactPhone}</a>}
+          </p>
+        )}
 
         {open && (
           <div className="mt-6 flex flex-wrap items-center gap-2.5">

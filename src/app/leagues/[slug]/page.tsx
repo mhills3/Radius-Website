@@ -83,8 +83,10 @@ export default function LeaguePage() {
 
   const admin = useMemo(() => !!league && isLeagueAdmin(league, cid), [league, cid]);
   const [now] = useState(() => Date.now());
-  const upcoming = events.filter((e) => e.status !== "complete" && e.status !== "cancelled" && e.date > now - 12 * 3600_000);
-  const past = events.filter((e) => !upcoming.includes(e)).reverse();
+  // Private events are link-only: visible on the league page to admins alone.
+  const visible = events.filter((e) => !e.isPrivate || admin);
+  const upcoming = visible.filter((e) => e.status !== "complete" && e.status !== "cancelled" && e.date > now - 12 * 3600_000);
+  const past = visible.filter((e) => !upcoming.includes(e)).reverse();
   const photoOf = useMemo(() => new Map(members.map((m) => [m.id, m.photo])), [members]);
 
   const schedule = async () => {

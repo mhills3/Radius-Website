@@ -206,6 +206,7 @@ export default function LeaguesPage() {
                           {ev.courseName && <span className="inline-flex items-center gap-1.5"><IconPin className="h-3.5 w-3.5 shrink-0" /> {ev.courseName}</span>}
                           <span>{fmtTime(ev.date)}</span>
                           {ev.roundCount > 1 && <span className="text-[var(--gold)]">{ev.roundCount} rounds</span>}
+                          {ev.kind && ev.kind !== "league" && <span className="uppercase tracking-wide text-[var(--sage-dim)]">{ev.kind}</span>}
                           {ev.buyIn && <span>${ev.buyIn} buy-in</span>}
                           <span>{ev.entryCount} in</span>
                         </div>

@@ -94,7 +94,8 @@ export default function EventWizard() {
   const step = steps[stepIdx];
   const kindMeta = EVENT_KINDS.find((k) => k.key === kind);
   const chosenLeague = myLeagues.find((l) => l.id === leagueChoice);
-  const nCount = useCustomN ? Math.max(1, Math.min(Number(customN) || 1, isLeagueKind ? 26 : 6)) : (isLeagueKind ? repeat : rounds);
+  const countable = isLeagueKind || kind === "tournament";
+  const nCount = !countable ? 1 : useCustomN ? Math.max(1, Math.min(Number(customN) || 1, isLeagueKind ? 26 : 6)) : (isLeagueKind ? repeat : rounds);
   const placeName = course?.name ?? customPlace.trim();
 
   const canNext: Record<StepKey, boolean> = {
@@ -324,6 +325,7 @@ export default function EventWizard() {
                 <label className="block"><FieldLabel>Start date *</FieldLabel><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={`${inputCls} min-w-[190px]`} autoFocus /></label>
                 <label className="block"><FieldLabel>Tee time</FieldLabel><input type="time" value={time} onChange={(e) => setTime(e.target.value)} className={`${inputCls} min-w-[140px]`} /></label>
               </div>
+              {(isLeagueKind || kind === "tournament") && (
               <div>
                 <FieldLabel>{isLeagueKind ? "How many weeks?" : "How many rounds?"}</FieldLabel>
                 <div className="flex flex-wrap items-center gap-2">
@@ -343,6 +345,7 @@ export default function EventWizard() {
                     : nCount > 1 ? `${nCount} rounds, one leaderboard — scores total across all rounds.` : "Single-round event."}
                 </p>
               </div>
+              )}
             </div>
           )}
 
@@ -488,7 +491,7 @@ export default function EventWizard() {
               <button onClick={() => setStepIdx((i) => i + 1)} className="text-sm font-bold text-[var(--sage)] transition-colors hover:text-[var(--cream)]">Skip</button>
             )}
             {step === "review" ? (
-              <button onClick={submit} disabled={busy} className={btnGold}>{busy ? "Creating…" : "Looks good — create it"}</button>
+              <button onClick={submit} disabled={busy} className={btnGold}>{busy ? "Creating…" : "Create event"}</button>
             ) : (
               <button onClick={() => setStepIdx((i) => i + 1)} disabled={!canNext[step] || busy} className={btnGold}>Next</button>
             )}
