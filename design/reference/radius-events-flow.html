@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Radius · Events</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --forest:#141B16;          /* page base, one step deeper than brand forest */
+  --card:#1A2821;            /* brand forest green, card surface */
+  --card-raised:#203028;     /* hover / raised surface */
+  --accent-green:#2D4A3E;
+  --gold:#E8B560;            /* you, your game, your money */
+  --gold-dim:rgba(232,181,96,.14);
+  --blue:#8FBDE3;            /* community, the field, everyone else */
+  --blue-dim:rgba(143,189,227,.12);
+  --cream:#F4F1E8;
+  --cream-60:rgba(244,241,232,.60);
+  --cream-38:rgba(244,241,232,.38);
+  --hair:rgba(244,241,232,.08);
+  --hair-strong:rgba(244,241,232,.14);
+  --mono:'JetBrains Mono',monospace;
+  --sora:'Sora',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--forest);color:var(--cream);font-family:var(--sora);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+button{font-family:var(--sora);cursor:pointer}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:4px}
+
+/* ---------- top bar ---------- */
+.topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;
+  padding:0 40px;height:64px;background:rgba(20,27,22,.88);backdrop-filter:blur(14px);border-bottom:1px solid var(--hair)}
+.wordmark{font-weight:800;font-size:18px;letter-spacing:.02em}
+.wordmark .dot{color:var(--gold)}
+.topnav{display:flex;gap:28px;font-size:13.5px;color:var(--cream-60)}
+.topnav a:hover{color:var(--cream)}
+.topnav .active{color:var(--cream);position:relative}
+.topnav .active::after{content:'';position:absolute;left:0;right:0;bottom:-22px;height:2px;background:var(--gold)}
+.top-cta{background:var(--gold);color:#1A2821;border:none;font-weight:700;font-size:13.5px;
+  padding:9px 18px;border-radius:8px;transition:transform .15s ease}
+.top-cta:hover{transform:translateY(-1px)}
+
+/* ---------- flow stepper (mockup navigation) ---------- */
+.stepper{display:flex;justify-content:center;gap:6px;padding:14px 0;border-bottom:1px solid var(--hair);
+  background:var(--forest);font-family:var(--mono);font-size:11.5px;letter-spacing:.06em}
+.step{background:none;border:1px solid var(--hair);color:var(--cream-60);border-radius:999px;
+  padding:7px 16px;transition:all .18s ease;text-transform:uppercase}
+.step:hover{border-color:var(--hair-strong);color:var(--cream)}
+.step.on{background:var(--card);border-color:var(--gold);color:var(--gold)}
+.step .n{opacity:.5;margin-right:7px}
+
+.screen{display:none}
+.screen.show{display:block;animation:fade .35s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+.wrap{max-width:1200px;margin:0 auto;padding:0 40px}
+
+/* ---------- radius ring motif ---------- */
+.rings{position:absolute;inset:0;overflow:hidden;pointer-events:none;opacity:.5}
+.rings svg{position:absolute;right:-180px;top:-260px}
+
+/* ---------- eyebrow / headings ---------- */
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);margin-bottom:14px}
+.eyebrow.blue{color:var(--blue)}
+h1{font-size:clamp(34px,4.4vw,52px);font-weight:800;line-height:1.06;letter-spacing:-.015em}
+h2{font-size:22px;font-weight:700;letter-spacing:-.01em}
+.sub{color:var(--cream-60);font-size:16px;max-width:520px;margin-top:16px}
+
+/* =========================================================
+   SCREEN 1 · DISCOVER
+========================================================= */
+.hero{position:relative;padding:84px 0 64px;border-bottom:1px solid var(--hair)}
+.hero-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:60px;align-items:center;position:relative}
+.legend{display:flex;gap:26px;margin-top:34px;font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;color:var(--cream-60)}
+.legend span{display:flex;align-items:center;gap:8px}
+.swatch{width:9px;height:9px;border-radius:50%}
+.swatch.g{background:var(--gold)}
+.swatch.b{background:var(--blue)}
+
+/* live tile in hero */
+.hero-live{background:var(--card);border:1px solid var(--hair);border-radius:16px;padding:26px;position:relative;overflow:hidden}
+.hero-live::before{content:'';position:absolute;inset:0;background:
+  radial-gradient(600px 300px at 80% -10%,rgba(143,189,227,.10),transparent 60%)}
+.live-tag{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;
+  letter-spacing:.18em;color:var(--blue)}
+.pulse{width:8px;height:8px;border-radius:50%;background:var(--blue);position:relative}
+.pulse::after{content:'';position:absolute;inset:-5px;border-radius:50%;border:1px solid var(--blue);
+  animation:ring 2.2s ease-out infinite}
+@keyframes ring{from{transform:scale(.4);opacity:.9}to{transform:scale(1.6);opacity:0}}
+.hero-live h3{font-size:19px;font-weight:700;margin:14px 0 4px}
+.hero-live .meta{font-size:13px;color:var(--cream-60)}
+.mini-lb{margin-top:20px;border-top:1px solid var(--hair)}
+.mini-row{display:grid;grid-template-columns:34px 1fr 62px 62px;align-items:center;
+  padding:11px 4px;border-bottom:1px solid var(--hair);font-size:13.5px}
+.mini-row .pos,.mini-row .thru,.mini-row .sc{font-family:var(--mono)}
+.mini-row .pos{color:var(--cream-38)}
+.mini-row .thru{color:var(--cream-38);text-align:right;font-size:12px}
+.mini-row .sc{text-align:right;font-weight:700;color:var(--blue)}
+.mini-row.you{background:var(--gold-dim);border-radius:8px;border-bottom-color:transparent}
+.mini-row.you .sc{color:var(--gold)}
+.mini-row.you .name::after{content:'You';font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;
+  color:var(--gold);border:1px solid rgba(232,181,96,.4);border-radius:4px;padding:2px 6px;margin-left:10px;vertical-align:1px}
+
+/* filter rail */
+.filters{display:flex;align-items:center;gap:10px;padding:26px 0;flex-wrap:wrap}
+.chip{background:none;border:1px solid var(--hair);color:var(--cream-60);border-radius:999px;
+  padding:8px 16px;font-size:13px;transition:all .15s ease}
+.chip:hover{border-color:var(--hair-strong);color:var(--cream)}
+.chip.on{background:var(--card);border-color:var(--blue);color:var(--blue)}
+.filters .spacer{flex:1}
+.loc{font-family:var(--mono);font-size:12px;color:var(--cream-38);letter-spacing:.05em}
+
+/* event cards */
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;padding-bottom:80px}
+.card{background:var(--card);border:1px solid var(--hair);border-radius:16px;padding:24px;
+  display:flex;flex-direction:column;gap:0;transition:transform .18s ease,border-color .18s ease,background .18s ease;cursor:pointer;position:relative;overflow:hidden}
+.card:hover{transform:translateY(-3px);border-color:var(--hair-strong);background:var(--card-raised)}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start}
+.date{font-family:var(--mono);line-height:1.15}
+.date .m{font-size:10.5px;letter-spacing:.2em;color:var(--cream-38);text-transform:uppercase}
+.date .d{font-size:26px;font-weight:700}
+.tier{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+  border:1px solid var(--hair-strong);border-radius:5px;padding:4px 8px;color:var(--cream-60)}
+.tier.blue{color:var(--blue);border-color:rgba(143,189,227,.35)}
+.card h3{font-size:18px;font-weight:700;margin:18px 0 4px;letter-spacing:-.01em}
+.card .course{font-size:13px;color:var(--cream-60)}
+.card-stats{display:flex;gap:22px;margin:20px 0 16px;font-family:var(--mono)}
+.cstat .v{font-size:15px;font-weight:700}
+.cstat .k{font-size:10px;letter-spacing:.14em;color:var(--cream-38);text-transform:uppercase;margin-top:2px}
+.fill{height:3px;background:var(--hair);border-radius:2px;overflow:hidden;margin-top:auto}
+.fill i{display:block;height:100%;background:var(--blue);border-radius:2px}
+.fill.hot i{background:var(--gold)}
+.fill-label{font-family:var(--mono);font-size:10.5px;color:var(--cream-38);margin-top:8px;letter-spacing:.06em}
+.fill-label b{color:var(--cream-60);font-weight:500}
+
+/* =========================================================
+   SCREEN 2 · EVENT DETAIL
+========================================================= */
+.detail-hero{position:relative;padding:64px 0 44px;border-bottom:1px solid var(--hair);overflow:hidden}
+.topo{position:absolute;inset:0;pointer-events:none;opacity:.45}
+.breadcrumb{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;color:var(--cream-38);margin-bottom:26px}
+.breadcrumb b{color:var(--cream-60);font-weight:500}
+.dh-meta{display:flex;gap:14px;margin-top:22px;flex-wrap:wrap}
+.pill{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;border:1px solid var(--hair-strong);
+  border-radius:999px;padding:7px 14px;color:var(--cream-60)}
+.pill.gold{color:var(--gold);border-color:rgba(232,181,96,.4)}
+
+.detail-body{display:grid;grid-template-columns:1fr 360px;gap:48px;padding:48px 0 90px;align-items:start}
+.section{margin-bottom:44px}
+.section .eyebrow{margin-bottom:16px}
+.section p{color:var(--cream-60);max-width:600px}
+
+/* divisions */
+.divs{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:6px}
+.dv{border:1px solid var(--hair);border-radius:12px;padding:16px 18px;display:flex;
+  justify-content:space-between;align-items:center;transition:all .15s ease;cursor:pointer;background:var(--card)}
+.dv:hover{border-color:var(--hair-strong)}
+.dv.sel{border-color:var(--gold);background:var(--gold-dim)}
+.dv .l .code{font-weight:700;font-size:15px}
+.dv .l .nm{font-size:12px;color:var(--cream-60);margin-top:2px}
+.dv .spots{font-family:var(--mono);font-size:11.5px;color:var(--cream-38);text-align:right}
+.dv.sel .spots{color:var(--gold)}
+
+/* payout table */
+.pay{border:1px solid var(--hair);border-radius:12px;overflow:hidden;margin-top:6px;background:var(--card)}
+.pay-row{display:grid;grid-template-columns:80px 1fr 110px;padding:13px 20px;border-bottom:1px solid var(--hair);
+  font-size:13.5px;align-items:center}
+.pay-row:last-child{border-bottom:none}
+.pay-row.head{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--cream-38);background:rgba(0,0,0,.14)}
+.pay-row .amt{font-family:var(--mono);font-weight:700;text-align:right;color:var(--gold)}
+.pay-row .pct{color:var(--cream-60)}
+
+/* schedule */
+.sched{border-left:1px solid var(--hair-strong);margin-left:6px;padding-left:26px;display:flex;flex-direction:column;gap:22px;margin-top:6px}
+.sl{position:relative}
+.sl::before{content:'';position:absolute;left:-31px;top:5px;width:9px;height:9px;border-radius:50%;
+  background:var(--forest);border:2px solid var(--blue)}
+.sl .t{font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;color:var(--blue)}
+.sl .w{font-weight:600;margin-top:3px}
+.sl .d{font-size:13px;color:var(--cream-60);margin-top:2px}
+
+/* register rail */
+.rail{position:sticky;top:96px;background:var(--card);border:1px solid var(--hair);border-radius:18px;padding:28px;overflow:hidden}
+.rail::before{content:'';position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(400px 220px at 100% 0%,rgba(232,181,96,.08),transparent 60%)}
+.price{display:flex;align-items:baseline;gap:8px}
+.price .amt{font-family:var(--mono);font-size:34px;font-weight:700}
+.price .per{font-size:13px;color:var(--cream-60)}
+.rail .note{font-size:12.5px;color:var(--cream-60);margin-top:6px}
+.rail-rows{margin:22px 0;border-top:1px solid var(--hair)}
+.rr{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--hair);font-size:13.5px}
+.rr .k{color:var(--cream-60)}
+.rr .v{font-family:var(--mono);font-weight:500}
+.rr .v.gold{color:var(--gold)}
+.register{width:100%;background:var(--gold);color:#1A2821;border:none;border-radius:10px;
+  font-weight:800;font-size:15px;padding:15px 0;transition:transform .15s ease,box-shadow .15s ease}
+.register:hover{transform:translateY(-1px);box-shadow:0 10px 28px rgba(232,181,96,.22)}
+.rail .fine{font-family:var(--mono);font-size:10.5px;color:var(--cream-38);text-align:center;margin-top:14px;letter-spacing:.04em}
+
+/* =========================================================
+   SCREEN 3 · LIVE
+========================================================= */
+.live-hero{padding:56px 0 36px;border-bottom:1px solid var(--hair);position:relative;overflow:hidden}
+.live-top{display:flex;justify-content:space-between;align-items:flex-end;gap:30px;flex-wrap:wrap}
+.live-meta{font-family:var(--mono);font-size:12px;color:var(--cream-60);letter-spacing:.06em;margin-top:14px}
+.chase{background:var(--card);border:1px solid rgba(232,181,96,.35);border-radius:14px;padding:18px 24px;min-width:280px}
+.chase .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold)}
+.chase .v{font-size:19px;font-weight:700;margin-top:6px;letter-spacing:-.01em}
+.chase .d{font-size:12.5px;color:var(--cream-60);margin-top:3px}
+
+.lb-wrap{padding:36px 0 90px}
+.lb-tools{display:flex;gap:10px;margin-bottom:22px;align-items:center}
+.lb-tools .spacer{flex:1}
+.updated{font-family:var(--mono);font-size:11px;color:var(--cream-38);letter-spacing:.06em}
+
+.lb{border:1px solid var(--hair);border-radius:16px;overflow:hidden;background:var(--card)}
+.lb-row{display:grid;grid-template-columns:64px 1fr 220px 90px 90px 100px;align-items:center;
+  padding:0 24px;height:58px;border-bottom:1px solid var(--hair);font-size:14px;transition:background .15s ease}
+.lb-row:last-child{border-bottom:none}
+.lb-row:not(.head):not(.you):hover{background:rgba(244,241,232,.02)}
+.lb-row.head{height:44px;font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--cream-38);background:rgba(0,0,0,.16)}
+.lb-row .pos{font-family:var(--mono);color:var(--cream-38)}
+.lb-row .mv{font-family:var(--mono);font-size:11px;margin-left:6px}
+.mv.up{color:var(--blue)}
+.mv.dn{color:var(--cream-38)}
+.lb-row .player{font-weight:600;display:flex;align-items:center;gap:10px}
+.avatar{width:30px;height:30px;border-radius:50%;background:var(--accent-green);
+  display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--cream);flex-shrink:0}
+.holes{display:flex;gap:5px}
+.h{width:16px;height:16px;border-radius:50%;border:1px solid var(--hair-strong);
+  font-family:var(--mono);font-size:8.5px;display:flex;align-items:center;justify-content:center;color:var(--cream-38)}
+.h.bird{background:var(--blue-dim);border-color:var(--blue);color:var(--blue)}
+.h.eag{background:var(--blue);border-color:var(--blue);color:#141B16;font-weight:700}
+.h.bog{border-color:rgba(244,241,232,.24);color:var(--cream-60)}
+.lb-row .thru,.lb-row .rd{font-family:var(--mono);color:var(--cream-60);text-align:right}
+.lb-row .total{font-family:var(--mono);font-weight:700;font-size:16px;text-align:right;color:var(--blue)}
+.lb-row .total.even{color:var(--cream-60)}
+
+.lb-row.you{background:linear-gradient(90deg,rgba(232,181,96,.13),rgba(232,181,96,.05));
+  border-left:3px solid var(--gold);padding-left:21px}
+.lb-row.you .pos,.lb-row.you .total{color:var(--gold)}
+.lb-row.you .avatar{background:var(--gold);color:#1A2821}
+.lb-row.you .h.bird{background:var(--gold-dim);border-color:var(--gold);color:var(--gold)}
+.lb-row.you .player::after{content:'You';font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;
+  color:var(--gold);border:1px solid rgba(232,181,96,.4);border-radius:4px;padding:2px 6px}
+
+.foot{border-top:1px solid var(--hair);padding:26px 40px;display:flex;justify-content:space-between;
+  font-family:var(--mono);font-size:11px;color:var(--cream-38);letter-spacing:.08em}
+
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+}
+@media (max-width:980px){
+  .hero-grid,.detail-body{grid-template-columns:1fr}
+  .cards{grid-template-columns:1fr 1fr}
+  .lb-row{grid-template-columns:52px 1fr 80px 90px}
+  .lb-row .holes,.lb-row .rd{display:none}
+  .rail{position:static}
+}
+@media (max-width:640px){
+  .wrap{padding:0 20px}
+  .topbar{padding:0 20px}
+  .cards{grid-template-columns:1fr}
+  .divs{grid-template-columns:1fr}
+  .topnav{display:none}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wordmark">Radius<span class="dot">.</span></div>
+  <nav class="topnav">
+    <a href="#">Courses</a>
+    <a href="#">The app</a>
+    <a href="#" class="active">Events</a>
+    <a href="#">Community</a>
+  </nav>
+  <button class="top-cta">Get the app</button>
+</header>
+
+<nav class="stepper" aria-label="Flow steps">
+  <button class="step on" data-screen="discover"><span class="n">01</span>Discover</button>
+  <button class="step" data-screen="detail"><span class="n">02</span>Event</button>
+  <button class="step" data-screen="live"><span class="n">03</span>Live</button>
+</nav>
+
+<!-- =========================================================
+     SCREEN 1 · DISCOVER
+========================================================== -->
+<section class="screen show" id="discover">
+  <div class="hero">
+    <div class="rings">
+      <svg width="900" height="900" viewBox="0 0 900 900" fill="none">
+        <circle cx="450" cy="450" r="440" stroke="rgba(244,241,232,.05)"/>
+        <circle cx="450" cy="450" r="340" stroke="rgba(244,241,232,.06)"/>
+        <circle cx="450" cy="450" r="240" stroke="rgba(143,189,227,.10)"/>
+        <circle cx="450" cy="450" r="140" stroke="rgba(232,181,96,.12)"/>
+        <circle cx="450" cy="450" r="4" fill="rgba(232,181,96,.5)"/>
+      </svg>
+    </div>
+    <div class="wrap hero-grid">
+      <div>
+        <div class="eyebrow blue">Events</div>
+        <h1>Where the local scene plays.</h1>
+        <p class="sub">Leagues, weeklies, and tournaments near you. Register in one tap, pay in the app, and score live on real course maps.</p>
+        <div class="legend">
+          <span><i class="swatch b"></i>The field</span>
+          <span><i class="swatch g"></i>You</span>
+        </div>
+      </div>
+      <div class="hero-live">
+        <span class="live-tag"><i class="pulse"></i>LIVE NOW</span>
+        <h3>Cape Ann Weekly · Wk 12</h3>
+        <div class="meta">Stage Fort Park · Round in progress</div>
+        <div class="mini-lb">
+          <div class="mini-row"><span class="pos">1</span><span class="name">J. Whitmore</span><span class="thru">THRU 14</span><span class="sc">-6</span></div>
+          <div class="mini-row"><span class="pos">2</span><span class="name">A. Castellano</span><span class="thru">THRU 15</span><span class="sc">-5</span></div>
+          <div class="mini-row you"><span class="pos">3</span><span class="name">M. Hills</span><span class="thru">THRU 14</span><span class="sc">-4</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="filters">
+      <button class="chip on">All events</button>
+      <button class="chip">Weeklies</button>
+      <button class="chip">Tournaments</button>
+      <button class="chip">Leagues</button>
+      <button class="chip">This weekend</button>
+      <div class="spacer"></div>
+      <span class="loc">WITHIN 25 MI · DANVERS, MA</span>
+    </div>
+
+    <div class="cards">
+      <article class="card" onclick="go('detail')">
+        <div class="card-top">
+          <div class="date"><div class="m">Sep</div><div class="d">14</div></div>
+          <span class="tier gold" style="color:var(--gold);border-color:rgba(232,181,96,.35)">Featured</span>
+        </div>
+        <h3>Birchwood Fall Classic</h3>
+        <div class="course">Birchwood DGC · Danvers, MA</div>
+        <div class="card-stats">
+          <div class="cstat"><div class="v">$45</div><div class="k">Buy-in</div></div>
+          <div class="cstat"><div class="v">2 RDS</div><div class="k">Format</div></div>
+          <div class="cstat"><div class="v">$2,340</div><div class="k">Purse</div></div>
+        </div>
+        <div class="fill hot"><i style="width:81%"></i></div>
+        <div class="fill-label"><b>58 of 72</b> registered · filling fast</div>
+      </article>
+
+      <article class="card" onclick="go('detail')">
+        <div class="card-top">
+          <div class="date"><div class="m">Sep</div><div class="d">18</div></div>
+          <span class="tier blue">Weekly</span>
+        </div>
+        <h3>Thursday Night Flights</h3>
+        <div class="course">Maudslay State Park · Newburyport, MA</div>
+        <div class="card-stats">
+          <div class="cstat"><div class="v">$10</div><div class="k">Buy-in</div></div>
+          <div class="cstat"><div class="v">1 RD</div><div class="k">Format</div></div>
+          <div class="cstat"><div class="v">FLEX</div><div class="k">Start</div></div>
+        </div>
+        <div class="fill"><i style="width:46%"></i></div>
+        <div class="fill-label"><b>33 of 72</b> registered</div>
+      </article>
+
+      <article class="card" onclick="go('detail')">
+        <div class="card-top">
+          <div class="date"><div class="m">Sep</div><div class="d">21</div></div>
+          <span class="tier blue">League</span>
+        </div>
+        <h3>Merrimack Valley Series</h3>
+        <div class="course">Devens DGC · Devens, MA</div>
+        <div class="card-stats">
+          <div class="cstat"><div class="v">$60</div><div class="k">Season</div></div>
+          <div class="cstat"><div class="v">8 WKS</div><div class="k">Format</div></div>
+          <div class="cstat"><div class="v">4 DIV</div><div class="k">Divisions</div></div>
+        </div>
+        <div class="fill"><i style="width:62%"></i></div>
+        <div class="fill-label"><b>45 of 72</b> registered</div>
+      </article>
+
+      <article class="card" onclick="go('detail')">
+        <div class="card-top">
+          <div class="date"><div class="m">Sep</div><div class="d">27</div></div>
+          <span class="tier">Tournament</span>
+        </div>
+        <h3>Granite Coast Open</h3>
+        <div class="course">Pye Brook Park · Topsfield, MA</div>
+        <div class="card-stats">
+          <div class="cstat"><div class="v">$55</div><div class="k">Buy-in</div></div>
+          <div class="cstat"><div class="v">2 RDS</div><div class="k">Format</div></div>
+          <div class="cstat"><div class="v">$3,120</div><div class="k">Purse</div></div>
+        </div>
+        <div class="fill"><i style="width:34%"></i></div>
+        <div class="fill-label"><b>29 of 84</b> registered</div>
+      </article>
+
+      <article class="card" onclick="go('detail')">
+        <div class="card-top">
+          <div class="date"><div class="m">Oct</div><div class="d">04</div></div>
+          <span class="tier blue">Weekly</span>
+        </div>
+        <h3>Sunday Doubles</h3>
+        <div class="course">Borderland State Park · Easton, MA</div>
+        <div class="card-stats">
+          <div class="cstat"><div class="v">$12</div><div class="k">Buy-in</div></div>
+          <div class="cstat"><div class="v">BYOP</div><div class="k">Format</div></div>
+          <div class="cstat"><div class="v">CASH</div><div class="k">Payout</div></div>
+        </div>
+        <div class="fill"><i style="width:28%"></i></div>
+        <div class="fill-label"><b>14 of 50</b> teams</div>
+      </article>
+
+      <article class="card" onclick="go('detail')">
+        <div class="card-top">
+          <div class="date"><div class="m">Oct</div><div class="d">11</div></div>
+          <span class="tier">Tournament</span>
+        </div>
+        <h3>Foliage Finale</h3>
+        <div class="course">Buffumville Lake · Charlton, MA</div>
+        <div class="card-stats">
+          <div class="cstat"><div class="v">$50</div><div class="k">Buy-in</div></div>
+          <div class="cstat"><div class="v">2 RDS</div><div class="k">Format</div></div>
+          <div class="cstat"><div class="v">$2,800</div><div class="k">Purse</div></div>
+        </div>
+        <div class="fill"><i style="width:12%"></i></div>
+        <div class="fill-label"><b>Just opened</b> · 10 of 84</div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- =========================================================
+     SCREEN 2 · EVENT DETAIL
+========================================================== -->
+<section class="screen" id="detail">
+  <div class="detail-hero">
+    <div class="topo">
+      <svg width="100%" height="100%" viewBox="0 0 1400 420" preserveAspectRatio="xMidYMid slice" fill="none">
+        <path d="M-50 320 C 200 280, 380 360, 620 310 S 1050 250, 1450 300" stroke="rgba(244,241,232,.05)"/>
+        <path d="M-50 260 C 220 230, 400 300, 640 255 S 1060 200, 1450 245" stroke="rgba(244,241,232,.06)"/>
+        <path d="M-50 200 C 240 180, 420 240, 660 200 S 1070 150, 1450 190" stroke="rgba(143,189,227,.09)"/>
+        <path d="M-50 140 C 260 130, 440 180, 680 145 S 1080 100, 1450 135" stroke="rgba(143,189,227,.07)"/>
+        <path d="M-50 80 C 280 80, 460 120, 700 90 S 1090 55, 1450 80" stroke="rgba(232,181,96,.08)"/>
+      </svg>
+    </div>
+    <div class="wrap" style="position:relative">
+      <div class="breadcrumb">Events / Massachusetts / <b>Birchwood Fall Classic</b></div>
+      <div class="eyebrow blue">Sep 14 · Two rounds · Danvers, MA</div>
+      <h1 style="font-size:clamp(30px,3.6vw,44px)">Birchwood Fall Classic</h1>
+      <div class="dh-meta">
+        <span class="pill">Birchwood DGC · 18 holes</span>
+        <span class="pill">Par 58 · 6,240 ft</span>
+        <span class="pill gold">$2,340 projected purse</span>
+        <span class="pill">Live scoring in Radius</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap detail-body">
+    <div>
+      <div class="section">
+        <div class="eyebrow">About this event</div>
+        <p>Two rounds on the full Birchwood layout. Tee assignments drop the night before in the app. Every card scores live in Radius, so the leaderboard on this page is the leaderboard on the course. No paper, no delays, no disputes.</p>
+      </div>
+
+      <div class="section">
+        <div class="eyebrow">Choose your division</div>
+        <div class="divs">
+          <div class="dv sel" role="button" tabindex="0">
+            <div class="l"><div class="code">MA1</div><div class="nm">Advanced</div></div>
+            <div class="spots">4 spots left</div>
+          </div>
+          <div class="dv" role="button" tabindex="0">
+            <div class="l"><div class="code">MPO</div><div class="nm">Open</div></div>
+            <div class="spots">6 spots left</div>
+          </div>
+          <div class="dv" role="button" tabindex="0">
+            <div class="l"><div class="code">MA2</div><div class="nm">Intermediate</div></div>
+            <div class="spots">2 spots left</div>
+          </div>
+          <div class="dv" role="button" tabindex="0">
+            <div class="l"><div class="code">MA40</div><div class="nm">Advanced 40+</div></div>
+            <div class="spots">7 spots left</div>
+          </div>
+          <div class="dv" role="button" tabindex="0">
+            <div class="l"><div class="code">FA1</div><div class="nm">Advanced Women</div></div>
+            <div class="spots">5 spots left</div>
+          </div>
+          <div class="dv" role="button" tabindex="0">
+            <div class="l"><div class="code">MA3</div><div class="nm">Recreational</div></div>
+            <div class="spots">Waitlist</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="eyebrow">Payouts · MA1</div>
+        <div class="pay">
+          <div class="pay-row head"><span>Place</span><span>Share of division purse</span><span style="text-align:right">Projected</span></div>
+          <div class="pay-row"><span>1st</span><span class="pct">32%</span><span class="amt">$187</span></div>
+          <div class="pay-row"><span>2nd</span><span class="pct">24%</span><span class="amt">$140</span></div>
+          <div class="pay-row"><span>3rd</span><span class="pct">18%</span><span class="amt">$105</span></div>
+          <div class="pay-row"><span>4th</span><span class="pct">14%</span><span class="amt">$82</span></div>
+          <div class="pay-row"><span>5th</span><span class="pct">12%</span><span class="amt">$70</span></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="eyebrow">Day of</div>
+        <div class="sched">
+          <div class="sl"><div class="t">7:30 AM</div><div class="w">Check-in opens</div><div class="d">Confirm in the app, grab your player pack</div></div>
+          <div class="sl"><div class="t">8:45 AM</div><div class="w">Players meeting</div><div class="d">Hole 1 tee, two minutes, no speeches</div></div>
+          <div class="sl"><div class="t">9:00 AM</div><div class="w">Round one</div><div class="d">Shotgun start, live scoring on your card</div></div>
+          <div class="sl"><div class="t">1:30 PM</div><div class="w">Round two</div><div class="d">Leaders card seeded from round one</div></div>
+          <div class="sl"><div class="t">5:00 PM</div><div class="w">Payouts</div><div class="d">Sent to winners in the app same day</div></div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="rail">
+      <div class="price"><span class="amt">$45</span><span class="per">per player</span></div>
+      <div class="note">Secure checkout in Radius. Refundable until Sep 11.</div>
+      <div class="rail-rows">
+        <div class="rr"><span class="k">Division</span><span class="v gold">MA1 · Advanced</span></div>
+        <div class="rr"><span class="k">Field</span><span class="v">58 / 72</span></div>
+        <div class="rr"><span class="k">Your spot</span><span class="v">4 remain</span></div>
+        <div class="rr"><span class="k">Live scoring</span><span class="v">Included</span></div>
+        <div class="rr"><span class="k">Payout method</span><span class="v">In-app, same day</span></div>
+      </div>
+      <button class="register" onclick="go('live')">Register · $45</button>
+      <div class="fine">POWERED BY RADIUS EVENTS</div>
+    </aside>
+  </div>
+</section>
+
+<!-- =========================================================
+     SCREEN 3 · LIVE
+========================================================== -->
+<section class="screen" id="live">
+  <div class="live-hero">
+    <div class="wrap">
+      <div class="live-top">
+        <div>
+          <span class="live-tag"><i class="pulse"></i>LIVE · ROUND 2</span>
+          <h1 style="font-size:clamp(28px,3.4vw,40px);margin-top:14px">Birchwood Fall Classic</h1>
+          <div class="live-meta">MA1 · ADVANCED · 18 OF 18 CARDS SCORING · UPDATED 12S AGO</div>
+        </div>
+        <div class="chase">
+          <div class="k">Your position</div>
+          <div class="v">T3 · two back with six to play</div>
+          <div class="d">A birdie on 14 puts you in the last card conversation.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap lb-wrap">
+    <div class="lb-tools">
+      <button class="chip on">MA1</button>
+      <button class="chip">MPO</button>
+      <button class="chip">MA2</button>
+      <button class="chip">All divisions</button>
+      <div class="spacer"></div>
+      <span class="updated">AUTO-REFRESH ON</span>
+    </div>
+
+    <div class="lb">
+      <div class="lb-row head">
+        <span>Pos</span><span>Player</span><span>Last 9</span>
+        <span style="text-align:right">Thru</span><span style="text-align:right">Rd 2</span><span style="text-align:right">Total</span>
+      </div>
+
+      <div class="lb-row">
+        <span class="pos">1<span class="mv up">▲2</span></span>
+        <span class="player"><i class="avatar">JW</i>J. Whitmore</span>
+        <span class="holes"><i class="h bird">3</i><i class="h">3</i><i class="h bird">2</i><i class="h">3</i><i class="h eag">2</i><i class="h">3</i><i class="h bird">2</i><i class="h">3</i><i class="h bird">2</i></span>
+        <span class="thru">12</span><span class="rd">-5</span><span class="total">-11</span>
+      </div>
+
+      <div class="lb-row">
+        <span class="pos">2<span class="mv dn">▼1</span></span>
+        <span class="player"><i class="avatar">AC</i>A. Castellano</span>
+        <span class="holes"><i class="h">3</i><i class="h bird">2</i><i class="h">3</i><i class="h bog">4</i><i class="h bird">2</i><i class="h">3</i><i class="h">3</i><i class="h bird">2</i><i class="h">3</i></span>
+        <span class="thru">13</span><span class="rd">-2</span><span class="total">-10</span>
+      </div>
+
+      <div class="lb-row you">
+        <span class="pos">T3</span>
+        <span class="player"><i class="avatar">MH</i>M. Hills</span>
+        <span class="holes"><i class="h bird">2</i><i class="h">3</i><i class="h">3</i><i class="h bird">2</i><i class="h">3</i><i class="h bog">4</i><i class="h bird">2</i><i class="h">3</i><i class="h bird">2</i></span>
+        <span class="thru">12</span><span class="rd">-3</span><span class="total">-9</span>
+      </div>
+
+      <div class="lb-row">
+        <span class="pos">T3</span>
+        <span class="player"><i class="avatar">DR</i>D. Rourke</span>
+        <span class="holes"><i class="h">3</i><i class="h">3</i><i class="h bird">2</i><i class="h">3</i><i class="h">3</i><i class="h bird">2</i><i class="h bog">4</i><i class="h">3</i><i class="h bird">2</i></span>
+        <span class="thru">13</span><span class="rd">-2</span><span class="total">-9</span>
+      </div>
+
+      <div class="lb-row">
+        <span class="pos">5<span class="mv up">▲1</span></span>
+        <span class="player"><i class="avatar">KO</i>K. Okafor</span>
+        <span class="holes"><i class="h bird">2</i><i class="h bog">4</i><i class="h">3</i><i class="h">3</i><i class="h bird">2</i><i class="h">3</i><i class="h">3</i><i class="h bird">2</i><i class="h">3</i></span>
+        <span class="thru">12</span><span class="rd">-1</span><span class="total">-7</span>
+      </div>
+
+      <div class="lb-row">
+        <span class="pos">6</span>
+        <span class="player"><i class="avatar">TS</i>T. Sandoval</span>
+        <span class="holes"><i class="h">3</i><i class="h">3</i><i class="h bird">2</i><i class="h bog">4</i><i class="h">3</i><i class="h">3</i><i class="h bird">2</i><i class="h bog">4</i><i class="h">3</i></span>
+        <span class="thru">14</span><span class="rd">E</span><span class="total">-5</span>
+      </div>
+
+      <div class="lb-row">
+        <span class="pos">7</span>
+        <span class="player"><i class="avatar">BL</i>B. Lindqvist</span>
+        <span class="holes"><i class="h bog">4</i><i class="h">3</i><i class="h">3</i><i class="h bird">2</i><i class="h">3</i><i class="h">3</i><i class="h bog">4</i><i class="h">3</i><i class="h bird">2</i></span>
+        <span class="thru">13</span><span class="rd">+1</span><span class="total even">-3</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="foot">
+  <span>RADIUS · THE HOME OF DISC GOLF</span>
+  <span>EVENTS FLOW · CONCEPT V1</span>
+</footer>
+
+<script>
+function go(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('show'));
+  document.getElementById(id).classList.add('show');
+  document.querySelectorAll('.step').forEach(b=>b.classList.toggle('on',b.dataset.screen===id));
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+document.querySelectorAll('.step').forEach(b=>b.addEventListener('click',()=>go(b.dataset.screen)));
+document.querySelectorAll('.dv').forEach(d=>d.addEventListener('click',e=>{
+  document.querySelectorAll('.dv').forEach(x=>x.classList.remove('sel'));
+  d.classList.add('sel');
+  e.stopPropagation();
+}));
+</script>
+</body>
+</html>

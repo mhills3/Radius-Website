@@ -54,13 +54,13 @@ export default function Nav() {
   // settles into the cream frosted bar. Transparent-at-top is truly transparent (no white tint), so
   // there's no first-paint "whiteout" — that earlier bug came from a translucent-white at-top bg.
   const darkHeroPage = isHome || pathname === "/features" || pathname === "/story" || pathname === "/creators" || pathname === "/subscription";
-  const darkPage = pathname === "/dashboard" || pathname === "/bag" || pathname === "/community" || pathname === "/notifications" || pathname.startsWith("/u/"); // app surfaces are dark
+  const darkPage = pathname === "/dashboard" || pathname === "/bag" || pathname === "/community" || pathname === "/notifications" || pathname.startsWith("/u/") || pathname.startsWith("/leagues"); // app surfaces are dark
   const atHeroTop = darkHeroPage && !scrolled;
   const onDark = darkPage || atHeroTop; // cream text/logo when over the dark hero photo or on dark app surfaces
 
   const wrap = darkHeroPage ? "fixed" : "sticky"; // dark-hero pages overlay the nav so it sits ON the hero
   const shell = darkPage
-    ? "border-b border-white/[0.07] bg-[var(--bg-deep)]/80 backdrop-blur-xl supports-[backdrop-filter]:bg-[var(--bg-deep)]/70"
+    ? "border-b border-[rgba(244,241,232,0.08)] bg-[rgba(20,27,22,0.88)] backdrop-blur-[14px]"
     : atHeroTop
     ? "bg-transparent"
     : "border-b border-black/[0.06] bg-[#faf8f3]/80 backdrop-blur-xl supports-[backdrop-filter]:bg-[#faf8f3]/70";
@@ -70,7 +70,14 @@ export default function Nav() {
 
   // Active-aware nav pill styling — premium "you are here" indicator.
   const navPill = (href: string) => {
-    const active = pathname === href;
+    const active = pathname === href || (href !== "/" && pathname.startsWith(href + "/")) || (href === "/leagues" && pathname.startsWith("/leagues"));
+    if (darkPage) {
+      // Reference topbar: 13.5px links, cream-60, active = cream with a 2px gold underline on the bar edge.
+      const base = "relative px-3.5 py-2 font-[family-name:var(--font-heading)] text-[13.5px] font-semibold transition-colors";
+      return `${base} ${active
+        ? "text-[var(--cream)] after:absolute after:inset-x-3.5 after:top-[calc(100%+14px)] after:h-[2px] after:bg-[#E8B560] after:content-['']"
+        : "text-[rgba(244,241,232,0.60)] hover:text-[var(--cream)]"}`;
+    }
     const base = "rounded-full px-3.5 py-2 text-sm font-semibold transition-colors";
     if (onDark) return `${base} ${active ? "bg-white/[0.12] text-[var(--cream)]" : "text-[rgba(245,237,225,0.72)] hover:bg-white/[0.06] hover:text-white"}`;
     return `${base} ${active ? "bg-[#16221b]/[0.08] text-[#16221b]" : "text-[#3c4a42] hover:bg-black/[0.05] hover:text-[#16221b]"}`;
@@ -81,6 +88,7 @@ export default function Nav() {
     ? [
         { href: "/dashboard", label: "Dashboard" },
         { href: "/bag", label: "My Bag" },
+        { href: "/leagues", label: "Events" },
         { href: "/community", label: "Community" },
         { href: "/courses", label: "Courses" },
         { href: "/discs", label: "Discs" },
