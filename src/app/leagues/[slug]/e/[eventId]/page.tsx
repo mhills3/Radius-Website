@@ -1,0 +1,175 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { useAuth } from "@/components/AuthProvider";
+import { getLeagueBySlug, getEvent, getEntries, getCards, checkIn, updateEntry, generateCards, setEventStatus, computeStandings, isLeagueAdmin, eventPoints, type League, type LeagueEvent, type EventEntry, type EventCard } from "@/lib/leagues";
+import { resolveCanonicalId } from "@/lib/account";
+
+const fmtDate = (ms: number) => new Date(ms).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+
+export default function LeagueEventPage() {
+  const { slug, eventId } = useParams<{ slug: string; eventId: string }>();
+  const { user } = useAuth();
+  const [league, setLeague] = useState<League | null>(null);
+  const [event, setEvent] = useState<LeagueEvent | null | undefined>(undefined);
+  const [entries, setEntries] = useState<EventEntry[]>([]);
+  const [cards, setCards] = useState<EventCard[]>([]);
+  const [cid, setCid] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [cardSize, setCardSize] = useState(4);
+  const [scoreDraft, setScoreDraft] = useState<Record<string, string>>({});
+
+  const reload = async (evId: string) => {
+    const [en, ca] = await Promise.all([getEntries(evId), getCards(evId)]);
+    setEntries(en); setCards(ca);
+  };
+
+  useEffect(() => {
+    getLeagueBySlug(slug).then(setLeague).catch(() => {});
+    getEvent(eventId).then((ev) => { setEvent(ev ?? null); if (ev) reload(ev.id); }).catch(() => setEvent(null));
+  }, [slug, eventId]);
+  useEffect(() => { if (user) resolveCanonicalId(user.uid).then(setCid).catch(() => {}); }, [user]);
+
+  const admin = useMemo(() => !!league && isLeagueAdmin(league, cid), [league, cid]);
+  const me = entries.find((e) => e.id === cid);
+  const points = useMemo(() => eventPoints(entries), [entries]);
+
+  const doCheckIn = async () => {
+    if (!user || !event || busy) return;
+    setBusy(true);
+    try { await checkIn(user.uid, event); await reload(event.id); } finally { setBusy(false); }
+  };
+
+  const doGenerate = async () => {
+    if (!event || busy) return;
+    setBusy(true);
+    try { await generateCards(event.id, entries, cardSize); await reload(event.id); } finally { setBusy(false); }
+  };
+
+  const saveScore = async (entryId: string) => {
+    if (!event) return;
+    const raw = scoreDraft[entryId]?.trim();
+    const score = raw === "" || raw == null ? undefined : Number(raw);
+    if (score != null && !Number.isFinite(score)) return;
+    await updateEntry(event.id, entryId, { score });
+    await reload(event.id);
+  };
+
+  const complete = async () => {
+    if (!event || !league || busy) return;
+    setBusy(true);
+    try {
+      await setEventStatus(event.id, "complete");
+      setEvent({ ...event, status: "complete" });
+      await computeStandings(league.id);
+    } finally { setBusy(false); }
+  };
+
+  if (event === undefined) return <main className="mx-auto max-w-3xl px-5 pt-10 text-sm text-[var(--sage-dim)]">Loading…</main>;
+  if (event === null) return <main className="mx-auto max-w-3xl px-5 pt-10"><p className="text-sm text-[var(--sage-dim)]">Event not found.</p></main>;
+
+  const nameOf = (id: string) => entries.find((e) => e.id === id)?.name ?? "Player";
+  const ranked = [...entries].filter((e) => typeof e.score === "number").sort((a, b) => (a.score! + (a.penalty ?? 0)) - (b.score! + (b.penalty ?? 0)));
+  const unscored = entries.filter((e) => typeof e.score !== "number");
+
+  return (
+    <main className="mx-auto max-w-3xl px-5 pb-24 pt-10">
+      <Link href={`/leagues/${slug}`} className="text-xs font-semibold text-[var(--sage)] hover:text-[var(--cream)]">← {event.leagueName}</Link>
+      <div className="mt-2 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-[family-name:var(--font-heading)] text-2xl font-extrabold tracking-tight text-[var(--cream)]">{event.name}</h1>
+          <p className="mt-1 text-sm text-[var(--sage)]">{fmtDate(event.date)}{event.courseName ? ` · ${event.courseName}` : ""} · {event.format} · {event.startFormat}</p>
+        </div>
+        <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${event.status === "complete" ? "bg-white/[0.06] text-[var(--sage-dim)]" : event.status === "active" ? "bg-[#5fcf80]/15 text-[#5fcf80]" : "bg-[var(--gold-dim)] text-[var(--gold)]"}`}>{event.status}</span>
+      </div>
+
+      {event.status !== "complete" && (
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          {user ? (
+            me ? <span className="rounded-full bg-[#5fcf80]/15 px-4 py-2 text-sm font-bold text-[#5fcf80]">✓ You&apos;re checked in</span>
+               : <button onClick={doCheckIn} disabled={busy} className="rounded-full bg-[var(--gold)] px-6 py-2.5 text-sm font-bold text-[#16221b] transition-colors hover:bg-[var(--gold-bright)] disabled:opacity-50">{busy ? "…" : "Check in"}</button>
+          ) : (
+            <p className="text-sm text-[var(--sage-dim)]"><Link href="/login" className="font-bold text-[var(--gold)] hover:underline">Sign in</Link> to check in.</p>
+          )}
+          {admin && (
+            <button onClick={complete} disabled={busy} className="rounded-full border border-white/15 px-5 py-2.5 text-sm font-bold text-[var(--cream)] transition-colors hover:bg-white/[0.06] disabled:opacity-50">Complete event</button>
+          )}
+        </div>
+      )}
+
+      {/* Leaderboard */}
+      <section className="mt-8">
+        <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-[var(--gold)]">Leaderboard · {entries.length} player{entries.length === 1 ? "" : "s"}</h2>
+        {entries.length === 0 && <p className="text-sm text-[var(--sage-dim)]">Nobody has checked in yet.</p>}
+        {entries.length > 0 && (
+          <div className="overflow-hidden rounded-2xl border border-white/[0.07]">
+            {[...ranked, ...unscored].map((e, i) => (
+              <div key={e.id} className="flex items-center gap-3 border-b border-white/[0.05] bg-white/[0.02] px-4 py-2.5 text-sm last:border-b-0">
+                <span className="w-6 text-right font-mono text-xs text-[var(--sage-dim)]">{typeof e.score === "number" ? i + 1 : "—"}</span>
+                <span className="grid h-7 w-7 shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--bg-mid)] text-[10px] font-bold text-[var(--cream)]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {e.photo ? <img src={e.photo} alt="" className="h-full w-full object-cover" /> : (e.name || "?").charAt(0).toUpperCase()}
+                </span>
+                <span className="min-w-0 flex-1 truncate font-semibold text-[var(--cream)]">
+                  {e.username ? <Link href={`/u/${e.username}`} className="hover:underline">{e.name}</Link> : e.name}
+                  {e.dnf && <span className="ml-2 rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[var(--sage-dim)]">DNF</span>}
+                </span>
+                {(e.penalty ?? 0) > 0 && <span className="font-mono text-xs text-[#f08c8c]">+{e.penalty}</span>}
+                {event.status === "complete" && typeof e.score === "number" && <span className="font-mono text-xs text-[var(--gold)]">{points.get(e.id) ?? ""} pts</span>}
+                {admin && event.status !== "complete" ? (
+                  <input
+                    inputMode="numeric"
+                    defaultValue={e.score ?? ""}
+                    placeholder="—"
+                    onChange={(ev2) => setScoreDraft((s) => ({ ...s, [e.id]: ev2.target.value }))}
+                    onBlur={() => saveScore(e.id)}
+                    onKeyDown={(ev2) => { if (ev2.key === "Enter") (ev2.target as HTMLInputElement).blur(); }}
+                    className="w-16 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-right font-mono text-sm text-[var(--cream)] outline-none focus:border-[var(--gold)]"
+                  />
+                ) : (
+                  <span className="w-12 text-right font-mono font-bold text-[var(--cream)]">{typeof e.score === "number" ? e.score : ""}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+        {admin && event.status !== "complete" && entries.length > 0 && (
+          <p className="mt-2 text-xs text-[var(--sage-dim)]">Directors enter total strokes here for now — rounds published from the app will attach automatically once the apps stamp league events.</p>
+        )}
+      </section>
+
+      {/* Cards */}
+      <section className="mt-8">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-xs font-bold uppercase tracking-wide text-[var(--gold)]">Cards</h2>
+          {admin && event.status !== "complete" && entries.length > 1 && (
+            <div className="flex items-center gap-2 text-xs text-[var(--sage)]">
+              <select value={cardSize} onChange={(e) => setCardSize(Number(e.target.value))} className="rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[var(--cream)] outline-none">
+                {[3, 4, 5].map((n) => <option key={n} value={n}>cards of {n}</option>)}
+              </select>
+              <button onClick={doGenerate} disabled={busy} className="rounded-full bg-white/[0.06] px-4 py-1.5 font-bold text-[var(--cream)] transition-colors hover:bg-white/[0.1] disabled:opacity-50">
+                {cards.length ? "Reshuffle" : "Generate cards"}
+              </button>
+            </div>
+          )}
+        </div>
+        {cards.length === 0 && <p className="text-sm text-[var(--sage-dim)]">No cards yet{admin ? " — generate them once players check in." : "."}</p>}
+        <div className="grid gap-3 sm:grid-cols-2">
+          {cards.map((c) => (
+            <div key={c.id} className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-4">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-sm font-bold text-[var(--cream)]">Card {c.number}</span>
+                <span className="rounded-full bg-[var(--gold-dim)] px-2 py-0.5 text-[10px] font-bold text-[var(--gold)]">Hole {c.startHole}</span>
+              </div>
+              <div className="space-y-1 text-sm text-[var(--text-body)]">
+                {c.playerIds.map((pid) => <div key={pid} className="truncate">{nameOf(pid)}</div>)}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    </main>
+  );
+}
