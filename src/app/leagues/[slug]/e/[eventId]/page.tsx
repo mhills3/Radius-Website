@@ -284,13 +284,14 @@ export default function LeagueEventPage() {
     <main className="mx-auto max-w-4xl px-5 pb-28">
       {/* Header */}
       <section className="relative pb-8 pt-14">
-        <svg viewBox="0 0 900 260" aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[260px] w-full" fill="none" preserveAspectRatio="xMidYMid slice">
-          <path d="M-20 60 C 140 20, 260 110, 420 80 S 720 30, 920 70" stroke="var(--cream)" strokeOpacity="0.06" strokeWidth="1.25" />
-          <path d="M-20 110 C 120 70, 300 160, 470 125 S 760 80, 920 120" stroke="var(--blue)" strokeOpacity="0.08" strokeWidth="1.25" />
-          <path d="M-20 160 C 160 120, 320 210, 500 170 S 780 130, 920 165" stroke="var(--cream)" strokeOpacity="0.05" strokeWidth="1.25" />
-          <path d="M-20 205 C 180 170, 360 250, 540 215 S 800 180, 920 210" stroke="var(--gold)" strokeOpacity="0.07" strokeWidth="1.25" />
-          <path d="M-20 245 C 200 215, 380 285, 560 255 S 810 225, 920 250" stroke="var(--blue)" strokeOpacity="0.05" strokeWidth="1.25" />
-        </svg>
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[190px] overflow-hidden" style={{ maskImage: "linear-gradient(to bottom, black 55%, transparent 100%)", WebkitMaskImage: "linear-gradient(to bottom, black 55%, transparent 100%)" }}>
+          <svg viewBox="0 0 900 200" className="h-full w-full" fill="none" preserveAspectRatio="xMidYMid slice">
+            <path d="M-20 50 C 140 15, 260 90, 420 65 S 720 25, 920 55" stroke="var(--cream)" strokeOpacity="0.06" strokeWidth="1.25" />
+            <path d="M-20 95 C 120 60, 300 135, 470 105 S 760 65, 920 100" stroke="var(--blue)" strokeOpacity="0.06" strokeWidth="1.25" />
+            <path d="M-20 140 C 160 105, 320 180, 500 145 S 780 110, 920 140" stroke="var(--cream)" strokeOpacity="0.05" strokeWidth="1.25" />
+            <path d="M-20 180 C 180 150, 360 215, 540 185 S 800 155, 920 180" stroke="var(--gold)" strokeOpacity="0.06" strokeWidth="1.25" />
+          </svg>
+        </div>
         <div className="relative">
         <Link href={`/leagues/${slug}`} className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--cream-38)] transition-colors hover:text-[var(--gold)]">← {event.leagueName}</Link>
         <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -298,17 +299,17 @@ export default function LeagueEventPage() {
           <StatusChip status={event.status} liveNow={liveNow} />
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-          <span className="rounded-full border border-[var(--hair-strong)] px-3.5 py-[7px] font-mono text-[11.5px] tracking-[0.04em] text-[var(--cream-60)]">{fmtDate(event.date)}</span>
-          {event.courseName && <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--hair-strong)] px-3.5 py-[7px] font-[family-name:var(--font-heading)] text-xs text-[var(--cream-60)]"><IconPin className="h-3.5 w-3.5 shrink-0" /> {event.courseName}</span>}
-          <span className="rounded-full border border-[var(--hair-strong)] px-3.5 py-[7px] font-[family-name:var(--font-heading)] text-xs text-[var(--cream-60)]">{event.format} · {event.startFormat}</span>
-          <span className="rounded-full border border-[var(--hair-strong)] px-3.5 py-[7px] font-[family-name:var(--font-heading)] text-xs text-[var(--cream-60)]">{event.holes} holes{event.roundCount > 1 ? " / round" : ""}</span>
-          {event.buyIn && <span className="rounded-full bg-[var(--gold-dim)] px-3.5 py-[7px] font-mono text-[11.5px] font-semibold tracking-[0.04em] text-[var(--gold)]">${event.buyIn} buy-in</span>}
-          {event.roundCount > 1 && <span className="rounded-full border border-[var(--hair-strong)] px-3.5 py-[7px] font-[family-name:var(--font-heading)] text-xs text-[var(--cream-60)]">{event.roundCount} rounds</span>}
+          <span className="inline-flex h-8 items-center rounded-full border border-[var(--hair-strong)] px-3.5 font-mono text-[11.5px] tracking-[0.04em] text-[var(--cream-60)]">{fmtDate(event.date)}</span>
+          {event.courseName && <span className="inline-flex items-center gap-1.5 inline-flex h-8 items-center rounded-full border border-[var(--hair-strong)] px-3.5 font-[family-name:var(--font-heading)] text-xs text-[var(--cream-60)]"><IconPin className="h-3.5 w-3.5 shrink-0" /> {event.courseName}</span>}
+          <span className="inline-flex h-8 items-center rounded-full border border-[var(--hair-strong)] px-3.5 font-[family-name:var(--font-heading)] text-xs text-[var(--cream-60)]">{event.format} · {event.startFormat}</span>
+          <span className="inline-flex h-8 items-center rounded-full border border-[var(--hair-strong)] px-3.5 font-[family-name:var(--font-heading)] text-xs text-[var(--cream-60)]">{event.holes} holes{event.roundCount > 1 ? " / round" : ""}</span>
+          {event.buyIn && <span className="inline-flex h-8 items-center rounded-full bg-[var(--gold-dim)] px-3.5 font-mono text-[11.5px] font-semibold tracking-[0.04em] text-[var(--gold)]">${event.buyIn} buy-in</span>}
+          {event.roundCount > 1 && <span className="inline-flex h-8 items-center rounded-full border border-[var(--hair-strong)] px-3.5 font-[family-name:var(--font-heading)] text-xs text-[var(--cream-60)]">{event.roundCount} rounds</span>}
           {event.kind && EVENT_KINDS.find((k) => k.key === event.kind) && (
-            <span className="rounded-full border border-[var(--hair-strong)] px-3.5 py-[7px] font-[family-name:var(--font-heading)] text-xs text-[var(--cream-60)]">{EVENT_KINDS.find((k) => k.key === event.kind)!.label}</span>
+            <span className="inline-flex h-8 items-center rounded-full border border-[var(--hair-strong)] px-3.5 font-[family-name:var(--font-heading)] text-xs text-[var(--cream-60)]">{EVENT_KINDS.find((k) => k.key === event.kind)!.label}</span>
           )}
           {event.isPrivate && (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--hair-strong)] px-3.5 py-[7px] font-[family-name:var(--font-heading)] text-xs text-[var(--cream-60)]"><IconEyeOff className="h-3.5 w-3.5" /> Private. Link only</span>
+            <span className="inline-flex items-center gap-1.5 inline-flex h-8 items-center rounded-full border border-[var(--hair-strong)] px-3.5 font-[family-name:var(--font-heading)] text-xs text-[var(--cream-60)]"><IconEyeOff className="h-3.5 w-3.5" /> Private. Link only</span>
           )}
         </div>
 
@@ -371,6 +372,31 @@ export default function LeagueEventPage() {
       {tab === "about" && (
         <section className="mb-[44px] grid gap-8 lg:grid-cols-[1.4fr_1fr]">
           <div className="min-w-0">
+            {event.status === "complete" && ranked.length > 0 && (
+              <div className="mb-7">
+                <h3 className="mb-3 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--cream-38)]">Final results</h3>
+                <div className={`${card} overflow-hidden`}>
+                  {(() => {
+                    const myIdx = cid ? ranked.findIndex((x) => x.id === cid) : -1;
+                    const rows = ranked.slice(0, 3);
+                    if (myIdx >= 3) rows.push(ranked[myIdx]);
+                    return rows.map((e) => {
+                      const i = ranked.indexOf(e);
+                      const you = cid != null && e.id === cid;
+                      return (
+                        <div key={e.id} className={`flex h-12 items-center gap-3 border-b border-[var(--hair)] px-4 text-sm last:border-b-0 ${you ? "border-l-[3px] border-l-[var(--gold)] bg-gradient-to-r from-[var(--gold-dim)] via-transparent to-transparent" : ""}`}>
+                          <span className={`w-6 text-right font-mono text-xs font-bold ${you ? "text-[var(--gold)]" : "text-[var(--cream-38)]"}`}>{i + 1}</span>
+                          <Avatar url={e.photo} name={e.name} size={26} ring={false} gold={you} />
+                          <span className="min-w-0 flex-1 truncate font-semibold text-[var(--cream)]">{e.name}{you && <span className="ml-2 rounded border border-[rgba(232,181,96,.4)] px-1.5 py-0.5 font-mono text-[8px] tracking-[0.14em] text-[var(--gold)]">YOU</span>}</span>
+                          {(e.payout ?? 0) > 0 && <span className="font-mono text-xs font-bold text-[#5fcf80]">${e.payout}</span>}
+                          <span className={`font-mono text-sm font-bold ${you ? "text-[var(--gold)]" : "text-[var(--blue)]"}`}>{adjOf(e)}</span>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
+            )}
             {event.description ? <Desc text={event.description} /> : <p className="text-sm text-[var(--cream-38)]">No description yet.{admin && league ? <> <Link href={`/leagues/${league.slug}/manage`} className="text-[var(--cream-60)] underline decoration-[var(--hair-strong)] underline-offset-2 hover:text-[var(--gold)]">Add one from league settings.</Link></> : null}</p>}
             {(event.contactEmail || event.contactPhone) && (
               <p className="mt-5 text-sm text-[var(--sage)]">
@@ -379,6 +405,18 @@ export default function LeagueEventPage() {
                 {event.contactEmail && event.contactPhone && " · "}
                 {event.contactPhone && <a href={`tel:${event.contactPhone}`} className="font-bold text-[var(--gold)] hover:underline">{event.contactPhone}</a>}
               </p>
+            )}
+            {event.status !== "complete" && event.status !== "cancelled" && (
+              <div className={`${card} mt-7 flex items-center gap-4 p-5`}>
+                {entries.length > 0 ? (
+                  <>
+                    <span className="flex -space-x-2">{entries.slice(0, 6).map((e) => <Avatar key={e.id} url={e.photo} name={e.name} size={28} />)}</span>
+                    <span className="text-sm text-[var(--cream-60)]"><span className="font-mono font-bold text-[var(--blue)]">{entries.length}</span> checked in{event.capacity ? <> · <span className="font-mono">{Math.max(0, event.capacity - entries.length)}</span> spots left</> : ""}</span>
+                  </>
+                ) : (
+                  <span className="text-sm text-[var(--cream-60)]">Be the first in. Check in from the rail.</span>
+                )}
+              </div>
             )}
           </div>
           <div className="grid content-start gap-4 lg:sticky lg:top-6">
@@ -408,21 +446,23 @@ export default function LeagueEventPage() {
               </div>
             ) : event.status === "complete" && ranked.length > 0 ? (
               <div className={`${card} p-6`}>
-                <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--cream-38)]">Final results</h3>
-                <div className="mt-3 grid gap-2">
-                  {ranked.slice(0, 3).map((e, i) => (
-                    <div key={e.id} className="flex items-center gap-2.5 text-sm">
-                      <span className="w-4 text-right font-mono text-xs font-bold text-[var(--cream-38)]">{i + 1}</span>
-                      <Avatar url={e.photo} name={e.name} size={24} ring={false} />
-                      <span className="min-w-0 flex-1 truncate font-semibold text-[var(--cream)]">{e.name}</span>
-                      <span className="font-mono text-sm font-bold text-[var(--blue)]">{adjOf(e)}</span>
-                    </div>
-                  ))}
+                <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--cream-38)]">Results</h3>
+                <div className="mt-3 flex items-center gap-3">
+                  <Avatar url={ranked[0].photo} name={ranked[0].name} size={34} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-[family-name:var(--font-heading)] text-[15px] font-bold text-[var(--cream)]">{ranked[0].name}</span>
+                    <span className="block text-xs text-[var(--cream-60)]">Winner</span>
+                  </span>
+                  <span className="font-mono text-lg font-bold text-[var(--blue)]">{adjOf(ranked[0])}</span>
                 </div>
-                <button onClick={() => setTab("scores")} className="mt-3 font-mono text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[var(--cream-60)] hover:text-[var(--gold)]">Full board</button>
+                <div className="mt-4 flex items-center justify-between border-t border-[var(--hair)] pt-3 text-sm">
+                  <span className="text-[var(--cream-60)]">Field</span>
+                  <span className="font-mono text-[var(--cream)]">{entries.length}</span>
+                </div>
+                <button onClick={() => setTab("scores")} className="mt-4 w-full rounded-[10px] border border-[var(--hair-strong)] py-2.5 text-center font-[family-name:var(--font-heading)] text-sm font-bold text-[var(--cream)] transition-colors hover:border-[var(--cream-38)]">View full results</button>
               </div>
             ) : null}
-            {divisions.length > 1 && (
+            {event.status !== "complete" && event.status !== "cancelled" && divisions.length > 1 && (
               <div className={`${card} p-6`}>
                 <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--cream-38)]">Divisions</h3>
                 <div className="mt-3 grid gap-2">
@@ -439,14 +479,13 @@ export default function LeagueEventPage() {
             <div className={`${card} p-6`}>
               <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--cream-38)]">Schedule</h3>
               <div className="mt-4 border-l border-[var(--hair-strong)] pl-4">
-                {Array.from({ length: event.roundCount }, (_, ri) => (
-                  <div key={ri} className="relative pb-4 last:pb-0">
-                    <span className="absolute -left-[21.5px] top-1 h-2.5 w-2.5 rounded-full border-2 border-[var(--blue)] bg-[var(--card)]" />
-                    <span className="block font-[family-name:var(--font-heading)] text-sm font-semibold text-[var(--cream)]">Round {ri + 1}</span>
-                    <span className="block font-mono text-xs text-[var(--blue)]">{fmtDate(event.date)}</span>
-                    <span className="block text-xs text-[var(--cream-38)]">{event.holes} holes · {event.startFormat}{event.courseName ? ` · ${event.courseName}` : ""}</span>
-                  </div>
-                ))}
+                {/* All rounds share one datetime in the data — collapse to a single entry (B4). */}
+                <div className="relative">
+                  <span className="absolute -left-[21.5px] top-1 h-2.5 w-2.5 rounded-full border-2 border-[var(--blue)] bg-[var(--card)]" />
+                  <span className="block font-[family-name:var(--font-heading)] text-[15px] font-semibold text-[var(--cream)]">{event.roundCount === 1 ? "Round 1" : event.roundCount === 2 ? "Rounds 1 and 2" : `Rounds 1–${event.roundCount}`}</span>
+                  <span className="block font-mono text-[12.5px] text-[var(--blue)]">{fmtDate(event.date)}</span>
+                  <span className="block text-[12.5px] text-[var(--cream-60)]">{event.holes} holes{event.roundCount > 1 ? " per round" : ""} · {event.startFormat}{event.courseName ? ` · ${event.courseName}` : ""}</span>
+                </div>
               </div>
             </div>
             {staff.length > 0 && (
