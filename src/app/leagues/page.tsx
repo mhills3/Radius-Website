@@ -50,10 +50,14 @@ export default function LeaguesPage() {
     <main className="mx-auto max-w-3xl px-5 pb-24 pt-10">
       <div className="flex items-center justify-between">
         <h1 className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-tight text-[var(--cream)]">Leagues</h1>
-        {user && (
+        {user ? (
           <button onClick={() => setCreating((c) => !c)} className="rounded-full bg-[var(--gold)] px-5 py-2.5 text-sm font-bold text-[#16221b] transition-colors hover:bg-[var(--gold-bright)]">
             {creating ? "Cancel" : "Start a league"}
           </button>
+        ) : (
+          <Link href="/login" className="rounded-full bg-[var(--gold)] px-5 py-2.5 text-sm font-bold text-[#16221b] transition-colors hover:bg-[var(--gold-bright)]">
+            Sign in to start a league
+          </Link>
         )}
       </div>
       <p className="mt-1 text-sm text-[var(--sage)]">Weekly leagues run on Radius — free for directors and players.</p>
