@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700;800&display=swap');
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
@@ -31,6 +31,56 @@
 }
 
 html { scroll-behavior: smooth; }
+
+/* ── Events flow premium tokens (scoped) ─────────────────────────────────────
+   The locked events-flow design system: dark forest instrument panel,
+   two-accent law (gold = the user's own things, blue = the community/live),
+   JetBrains Mono for every number and micro-label. Scoped so the rest of the
+   site keeps the brand-wide palette. Overrides the global custom properties
+   for everything inside .events-scope. */
+.events-scope {
+  --forest: #141B16;
+  --card: #1A2821;
+  --card-raised: #203028;
+  --accent-green: #2D4A3E;
+  --gold: #E8B560;
+  --gold-bright: #f0c377;
+  --gold-dim: rgba(232,181,96,0.14);
+  --blue: #8FBDE3;
+  --blue-dim: rgba(143,189,227,0.12);
+  --cream: #F4F1E8;
+  --cream-60: rgba(244,241,232,0.60);
+  --cream-38: rgba(244,241,232,0.38);
+  --hair: rgba(244,241,232,0.08);
+  --hair-strong: rgba(244,241,232,0.14);
+  /* Legacy aliases so existing var() references inside the scope resolve to the new system */
+  --bg-deep: var(--forest);
+  --bg-mid: var(--card);
+  --bg-card: var(--card-raised);
+  --sage: var(--cream-60);
+  --sage-dim: var(--cream-38);
+  --text-body: var(--cream-60);
+  --font-mono-stack: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.events-scope .font-mono,
+.events-scope code {
+  font-family: var(--font-mono-stack);
+}
+.events-scope :focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+@keyframes livePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(143,189,227,0.45); }
+  50% { box-shadow: 0 0 0 5px rgba(143,189,227,0); }
+}
+.events-scope .live-dot {
+  animation: livePulse 2.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .events-scope .live-dot { animation: none; }
+  .events-scope * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}
 
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(14px); }
