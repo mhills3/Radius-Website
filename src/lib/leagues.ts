@@ -26,16 +26,16 @@ export function freshId(): string {
     : `${Date.now()}-${Math.random().toString(36).slice(2)}`.toUpperCase();
 }
 
-export const LEAGUE_FORMATS = ["Singles", "Doubles"] as const;
+export const LEAGUE_FORMATS = ["Singles", "Teams"] as const;
 export const START_FORMATS = ["Shotgun", "Tee times", "Flex"] as const;
 
 /** Event kinds — discovery categories AND behavior hints (league = weekly repeat, tournament = multi-round). */
 export const EVENT_KINDS = [
-  { key: "league", label: "League / Weekly", icon: "📅", blurb: "A recurring league night — schedule the whole season at once." },
-  { key: "tournament", label: "Tournament", icon: "🏆", blurb: "One-off or multi-round competition with cumulative scoring." },
-  { key: "clinic", label: "Clinic", icon: "🎯", blurb: "Instruction and practice — form work, putting, field sessions." },
-  { key: "cleanup", label: "Course cleanup", icon: "🧹", blurb: "Work day — trimming, trash, tee pads. The course thanks you." },
-  { key: "social", label: "Social round", icon: "🤝", blurb: "Casual meetup round — no pressure, no standings." },
+  { key: "league", label: "League / Weekly", blurb: "A recurring league night — schedule the whole season at once." },
+  { key: "tournament", label: "Tournament", blurb: "One-off or multi-round competition with cumulative scoring." },
+  { key: "clinic", label: "Clinic", blurb: "Instruction and practice — form work, putting, field sessions." },
+  { key: "cleanup", label: "Course cleanup", blurb: "Work day — trimming, trash, tee pads. The course thanks you." },
+  { key: "social", label: "Social round", blurb: "Casual meetup round — no pressure, no standings." },
 ] as const;
 
 export const DEFAULT_DIVISIONS = ["Open"];

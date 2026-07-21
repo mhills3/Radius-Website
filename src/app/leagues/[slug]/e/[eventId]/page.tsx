@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { getLeagueBySlug, getEvent, getCards, checkIn, updateEntry, removeEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, reassignBagTags, computeStandings, computeHandicaps, applyHandicaps, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, type League, type LeagueEvent, type EventEntry, type EventCard } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
-import { SectionTitle, Avatar, Pos, btnGold, btnGhost, card } from "@/components/leagues/ui";
+import { SectionTitle, Avatar, Pos, btnGold, btnGhost, card, IconPin, IconDisc } from "@/components/leagues/ui";
 
 const fmtDate = (ms: number) => new Date(ms).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 const adminInput = "rounded-lg border border-white/10 bg-white/[0.05] px-2 py-1.5 text-right font-mono text-sm text-[var(--cream)] outline-none transition-colors focus:border-[var(--gold)]";
@@ -155,7 +155,7 @@ export default function LeagueEventPage() {
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
           <span className="rounded-full bg-white/[0.05] px-3 py-1.5 font-semibold text-[var(--text-body)] ring-1 ring-white/[0.06]">{fmtDate(event.date)}</span>
-          {event.courseName && <span className="rounded-full bg-white/[0.05] px-3 py-1.5 font-semibold text-[var(--text-body)] ring-1 ring-white/[0.06]">⛳ {event.courseName}</span>}
+          {event.courseName && <span className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 font-semibold text-[var(--text-body)] ring-1 ring-white/[0.06]"><IconPin className="h-3.5 w-3.5 shrink-0" /> {event.courseName}</span>}
           <span className="rounded-full bg-white/[0.05] px-3 py-1.5 font-semibold text-[var(--text-body)] ring-1 ring-white/[0.06]">{event.format} · {event.startFormat}</span>
           {event.roundCount > 1 && <span className="rounded-full bg-[var(--gold-dim)] px-3 py-1.5 font-bold text-[var(--gold)] ring-1 ring-[var(--gold)]/20">{event.roundCount} rounds</span>}
         </div>
@@ -225,7 +225,7 @@ export default function LeagueEventPage() {
 
         {entries.length === 0 ? (
           <div className={`${card} grid place-items-center px-6 py-14 text-center`}>
-            <span className="grid h-12 w-12 place-items-center rounded-full bg-[var(--gold-dim)] text-xl">⛳</span>
+            <span className="grid h-12 w-12 place-items-center rounded-full bg-[var(--gold-dim)] text-[var(--gold)]"><IconDisc className="h-6 w-6" /></span>
             <p className="mt-3 font-[family-name:var(--font-heading)] font-bold text-[var(--cream)]">Nobody&apos;s checked in yet</p>
             <p className="mt-1 text-sm text-[var(--sage-dim)]">Share the check-in link and watch this fill up.</p>
           </div>

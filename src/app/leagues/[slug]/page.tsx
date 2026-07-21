@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRole, isLeagueAdmin, type League, type LeagueEvent, type LeagueMember, type StandingRow } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
-import { inputCls, FieldLabel, SectionTitle, Segmented, Avatar, Pos, btnGold, btnGhost, card } from "@/components/leagues/ui";
+import { inputCls, FieldLabel, SectionTitle, Segmented, Avatar, Pos, btnGold, btnGhost, card, IconPin } from "@/components/leagues/ui";
 
 const fmtTime = (ms: number) => new Date(ms).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 const fmtToPar = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`);
@@ -151,10 +151,10 @@ export default function LeaguePage() {
           <div className="min-w-0">
             <h1 className="font-[family-name:var(--font-heading)] text-4xl font-extrabold tracking-tight text-[var(--cream)] sm:text-5xl">{league.name}</h1>
             <div className="mt-4 flex flex-wrap items-center gap-2">
-              {league.courseName && <span className="rounded-full bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-[var(--text-body)] ring-1 ring-white/[0.06]">⛳ {league.courseName}</span>}
+              {league.courseName && <span className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-[var(--text-body)] ring-1 ring-white/[0.06]"><IconPin className="h-3.5 w-3.5 shrink-0" /> {league.courseName}</span>}
               <span className="rounded-full bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-[var(--text-body)] ring-1 ring-white/[0.06]">{league.settings.format}</span>
               <span className="rounded-full bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-[var(--text-body)] ring-1 ring-white/[0.06]">{league.settings.startFormat}</span>
-              {(league.acePotBalance ?? 0) > 0 && <span className="rounded-full bg-[var(--gold-dim)] px-3 py-1.5 text-xs font-bold text-[var(--gold)] ring-1 ring-[var(--gold)]/20">🎯 Ace pot ${league.acePotBalance}</span>}
+              {(league.acePotBalance ?? 0) > 0 && <span className="rounded-full bg-[var(--gold-dim)] px-3 py-1.5 text-xs font-bold text-[var(--gold)] ring-1 ring-[var(--gold)]/20">Ace pot · ${league.acePotBalance}</span>}
             </div>
             {league.settings.description && <p className="mt-4 max-w-xl whitespace-pre-wrap text-sm leading-relaxed text-[var(--sage)]">{league.settings.description}</p>}
             <p className="mt-3 text-xs text-[var(--sage-dim)]">Run by {league.createdByName} · {members.length} member{members.length === 1 ? "" : "s"}</p>

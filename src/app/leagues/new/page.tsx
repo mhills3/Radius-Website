@@ -6,13 +6,20 @@ import { useRouter } from "next/navigation";
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { storage } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthProvider";
-import { createLeague, createEvents, getMyLeagues, setLeagueLogo, searchCourses, EVENT_KINDS, LEAGUE_FORMATS, START_FORMATS, type League, type CourseHit } from "@/lib/leagues";
-import { inputCls, FieldLabel, Segmented, btnGold, btnGhost } from "@/components/leagues/ui";
+import { createLeague, createEvents, getMyLeagues, setLeagueLogo, searchCourses, EVENT_KINDS, LEAGUE_FORMATS, type League, type CourseHit } from "@/lib/leagues";
+import { inputCls, FieldLabel, Segmented, btnGold, btnGhost, IconCalendar, IconTrophy, IconTarget, IconLeaf, IconUsers, IconEye, IconEyeOff, IconPin, IconPlus } from "@/components/leagues/ui";
 
-// ─── Full-screen event wizard: one question per step, giant type left, focused
-// input right, progress underfoot. The Radius answer to UDisc's "List your event".
+// ─── Full-screen event wizard, mirroring UDisc's "List your event" step
+// architecture exactly: type → details → when → where → (buy-in) → contact →
+// logo → review. No league step — the league container is plumbing: events
+// attach to a league you direct if you pick one in Details, otherwise a
+// container is created silently from the event name.
 
-type StepKey = "type" | "league" | "details" | "when" | "where" | "money" | "contact" | "logo" | "review";
+type StepKey = "type" | "details" | "when" | "where" | "money" | "contact" | "logo" | "review";
+
+const KIND_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  league: IconCalendar, tournament: IconTrophy, clinic: IconTarget, cleanup: IconLeaf, social: IconUsers,
+};
 
 const optionCard = (selected: boolean) =>
   `group flex w-full items-center gap-4 rounded-2xl border p-5 text-left transition-all ${
@@ -29,23 +36,29 @@ function Radio({ on }: { on: boolean }) {
   );
 }
 
+function IconTile({ selected, children }: { selected: boolean; children: React.ReactNode }) {
+  return (
+    <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-xl ring-1 transition-colors ${selected ? "bg-[var(--gold)]/20 text-[var(--gold)] ring-[var(--gold)]/30" : "bg-[var(--gold-dim)] text-[var(--gold)] ring-white/[0.06]"}`}>
+      {children}
+    </span>
+  );
+}
+
 export default function EventWizard() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const router = useRouter();
 
   // ── Answers
   const [kind, setKind] = useState("");
-  const [leagueChoice, setLeagueChoice] = useState<string>(""); // league id or "new"
-  const [newLeagueName, setNewLeagueName] = useState("");
-  const [format, setFormat] = useState<string>(LEAGUE_FORMATS[0]);
-  const [startFormat, setStartFormat] = useState<string>(START_FORMATS[0]);
   const [evName, setEvName] = useState("");
   const [desc, setDesc] = useState("");
+  const [format, setFormat] = useState<string>(LEAGUE_FORMATS[0]);
   const [isPrivate, setIsPrivate] = useState(false);
+  const [leagueChoice, setLeagueChoice] = useState(""); // "" = auto-create container
   const [date, setDate] = useState("");
   const [time, setTime] = useState("17:30");
-  const [repeat, setRepeat] = useState(1);     // league kind: weekly repeats
-  const [rounds, setRounds] = useState(1);     // tournament kind: rounds
+  const [repeat, setRepeat] = useState(1);
+  const [rounds, setRounds] = useState(1);
   const [customN, setCustomN] = useState("");
   const [useCustomN, setUseCustomN] = useState(false);
   const [course, setCourse] = useState<CourseHit | null>(null);
@@ -77,7 +90,7 @@ export default function EventWizard() {
   }, [courseQ, course]);
 
   const isLeagueKind = kind === "league";
-  const steps: StepKey[] = useMemo(() => ["type", "league", "details", "when", "where", "money", "contact", "logo", "review"], []);
+  const steps: StepKey[] = useMemo(() => ["type", "details", "when", "where", "money", "contact", "logo", "review"], []);
   const step = steps[stepIdx];
   const kindMeta = EVENT_KINDS.find((k) => k.key === kind);
   const chosenLeague = myLeagues.find((l) => l.id === leagueChoice);
@@ -86,14 +99,10 @@ export default function EventWizard() {
 
   const canNext: Record<StepKey, boolean> = {
     type: !!kind,
-    league: leagueChoice === "new" ? !!newLeagueName.trim() : !!leagueChoice,
     details: !!evName.trim(),
     when: !!date,
     where: !!placeName,
-    money: true,
-    contact: true,
-    logo: true,
-    review: true,
+    money: true, contact: true, logo: true, review: true,
   };
   const skippable: StepKey[] = ["money", "contact", "logo"];
 
@@ -113,18 +122,17 @@ export default function EventWizard() {
     if (!user || busy) return;
     setBusy(true); setErr("");
     try {
-      // 1. League container — existing or created on the spot.
+      // League container: chosen, or created silently from the event name.
       let league = chosenLeague ?? null;
       if (!league) {
         league = await createLeague(user.uid, {
-          name: newLeagueName.trim(),
+          name: evName.trim(),
           courseName: placeName || undefined,
           courseId: course?.id,
-          settings: { format, startFormat, description: "" },
+          settings: { format, startFormat: "Flex", description: "" },
         });
-        if (!league) throw new Error("Couldn't create the league — are you signed in?");
+        if (!league) throw new Error("Couldn't create the event — are you signed in?");
       }
-      // 2. Logo → Storage (best-effort; needs the leagueLogos storage-rules block).
       if (logoFile) {
         try {
           const r = storageRef(storage, `leagueLogos/${user.uid}/${league.id}.jpg`);
@@ -134,7 +142,6 @@ export default function EventWizard() {
           setErr("Event created — logo upload was blocked (storage rules don't cover leagueLogos yet). Everything else saved.");
         }
       }
-      // 3. Events — weekly repeats for leagues, one multi-round event for the rest.
       const base = new Date(`${date}T${time || "17:30"}`);
       const dates = isLeagueKind
         ? Array.from({ length: nCount }, (_, i) => base.getTime() + i * 7 * 24 * 3600_000)
@@ -142,6 +149,7 @@ export default function EventWizard() {
       const created = await createEvents(user.uid, league, {
         name: evName, dates,
         courseId: course?.id, courseName: placeName || undefined,
+        format,
         roundCount: isLeagueKind ? 1 : nCount,
         buyIn: Number(buyIn) > 0 ? Number(buyIn) : undefined,
         kind, isPrivate, description: desc,
@@ -156,15 +164,25 @@ export default function EventWizard() {
 
   const QUESTION: Record<StepKey, { title: string; sub?: string }> = {
     type: { title: "What kind of event is it?" },
-    league: { title: "Who runs it?", sub: "Every event belongs to a league or club — pick one you direct, or spin up a new one right here." },
     details: { title: "What are the details?" },
     when: { title: "When is it?" },
     where: { title: "Where is it?", sub: "Search the Radius course directory — every course the community has built." },
     money: { title: "Is there a buy-in?", sub: "Optional. Radius tracks who's paid, the pot, and payouts — no fees, no processor." },
     contact: { title: "Who's the contact?", sub: "Shown on the public event page so players can reach the director." },
-    logo: { title: "Got a league logo?", sub: "JPEG or PNG, roughly square. It becomes your league's mark across Radius." },
+    logo: { title: "Got a logo?", sub: "JPEG or PNG, roughly square. It becomes the event's mark across Radius." },
     review: { title: "Your event overview", sub: "Read it once like a player would — then send it." },
   };
+
+  const STEP_META: { key: StepKey; label: string; value?: string }[] = [
+    { key: "type", label: "Event type", value: kindMeta?.label },
+    { key: "details", label: "Details", value: evName.trim() || undefined },
+    { key: "when", label: "Schedule", value: date ? `${new Date(`${date}T${time}`).toLocaleDateString(undefined, { month: "short", day: "numeric" })}${isLeagueKind && nCount > 1 ? ` · ×${nCount}` : !isLeagueKind && nCount > 1 ? ` · ${nCount} rds` : ""}` : undefined },
+    { key: "where", label: "Location", value: placeName || undefined },
+    { key: "money", label: "Buy-in", value: Number(buyIn) > 0 ? `$${buyIn}` : undefined },
+    { key: "contact", label: "Contact", value: email.trim() || phone.trim() || undefined },
+    { key: "logo", label: "Logo", value: logoFile ? "Added" : undefined },
+    { key: "review", label: "Review" },
+  ];
 
   if (!user) {
     return (
@@ -179,21 +197,9 @@ export default function EventWizard() {
     );
   }
 
-  const STEP_META: { key: StepKey; label: string; value?: string }[] = [
-    { key: "type", label: "Event type", value: kindMeta?.label },
-    { key: "league", label: "Who runs it", value: chosenLeague?.name ?? (leagueChoice === "new" ? newLeagueName.trim() || undefined : undefined) },
-    { key: "details", label: "Details", value: evName.trim() || undefined },
-    { key: "when", label: "Schedule", value: date ? `${new Date(`${date}T${time}`).toLocaleDateString(undefined, { month: "short", day: "numeric" })}${isLeagueKind && nCount > 1 ? ` · ×${nCount}` : !isLeagueKind && nCount > 1 ? ` · ${nCount} rds` : ""}` : undefined },
-    { key: "where", label: "Location", value: placeName || undefined },
-    { key: "money", label: "Buy-in", value: Number(buyIn) > 0 ? `$${buyIn}` : undefined },
-    { key: "contact", label: "Contact", value: email.trim() || phone.trim() || undefined },
-    { key: "logo", label: "Logo", value: logoFile ? "Added" : undefined },
-    { key: "review", label: "Review" },
-  ];
-
   return (
     <div className="relative">
-      {/* Wizard backdrop: pronounced gold corner glow + forest counter-glow + range rings */}
+      {/* Backdrop: gold corner glow + forest counter-glow + range rings */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
@@ -212,7 +218,7 @@ export default function EventWizard() {
       </svg>
 
       <main className="relative mx-auto grid min-h-[80vh] max-w-6xl gap-10 px-5 pb-36 pt-14 lg:grid-cols-[1fr_1.15fr] lg:gap-16">
-        {/* Question + step rail */}
+        {/* Question + answer rail */}
         <div className="lg:pt-16">
           <Link href="/leagues" className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--sage-dim)] transition-colors hover:text-[var(--gold)]">← Events</Link>
           <p className="mt-6 text-[11px] font-bold uppercase tracking-[0.22em] text-[var(--gold)]">Step {stepIdx + 1} of {steps.length}</p>
@@ -221,7 +227,6 @@ export default function EventWizard() {
           </h1>
           {QUESTION[step].sub && <p className="mt-4 max-w-sm text-sm leading-relaxed text-[var(--sage)]">{QUESTION[step].sub}</p>}
 
-          {/* Answer rail: what you've locked in so far */}
           <ol className="mt-10 hidden max-w-xs space-y-1 lg:block">
             {STEP_META.map((s, i) => {
               const done = i < stepIdx;
@@ -249,54 +254,19 @@ export default function EventWizard() {
         <div key={`c-${step}`} className="animate-[fadeIn_0.3s_ease] lg:pt-16">
           {step === "type" && (
             <div className="grid gap-3">
-              {EVENT_KINDS.map((k) => (
-                <button key={k.key} onClick={() => setKind(k.key)} className={optionCard(kind === k.key)}>
-                  <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-xl text-xl ring-1 transition-colors ${kind === k.key ? "bg-[var(--gold)]/20 ring-[var(--gold)]/30" : "bg-[var(--gold-dim)] ring-white/[0.06]"}`}>{k.icon}</span>
-                  <span className="min-w-0">
-                    <span className="block font-[family-name:var(--font-heading)] font-bold text-[var(--cream)]">{k.label}</span>
-                    <span className="mt-0.5 block text-xs text-[var(--sage)]">{k.blurb}</span>
-                  </span>
-                  <Radio on={kind === k.key} />
-                </button>
-              ))}
-            </div>
-          )}
-
-          {step === "league" && (
-            <div className="grid gap-3">
-              {myLeagues.map((l) => (
-                <button key={l.id} onClick={() => setLeagueChoice(l.id)} className={optionCard(leagueChoice === l.id)}>
-                  <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl bg-[var(--gold-dim)] font-[family-name:var(--font-heading)] text-lg font-extrabold text-[var(--gold)]">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    {l.logoUrl ? <img src={l.logoUrl} alt="" className="h-full w-full object-cover" /> : (l.name || "?").charAt(0).toUpperCase()}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block truncate font-[family-name:var(--font-heading)] font-bold text-[var(--cream)]">{l.name}</span>
-                    <span className="mt-0.5 block text-xs text-[var(--sage)]">{l.courseName || "Rotating courses"} · {l.memberCount} member{l.memberCount === 1 ? "" : "s"}</span>
-                  </span>
-                  <Radio on={leagueChoice === l.id} />
-                </button>
-              ))}
-              <button onClick={() => setLeagueChoice("new")} className={optionCard(leagueChoice === "new")}>
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white/[0.05] text-xl text-[var(--gold)]">＋</span>
-                <span className="min-w-0">
-                  <span className="block font-[family-name:var(--font-heading)] font-bold text-[var(--cream)]">New league</span>
-                  <span className="mt-0.5 block text-xs text-[var(--sage)]">Start fresh — takes ten seconds.</span>
-                </span>
-                <Radio on={leagueChoice === "new"} />
-              </button>
-              {leagueChoice === "new" && (
-                <div className="mt-2 grid gap-4 rounded-2xl border border-white/[0.09] bg-white/[0.03] p-5 animate-[fadeIn_0.25s_ease]">
-                  <label className="block">
-                    <FieldLabel>League name</FieldLabel>
-                    <input value={newLeagueName} onChange={(e) => setNewLeagueName(e.target.value)} placeholder="Northshore Tuesday Nights" className={inputCls} autoFocus />
-                  </label>
-                  <div className="flex flex-wrap gap-6">
-                    <div><FieldLabel>Format</FieldLabel><Segmented options={[...LEAGUE_FORMATS]} value={format} onChange={setFormat} /></div>
-                    <div><FieldLabel>Start</FieldLabel><Segmented options={[...START_FORMATS]} value={startFormat} onChange={setStartFormat} /></div>
-                  </div>
-                </div>
-              )}
+              {EVENT_KINDS.map((k) => {
+                const Icon = KIND_ICONS[k.key] ?? IconCalendar;
+                return (
+                  <button key={k.key} onClick={() => setKind(k.key)} className={optionCard(kind === k.key)}>
+                    <IconTile selected={kind === k.key}><Icon /></IconTile>
+                    <span className="min-w-0">
+                      <span className="block font-[family-name:var(--font-heading)] font-bold text-[var(--cream)]">{k.label}</span>
+                      <span className="mt-0.5 block text-xs text-[var(--sage)]">{k.blurb}</span>
+                    </span>
+                    <Radio on={kind === k.key} />
+                  </button>
+                );
+              })}
             </div>
           )}
 
@@ -314,19 +284,32 @@ export default function EventWizard() {
                     <button type="button" onClick={() => insertMd("_")} title="Italic" className="grid h-7 w-7 place-items-center rounded-md text-xs italic text-[var(--sage)] transition-colors hover:bg-white/[0.07] hover:text-[var(--cream)]">I</button>
                     <button type="button" onClick={() => insertMd("- ")} title="Bullet list" className="grid h-7 w-7 place-items-center rounded-md text-sm text-[var(--sage)] transition-colors hover:bg-white/[0.07] hover:text-[var(--cream)]">≔</button>
                   </div>
-                  <textarea ref={descRef} value={desc} onChange={(e) => setDesc(e.target.value)} rows={6} placeholder="CTPs, ace pot, where to meet, what to bring…" className="w-full resize-none bg-transparent px-4 py-3 text-sm text-[var(--cream)] placeholder-[var(--sage-dim)] outline-none" />
+                  <textarea ref={descRef} value={desc} onChange={(e) => setDesc(e.target.value)} rows={5} placeholder="CTPs, ace pot, where to meet, what to bring…" className="w-full resize-none bg-transparent px-4 py-3 text-sm text-[var(--cream)] placeholder-[var(--sage-dim)] outline-none" />
                 </div>
               </div>
+              <div>
+                <FieldLabel>Play format *</FieldLabel>
+                <Segmented options={[...LEAGUE_FORMATS]} value={format} onChange={setFormat} />
+              </div>
+              {myLeagues.length > 0 && (
+                <label className="block">
+                  <FieldLabel>League <span className="normal-case tracking-normal text-[var(--sage-dim)]">— optional; otherwise one is set up for you</span></FieldLabel>
+                  <select value={leagueChoice} onChange={(e) => setLeagueChoice(e.target.value)} className={inputCls}>
+                    <option value="">Set up automatically</option>
+                    {myLeagues.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                  </select>
+                </label>
+              )}
               <div>
                 <FieldLabel>Visibility *</FieldLabel>
                 <div className="grid gap-3">
                   <button onClick={() => setIsPrivate(false)} className={optionCard(!isPrivate)}>
-                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/[0.05] text-lg">👁</span>
+                    <IconTile selected={!isPrivate}><IconEye /></IconTile>
                     <span><span className="block font-bold text-[var(--cream)]">Public event</span><span className="mt-0.5 block text-xs text-[var(--sage)]">Listed in Radius event discovery and on the league page.</span></span>
                     <Radio on={!isPrivate} />
                   </button>
                   <button onClick={() => setIsPrivate(true)} className={optionCard(isPrivate)}>
-                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/[0.05] text-lg">🙈</span>
+                    <IconTile selected={isPrivate}><IconEyeOff /></IconTile>
                     <span><span className="block font-bold text-[var(--cream)]">Private event</span><span className="mt-0.5 block text-xs text-[var(--sage)]">Only people with the link can find it — never listed in discovery.</span></span>
                     <Radio on={isPrivate} />
                   </button>
@@ -370,7 +353,7 @@ export default function EventWizard() {
                   <FieldLabel>Event location *</FieldLabel>
                   {course ? (
                     <div className="flex items-center gap-3 rounded-xl border border-[var(--gold)]/40 bg-[var(--gold-dim)] px-4 py-3">
-                      <span className="text-lg">⛳</span>
+                      <IconPin className="h-5 w-5 shrink-0 text-[var(--gold)]" />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate font-bold text-[var(--cream)]">{course.name}</span>
                         {(course.city || course.state) && <span className="block text-xs text-[var(--sage)]">{[course.city, course.state].filter(Boolean).join(", ")}</span>}
@@ -387,7 +370,7 @@ export default function EventWizard() {
                         <div className="absolute z-10 mt-2 w-full overflow-hidden rounded-xl border border-white/10 bg-[#1c2a22] shadow-2xl">
                           {hits.map((h) => (
                             <button key={h.id} onClick={() => { setCourse(h); setHits([]); }} className="flex w-full items-center gap-3 border-b border-white/[0.05] px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-white/[0.05]">
-                              <span>⛳</span>
+                              <IconPin className="h-4 w-4 shrink-0 text-[var(--sage)]" />
                               <span className="min-w-0">
                                 <span className="block truncate text-sm font-bold text-[var(--cream)]">{h.name}</span>
                                 {(h.city || h.state) && <span className="block text-xs text-[var(--sage-dim)]">{[h.city, h.state].filter(Boolean).join(", ")}</span>}
@@ -417,7 +400,7 @@ export default function EventWizard() {
                 <FieldLabel>Buy-in per player ($)</FieldLabel>
                 <input inputMode="numeric" value={buyIn} onChange={(e) => setBuyIn(e.target.value)} placeholder="0 — free event" className={`${inputCls} max-w-[200px]`} autoFocus />
               </label>
-              <p className="max-w-md text-xs leading-relaxed text-[var(--sage-dim)]">Set a buy-in and the event gets a money board: who&apos;s paid, pot collected, payouts, and what&apos;s left — the ledger UDisc doesn&apos;t have. Leave it blank for a free event.</p>
+              <p className="max-w-md text-xs leading-relaxed text-[var(--sage-dim)]">Set a buy-in and the event gets a money board: who&apos;s paid, pot collected, payouts, and what&apos;s left. Leave it blank for a free event.</p>
             </div>
           )}
 
@@ -442,7 +425,7 @@ export default function EventWizard() {
                   <img src={logoPreview} alt="Logo preview" className="h-full w-full object-cover" />
                 ) : (
                   <span className="text-center">
-                    <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[var(--gold-dim)] text-xl text-[var(--gold)]">＋</span>
+                    <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[var(--gold-dim)] text-[var(--gold)]"><IconPlus /></span>
                     <span className="mt-3 block text-sm font-bold text-[var(--cream)]">Add logo</span>
                     <span className="mt-1 block text-xs text-[var(--sage-dim)]">JPEG or PNG · ~256×256</span>
                   </span>
@@ -465,24 +448,28 @@ export default function EventWizard() {
           {step === "review" && (
             <div className="overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.02]">
               {[
-                { label: "Event type", value: kindMeta ? `${kindMeta.icon} ${kindMeta.label}` : "—", idx: 0 },
-                { label: "League", value: chosenLeague ? chosenLeague.name : `${newLeagueName.trim() || "—"} (new)`, idx: 1 },
-                { label: evName.trim() || "Event", value: desc.trim() ? (desc.length > 120 ? `${desc.slice(0, 120)}…` : desc) : "No description", idx: 2 },
-                { label: "Visibility", value: isPrivate ? "Private — link only" : "Public event", idx: 2 },
-                { label: isLeagueKind ? "Schedule" : "Dates", value: date ? `${new Date(`${date}T${time}`).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}${isLeagueKind && nCount > 1 ? ` · weekly × ${nCount}` : ""}${!isLeagueKind && nCount > 1 ? ` · ${nCount} rounds` : ""}` : "—", idx: 3 },
-                { label: "Location", value: placeName || "—", idx: 4 },
-                { label: "Buy-in", value: Number(buyIn) > 0 ? `$${buyIn} per player` : "Free event", idx: 5 },
-                { label: "Contact", value: [email.trim(), phone.trim()].filter(Boolean).join(" · ") || "Not listed", idx: 6 },
-                { label: "Logo", value: logoFile ? logoFile.name : "None", idx: 7 },
+                { label: "Event type", value: kindMeta?.label ?? "—", idx: 0 },
+                { label: evName.trim() || "Event", value: desc.trim() ? (desc.length > 120 ? `${desc.slice(0, 120)}…` : desc) : "No description", idx: 1 },
+                { label: "Play format", value: format, idx: 1 },
+                { label: "Visibility", value: isPrivate ? "Private — link only" : "Public event", idx: 1 },
+                ...(chosenLeague ? [{ label: "League", value: chosenLeague.name, idx: 1 }] : []),
+                { label: "Event dates", value: date ? `${new Date(`${date}T${time}`).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}${isLeagueKind && nCount > 1 ? ` · weekly × ${nCount}` : ""}${!isLeagueKind && nCount > 1 ? ` · ${nCount} rounds` : ""}` : "—", idx: 2 },
+                { label: "Event location", value: placeName || "—", idx: 3 },
+                { label: "Buy-in", value: Number(buyIn) > 0 ? `$${buyIn} per player` : "Free event", idx: 4 },
+                { label: "Contact information", value: [email.trim(), phone.trim()].filter(Boolean).join(" · ") || "Not listed", idx: 5 },
+                { label: "Logo", value: logoFile ? logoFile.name : "None", idx: 6 },
+                { label: "Staff", value: profile?.name || "You", idx: -1 },
               ].map((row, i) => (
                 <div key={i} className="flex items-start gap-4 border-b border-white/[0.05] px-5 py-4 last:border-b-0">
                   <div className="min-w-0 flex-1">
                     <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--gold)]">{row.label}</div>
                     <div className="mt-1 whitespace-pre-wrap text-sm text-[var(--cream)]">{row.value}</div>
                   </div>
-                  <button onClick={() => setStepIdx(row.idx)} aria-label={`Edit ${row.label}`} className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full text-[var(--sage-dim)] transition-colors hover:bg-white/[0.07] hover:text-[var(--gold)]">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>
-                  </button>
+                  {row.idx >= 0 && (
+                    <button onClick={() => setStepIdx(row.idx)} aria-label={`Edit ${row.label}`} className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full text-[var(--sage-dim)] transition-colors hover:bg-white/[0.07] hover:text-[var(--gold)]">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -497,7 +484,7 @@ export default function EventWizard() {
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-4">
           <button onClick={() => setStepIdx((i) => Math.max(0, i - 1))} disabled={stepIdx === 0 || busy} className={`${btnGhost} disabled:invisible`}>Back</button>
           <div className="flex items-center gap-4">
-            {skippable.includes(step) && step !== "review" && (
+            {skippable.includes(step) && (
               <button onClick={() => setStepIdx((i) => i + 1)} className="text-sm font-bold text-[var(--sage)] transition-colors hover:text-[var(--cream)]">Skip</button>
             )}
             {step === "review" ? (

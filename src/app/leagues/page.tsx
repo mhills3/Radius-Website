@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
 import { createLeague, getMyLeagues, getAllLeagues, getUpcomingEvents, LEAGUE_FORMATS, START_FORMATS, type League, type LeagueEvent } from "@/lib/leagues";
-import { inputCls, FieldLabel, SectionTitle, Segmented, btnGold, btnGhost, card } from "@/components/leagues/ui";
+import { inputCls, FieldLabel, SectionTitle, Segmented, btnGold, btnGhost, card, IconCalendar, IconPin, IconDisc } from "@/components/leagues/ui";
 
 const MON = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 const MONTH_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -135,7 +135,7 @@ export default function LeaguesPage() {
           <p className="mt-2 max-w-md text-sm leading-relaxed text-[var(--sage)]">League nights, tournaments, and clinics — live leaderboards, honest handicaps, bag tags that move. Free for everyone.</p>
         </div>
         {user ? (
-          <Link href="/leagues/new" className={btnGold}>＋ Create an event</Link>
+          <Link href="/leagues/new" className={btnGold}>Create an event</Link>
         ) : (
           <Link href="/login" className={btnGold}>Sign in to start a league</Link>
         )}
@@ -188,7 +188,7 @@ export default function LeaguesPage() {
           <div>
             {shownEvents.length === 0 ? (
               <div className={`${card} grid place-items-center px-6 py-16 text-center`}>
-                <span className="grid h-14 w-14 place-items-center rounded-full bg-[var(--gold-dim)] text-2xl">📅</span>
+                <span className="grid h-14 w-14 place-items-center rounded-full bg-[var(--gold-dim)] text-[var(--gold)]"><IconCalendar className="h-6 w-6" /></span>
                 <p className="mt-4 font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">{upcoming.length === 0 ? "No upcoming events" : "Nothing matches"}</p>
                 <p className="mt-1 max-w-xs text-sm text-[var(--sage-dim)]">{upcoming.length === 0 ? "Start a league and schedule the season — it takes about a minute." : "Try clearing the search or the day filter."}</p>
               </div>
@@ -203,7 +203,7 @@ export default function LeaguesPage() {
                         <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--gold)]">{ev.leagueName}</div>
                         <div className="mt-0.5 truncate font-[family-name:var(--font-heading)] font-bold text-[var(--cream)]">{ev.name}</div>
                         <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-[var(--sage)]">
-                          {ev.courseName && <span className="inline-flex items-center gap-1">⛳ {ev.courseName}</span>}
+                          {ev.courseName && <span className="inline-flex items-center gap-1.5"><IconPin className="h-3.5 w-3.5 shrink-0" /> {ev.courseName}</span>}
                           <span>{fmtTime(ev.date)}</span>
                           {ev.roundCount > 1 && <span className="text-[var(--gold)]">{ev.roundCount} rounds</span>}
                           {ev.buyIn && <span>${ev.buyIn} buy-in</span>}
@@ -236,7 +236,7 @@ export default function LeaguesPage() {
             <SectionTitle>All leagues</SectionTitle>
             {others.length === 0 && all.length === 0 ? (
               <div className={`${card} grid place-items-center px-6 py-16 text-center`}>
-                <span className="grid h-14 w-14 place-items-center rounded-full bg-[var(--gold-dim)] text-2xl">🥏</span>
+                <span className="grid h-14 w-14 place-items-center rounded-full bg-[var(--gold-dim)] text-[var(--gold)]"><IconDisc className="h-6 w-6" /></span>
                 <p className="mt-4 font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">No leagues yet</p>
                 <p className="mt-1 max-w-xs text-sm text-[var(--sage-dim)]">Be the first — your weekly crew deserves better than a spreadsheet.</p>
               </div>
