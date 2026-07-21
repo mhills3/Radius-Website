@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { getLeagueBySlug, getEvent, getCards, checkIn, updateEntry, removeEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, reassignBagTags, computeStandings, computeHandicaps, applyHandicaps, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard } from "@/lib/leagues";
+import { getLeagueBySlug, getLeagueMembers, getEvent, getCards, checkIn, updateEntry, removeEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, reassignBagTags, computeStandings, computeHandicaps, applyHandicaps, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { SectionTitle, Avatar, Pos, btnGold, btnGhost, card, IconPin, IconDisc, IconEyeOff, IconUsers } from "@/components/leagues/ui";
 
@@ -65,6 +65,8 @@ export default function LeagueEventPage() {
   const [division, setDivision] = useState("");
   const [divFilter, setDivFilter] = useState("");
   const [hcpNote, setHcpNote] = useState("");
+  const [tab, setTab] = useState<"about" | "scores" | "players" | "chat">("about");
+  const [staff, setStaff] = useState<LeagueMember[]>([]);
   const [teamSize, setTeamSize] = useState(2);
   const [messages, setMessages] = useState<EventMessage[]>([]);
   const [chatText, setChatText] = useState("");
@@ -73,7 +75,10 @@ export default function LeagueEventPage() {
   const reload = async (evId: string) => setCards(await getCards(evId));
 
   useEffect(() => {
-    getLeagueBySlug(slug).then(setLeague).catch(() => {});
+    getLeagueBySlug(slug).then((l) => {
+      setLeague(l);
+      if (l) getLeagueMembers(l.id).then((ms) => setStaff(ms.filter((m) => m.role !== "member"))).catch(() => {});
+    }).catch(() => {});
     getEvent(eventId).then((ev) => { setEvent(ev ?? null); if (ev) reload(ev.id); }).catch(() => setEvent(null));
     const unsubEntries = subscribeEntries(eventId, setEntries);
     const unsubChat = subscribeEventMessages(eventId, setMessages);
@@ -278,6 +283,7 @@ export default function LeagueEventPage() {
           <span className="rounded-full bg-white/[0.05] px-3 py-1.5 font-semibold text-[var(--text-body)] ring-1 ring-white/[0.06]">{fmtDate(event.date)}</span>
           {event.courseName && <span className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 font-semibold text-[var(--text-body)] ring-1 ring-white/[0.06]"><IconPin className="h-3.5 w-3.5 shrink-0" /> {event.courseName}</span>}
           <span className="rounded-full bg-white/[0.05] px-3 py-1.5 font-semibold text-[var(--text-body)] ring-1 ring-white/[0.06]">{event.format} · {event.startFormat}</span>
+          <span className="rounded-full bg-white/[0.05] px-3 py-1.5 font-semibold text-[var(--text-body)] ring-1 ring-white/[0.06]">{event.holes} holes{event.roundCount > 1 ? " / round" : ""}</span>
           {event.roundCount > 1 && <span className="rounded-full bg-[var(--gold-dim)] px-3 py-1.5 font-bold text-[var(--gold)] ring-1 ring-[var(--gold)]/20">{event.roundCount} rounds</span>}
           {event.kind && EVENT_KINDS.find((k) => k.key === event.kind) && (
             <span className="rounded-full bg-white/[0.05] px-3 py-1.5 font-semibold text-[var(--text-body)] ring-1 ring-white/[0.06]">{EVENT_KINDS.find((k) => k.key === event.kind)!.label}</span>
@@ -286,15 +292,6 @@ export default function LeagueEventPage() {
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 font-semibold text-[var(--sage)] ring-1 ring-white/[0.06]"><IconEyeOff className="h-3.5 w-3.5" /> Private — link only</span>
           )}
         </div>
-        {event.description && <div className="mt-4 max-w-2xl"><Desc text={event.description} /></div>}
-        {(event.contactEmail || event.contactPhone) && (
-          <p className="mt-3 text-xs text-[var(--sage)]">
-            Contact:{" "}
-            {event.contactEmail && <a href={`mailto:${event.contactEmail}`} className="font-bold text-[var(--gold)] hover:underline">{event.contactEmail}</a>}
-            {event.contactEmail && event.contactPhone && " · "}
-            {event.contactPhone && <a href={`tel:${event.contactPhone}`} className="font-bold text-[var(--gold)] hover:underline">{event.contactPhone}</a>}
-          </p>
-        )}
 
         {open && (
           <div className="mt-6 flex flex-wrap items-center gap-2.5">
@@ -339,8 +336,105 @@ export default function LeagueEventPage() {
         {hcpNote && <p className="mt-3 text-xs text-[var(--gold)]">{hcpNote}</p>}
       </section>
 
+      {/* Tabs — UDisc event-page structure: About / Scores / Participants / Schedule→Chat */}
+      <nav className="mb-8 flex gap-1 border-b border-white/[0.07]">
+        {([["about", "About"], ["scores", "Scores"], ["players", `Players${entries.length ? ` (${entries.length})` : ""}`], ["chat", `Chat${messages.length ? ` (${messages.length})` : ""}`]] as const).map(([k, label]) => (
+          <button
+            key={k}
+            onClick={() => setTab(k)}
+            className={`-mb-px border-b-2 px-4 py-3 text-sm font-bold transition-colors ${tab === k ? "border-[var(--gold)] text-[var(--cream)]" : "border-transparent text-[var(--sage)] hover:text-[var(--cream)]"}`}
+          >{label}</button>
+        ))}
+      </nav>
+
+      {/* About */}
+      {tab === "about" && (
+        <section className="mb-12 grid gap-8 lg:grid-cols-[1.4fr_1fr]">
+          <div className="min-w-0">
+            {event.description ? <Desc text={event.description} /> : <p className="text-sm text-[var(--sage-dim)]">No description yet{admin ? " — add one when you create the next event." : "."}</p>}
+            {(event.contactEmail || event.contactPhone) && (
+              <p className="mt-5 text-sm text-[var(--sage)]">
+                Contact:{" "}
+                {event.contactEmail && <a href={`mailto:${event.contactEmail}`} className="font-bold text-[var(--gold)] hover:underline">{event.contactEmail}</a>}
+                {event.contactEmail && event.contactPhone && " · "}
+                {event.contactPhone && <a href={`tel:${event.contactPhone}`} className="font-bold text-[var(--gold)] hover:underline">{event.contactPhone}</a>}
+              </p>
+            )}
+          </div>
+          <div className="grid content-start gap-4">
+            {divisions.length > 1 && (
+              <div className={`${card} p-5`}>
+                <h3 className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--gold)]">Divisions</h3>
+                <div className="mt-3 grid gap-2">
+                  {divisions.map((d) => (
+                    <div key={d} className="flex items-center justify-between text-sm">
+                      <span className="font-semibold text-[var(--cream)]">{d}</span>
+                      {event.buyIn && <span className="font-mono font-bold text-[var(--text-body)]">${event.buyIn}</span>}
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-3 text-xs text-[var(--sage-dim)]">Pick yours when you check in.</p>
+              </div>
+            )}
+            <div className={`${card} p-5`}>
+              <h3 className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--gold)]">Schedule</h3>
+              <div className="mt-3 grid gap-3">
+                {Array.from({ length: event.roundCount }, (_, ri) => (
+                  <div key={ri} className="flex items-start gap-3 text-sm">
+                    <span className="rounded-lg bg-[var(--gold-dim)] px-2 py-1 font-mono text-[10px] font-bold text-[var(--gold)]">R{ri + 1}</span>
+                    <span className="min-w-0">
+                      <span className="block font-semibold text-[var(--cream)]">{fmtDate(event.date)}</span>
+                      <span className="block text-xs text-[var(--sage-dim)]">{event.holes} holes · {event.startFormat}{event.courseName ? ` · ${event.courseName}` : ""}</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {staff.length > 0 && (
+              <div className={`${card} p-5`}>
+                <h3 className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--gold)]">Staff</h3>
+                <div className="mt-3 grid gap-2.5">
+                  {staff.map((m) => (
+                    <div key={m.id} className="flex items-center gap-2.5 text-sm">
+                      {m.username ? <Link href={`/u/${m.username}`}><Avatar url={m.photo} name={m.name} size={30} /></Link> : <Avatar url={m.photo} name={m.name} size={30} />}
+                      <span className="min-w-0 flex-1 truncate font-semibold text-[var(--cream)]">{m.username ? <Link href={`/u/${m.username}`} className="hover:underline">{m.name}</Link> : m.name}</span>
+                      <span className="rounded-full bg-[var(--gold-dim)] px-1.5 py-0.5 text-[8px] font-bold uppercase text-[var(--gold)]">{m.role}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* Players */}
+      {tab === "players" && (
+        <section className="mb-12">
+          {entries.length === 0 ? (
+            <div className={`${card} px-6 py-12 text-center text-sm text-[var(--sage-dim)]`}>Nobody has checked in yet.</div>
+          ) : (
+            <div className={`${card} overflow-hidden`}>
+              {entries.map((e) => (
+                <div key={e.id} className="flex items-center gap-3.5 border-b border-white/[0.05] px-4 py-3 text-sm last:border-b-0">
+                  {e.username ? <Link href={`/u/${e.username}`}><Avatar url={e.photo} name={e.name} size={32} /></Link> : <Avatar url={e.photo} name={e.name} size={32} />}
+                  <span className="min-w-0 flex-1">
+                    <span className="truncate font-bold text-[var(--cream)]">{e.username ? <Link href={`/u/${e.username}`} className="hover:underline">{e.name}</Link> : e.name}</span>
+                    <span className="block text-xs text-[var(--sage-dim)]">Checked in {new Date(e.checkedInAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</span>
+                  </span>
+                  {typeof e.tag === "number" && <span className="rounded-full bg-white/[0.08] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[var(--cream)]">#{e.tag}</span>}
+                  {e.division && <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[9px] font-bold uppercase text-[var(--sage-dim)]">{e.division}</span>}
+                  {typeof e.teamId === "number" && <span className="rounded-full bg-white/[0.06] px-2 py-0.5 font-mono text-[10px] font-bold text-[var(--text-body)]">T{e.teamId}</span>}
+                  {event.buyIn && <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${e.paid ? "bg-[#5fcf80]/15 text-[#5fcf80]" : "bg-white/[0.05] text-[var(--sage-dim)]"}`}>{e.paid ? "Paid" : "Unpaid"}</span>}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
       {/* Money */}
-      {event.buyIn && (
+      {tab === "scores" && event.buyIn && (
         <section className="mb-10 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
             { label: "Buy-in", value: `$${event.buyIn}` },
@@ -357,6 +451,7 @@ export default function LeagueEventPage() {
       )}
 
       {/* Leaderboard */}
+      {tab === "scores" && (
       <section className="mb-12">
         <SectionTitle
           right={divisions.length > 1 && entries.some((e) => e.division) ? (
@@ -489,8 +584,10 @@ export default function LeagueEventPage() {
           <p className="mt-2.5 text-xs text-[var(--sage-dim)]">Directors enter totals here for now — rounds published from the app attach automatically once the apps stamp league events.</p>
         )}
       </section>
+      )}
 
       {/* Event chat — two-way, per event (UDisc only has one-way admin blasts) */}
+      {tab === "chat" && (
       <section className="mb-12">
         <SectionTitle>Event chat{messages.length > 0 ? ` · ${messages.length}` : ""}</SectionTitle>
         <div className={`${card} flex max-h-[420px] flex-col`}>
@@ -534,8 +631,10 @@ export default function LeagueEventPage() {
           </div>
         </div>
       </section>
+      )}
 
       {/* Cards */}
+      {tab === "scores" && (
       <section>
         <SectionTitle
           right={admin && open && entries.length > 1 ? (
@@ -572,6 +671,7 @@ export default function LeagueEventPage() {
           </div>
         )}
       </section>
+      )}
     </main>
   );
 }

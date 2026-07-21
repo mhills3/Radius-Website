@@ -56,6 +56,7 @@ export default function LeagueManagePage() {
   const [weeks, setWeeks] = useState(1);
   const [rounds, setRounds] = useState(1);
   const [buyIn, setBuyIn] = useState("");
+  const [holes, setHoles] = useState(18);
 
   useEffect(() => {
     getLeagueBySlug(slug).then((l) => {
@@ -116,7 +117,7 @@ export default function LeagueManagePage() {
     try {
       const base = new Date(`${startDate}T${startTime || "17:30"}`);
       const dates = Array.from({ length: Math.max(1, Math.min(weeks, 26)) }, (_, i) => base.getTime() + i * 7 * 24 * 3600_000);
-      const created = await createEvents(user.uid, league, { name: evName, dates, roundCount: rounds, buyIn: Number(buyIn) > 0 ? Number(buyIn) : undefined, kind: "league" });
+      const created = await createEvents(user.uid, league, { name: evName, dates, roundCount: rounds, holes, buyIn: Number(buyIn) > 0 ? Number(buyIn) : undefined, kind: "league" });
       setEvents((prev) => [...prev, ...created].sort((a, b) => a.date - b.date));
       setEvName("");
     } finally { setBusy(false); }
@@ -222,10 +223,10 @@ export default function LeagueManagePage() {
             <div className={`${card} overflow-hidden`}>
               {members.map((m) => (
                 <div key={m.id} className="flex items-center gap-3.5 border-b border-white/[0.05] px-5 py-3.5 last:border-b-0">
-                  <Avatar url={m.photo} name={m.name} size={36} />
+                  {m.username ? <Link href={`/u/${m.username}`}><Avatar url={m.photo} name={m.name} size={36} /></Link> : <Avatar url={m.photo} name={m.name} size={36} />}
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-2">
-                      <span className="truncate text-sm font-bold text-[var(--cream)]">{m.name}</span>
+                      {m.username ? <Link href={`/u/${m.username}`} className="truncate text-sm font-bold text-[var(--cream)] hover:underline">{m.name}</Link> : <span className="truncate text-sm font-bold text-[var(--cream)]">{m.name}</span>}
                       {typeof m.tag === "number" && <span className="rounded-full bg-white/[0.08] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[var(--cream)]">#{m.tag}</span>}
                     </span>
                     {m.username && <span className="block text-xs text-[var(--sage-dim)]">@{m.username}</span>}
@@ -257,6 +258,7 @@ export default function LeagueManagePage() {
                   <label className="block"><FieldLabel>Tee time</FieldLabel><input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputCls} /></label>
                   <label className="block"><FieldLabel>Repeat weekly ×</FieldLabel><input type="number" min={1} max={26} value={weeks} onChange={(e) => setWeeks(Number(e.target.value) || 1)} className={inputCls} /></label>
                   <div><FieldLabel>Rounds</FieldLabel><Segmented options={["1", "2", "3"]} value={String(rounds)} onChange={(v) => setRounds(Number(v))} /></div>
+                  <div><FieldLabel>Holes per round</FieldLabel><Segmented options={["9", "18"]} value={String(holes)} onChange={(v) => setHoles(Number(v))} /></div>
                   <label className="block"><FieldLabel>Buy-in ($)</FieldLabel><input inputMode="numeric" value={buyIn} onChange={(e) => setBuyIn(e.target.value)} placeholder="0" className={inputCls} /></label>
                 </div>
                 <button onClick={schedule} disabled={!startDate || busy} className={`${btnGold} mt-5`}>{busy ? "Scheduling…" : weeks > 1 ? `Create ${weeks} events` : "Create event"}</button>

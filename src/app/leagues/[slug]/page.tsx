@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, computeStandings, setMemberRole, isLeagueAdmin, type League, type LeagueEvent, type LeagueMember, type StandingRow } from "@/lib/leagues";
+import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, getEntries, computeStandings, setMemberRole, isLeagueAdmin, latestScoredEvent, type League, type LeagueEvent, type LeagueMember, type StandingRow, type EventEntry } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { SectionTitle, Avatar, Pos, btnGold, card, IconPin } from "@/components/leagues/ui";
 
@@ -39,13 +39,18 @@ export default function LeaguePage() {
   const [events, setEvents] = useState<LeagueEvent[]>([]);
   const [members, setMembers] = useState<LeagueMember[]>([]);
   const [standings, setStandings] = useState<StandingRow[]>([]);
+  const [latest, setLatest] = useState<{ ev: LeagueEvent; entries: EventEntry[] } | null>(null);
   const [cid, setCid] = useState<string | null>(null);
 
   useEffect(() => {
     getLeagueBySlug(slug).then((l) => {
       setLeague(l ?? null);
       if (l) {
-        getLeagueEvents(l.id).then(setEvents).catch(() => {});
+        getLeagueEvents(l.id).then((evs) => {
+          setEvents(evs);
+          const le = latestScoredEvent(evs);
+          if (le) getEntries(le.id).then((en) => setLatest({ ev: le, entries: en.filter((x) => typeof x.score === "number" && !x.dnf).sort((a, b) => (a.score! + (a.penalty ?? 0) + (a.startingScore ?? 0)) - (b.score! + (b.penalty ?? 0) + (b.startingScore ?? 0))) })).catch(() => {});
+        }).catch(() => {});
         getLeagueMembers(l.id).then(setMembers).catch(() => {});
         computeStandings(l.id, l.settings.bestN).then(setStandings).catch(() => {});
       }
@@ -120,10 +125,29 @@ export default function LeaguePage() {
         )}
       </section>
 
+      {/* Latest leaderboard — the most recent event's results; standings below are the season */}
+      {latest && latest.entries.length > 0 && (
+        <section className="mb-12">
+          <SectionTitle right={<Link href={`/leagues/${league.slug}/e/${latest.ev.id}`} className="text-[10px] font-bold uppercase tracking-wide text-[var(--sage-dim)] transition-colors hover:text-[var(--gold)]">Full results →</Link>}>
+            Latest leaderboard · {latest.ev.name}
+          </SectionTitle>
+          <div className={`${card} overflow-hidden`}>
+            {latest.entries.slice(0, 5).map((e, i) => (
+              <div key={e.id} className="flex items-center gap-3.5 border-b border-white/[0.05] px-4 py-2.5 text-sm last:border-b-0">
+                <Pos n={i + 1} />
+                <Avatar url={e.photo} name={e.name} size={28} />
+                <span className="min-w-0 flex-1 truncate font-semibold text-[var(--cream)]">{e.username ? <Link href={`/u/${e.username}`} className="hover:underline">{e.name}</Link> : e.name}</span>
+                <span className="font-mono text-base font-extrabold text-[var(--cream)]">{e.score! + (e.penalty ?? 0) + (e.startingScore ?? 0)}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Standings */}
       {standings.length > 0 && (
         <section className="mb-12">
-          <SectionTitle right={league.settings.bestN ? <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--sage-dim)]">best {league.settings.bestN} count</span> : undefined}>Season standings</SectionTitle>
+          <SectionTitle right={league.settings.bestN ? <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--sage-dim)]">best {league.settings.bestN} count</span> : undefined}>Season standings · all events</SectionTitle>
           {top3.length > 0 && (
             <div className="mb-4 grid grid-cols-3 gap-3">
               {[top3[1], top3[0], top3[2]].map((s, col) => s ? (

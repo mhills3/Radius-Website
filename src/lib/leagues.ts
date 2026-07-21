@@ -88,6 +88,7 @@ export interface LeagueEvent {
   startFormat: string;
   status: "scheduled" | "active" | "complete" | "cancelled";
   roundCount: number; // 1 = weekly league night; >1 = multi-round event (cumulative total)
+  holes: number;      // holes per round (9 / 18 / custom) — context for every score
   buyIn?: number;     // dollars per player; the paid toggle × buyIn = collected pot
   kind?: string;        // EVENT_KINDS key — discovery category
   isPrivate?: boolean;  // private events are link/search-only, excluded from discovery
@@ -277,7 +278,7 @@ export async function getLeagueMembers(leagueId: string): Promise<LeagueMember[]
 // ---- Events ----
 
 /** Create one event per date (recurring = the caller passes every date in the season). */
-export async function createEvents(uid: string, league: League, input: { name: string; dates: number[]; courseId?: string; courseName?: string; format?: string; startFormat?: string; roundCount?: number; buyIn?: number; kind?: string; isPrivate?: boolean; description?: string; contactEmail?: string; contactPhone?: string }): Promise<LeagueEvent[]> {
+export async function createEvents(uid: string, league: League, input: { name: string; dates: number[]; courseId?: string; courseName?: string; format?: string; startFormat?: string; roundCount?: number; holes?: number; buyIn?: number; kind?: string; isPrivate?: boolean; description?: string; contactEmail?: string; contactPhone?: string }): Promise<LeagueEvent[]> {
   const now = Date.now();
   const out: LeagueEvent[] = [];
   for (const date of input.dates) {
@@ -291,6 +292,7 @@ export async function createEvents(uid: string, league: League, input: { name: s
       format: input.format ?? league.settings.format,
       startFormat: input.startFormat ?? league.settings.startFormat,
       status: "scheduled", roundCount: Math.max(1, Math.min(input.roundCount ?? 1, 6)),
+      holes: Math.max(1, Math.min(input.holes ?? 18, 36)),
       buyIn: input.buyIn && input.buyIn > 0 ? input.buyIn : undefined,
       kind: input.kind, isPrivate: input.isPrivate || undefined,
       description: input.description?.trim() || undefined,
@@ -313,6 +315,7 @@ function toEvent(id: string, d: any): LeagueEvent {
     format: d.format ?? "Singles", startFormat: d.startFormat ?? "Shotgun",
     status: (d.status ?? "scheduled") as LeagueEvent["status"],
     roundCount: Math.max(1, Number(d.roundCount) || 1),
+    holes: Number(d.holes) > 0 ? Number(d.holes) : 18,
     buyIn: Number(d.buyIn) > 0 ? Number(d.buyIn) : undefined,
     kind: (d.kind as string) || undefined,
     isPrivate: d.isPrivate === true,
@@ -584,6 +587,11 @@ export async function reassignBagTags(league: League, eventId: string): Promise<
     await setDoc(doc(db, "leagueEvents", eventId, "entries", e.id), { tag: to }, { merge: true });
   }
   return changes;
+}
+
+/** The league's latest event that has any scores — the "current leaderboard". */
+export function latestScoredEvent(events: LeagueEvent[]): LeagueEvent | undefined {
+  return [...events].reverse().find((e) => e.status === "complete" || e.status === "active");
 }
 
 // ---- Standings ----

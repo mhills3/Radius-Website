@@ -60,6 +60,9 @@ export default function EventWizard() {
   const [repeat, setRepeat] = useState(1);
   const [rounds, setRounds] = useState(1);
   const [customN, setCustomN] = useState("");
+  const [holes, setHoles] = useState(18);
+  const [customHoles, setCustomHoles] = useState("");
+  const [useCustomHoles, setUseCustomHoles] = useState(false);
   const [useCustomN, setUseCustomN] = useState(false);
   const [course, setCourse] = useState<CourseHit | null>(null);
   const [customPlace, setCustomPlace] = useState("");
@@ -95,6 +98,7 @@ export default function EventWizard() {
   const kindMeta = EVENT_KINDS.find((k) => k.key === kind);
   const chosenLeague = myLeagues.find((l) => l.id === leagueChoice);
   const countable = isLeagueKind || kind === "tournament";
+  const holesN = useCustomHoles ? Math.max(1, Math.min(Number(customHoles) || 18, 36)) : holes;
   const nCount = !countable ? 1 : useCustomN ? Math.max(1, Math.min(Number(customN) || 1, isLeagueKind ? 26 : 6)) : (isLeagueKind ? repeat : rounds);
   const placeName = course?.name ?? customPlace.trim();
 
@@ -152,6 +156,7 @@ export default function EventWizard() {
         courseId: course?.id, courseName: placeName || undefined,
         format,
         roundCount: isLeagueKind ? 1 : nCount,
+        holes: holesN,
         buyIn: Number(buyIn) > 0 ? Number(buyIn) : undefined,
         kind, isPrivate, description: desc,
         contactEmail: email, contactPhone: phone,
@@ -325,6 +330,16 @@ export default function EventWizard() {
                 <label className="block"><FieldLabel>Start date *</FieldLabel><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={`${inputCls} min-w-[190px]`} autoFocus /></label>
                 <label className="block"><FieldLabel>Tee time</FieldLabel><input type="time" value={time} onChange={(e) => setTime(e.target.value)} className={`${inputCls} min-w-[140px]`} /></label>
               </div>
+              <div>
+                <FieldLabel>Holes per round</FieldLabel>
+                <div className="flex flex-wrap items-center gap-2">
+                  {[9, 18].map((n) => (
+                    <button key={n} onClick={() => { setUseCustomHoles(false); setHoles(n); }} className={`h-11 min-w-[52px] rounded-xl border px-4 font-mono text-sm font-bold transition-all ${!useCustomHoles && holes === n ? "border-[var(--gold)] bg-[var(--gold-dim)] text-[var(--gold)]" : "border-white/[0.09] bg-white/[0.03] text-[var(--text-body)] hover:border-white/25"}`}>{n}</button>
+                  ))}
+                  <button onClick={() => setUseCustomHoles(true)} className={`h-11 rounded-xl border px-4 text-sm font-bold transition-all ${useCustomHoles ? "border-[var(--gold)] bg-[var(--gold-dim)] text-[var(--gold)]" : "border-white/[0.09] bg-white/[0.03] text-[var(--text-body)] hover:border-white/25"}`}>Custom</button>
+                  {useCustomHoles && <input inputMode="numeric" value={customHoles} onChange={(e) => setCustomHoles(e.target.value)} placeholder="27" className={`${inputCls} w-24`} autoFocus />}
+                </div>
+              </div>
               {(isLeagueKind || kind === "tournament") && (
               <div>
                 <FieldLabel>{isLeagueKind ? "How many weeks?" : "How many rounds?"}</FieldLabel>
@@ -457,6 +472,7 @@ export default function EventWizard() {
                 { label: "Visibility", value: isPrivate ? "Private — link only" : "Public event", idx: 1 },
                 ...(chosenLeague ? [{ label: "League", value: chosenLeague.name, idx: 1 }] : []),
                 { label: "Event dates", value: date ? `${new Date(`${date}T${time}`).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}${isLeagueKind && nCount > 1 ? ` · weekly × ${nCount}` : ""}${!isLeagueKind && nCount > 1 ? ` · ${nCount} rounds` : ""}` : "—", idx: 2 },
+                { label: "Holes per round", value: String(holesN), idx: 2 },
                 { label: "Event location", value: placeName || "—", idx: 3 },
                 { label: "Buy-in", value: Number(buyIn) > 0 ? `$${buyIn} per player` : "Free event", idx: 4 },
                 { label: "Contact information", value: [email.trim(), phone.trim()].filter(Boolean).join(" · ") || "Not listed", idx: 5 },
