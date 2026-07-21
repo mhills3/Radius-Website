@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { getLeagueBySlug, getLeagueMembers, getEvent, getCards, checkIn, updateEntry, removeEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, reassignBagTags, computeStandings, computeHandicaps, applyHandicaps, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCoursePars, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
-import { SectionTitle, Avatar, Pos, btnGold, btnGhost, card, IconPin, IconDisc, IconEyeOff, IconUsers } from "@/components/leagues/ui";
+import { SectionTitle, Avatar, Pos, btnGold, btnGhost, card, plural, IconPin, IconDisc, IconEyeOff, IconUsers } from "@/components/leagues/ui";
 
 const pillWord = "inline-flex h-8 items-center rounded-full border border-[var(--hair-strong)] bg-[rgba(20,27,22,0.45)] px-3.5 text-xs text-[var(--cream-60)] backdrop-blur-[6px]";
 const pillMono = "inline-flex h-8 items-center rounded-full border border-[var(--hair-strong)] bg-[rgba(20,27,22,0.45)] px-3.5 font-mono text-[11.5px] tracking-[0.06em] text-[var(--cream-60)] backdrop-blur-[6px]";
@@ -199,6 +199,15 @@ export default function LeagueEventPage() {
   const adjOf = (e: EventEntry) => scoreOf(e)! + (e.penalty ?? 0) + (e.startingScore ?? 0);
   const ranked = [...shown].filter((e) => scoreOf(e) != null && !e.dnf).sort((a, b) => adjOf(a) - adjOf(b));
   const unscored = shown.filter((e) => !ranked.includes(e));
+  // Signed to-par totals when real pars are loaded; raw strokes otherwise.
+  const parTotal = pars && pars.length === event.holes ? pars.reduce((a, b) => a + b, 0) : null;
+  const fmtTotal = (e: EventEntry) => {
+    const raw = adjOf(e);
+    if (parTotal == null) return String(raw);
+    const roundsPlayed = e.roundScores?.filter((r) => r != null).length || event.roundCount;
+    const d = raw - parTotal * roundsPlayed;
+    return d === 0 ? "E" : d > 0 ? `+${d}` : String(d);
+  };
   const anyHcp = entries.some((e) => (e.startingScore ?? 0) !== 0);
   const open = event.status !== "complete" && event.status !== "cancelled";
   const paidCount = entries.filter((e) => e.paid).length;
@@ -390,25 +399,75 @@ export default function LeagueEventPage() {
         )}
         {hcpNote && <p className="mt-3 text-xs text-[var(--gold)]">{hcpNote}</p>}
 
-      {/* Tabs — UDisc event-page structure: About / Scores / Participants / Schedule→Chat */}
-      <nav className="mb-8 flex gap-1 border-b border-white/[0.07]">
-        {([["about", "About"], ["scores", "Scores"], ["players", `Players${entries.length ? ` (${entries.length})` : ""}`], ["chat", `Chat${messages.length ? ` (${messages.length})` : ""}`]] as const).map(([k, label]) => (
+      {/* Tabs — same tab, same route; first label reads Recap once the event completes */}
+      <nav className="mb-9 mt-1.5 flex gap-[34px] border-b border-[var(--hair)]">
+        {([
+          { k: "about" as const, label: event.status === "complete" ? "Recap" : "About", n: 0 },
+          { k: "scores" as const, label: "Scores", n: 0 },
+          { k: "players" as const, label: "Players", n: entries.length },
+          { k: "chat" as const, label: "Chat", n: messages.length },
+        ]).map(({ k, label, n }) => (
           <button
             key={k}
             onClick={() => setTab(k)}
-            className={`-mb-px border-b-2 px-4 py-3 text-sm font-bold transition-colors ${tab === k ? "border-[var(--gold)] text-[var(--cream)]" : "border-transparent text-[var(--sage)] hover:text-[var(--cream)]"}`}
-          >{label}</button>
+            className={`relative px-0.5 py-4 text-[14.5px] font-semibold transition-colors ${tab === k ? "text-[var(--cream)] after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:bg-[var(--gold)]" : "text-[var(--cream-60)] hover:text-[var(--cream)]"}`}
+          >{label}{n > 0 && <span className="ml-1.5 font-mono text-[11px] font-normal text-[var(--cream-38)]">{n}</span>}</button>
         ))}
       </nav>
 
       {/* About */}
       {tab === "about" && (
-        <section className="mb-[44px] grid gap-8 lg:grid-cols-[1.4fr_1fr]">
+        <section className="mb-[44px] grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_350px] lg:gap-11">
           <div className="min-w-0">
             {event.status === "complete" && ranked.length > 0 && (
-              <div className="mb-7">
-                <h3 className="mb-3 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--cream-38)]">Final results</h3>
+              <div className="mb-10">
+                <div className="mb-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">Final results</div>
                 <div className={`${card} overflow-hidden`}>
+                  <div className="grid h-[42px] grid-cols-[56px_1fr_90px_90px] items-center bg-[rgba(0,0,0,0.16)] px-[22px] font-mono text-[10.5px] uppercase tracking-[0.16em] text-[var(--cream-38)]">
+                    <span>Pos</span><span>Player</span><span className="text-right">Rds</span><span className="text-right">Total</span>
+                  </div>
+                  {(() => {
+                    const myIdx = cid ? ranked.findIndex((x) => x.id === cid) : -1;
+                    const rows = ranked.slice(0, 4);
+                    const appended = myIdx >= 4;
+                    if (appended) rows.push(ranked[myIdx]);
+                    return rows.map((e, ri) => {
+                      const i = ranked.indexOf(e);
+                      const you = cid != null && e.id === cid;
+                      return (
+                        <div
+                          key={e.id}
+                          className={`grid h-14 grid-cols-[56px_1fr_90px_90px] items-center border-b border-[var(--hair)] px-[22px] text-sm last:border-b-0 ${you ? "border-l-[3px] border-l-[var(--gold)] pl-[19px]" : ""} ${appended && ri === rows.length - 1 ? "border-t border-t-[var(--hair-strong)]" : ""}`}
+                          style={you ? { background: "linear-gradient(90deg, rgba(232,181,96,.13), rgba(232,181,96,.04))" } : undefined}
+                        >
+                          <span className={`font-mono ${you ? "text-[var(--gold)]" : i === 0 ? "text-[var(--cream)]" : "text-[var(--cream-38)]"}`}>{i + 1}</span>
+                          <span className="flex min-w-0 items-center gap-[11px] font-semibold text-[var(--cream)]">
+                            <Avatar url={e.photo} name={e.name} size={30} ring={false} gold={you} />
+                            <span className="truncate">{e.name}</span>
+                            {you && <span className="rounded border border-[rgba(232,181,96,.4)] px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.14em] text-[var(--gold)]">You</span>}
+                            {(e.payout ?? 0) > 0 && <span className="font-mono text-xs font-bold text-[#5fcf80]">${e.payout}</span>}
+                          </span>
+                          <span className="text-right font-mono text-[var(--cream-60)]">{e.roundScores?.filter((r) => r != null).join(" · ") ?? ""}</span>
+                          <span className={`text-right font-mono text-[15px] font-bold ${you ? "text-[var(--gold)]" : "text-[var(--blue)]"}`}>{fmtTotal(e)}</span>
+                        </div>
+                      );
+                    });
+                  })()}
+                  <div className="flex items-center justify-between bg-[rgba(0,0,0,0.12)] px-[22px] py-[13px]">
+                    <button onClick={() => setTab("scores")} className="text-[13px] font-semibold text-[var(--cream-60)] transition-colors hover:text-[var(--cream)]">View full leaderboard →</button>
+                    <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-[var(--cream-38)]">{plural(ranked.length, "player")} · {plural(event.roundCount, "round")}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {liveNow && ranked.length > 0 && (
+              <div className="mb-10">
+                <div className={`${card} overflow-hidden`}>
+                  <div className="flex items-center justify-between px-5 pb-3 pt-4">
+                    <span className="inline-flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--blue)]"><span className="live-dot h-1.5 w-1.5 rounded-full bg-[var(--blue)]" /> Live</span>
+                    <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-[var(--cream-38)]">{plural(ranked.length, "player")} scoring</span>
+                  </div>
                   {(() => {
                     const myIdx = cid ? ranked.findIndex((x) => x.id === cid) : -1;
                     const rows = ranked.slice(0, 3);
@@ -416,40 +475,62 @@ export default function LeagueEventPage() {
                     return rows.map((e) => {
                       const i = ranked.indexOf(e);
                       const you = cid != null && e.id === cid;
+                      const thru = e.thruHole ?? e.holeScores?.filter((h) => h > 0).length;
                       return (
-                        <div key={e.id} className={`flex h-12 items-center gap-3 border-b border-[var(--hair)] px-4 text-sm last:border-b-0 ${you ? "border-l-[3px] border-l-[var(--gold)] bg-gradient-to-r from-[var(--gold-dim)] via-transparent to-transparent" : ""}`}>
-                          <span className={`w-6 text-right font-mono text-xs font-bold ${you ? "text-[var(--gold)]" : "text-[var(--cream-38)]"}`}>{i + 1}</span>
-                          <Avatar url={e.photo} name={e.name} size={26} ring={false} gold={you} />
-                          <span className="min-w-0 flex-1 truncate font-semibold text-[var(--cream)]">{e.name}{you && <span className="ml-2 rounded border border-[rgba(232,181,96,.4)] px-1.5 py-0.5 font-mono text-[8px] tracking-[0.14em] text-[var(--gold)]">YOU</span>}</span>
-                          {(e.payout ?? 0) > 0 && <span className="font-mono text-xs font-bold text-[#5fcf80]">${e.payout}</span>}
-                          <span className={`font-mono text-sm font-bold ${you ? "text-[var(--gold)]" : "text-[var(--blue)]"}`}>{adjOf(e)}</span>
+                        <div key={e.id} className={`grid grid-cols-[34px_1fr_62px_62px] items-center border-t border-[var(--hair)] px-5 py-[11px] text-[13.5px] ${you ? "bg-[var(--gold-dim)]" : ""}`}>
+                          <span className={`font-mono ${you ? "text-[var(--gold)]" : "text-[var(--cream-38)]"}`}>{i + 1}</span>
+                          <span className="flex min-w-0 items-center gap-2 font-semibold text-[var(--cream)]"><span className="truncate">{e.name}</span>{you && <span className="rounded border border-[rgba(232,181,96,.4)] px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.14em] text-[var(--gold)]">You</span>}</span>
+                          <span className="text-right font-mono text-xs text-[var(--cream-38)]">{typeof e.score !== "number" && thru ? `THRU ${thru}` : ""}</span>
+                          <span className={`text-right font-mono font-bold ${you ? "text-[var(--gold)]" : "text-[var(--blue)]"}`}>{adjOf(e)}</span>
                         </div>
                       );
                     });
                   })()}
+                  <button onClick={() => setTab("scores")} className="block w-full border-t border-[var(--hair)] px-5 py-3 text-left text-[13px] font-semibold text-[var(--cream-60)] transition-colors hover:text-[var(--cream)]">View live scores →</button>
                 </div>
               </div>
             )}
-            {event.description ? <Desc text={event.description} /> : <p className="text-sm text-[var(--cream-38)]">No description yet.{admin && league ? <> <Link href={`/leagues/${league.slug}/manage`} className="text-[var(--cream-60)] underline decoration-[var(--hair-strong)] underline-offset-2 hover:text-[var(--gold)]">Add one from league settings.</Link></> : null}</p>}
-            {(event.contactEmail || event.contactPhone) && (
-              <p className="mt-5 text-sm text-[var(--sage)]">
-                Contact:{" "}
-                {event.contactEmail && <a href={`mailto:${event.contactEmail}`} className="font-bold text-[var(--gold)] hover:underline">{event.contactEmail}</a>}
-                {event.contactEmail && event.contactPhone && " · "}
-                {event.contactPhone && <a href={`tel:${event.contactPhone}`} className="font-bold text-[var(--gold)] hover:underline">{event.contactPhone}</a>}
-              </p>
-            )}
-            {event.status !== "complete" && event.status !== "cancelled" && (
-              <div className={`${card} mt-7 flex items-center gap-4 p-5`}>
-                {entries.length > 0 ? (
-                  <>
-                    <span className="flex -space-x-2">{entries.slice(0, 6).map((e) => <Avatar key={e.id} url={e.photo} name={e.name} size={28} />)}</span>
-                    <span className="text-sm text-[var(--cream-60)]"><span className="font-mono font-bold text-[var(--blue)]">{entries.length}</span> checked in{event.capacity ? <> · <span className="font-mono">{Math.max(0, event.capacity - entries.length)}</span> spots left</> : ""}</span>
-                  </>
-                ) : (
-                  <span className="text-sm text-[var(--cream-60)]">Be the first in. Check in from the rail.</span>
-                )}
+
+            {event.description ? (
+              <div className="mb-10">
+                <div className="mb-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--blue)]">About this {event.kind === "tournament" ? "tournament" : event.kind === "league" ? "league" : "event"}</div>
+                <Desc text={event.description} />
               </div>
+            ) : admin && league && event.status !== "complete" ? (
+              <p className="mb-10 text-sm text-[var(--cream-38)]">No description yet. <Link href={`/leagues/${league.slug}/manage`} className="text-[var(--cream-60)] underline decoration-[var(--hair-strong)] underline-offset-2 hover:text-[var(--gold)]">Add one from league settings.</Link></p>
+            ) : null}
+
+            {open && (
+              <div className={`${card} mb-10 p-5`}>
+                <div className="flex items-center gap-4">
+                  {entries.length > 0 && <span className="flex shrink-0 -space-x-2">{entries.slice(0, 6).map((e) => <Avatar key={e.id} url={e.photo} name={e.name} size={28} />)}</span>}
+                  <div className="min-w-0 flex-1">
+                    {event.capacity ? (() => {
+                      const pct = Math.min(100, Math.round((entries.length / event.capacity!) * 100));
+                      const hot = pct >= 75;
+                      return (
+                        <>
+                          <div className="h-[3px] overflow-hidden rounded-[2px] bg-[var(--hair)]">
+                            <i className={`block h-full rounded-[2px] ${hot ? "bg-[var(--gold)]" : "bg-[var(--blue)]"}`} style={{ width: `${pct}%` }} />
+                          </div>
+                          <div className="mt-2 font-mono text-[10.5px] tracking-[0.06em] text-[var(--cream-38)]"><b className="font-medium text-[var(--cream-60)]">{entries.length} of {event.capacity}</b> registered{hot ? " · filling fast" : ""}</div>
+                        </>
+                      );
+                    })() : (
+                      <div className="font-mono text-[10.5px] tracking-[0.06em] text-[var(--cream-38)]">{entries.length > 0 ? <><b className="font-medium text-[var(--cream-60)]">{entries.length}</b> checked in</> : "Be the first in"}</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {(event.contactEmail || event.contactPhone) && (
+              <p className="text-sm text-[var(--cream-60)]">
+                Contact:{" "}
+                {event.contactEmail && <a href={`mailto:${event.contactEmail}`} className="font-semibold text-[var(--gold)] hover:underline">{event.contactEmail}</a>}
+                {event.contactEmail && event.contactPhone && " · "}
+                {event.contactPhone && <a href={`tel:${event.contactPhone}`} className="font-semibold text-[var(--gold)] hover:underline">{event.contactPhone}</a>}
+              </p>
             )}
           </div>
           <div className="grid content-start gap-4 lg:sticky lg:top-6">
