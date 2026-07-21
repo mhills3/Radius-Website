@@ -208,6 +208,10 @@ export default function LeagueEventPage() {
     const d = raw - parTotal * roundsPlayed;
     return d === 0 ? "E" : d > 0 ? `+${d}` : String(d);
   };
+  const allRounds = ranked.flatMap((e) => e.roundScores?.filter((r) => r != null) ?? []);
+  const hotRound = allRounds.length
+    ? (parTotal == null ? String(Math.min(...allRounds)) : (() => { const d = Math.min(...allRounds) - parTotal; return d === 0 ? "E" : d > 0 ? `+${d}` : String(d); })())
+    : null;
   const anyHcp = entries.some((e) => (e.startingScore ?? 0) !== 0);
   const open = event.status !== "complete" && event.status !== "cancelled";
   const paidCount = entries.filter((e) => e.paid).length;
@@ -534,83 +538,65 @@ export default function LeagueEventPage() {
             )}
           </div>
           <div className="grid content-start gap-4 lg:sticky lg:top-6">
-            {event.status !== "complete" && event.status !== "cancelled" ? (
-              <div className={`${card} relative overflow-hidden p-7`}>
-                <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(400px 220px at 100% 0%, rgba(232,181,96,.08), transparent 60%)" }} />
-                <div className="relative">
-                <div className="flex items-baseline justify-between">
-                  <span className={`text-[34px] font-bold leading-none text-[var(--cream)] ${event.buyIn ? "font-mono" : "font-[family-name:var(--font-heading)]"}`}>{event.buyIn ? `$${event.buyIn}` : "Free"}</span>
-                  {event.buyIn && <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--cream-38)]">per player</span>}
-                </div>
-                <div className="mt-4 grid gap-0 text-sm">
-                  {divisions.length > 1 && <div className="flex items-center justify-between border-t border-[var(--hair)] py-2.5"><span className="text-[var(--cream-60)]">Divisions</span><span className="font-mono text-[var(--cream)]">{divisions.length}</span></div>}
-                  <div className="flex items-center justify-between border-t border-[var(--hair)] py-2.5"><span className="text-[var(--cream-60)]">Field</span>{entries.length === 0 ? <span className="text-[var(--cream-60)]">Be the first in</span> : <span className="text-[var(--blue)]"><span className="font-mono">{event.capacity ? `${entries.length} / ${event.capacity}` : entries.length}</span>{event.capacity ? "" : " checked in"}</span>}</div>
-                  {event.capacity && <div className="flex items-center justify-between border-t border-[var(--hair)] py-2.5"><span className="text-[var(--cream-60)]">Your spot</span><span className="font-mono text-[var(--cream)]">{Math.max(0, event.capacity - entries.length)} remain</span></div>}
-                  <div className="flex items-center justify-between border-t border-[var(--hair)] py-2.5"><span className="text-[var(--cream-60)]">Live scoring</span><span className="text-[var(--cream)]">Included</span></div>
-                  {event.buyIn && <div className="flex items-center justify-between border-t border-[var(--hair)] py-2.5"><span className="text-[var(--cream-60)]">Money board</span><span className="text-[var(--cream)]">Included</span></div>}
-                </div>
-                {user ? (
-                  me ? <div className="mt-4 rounded-[10px] border border-[var(--hair-strong)] py-3 text-center text-sm font-semibold text-[var(--cream-60)]">Checked in{me.division ? ` · ${me.division}` : ""}</div>
-                     : <button onClick={doCheckIn} disabled={busy || (divisions.length > 1 && !division)} className={`${btnGold} mt-4 w-full text-center`}>{event.buyIn ? `Check in · $${event.buyIn}` : "Check in"}</button>
-                ) : (
-                  <Link href="/login" className={`${btnGold} mt-4 block w-full text-center`}>Sign in to check in</Link>
-                )}
-                <p className="mt-3.5 text-center font-mono text-[10.5px] tracking-[0.04em] text-[var(--cream-38)]">POWERED BY RADIUS EVENTS</p>
-                </div>
-              </div>
-            ) : event.status === "complete" && ranked.length > 0 ? (
+            {event.status === "complete" && ranked.length > 0 && (
               <div className={`${card} p-6`}>
-                <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--cream-38)]">Results</h3>
-                <div className="mt-3 flex items-center gap-3">
-                  <Avatar url={ranked[0].photo} name={ranked[0].name} size={34} />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-[family-name:var(--font-heading)] text-[15px] font-bold text-[var(--cream)]">{ranked[0].name}</span>
-                    <span className="block text-xs text-[var(--cream-60)]">Winner</span>
-                  </span>
-                  <span className="font-mono text-lg font-bold text-[var(--blue)]">{adjOf(ranked[0])}</span>
+                <div className="mb-4 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">Winner</div>
+                <div className="flex items-center gap-3.5">
+                  <span className="shrink-0 rounded-full border-2 border-[var(--gold)] p-px"><Avatar url={ranked[0].photo} name={ranked[0].name} size={44} ring={false} /></span>
+                  <div className="min-w-0">
+                    <div className="truncate font-[family-name:var(--font-heading)] text-base font-bold text-[var(--cream)]">{ranked[0].name}</div>
+                    <div className="mt-0.5 font-mono text-[13px] text-[var(--gold)]">{fmtTotal(ranked[0])}{(ranked[0].roundScores?.filter((r) => r != null).length ?? 0) > 1 ? ` · rounds of ${ranked[0].roundScores!.filter((r) => r != null).join(", ")}` : ""}</div>
+                  </div>
                 </div>
-                <div className="mt-4 flex items-center justify-between border-t border-[var(--hair)] pt-3 text-sm">
-                  <span className="text-[var(--cream-60)]">Field</span>
-                  <span className="font-mono text-[var(--cream)]">{entries.length}</span>
+                <div className="mt-[18px] flex gap-6 border-t border-[var(--hair)] pt-4">
+                  <div><div className="font-mono text-base font-bold text-[var(--cream)]">{ranked.length}</div><div className="mt-0.5 font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Field</div></div>
+                  {hotRound != null && <div><div className="font-mono text-base font-bold text-[var(--cream)]">{hotRound}</div><div className="mt-0.5 font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Hot round</div></div>}
+                  <div><div className="font-mono text-base font-bold text-[var(--cream)]">{event.roundCount * event.holes}</div><div className="mt-0.5 font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Holes</div></div>
                 </div>
-                <button onClick={() => setTab("scores")} className="mt-4 w-full rounded-[10px] border border-[var(--hair-strong)] py-2.5 text-center font-[family-name:var(--font-heading)] text-sm font-bold text-[var(--cream)] transition-colors hover:border-[var(--cream-38)]">View full results</button>
-              </div>
-            ) : null}
-            {event.status !== "complete" && event.status !== "cancelled" && divisions.length > 1 && (
-              <div className={`${card} p-6`}>
-                <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--cream-38)]">Divisions</h3>
-                <div className="mt-3 grid gap-2">
-                  {divisions.map((d) => (
-                    <div key={d} className="flex items-center justify-between text-sm">
-                      <span className="font-semibold text-[var(--cream)]">{d}</span>
-                      {event.buyIn && <span className="font-mono font-bold text-[var(--text-body)]">${event.buyIn}</span>}
-                    </div>
-                  ))}
-                </div>
-                <p className="mt-3 text-xs text-[var(--sage-dim)]">Pick yours when you check in.</p>
               </div>
             )}
+
+            {liveNow && me && cid && ranked.some((x) => x.id === cid) && (() => {
+              const myIdx = ranked.findIndex((x) => x.id === cid);
+              const mineAdj = adjOf(ranked[myIdx]);
+              const tied = ranked.filter((x) => adjOf(x) === mineAdj).length > 1;
+              const back = mineAdj - adjOf(ranked[0]);
+              const thru = me.thruHole ?? me.holeScores?.filter((h) => h > 0).length ?? 0;
+              const holesLeft = Math.max(0, event.holes - thru);
+              const pos = tied ? `T${ranked.findIndex((x) => adjOf(x) === mineAdj) + 1}` : `${myIdx + 1}${["st", "nd", "rd"][myIdx] ?? "th"}`;
+              const standing = back === 0 ? (tied ? "tied for the lead" : "leading") : `${back} back`;
+              const line = `${pos} of ${ranked.length} · ${standing}${holesLeft > 0 && holesLeft < event.holes ? ` with ${plural(holesLeft, "hole")} to play` : ""}`;
+              return (
+                <div className={`${card} p-6`}>
+                  <div className="mb-3 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">Your position</div>
+                  <div className="font-[family-name:var(--font-heading)] text-[15px] font-semibold leading-relaxed text-[var(--cream)]">{line}</div>
+                </div>
+              );
+            })()}
+
+            {/* TODO: registration rail card lands here when paid events ship (buy-in checkout). Deliberately not built yet. */}
+
             <div className={`${card} p-6`}>
-              <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--cream-38)]">Schedule</h3>
-              <div className="mt-4 border-l border-[var(--hair-strong)] pl-4">
-                {/* All rounds share one datetime in the data — collapse to a single entry (B4). */}
+              <div className="mb-4 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--blue)]">Schedule</div>
+              <div className="ml-[5px] border-l border-[var(--hair-strong)] pl-[22px]">
                 <div className="relative">
-                  <span className="absolute -left-[21.5px] top-1 h-2.5 w-2.5 rounded-full border-2 border-[var(--blue)] bg-[var(--card)]" />
-                  <span className="block font-[family-name:var(--font-heading)] text-[15px] font-semibold text-[var(--cream)]">{event.roundCount === 1 ? "Round 1" : event.roundCount === 2 ? "Rounds 1 and 2" : `Rounds 1–${event.roundCount}`}</span>
-                  <span className="block font-mono text-[12.5px] text-[var(--blue)]">{fmtDate(event.date)}</span>
-                  <span className="block text-[12.5px] text-[var(--cream-60)]">{event.holes} holes{event.roundCount > 1 ? " per round" : ""} · {event.startFormat}{event.courseName ? ` · ${event.courseName}` : ""}</span>
+                  <span className="absolute -left-[27px] top-1.5 h-2 w-2 rounded-full border-2 border-[var(--blue)] bg-[var(--forest)]" />
+                  <div className="font-[family-name:var(--font-heading)] text-[14.5px] font-semibold text-[var(--cream)]">{event.roundCount === 1 ? "Round 1" : event.roundCount === 2 ? "Rounds 1 and 2" : `Rounds 1–${event.roundCount}`}</div>
+                  <div className="mt-1 font-mono text-xs text-[var(--blue)]">{fmtDate(event.date)}</div>
+                  <div className="mt-[3px] text-[12.5px] text-[var(--cream-60)]">{event.holes} holes{event.roundCount > 1 ? " per round" : ""} · {event.startFormat}{event.courseName ? ` · ${event.courseName}` : ""}</div>
                 </div>
               </div>
             </div>
+
             {staff.length > 0 && (
               <div className={`${card} p-6`}>
-                <h3 className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--cream-38)]">Staff</h3>
-                <div className="mt-3 grid gap-2.5">
+                <div className="mb-4 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">Staff</div>
+                <div className="grid gap-3">
                   {staff.map((m) => (
-                    <div key={m.id} className="flex items-center gap-2.5 text-sm">
+                    <div key={m.id} className="flex items-center gap-3 text-sm">
                       {m.username ? <Link href={`/u/${m.username}`}><Avatar url={m.photo} name={m.name} size={30} /></Link> : <Avatar url={m.photo} name={m.name} size={30} />}
                       <span className="min-w-0 flex-1 truncate font-semibold text-[var(--cream)]">{m.username ? <Link href={`/u/${m.username}`} className="hover:underline">{m.name}</Link> : m.name}</span>
-                      <span className="rounded-full bg-[var(--gold-dim)] px-1.5 py-0.5 text-[8px] font-bold uppercase text-[var(--gold)]">{m.role}</span>
+                      <span className="rounded border border-[rgba(232,181,96,.4)] px-[7px] py-[3px] font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--gold)]">{m.role}</span>
                     </div>
                   ))}
                 </div>

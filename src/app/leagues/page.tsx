@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
 import { createLeague, getMyLeagues, getAllLeagues, getUpcomingEvents, getEntries, getCourseCovers, LEAGUE_FORMATS, START_FORMATS, type League, type LeagueEvent, type EventEntry } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
-import { inputCls, FieldLabel, SectionTitle, Segmented, btnGold, btnGhost, card, cardHover, pluralWord, IconCalendar, IconDisc } from "@/components/leagues/ui";
+import { inputCls, FieldLabel, SectionTitle, Segmented, btnGold, btnGhost, card, cardHover, plural, pluralWord, IconCalendar, IconDisc } from "@/components/leagues/ui";
 
 const MONTH_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const DAY = ["S", "M", "T", "W", "T", "F", "S"];
@@ -57,42 +57,69 @@ function CourseStrip({ url, ms }: { url?: string; ms: number }) {
   );
 }
 
-function Calendar({ eventDays, selected, onSelect, initial }: { eventDays: Set<string>; selected: string | null; onSelect: (k: string | null) => void; initial: Date }) {
+type UpNext = { href: string; name: string; courseName?: string; date: number } | null;
+
+function Calendar({ eventDays, selected, onSelect, initial, upNext }: { eventDays: Map<string, number>; selected: string | null; onSelect: (k: string | null) => void; initial: Date; upNext: UpNext }) {
   const [view, setView] = useState(() => new Date(initial.getFullYear(), initial.getMonth(), 1));
   const today = initial;
-  const first = new Date(view.getFullYear(), view.getMonth(), 1);
-  const daysInMonth = new Date(view.getFullYear(), view.getMonth() + 1, 0).getDate();
-  const lead = first.getDay();
-  const cells: (number | null)[] = [...Array.from({ length: lead }, () => null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
+  const y = view.getFullYear(), m = view.getMonth();
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const prevDays = new Date(y, m, 0).getDate();
+  const lead = new Date(y, m, 1).getDay();
+  const total = Math.ceil((lead + daysInMonth) / 7) * 7;
+  const monthCount = [...eventDays.entries()].reduce((acc, [k, n]) => (k.startsWith(`${y}-${m}-`) ? acc + n : acc), 0);
+  const nd = upNext ? new Date(upNext.date) : null;
   return (
-    <div className={`${card} p-4`}>
-      <div className="mb-3 flex items-center justify-between">
-        <button onClick={() => setView(new Date(view.getFullYear(), view.getMonth() - 1, 1))} aria-label="Previous month" className="grid h-7 w-7 place-items-center rounded-full text-[var(--sage)] transition-colors hover:bg-white/[0.06] hover:text-[var(--cream)]">‹</button>
-        <span className="font-[family-name:var(--font-heading)] text-sm font-bold text-[var(--cream)]">{MONTH_LONG[view.getMonth()]} {view.getFullYear()}</span>
-        <button onClick={() => setView(new Date(view.getFullYear(), view.getMonth() + 1, 1))} aria-label="Next month" className="grid h-7 w-7 place-items-center rounded-full text-[var(--sage)] transition-colors hover:bg-white/[0.06] hover:text-[var(--cream)]">›</button>
+    <div className={`${card} p-6`}>
+      <div className="flex items-center justify-between">
+        <div className="font-[family-name:var(--font-heading)] text-base font-bold text-[var(--cream)]">{MONTH_LONG[m]}<span className="ml-[7px] font-mono text-[13px] font-normal text-[var(--cream-38)]">{y}</span></div>
+        <div className="flex gap-2">
+          <button onClick={() => setView(new Date(y, m - 1, 1))} aria-label="Previous month" className="grid h-[30px] w-[30px] place-items-center rounded-full border border-[var(--hair)] text-sm leading-none text-[var(--cream-60)] transition-colors hover:border-[var(--hair-strong)] hover:text-[var(--cream)]">‹</button>
+          <button onClick={() => setView(new Date(y, m + 1, 1))} aria-label="Next month" className="grid h-[30px] w-[30px] place-items-center rounded-full border border-[var(--hair)] text-sm leading-none text-[var(--cream-60)] transition-colors hover:border-[var(--hair-strong)] hover:text-[var(--cream)]">›</button>
+        </div>
       </div>
-      <div className="grid grid-cols-7 gap-y-1 text-center">
-        {DAY.map((d, i) => <span key={i} className="pb-1 text-[9px] font-bold uppercase tracking-wide text-[var(--sage-dim)]">{d}</span>)}
-        {cells.map((n, i) => {
-          if (n === null) return <span key={`x${i}`} />;
-          const k = `${view.getFullYear()}-${view.getMonth()}-${n}`;
-          const has = eventDays.has(k);
-          const isToday = today.getFullYear() === view.getFullYear() && today.getMonth() === view.getMonth() && today.getDate() === n;
+      <div className="mb-4 mt-2 font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]"><b className="font-medium text-[var(--blue)]">{plural(monthCount, "event")}</b> this month</div>
+      <div className="grid grid-cols-7 gap-[3px] text-center">
+        {DAY.map((d, i) => <span key={i} className="py-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-[var(--cream-38)]">{d}</span>)}
+        {Array.from({ length: total }, (_, i) => {
+          const offset = i - lead;
+          const inMonth = offset >= 0 && offset < daysInMonth;
+          const n = inMonth ? offset + 1 : offset < 0 ? prevDays + offset + 1 : offset - daysInMonth + 1;
+          if (!inMonth) return <span key={`x${i}`} className="grid h-10 place-items-center rounded-[10px] font-mono text-[12.5px] text-[var(--cream-38)] opacity-40">{n}</span>;
+          const k = `${y}-${m}-${n}`;
+          const count = eventDays.get(k) ?? 0;
+          const isToday = today.getFullYear() === y && today.getMonth() === m && today.getDate() === n;
           const isSel = selected === k;
           return (
             <button
               key={k}
-              onClick={() => has && onSelect(isSel ? null : k)}
-              disabled={!has && !isSel}
-              className={`relative mx-auto grid h-8 w-8 place-items-center rounded-full text-xs font-semibold transition-colors
-                ${isSel ? "bg-[var(--gold-dim)] font-bold text-[var(--gold)]" : isToday ? "ring-1 ring-[var(--hair-strong)] text-[var(--cream)]" : has ? "text-[var(--cream)] hover:bg-[var(--card-raised)]" : "text-[var(--cream-38)]/60"}`}
+              onClick={() => count > 0 && onSelect(isSel ? null : k)}
+              disabled={count === 0 && !isSel}
+              className={`relative grid h-10 place-items-center rounded-[10px] font-mono text-[12.5px] transition-colors
+                ${isSel ? "bg-[var(--gold-dim)] text-[var(--gold)] shadow-[inset_0_0_0_1px_rgba(232,181,96,0.35)]"
+                : isToday ? "text-[var(--cream)] shadow-[inset_0_0_0_1px_var(--hair-strong)] hover:bg-[rgba(244,241,232,0.04)]"
+                : count > 0 ? "text-[var(--cream)] hover:bg-[rgba(244,241,232,0.04)]"
+                : "text-[var(--cream-60)]"}`}
             >
               {n}
-              {has && !isSel && <span className="absolute bottom-0.5 h-1 w-1 rounded-full bg-[var(--blue)]" />}
+              {count > 0 && <span className={`absolute bottom-[5px] left-1/2 h-1 -translate-x-1/2 rounded-full ${count > 1 ? "w-3 rounded-[2px]" : "w-1"} ${isSel ? "bg-[var(--gold)]" : "bg-[var(--blue)]"}`} />}
             </button>
           );
         })}
       </div>
+      {upNext && nd && (
+        <Link href={upNext.href} className="group mt-4 flex items-center gap-[13px] border-t border-[var(--hair)] pt-4">
+          <span className="min-w-[34px] shrink-0 text-center font-mono leading-[1.1]">
+            <span className="block text-[8.5px] uppercase tracking-[0.16em] text-[var(--cream-38)]">{nd.toLocaleDateString(undefined, { month: "short" })}</span>
+            <span className="mt-px block text-base font-bold text-[var(--cream)]">{nd.getDate()}</span>
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[13.5px] font-semibold text-[var(--cream)]">{upNext.name}</span>
+            <span className="mt-0.5 block truncate font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--cream-38)]">{[upNext.courseName, `${nd.toLocaleDateString(undefined, { weekday: "short" })} ${nd.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`].filter(Boolean).join(" · ")}</span>
+          </span>
+          <span className="text-[15px] text-[var(--cream-38)] transition-colors group-hover:text-[var(--cream)]">›</span>
+        </Link>
+      )}
     </div>
   );
 }
@@ -142,7 +169,17 @@ export default function LeaguesPage() {
   }, [upcoming]);
 
   const slugOf = useMemo(() => new Map(all.map((l) => [l.id, l.slug])), [all]);
-  const eventDays = useMemo(() => new Set(upcoming.map((e) => dayKey(e.date))), [upcoming]);
+  const eventDays = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const e of upcoming) { const k = dayKey(e.date); m.set(k, (m.get(k) ?? 0) + 1); }
+    return m;
+  }, [upcoming]);
+  const upNext = useMemo(() => {
+    const e = [...upcoming].sort((a, b) => a.date - b.date).find((x) => x.date >= today.getTime() - 3600_000);
+    if (!e) return null;
+    const s2 = slugOf.get(e.leagueId);
+    return s2 ? { href: `/leagues/${s2}/e/${e.id}`, name: e.name, courseName: e.courseName, date: e.date } : null;
+  }, [upcoming, slugOf, today]);
 
   const needle = q.trim().toLowerCase();
   const shownEvents = upcoming.filter((e) =>
@@ -227,7 +264,7 @@ export default function LeaguesPage() {
       {tab === "Events" ? (
         <section className="grid gap-6 lg:grid-cols-[280px_1fr]">
           <div className="lg:sticky lg:top-6 lg:self-start">
-            <Calendar eventDays={eventDays} selected={dayFilter} onSelect={setDayFilter} initial={today} />
+            <Calendar eventDays={eventDays} selected={dayFilter} onSelect={setDayFilter} initial={today} upNext={upNext} />
             {dayFilter && <button onClick={() => setDayFilter(null)} className="mt-3 w-full rounded-full bg-white/[0.05] py-2 text-xs font-bold text-[var(--sage)] transition-colors hover:text-[var(--cream)]">Clear day filter</button>}
           </div>
           <div>
