@@ -61,6 +61,42 @@ function CourseStrip({ url, isLogo, ms, distMi }: { url?: string; isLogo?: boole
   );
 }
 
+function LiveEventTile({ ev, href, top, cid }: { ev: LeagueEvent; href: string; top: EventEntry[]; cid: string | null }) {
+  return (
+    <Link href={href} className="relative block overflow-hidden rounded-2xl border border-[var(--hair)] bg-[var(--card)] p-6 transition-colors hover:border-[var(--hair-strong)]">
+      <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(600px 300px at 80% -10%, rgba(143,189,227,.10), transparent 60%)" }} />
+      <div className="relative">
+        <div className="flex items-center justify-between">
+          <span className="inline-flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--blue)]">
+            <i className="pulse-ring h-2 w-2 rounded-full bg-[var(--blue)]" />Live now
+          </span>
+          <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-[var(--cream-38)]">{plural(ev.entryCount, "player")}</span>
+        </div>
+        <h3 className="mt-3.5 font-[family-name:var(--font-heading)] text-[19px] font-bold text-[var(--cream)]">{ev.name}</h3>
+        <div className="text-[13px] text-[var(--cream-60)]">{[ev.leagueName !== ev.name ? ev.leagueName : null, ev.courseName, "Round in progress"].filter(Boolean).join(" · ")}</div>
+        {top.length > 0 && (
+          <div className="mt-5 border-t border-[var(--hair)]">
+            {top.map((e, i) => {
+              const you = cid != null && e.id === cid;
+              const total = (e.score ?? e.holeScores!.filter((h) => h > 0).reduce((p, c) => p + c, 0)) + (e.penalty ?? 0);
+              const thru = typeof e.score !== "number" ? (e.thruHole ?? e.holeScores?.filter((h) => h > 0).length) : null;
+              return (
+                <div key={e.id} className={`grid grid-cols-[34px_1fr_62px_62px] items-center border-b border-[var(--hair)] px-1 py-[11px] text-[13.5px] ${you ? "rounded-lg border-b-transparent bg-[var(--gold-dim)]" : ""}`}>
+                  <span className="font-mono text-[var(--cream-38)]">{i + 1}</span>
+                  <span className="flex items-center gap-2 font-semibold text-[var(--cream)]">{e.name}{you && <span className="rounded border border-[rgba(232,181,96,.4)] px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.14em] text-[var(--gold)]">You</span>}</span>
+                  <span className="text-right font-mono text-xs text-[var(--cream-38)]">{thru ? `THRU ${thru}` : ""}</span>
+                  <span className={`text-right font-mono font-bold ${you ? "text-[var(--gold)]" : "text-[var(--blue)]"}`}>{total}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <div className="mt-4 text-[13px] font-semibold text-[var(--cream-60)]">Watch live scores →</div>
+      </div>
+    </Link>
+  );
+}
+
 type UpNext = { href: string; name: string; courseName?: string; date: number } | null;
 
 function Calendar({ eventDays, selected, onSelect, initial, upNext }: { eventDays: Map<string, number>; selected: string | null; onSelect: (k: string | null) => void; initial: Date; upNext: UpNext }) {
@@ -198,6 +234,24 @@ export default function LeaguesPage() {
 
   const slugOf = useMemo(() => new Map(all.map((l) => [l.id, l.slug])), [all]);
   const logoOf = useMemo(() => new Map(all.filter((l) => l.logoUrl).map((l) => [l.id, l.logoUrl!])), [all]);
+  // Spectator surface: everything currently in progress, registration state irrelevant.
+  const liveEvents = useMemo(() => {
+    const t = today.getTime();
+    return upcoming.filter((e) => e.status !== "complete" && e.date <= t && t <= e.date + 6 * 3600_000 && e.entryCount > 0);
+  }, [upcoming, today]);
+  const [liveBoards, setLiveBoards] = useState<Map<string, EventEntry[]>>(new Map());
+  useEffect(() => {
+    if (tab !== "Live" || liveEvents.length === 0) return;
+    let dead = false;
+    Promise.all(liveEvents.slice(0, 12).map(async (e) => {
+      const en = await getEntries(e.id).catch(() => [] as EventEntry[]);
+      const scored = en.filter((x) => (typeof x.score === "number" || x.holeScores?.some((h) => h > 0)) && !x.dnf)
+        .sort((a, b) => ((a.score ?? a.holeScores!.reduce((p, c) => p + c, 0)) + (a.penalty ?? 0)) - ((b.score ?? b.holeScores!.reduce((p, c) => p + c, 0)) + (b.penalty ?? 0)));
+      return [e.id, scored.slice(0, 3)] as const;
+    })).then((pairs) => { if (!dead) setLiveBoards(new Map(pairs)); });
+    return () => { dead = true; };
+  }, [tab, liveEvents]);
+
   const calendarSource = useMemo(() => (tab === "My events" ? upcoming : upcoming.filter((e) => registrationOpen(e))), [tab, upcoming]);
   const eventDays = useMemo(() => {
     const m = new Map<string, number>();
@@ -279,7 +333,7 @@ export default function LeaguesPage() {
           <p className="mt-1 text-sm text-[var(--cream-60)]">Leagues, weeklies, and tournaments near you.</p>
         </div>
         <div className="flex items-center gap-4">
-          <span className="font-mono text-xs uppercase tracking-[0.1em] text-[var(--cream-38)]">{shownEvents.length} upcoming</span>
+          <span className="font-mono text-xs uppercase tracking-[0.1em] text-[var(--cream-38)]">{tab === "Live" ? `${liveEvents.length} live` : `${shownEvents.length} upcoming`}</span>
           {user ? (
             <Link href="/leagues/new" className={`${btnGold} inline-flex h-11 items-center`}>Create an event</Link>
           ) : (
@@ -318,15 +372,15 @@ export default function LeaguesPage() {
 
       {/* Controls — every control 44px, no hairline touches this row */}
       <section className="mb-6 mt-6 flex flex-wrap items-center gap-3">
-        <Segmented tall options={["Events", "My events"]} value={tab} onChange={(t) => { setTab(t); setDayFilter(null); }} />
-        <div className="relative min-w-[220px] flex-1">
+        <Segmented tall options={["Events", "Live", "My events"]} value={tab} onChange={(t) => { setTab(t); setDayFilter(null); }} />
+        {tab !== "Live" && <div className="relative min-w-[220px] flex-1">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--sage-dim)]"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search events, leagues, or courses" className={`${inputCls} h-11 pl-11`} />
-        </div>
+        </div>}
       </section>
 
       {/* Filter rail — where (geolocation + radius) and event type; when lives in the calendar */}
-      <section className="-mt-2 mb-6 flex flex-wrap items-center gap-2">
+      {tab !== "Live" && <section className="-mt-2 mb-6 flex flex-wrap items-center gap-2">
         <button
           onClick={requestLocation}
           disabled={locBusy}
@@ -352,8 +406,26 @@ export default function LeaguesPage() {
             className={`inline-flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-semibold transition-colors ${kindFilter === key ? "border-[rgba(232,181,96,.4)] bg-[var(--gold-dim)] text-[var(--gold)]" : "border-[var(--hair-strong)] text-[var(--cream-60)] hover:text-[var(--cream)]"}`}
           >{Ic && <Ic className="h-3.5 w-3.5" />}{label}</button>
         ))}
-      </section>
+      </section>}
 
+      {tab === "Live" ? (
+        <section className="mx-auto max-w-3xl">
+          {liveEvents.length === 0 ? (
+            <div className={`${card} grid place-items-center px-6 py-16 text-center`}>
+              <span className="grid h-14 w-14 place-items-center rounded-full bg-[var(--card-raised)] text-[var(--blue)]"><IconCalendar className="h-6 w-6" /></span>
+              <p className="mt-4 font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">Nothing is live right now</p>
+              <p className="mt-1 max-w-xs text-sm text-[var(--sage-dim)]">When a round is in progress, its leaderboard shows here.</p>
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {liveEvents.map((ev) => {
+                const slug = slugOf.get(ev.leagueId);
+                return <LiveEventTile key={ev.id} ev={ev} href={slug ? `/leagues/${slug}/e/${ev.id}` : "#"} top={liveBoards.get(ev.id) ?? []} cid={cid} />;
+              })}
+            </div>
+          )}
+        </section>
+      ) : (
       <section className="grid gap-6 lg:grid-cols-[280px_1fr]">
           <div className="lg:sticky lg:top-6 lg:self-start">
             <Calendar eventDays={eventDays} selected={dayFilter} onSelect={setDayFilter} initial={today} upNext={upNext} />
@@ -376,6 +448,11 @@ export default function LeaguesPage() {
             </div>
             );
           })()}
+          {tab === "Events" && liveEvents.length > 0 && (
+            <button onClick={() => setTab("Live")} className="mb-3 inline-flex items-center gap-2.5 rounded-full border border-[var(--blue-dim)] px-4 py-2 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--blue)] transition-colors hover:border-[var(--blue)]/40">
+              <i className="pulse-ring h-2 w-2 rounded-full bg-[var(--blue)]" />{plural(liveEvents.length, "event")} live now →
+            </button>
+          )}
           {live && (tab === "My events" || registrationOpen(live.ev)) && (
               <Link href={slugOf.get(live.ev.leagueId) ? `/leagues/${slugOf.get(live.ev.leagueId)}/e/${live.ev.id}` : "#"} className="relative mb-3 block overflow-hidden rounded-2xl border border-[var(--hair)] bg-[var(--card)] p-6 transition-colors hover:border-[var(--hair-strong)]">
                 <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(600px 300px at 80% -10%, rgba(143,189,227,.10), transparent 60%)" }} />
@@ -469,6 +546,7 @@ export default function LeaguesPage() {
             )}
           </div>
         </section>
+      )}
     </main>
   );
 }
