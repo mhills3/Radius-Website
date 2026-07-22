@@ -555,30 +555,6 @@ export default function LeagueEventPage() {
               <p className="mb-10 text-sm text-[var(--cream-38)]">No description yet. <Link href={`/leagues/${league.slug}/manage`} className="text-[var(--cream-60)] underline decoration-[var(--hair-strong)] underline-offset-2 hover:text-[var(--gold)]">Add one from league settings.</Link></p>
             ) : null}
 
-            {open && (
-              <div className={`${card} mb-10 p-5`}>
-                <div className="flex items-center gap-4">
-                  {entries.length > 0 && <span className="flex shrink-0 -space-x-2">{entries.slice(0, 6).map((e) => <Avatar key={e.id} url={e.photo} name={e.name} size={28} />)}</span>}
-                  <div className="min-w-0 flex-1">
-                    {event.capacity ? (() => {
-                      const pct = Math.min(100, Math.round((entries.length / event.capacity!) * 100));
-                      const hot = pct >= 75;
-                      return (
-                        <>
-                          <div className="h-[3px] overflow-hidden rounded-[2px] bg-[var(--hair)]">
-                            <i className={`block h-full rounded-[2px] ${hot ? "bg-[var(--gold)]" : "bg-[var(--blue)]"}`} style={{ width: `${pct}%` }} />
-                          </div>
-                          <div className="mt-2 font-mono text-[10.5px] tracking-[0.06em] text-[var(--cream-38)]"><b className="font-medium text-[var(--cream-60)]">{entries.length} of {event.capacity}</b> registered{hot ? " · filling fast" : ""}</div>
-                        </>
-                      );
-                    })() : (
-                      <div className="font-mono text-[10.5px] tracking-[0.06em] text-[var(--cream-38)]">{entries.length > 0 ? <><b className="font-medium text-[var(--cream-60)]">{entries.length}</b> checked in</> : "Be the first in"}</div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
             {(event.contactEmail || event.contactPhone) && (
               <p className="text-sm text-[var(--cream-60)]">
                 Contact:{" "}
@@ -627,6 +603,36 @@ export default function LeagueEventPage() {
                 </div>
               );
             })()}
+
+            {open && (
+              <button onClick={() => setTab("players")} className={`${card} block w-full p-6 text-left transition-colors hover:border-[var(--hair-strong)]`}>
+                <div className="mb-4 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--blue)]">Field</div>
+                {entries.length > 0 && (
+                  <div className="mb-3.5 flex items-center">
+                    <span className="flex -space-x-2">
+                      {entries.slice(0, 6).map((e) => (
+                        <span key={e.id} className="rounded-full ring-2 ring-[var(--forest)]"><Avatar url={e.photo} name={e.name} size={28} ring={false} /></span>
+                      ))}
+                    </span>
+                    {entries.length > 6 && <span className="z-10 -ml-2 grid h-7 w-7 place-items-center rounded-full bg-[var(--card-raised)] font-mono text-[10px] font-semibold text-[var(--cream-60)] ring-2 ring-[var(--forest)]">+{entries.length - 6}</span>}
+                  </div>
+                )}
+                {event.capacity ? (() => {
+                  const pct = Math.min(100, Math.round((entries.length / event.capacity!) * 100));
+                  const hot = pct >= 75;
+                  return (
+                    <>
+                      <div className="h-[3px] overflow-hidden rounded-[2px] bg-[var(--hair)]">
+                        <i className={`block h-full rounded-[2px] ${hot ? "bg-[var(--gold)]" : "bg-[var(--blue)]"}`} style={{ width: `${pct}%` }} />
+                      </div>
+                      <div className="mt-2 font-mono text-[10.5px] tracking-[0.06em] text-[var(--cream-38)]"><b className="font-medium text-[var(--cream-60)]">{entries.length} of {event.capacity}</b> registered{hot ? " · filling fast" : ""}</div>
+                    </>
+                  );
+                })() : (
+                  <div className="font-mono text-[10.5px] tracking-[0.06em] text-[var(--cream-38)]">{entries.length > 0 ? <><b className="font-medium text-[var(--cream-60)]">{entries.length}</b> checked in</> : "Be the first in"}</div>
+                )}
+              </button>
+            )}
 
             {/* TODO: registration rail card lands here when paid events ship (buy-in checkout). Deliberately not built yet. */}
 
