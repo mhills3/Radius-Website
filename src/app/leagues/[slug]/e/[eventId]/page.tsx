@@ -414,6 +414,32 @@ export default function LeagueEventPage() {
             <div className="mt-2.5 flex flex-wrap items-center gap-4">
               <h1 className="font-[family-name:var(--font-heading)] text-[clamp(30px,3.6vw,44px)] font-extrabold leading-[1.05] tracking-[-0.015em] text-[var(--cream)]">{event.name}</h1>
               <StatusChip status={event.status} liveNow={liveNow} />
+              {open && (
+                <span className="ml-auto flex flex-wrap items-center gap-2.5">
+                  {user ? (
+                    me ? (
+                      !(liveNow && cid && ranked.some((x) => x.id === cid)) && (
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-[#5fcf80]/25 bg-[rgba(20,27,22,0.5)] px-3.5 py-2 font-mono text-[10.5px] tracking-[0.08em] text-[#5fcf80] backdrop-blur-[6px]">✓ Checked in{me.division ? ` · ${me.division}` : ""}</span>
+                      )
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        {divisions.length > 1 && (
+                          <span className="relative">
+                            <select value={division} onChange={(e) => setDivision(e.target.value)} className="h-12 appearance-none rounded-full border border-[var(--hair-strong)] bg-[rgba(20,27,22,0.5)] pl-5 pr-11 text-sm font-semibold text-[var(--cream)] outline-none backdrop-blur-[6px] transition-colors focus:border-[var(--gold)]">
+                              <option value="">Choose division</option>
+                              {divisions.map((d) => <option key={d} value={d}>{d}</option>)}
+                            </select>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--cream-38)]"><path d="M6 9l6 6 6-6" /></svg>
+                          </span>
+                        )}
+                        <button onClick={doCheckIn} disabled={busy || (divisions.length > 1 && !division)} className={btnGold}>{busy ? "…" : "Check in"}</button>
+                      </span>
+                    )
+                  ) : (
+                    <Link href="/login" className={btnGold}>Sign in to check in</Link>
+                  )}
+                </span>
+              )}
             </div>
             <div className="mt-4 flex flex-wrap items-center gap-2.5">
               <span className={`${pillMono}`}>{fmtDate(event.date)}</span>
@@ -472,33 +498,6 @@ export default function LeagueEventPage() {
           );
         })()}
         {hcpNote && <p className="mt-3 text-xs text-[var(--gold)]">{hcpNote}</p>}
-        {open && (
-          <div className="mt-3 flex flex-wrap items-center justify-end gap-2.5">
-            {user ? (
-              me ? (
-                !(liveNow && cid && ranked.some((x) => x.id === cid)) && (
-                  <span className="inline-flex items-center gap-1.5 font-mono text-[10.5px] tracking-[0.08em] text-[#5fcf80]">✓ Checked in{me.division ? ` · ${me.division}` : ""}</span>
-                )
-              ) : (
-                <span className="flex items-center gap-2">
-                  {divisions.length > 1 && (
-                    <span className="relative">
-                      <select value={division} onChange={(e) => setDivision(e.target.value)} className="h-12 appearance-none rounded-full border border-[var(--hair-strong)] bg-[var(--card)] pl-5 pr-11 text-sm font-semibold text-[var(--cream)] outline-none transition-colors focus:border-[var(--gold)]">
-                        <option value="">Choose division</option>
-                        {divisions.map((d) => <option key={d} value={d}>{d}</option>)}
-                      </select>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--cream-38)]"><path d="M6 9l6 6 6-6" /></svg>
-                    </span>
-                  )}
-                  <button onClick={doCheckIn} disabled={busy || (divisions.length > 1 && !division)} className={btnGold}>{busy ? "…" : "Check in"}</button>
-                </span>
-              )
-            ) : (
-              <Link href="/login" className={btnGold}>Sign in to check in</Link>
-            )}
-          </div>
-        )}
-
       {/* Tabs — same tab, same route; first label reads Recap once the event completes */}
       <nav className="mb-9 mt-1.5 flex gap-[34px] border-b border-[var(--hair)]">
         {([
