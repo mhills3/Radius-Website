@@ -318,7 +318,7 @@ export default function LeagueEventPage() {
           <div key={t.id} className={`${card} flex items-center gap-4 p-4 ${i === 0 && t.score != null ? "ring-1 ring-[var(--gold)]/25" : ""}`}>
             <Pos n={t.score != null ? i + 1 : undefined} />
             <span className="flex -space-x-2">
-              {t.members.map((m) => <Avatar key={m.id} url={m.photo} name={m.name} size={32} />)}
+              {t.members.map((m) => <PLink key={m.id} id={m.id}><Avatar url={m.photo} name={m.name} size={32} /></PLink>)}
             </span>
             <span className="min-w-0 flex-1">
               <span className="block truncate font-bold text-[var(--cream)]">{t.members.map((m) => m.name).join(" + ")}</span>
@@ -891,7 +891,7 @@ export default function LeagueEventPage() {
               return (
                 <div key={e.id} className={`flex min-h-[58px] items-center gap-3.5 border-b border-[var(--hair)] px-4 py-2.5 text-sm transition-colors last:border-b-0 ${you ? "border-l-[3px] border-l-[var(--gold)] bg-gradient-to-r from-[var(--gold-dim)] via-transparent to-transparent" : ""}`}>
                   <Pos n={pos} />
-                  <Avatar url={e.photo} name={nameOf(e)} size={34} />
+                  <PLink id={e.id}><Avatar url={e.photo} name={nameOf(e)} size={34} /></PLink>
                   <span className="min-w-0 flex-1">
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                       <span className="truncate font-bold text-[var(--cream)]">{e.username ? <Link href={`/u/${e.username}`} className="hover:underline">{nameOf(e)}</Link> : nameOf(e)}</span>
