@@ -551,8 +551,6 @@ export default function LeagueEventPage() {
                 <div className="mb-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--blue)]">About this {event.kind === "tournament" ? "tournament" : event.kind === "league" ? "league" : "event"}</div>
                 <Desc text={event.description} />
               </div>
-            ) : admin && league && event.status !== "complete" ? (
-              <p className="mb-10 text-sm text-[var(--cream-38)]">No description yet. <Link href={`/leagues/${league.slug}/manage`} className="text-[var(--cream-60)] underline decoration-[var(--hair-strong)] underline-offset-2 hover:text-[var(--gold)]">Add one from league settings.</Link></p>
             ) : null}
 
             {(event.contactEmail || event.contactPhone) && (
@@ -562,6 +560,9 @@ export default function LeagueEventPage() {
                 {event.contactEmail && event.contactPhone && " · "}
                 {event.contactPhone && <a href={`tel:${event.contactPhone}`} className="font-semibold text-[var(--gold)] hover:underline">{event.contactPhone}</a>}
               </p>
+            )}
+            {!event.description && admin && league && event.status !== "complete" && (
+              <p className="mt-10 text-[13px] text-[var(--cream-38)]">No description yet. <Link href={`/leagues/${league.slug}/manage`} className="text-[var(--cream-60)] underline decoration-[var(--hair-strong)] underline-offset-2 hover:text-[var(--gold)]">Add one from league settings.</Link></p>
             )}
           </div>
           <div className="grid content-start gap-4 lg:sticky lg:top-6">
