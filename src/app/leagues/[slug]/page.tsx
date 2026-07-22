@@ -146,7 +146,7 @@ export default function LeaguePage() {
 
       {/* Standings */}
       {standings.length > 0 && (
-        <section className="mb-12">
+        <section id="standings" className="scroll-mt-24 mb-12">
           <SectionTitle right={league.settings.bestN ? <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--sage-dim)]">best {league.settings.bestN} count</span> : undefined}>Season standings · all events</SectionTitle>
           {top3.length > 0 && (
             <div className="mb-4 grid grid-cols-3 gap-3">
