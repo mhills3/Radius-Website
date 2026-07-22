@@ -120,7 +120,13 @@ export default function LeagueEventPage() {
     }).catch(() => {});
     getEvent(eventId).then((ev) => {
       setEvent(ev ?? null);
-      if (ev) { reload(ev.id); if (ev.courseId) getCoursePars(ev.courseId).then(setPars).catch(() => {}); }
+      if (ev) {
+        reload(ev.id);
+        if (ev.courseId) getCoursePars(ev.courseId).then((p) => {
+          setPars(p);
+          if (!p) console.warn(`[events] course ${ev.courseId} has no par data — scores render raw strokes; backfill pars to enable to-par`);
+        }).catch(() => {});
+      }
     }).catch(() => setEvent(null));
     const unsubEntries = subscribeEntries(eventId, setEntries);
     const unsubChat = subscribeEventMessages(eventId, setMessages);
@@ -231,6 +237,16 @@ export default function LeagueEventPage() {
     const d = raw - parTotal * roundsPlayed;
     return d === 0 ? "E" : d > 0 ? `+${d}` : String(d);
   };
+  // Mid-round to par: strokes vs par of only the holes actually played.
+  const fmtLive = (e: EventEntry) => {
+    if (parTotal == null || !pars) return String(adjOf(e));
+    if (typeof e.score === "number") return fmtTotal(e);
+    let strokes = 0, par = 0;
+    (e.holeScores ?? []).forEach((h, i) => { if (h > 0) { strokes += h; par += pars[i] ?? 3; } });
+    const d = strokes + (e.penalty ?? 0) + (e.startingScore ?? 0) - par;
+    return d === 0 ? "E" : d > 0 ? `+${d}` : String(d);
+  };
+  const scoreTone = (txt: string, you: boolean) => (you ? "text-[var(--gold)]" : txt === "E" ? "text-[var(--cream-60)]" : "text-[var(--blue)]");
   const allRounds = ranked.flatMap((e) => e.roundScores?.filter((r) => r != null) ?? []);
   const hotRound = allRounds.length
     ? (parTotal == null ? String(Math.min(...allRounds)) : (() => { const d = Math.min(...allRounds) - parTotal; return d === 0 ? "E" : d > 0 ? `+${d}` : String(d); })())
@@ -487,7 +503,7 @@ export default function LeagueEventPage() {
                             {(e.payout ?? 0) > 0 && <span className="font-mono text-xs font-bold text-[#5fcf80]">${e.payout}</span>}
                           </span>
                           <span className="text-right font-mono text-[var(--cream-60)]">{e.roundScores?.filter((r) => r != null).join(" · ") ?? ""}</span>
-                          <span className={`text-right font-mono text-[15px] font-bold ${you ? "text-[var(--gold)]" : "text-[var(--blue)]"}`}>{fmtTotal(e)}</span>
+                          <span className={`text-right font-mono text-[15px] font-bold ${scoreTone(fmtTotal(e), you)}`}>{fmtTotal(e)}</span>
                         </div>
                       );
                     });
@@ -520,7 +536,7 @@ export default function LeagueEventPage() {
                           <span className={`font-mono ${you ? "text-[var(--gold)]" : "text-[var(--cream-38)]"}`}>{i + 1}</span>
                           <span className="flex min-w-0 items-center gap-2 font-semibold text-[var(--cream)]"><span className="truncate">{e.name}</span>{you && <span className="rounded border border-[rgba(232,181,96,.4)] px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.14em] text-[var(--gold)]">You</span>}</span>
                           <span className="text-right font-mono text-xs text-[var(--cream-38)]">{typeof e.score !== "number" && thru ? `THRU ${thru}` : ""}</span>
-                          <span className={`text-right font-mono font-bold ${you ? "text-[var(--gold)]" : "text-[var(--blue)]"}`}>{adjOf(e)}</span>
+                          <span className={`text-right font-mono font-bold ${scoreTone(fmtLive(e), you)}`}>{fmtLive(e)}</span>
                         </div>
                       );
                     });
@@ -849,9 +865,9 @@ export default function LeagueEventPage() {
                           className={`${adminInput} w-12 text-xs text-[#5fcf80]`}
                         />
                       )}
-                      <span className={`w-16 text-right font-mono text-lg font-extrabold ${you ? "text-[var(--gold)]" : scoreOf(e) != null ? "text-[var(--blue)]" : "text-[var(--cream-38)]"}`}>
-                        {scoreOf(e) != null && anyHcp && !e.dnf ? adjOf(e) : scoreOf(e) ?? ""}
-                        {scoreOf(e) != null && anyHcp && (e.startingScore ?? 0) !== 0 && <span className="ml-1 align-middle text-[10px] font-normal text-[var(--cream-38)]">({scoreOf(e)})</span>}
+                      <span className={`w-20 text-right font-mono text-lg font-extrabold ${scoreOf(e) == null || e.dnf ? "text-[var(--cream-38)]" : scoreTone(fmtLive(e), you)}`}>
+                        {scoreOf(e) == null ? "" : e.dnf ? scoreOf(e) : fmtLive(e)}
+                        {scoreOf(e) != null && !e.dnf && parTotal != null && <span className="ml-1 align-middle text-[10px] font-normal text-[var(--cream-38)]">({anyHcp ? adjOf(e) : scoreOf(e)})</span>}
                       </span>
                     </span>
                   )}
