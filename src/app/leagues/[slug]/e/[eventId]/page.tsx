@@ -834,7 +834,7 @@ export default function LeagueEventPage() {
           })()}
           <div className={`${card} overflow-hidden`}>
             <div className="flex items-center gap-3.5 bg-[var(--forest)] px-4 py-2 font-mono text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[var(--cream-38)]">
-              <span className="w-8">Pos</span><span className="flex-1">Player</span><span className="hidden sm:block">Last 9</span><span className="w-8 text-right">Thru</span>{event.roundCount > 1 && <span className="hidden w-10 text-right sm:block">Rd</span>}<span className="w-16 text-right">Total</span>
+              <span className="w-8">Pos</span><span className="flex-1">Player</span><span className="hidden w-[184px] text-right sm:block">Last 9</span><span className="w-8 text-right">Thru</span>{event.roundCount > 1 && <span className="hidden w-10 text-right sm:block">Rd</span>}<span className="w-20 text-right">Total</span>
             </div>
             {[...ranked, ...unscored].map((e, i) => {
               const isRanked = ranked.includes(e);
@@ -845,8 +845,8 @@ export default function LeagueEventPage() {
               const thruN = typeof e.score !== "number" && playedHoles.length > 0 ? (e.thruHole ?? playedHoles.length) : null;
               return (
                 <div key={e.id} className={`flex min-h-[58px] items-center gap-3.5 border-b border-[var(--hair)] px-4 py-2.5 text-sm transition-colors last:border-b-0 ${you ? "border-l-[3px] border-l-[var(--gold)] bg-gradient-to-r from-[var(--gold-dim)] via-transparent to-transparent" : ""}`}>
-                  <Pos n={pos} you={you} />
-                  <Avatar url={e.photo} name={nameOf(e)} size={34} gold={you} />
+                  <Pos n={pos} />
+                  <Avatar url={e.photo} name={nameOf(e)} size={34} />
                   <span className="min-w-0 flex-1">
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                       <span className="truncate font-bold text-[var(--cream)]">{e.username ? <Link href={`/u/${e.username}`} className="hover:underline">{nameOf(e)}</Link> : nameOf(e)}</span>
@@ -920,24 +920,30 @@ export default function LeagueEventPage() {
                     </span>
                   ) : (
                     <span className="flex items-center gap-3.5">
-                      {last9.length > 0 && (
-                        <span className="hidden gap-[5px] sm:flex">
+                      <span className="hidden w-[184px] items-center justify-end gap-[5px] sm:flex">
+                        {last9.length > 0 && (
+                          <>
                           {last9.map((h, hi) => {
                             const holeIdx = playedHoles.length - last9.length + hi;
                             const par = pars?.[holeIdx];
-                            const cls = par == null ? (you ? "border-[var(--gold)]/50 text-[var(--gold)]" : "border-[var(--hair-strong)] text-[var(--cream-38)]")
+                            const cls = par == null ? "border-[var(--hair-strong)] text-[var(--cream-38)]"
                               : h <= par - 2 ? "border-[var(--blue)] bg-[var(--blue)] font-bold text-[#141B16]"
-                              : h === par - 1 ? (you ? "border-[var(--gold)] bg-[var(--gold-dim)] text-[var(--gold)]" : "border-[var(--blue)] bg-[var(--blue-dim)] text-[var(--blue)]")
+                              : h === par - 1 ? "border-[var(--blue)] bg-[var(--blue-dim)] text-[var(--blue)]"
                               : h === par ? "border-[var(--hair-strong)] text-[var(--cream-38)]"
                               : "border-[rgba(244,241,232,.24)] text-[var(--cream-60)]";
                             return <span key={hi} className={`grid h-4 w-4 place-items-center rounded-full border font-mono text-[8.5px] ${cls}`}>{h}</span>;
                           })}
-                        </span>
-                      )}
+                          </>
+                        )}
+                      </span>
                       <span className="w-8 text-right font-mono text-xs text-[var(--cream-38)]">{thruN != null ? thruN : ""}</span>
                       {event.roundCount > 1 && (
                         <span className="hidden w-10 text-right font-mono text-xs text-[var(--cream-60)] sm:block">{(() => { const rs = e.roundScores?.filter((r) => r > 0); return rs?.length ? rs[rs.length - 1] : ""; })()}</span>
                       )}
+                      <span className={`w-20 text-right font-mono text-lg font-extrabold ${scoreOf(e) == null || e.dnf ? "text-[var(--cream-38)]" : scoreTone(fmtLive(e), you)}`}>
+                        {scoreOf(e) == null ? "" : e.dnf ? scoreOf(e) : fmtLive(e)}
+                        {scoreOf(e) != null && !e.dnf && parTotal != null && <span className="ml-1 align-middle text-[10px] font-normal text-[var(--cream-38)]">({anyHcp ? adjOf(e) : scoreOf(e)})</span>}
+                      </span>
                       {admin && event.status === "complete" && (
                         <input
                           key={`${e.id}-pay-${e.payout ?? ""}`}
@@ -954,10 +960,7 @@ export default function LeagueEventPage() {
                           className={`${adminInput} w-12 text-xs text-[#5fcf80]`}
                         />
                       )}
-                      <span className={`w-20 text-right font-mono text-lg font-extrabold ${scoreOf(e) == null || e.dnf ? "text-[var(--cream-38)]" : scoreTone(fmtLive(e), you)}`}>
-                        {scoreOf(e) == null ? "" : e.dnf ? scoreOf(e) : fmtLive(e)}
-                        {scoreOf(e) != null && !e.dnf && parTotal != null && <span className="ml-1 align-middle text-[10px] font-normal text-[var(--cream-38)]">({anyHcp ? adjOf(e) : scoreOf(e)})</span>}
-                      </span>
+
                     </span>
                   )}
                 </div>
