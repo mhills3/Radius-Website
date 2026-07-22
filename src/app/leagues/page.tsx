@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
 import { createLeague, getMyLeagues, getAllLeagues, getUpcomingEvents, getLeagueEvents, getEntries, getCourseMeta, isLeagueAdmin, registrationOpen, LEAGUE_FORMATS, type CourseMeta, START_FORMATS, type League, type LeagueEvent, type EventEntry } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
-import { inputCls, FieldLabel, Segmented, btnGold, btnGhost, card, cardHover, plural, pluralWord, IconCalendar, IconTrophy, IconTarget, IconLeaf, IconUsers, IconPin } from "@/components/leagues/ui";
+import { inputCls, FieldLabel, Segmented, btnGold, btnGhost, card, cardHover, plural, pluralWord, IconCalendar, IconTrophy, IconTarget, IconLeaf, IconUsers, IconPin, IconUser, IconLiveDot } from "@/components/leagues/ui";
 
 const MONTH_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const DAY = ["S", "M", "T", "W", "T", "F", "S"];
@@ -241,7 +241,7 @@ export default function LeaguesPage() {
   }, [upcoming, today]);
   const [liveBoards, setLiveBoards] = useState<Map<string, EventEntry[]>>(new Map());
   useEffect(() => {
-    if (tab !== "Live" || liveEvents.length === 0) return;
+    if (tab !== "Live now" || liveEvents.length === 0) return;
     let dead = false;
     Promise.all(liveEvents.slice(0, 12).map(async (e) => {
       const en = await getEntries(e.id).catch(() => [] as EventEntry[]);
@@ -333,7 +333,7 @@ export default function LeaguesPage() {
           <p className="mt-1 text-sm text-[var(--cream-60)]">Leagues, weeklies, and tournaments near you.</p>
         </div>
         <div className="flex items-center gap-4">
-          <span className="font-mono text-xs uppercase tracking-[0.1em] text-[var(--cream-38)]">{tab === "Live" ? `${liveEvents.length} live` : `${shownEvents.length} upcoming`}</span>
+          <span className="font-mono text-xs uppercase tracking-[0.1em] text-[var(--cream-38)]">{tab === "Live now" ? `${liveEvents.length} live` : `${shownEvents.length} upcoming`}</span>
           {user ? (
             <Link href="/leagues/new" className={`${btnGold} inline-flex h-11 items-center`}>Create an event</Link>
           ) : (
@@ -372,15 +372,15 @@ export default function LeaguesPage() {
 
       {/* Controls — every control 44px, no hairline touches this row */}
       <section className="mb-6 mt-6 flex flex-wrap items-center gap-3">
-        <Segmented tall options={["Events", "Live", "My events"]} value={tab} onChange={(t) => { setTab(t); setDayFilter(null); }} />
-        {tab !== "Live" && <div className="relative min-w-[220px] flex-1">
+        <Segmented tall options={["Events", "My events", "Live now"]} icons={{ Events: IconCalendar, "My events": IconUser, "Live now": IconLiveDot }} value={tab} onChange={(t) => { setTab(t); setDayFilter(null); }} />
+        {tab !== "Live now" && <div className="relative min-w-[220px] flex-1">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--sage-dim)]"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search events, leagues, or courses" className={`${inputCls} h-11 pl-11`} />
         </div>}
       </section>
 
       {/* Filter rail — where (geolocation + radius) and event type; when lives in the calendar */}
-      {tab !== "Live" && <section className="-mt-2 mb-6 flex flex-wrap items-center gap-2">
+      {tab !== "Live now" && <section className="-mt-2 mb-6 flex flex-wrap items-center gap-2">
         <button
           onClick={requestLocation}
           disabled={locBusy}
@@ -408,7 +408,7 @@ export default function LeaguesPage() {
         ))}
       </section>}
 
-      {tab === "Live" ? (
+      {tab === "Live now" ? (
         <section className="mx-auto max-w-3xl">
           {liveEvents.length === 0 ? (
             <div className={`${card} grid place-items-center px-6 py-16 text-center`}>
@@ -449,7 +449,7 @@ export default function LeaguesPage() {
             );
           })()}
           {tab === "Events" && liveEvents.length > 0 && (
-            <button onClick={() => setTab("Live")} className="mb-3 inline-flex items-center gap-2.5 rounded-full border border-[var(--blue-dim)] px-4 py-2 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--blue)] transition-colors hover:border-[var(--blue)]/40">
+            <button onClick={() => setTab("Live now")} className="mb-3 inline-flex items-center gap-2.5 rounded-full border border-[var(--blue-dim)] px-4 py-2 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--blue)] transition-colors hover:border-[var(--blue)]/40">
               <i className="pulse-ring h-2 w-2 rounded-full bg-[var(--blue)]" />{plural(liveEvents.length, "event")} live now →
             </button>
           )}
