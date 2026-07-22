@@ -274,6 +274,10 @@ export default function LeagueEventPage() {
   const open = event.status !== "complete" && event.status !== "cancelled";
   // Clinics, cleanups, and socials have no scoring surface at all.
   const scoringKind = event.kind !== "clinic" && event.kind !== "cleanup" && event.kind !== "social";
+  // League brand colors tint the surfaces; functional gold/blue stay untouched.
+  const brand = league?.brandPrimary || league?.brandSecondary
+    ? { p: (league!.brandPrimary ?? league!.brandSecondary)!, s: (league!.brandSecondary ?? league!.brandPrimary)! }
+    : null;
   const paidCount = entries.filter((e) => e.paid).length;
   const paidOut = entries.reduce((a, e) => a + (e.payout ?? 0), 0);
   const isTeamFormat = event.format === "Doubles" || event.format === "Teams";
@@ -383,6 +387,7 @@ export default function LeagueEventPage() {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={courseMeta.cover} alt="" decoding="async" onLoad={() => setCoverLoaded(true)} onError={() => setCourseMeta((m) => (m ? { ...m, cover: undefined } : m))} className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${coverLoaded ? "opacity-100" : "opacity-0"}`} />
         )}
+        {brand && <div aria-hidden className="pointer-events-none absolute inset-0 mix-blend-screen" style={{ background: `linear-gradient(135deg, ${brand.p}2e 0%, transparent 45%, ${brand.s}26 100%)` }} />}
         <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(20,27,22,.45) 0%, rgba(20,27,22,.18) 35%, rgba(20,27,22,.85) 70%, #141B16 100%)" }} />
         <div className="relative z-[2] mx-auto flex h-full max-w-4xl flex-col justify-between px-5 pb-[30px] pt-7">
           <div>
@@ -430,7 +435,7 @@ export default function LeagueEventPage() {
             ? (event.roundCount < 6 ? { label: `Add round ${event.roundCount + 1}`, fn: addRound } : null)
             : (isTeamFormat ? { label: "Randomize teams", fn: doTeams } : { label: "Apply handicaps", fn: doHandicaps });
           return (
-            <div className="mt-5 flex h-14 items-center justify-between rounded-xl border border-[var(--hair)] bg-[var(--card)] bg-gradient-to-b from-white/[0.045] to-transparent py-2 pl-4 pr-2.5">
+            <div className="mt-5 flex h-14 items-center justify-between rounded-xl border border-[var(--hair)] bg-[var(--card)] bg-gradient-to-b from-white/[0.045] to-transparent py-2 pl-4 pr-2.5" style={brand ? { backgroundImage: `radial-gradient(420px 130px at 100% 0%, ${brand.p}1f, transparent 60%), linear-gradient(180deg, rgba(255,255,255,0.045), transparent)` } : undefined}>
               <span className="flex items-center gap-3">
                 <span className="grid h-8 w-8 place-items-center rounded-[10px] bg-[var(--gold-dim)] text-[var(--gold)]"><IconSliders className="h-4 w-4" /></span>
                 <span className="font-[family-name:var(--font-heading)] text-[14.5px] font-bold tracking-[-0.01em] text-[var(--cream)]">League tools</span>
@@ -508,7 +513,7 @@ export default function LeagueEventPage() {
               <div className="mb-10">
                 <div className="mb-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">Final results</div>
                 <div className={`${card} overflow-hidden`}>
-                  <div className="grid h-[42px] grid-cols-[56px_1fr_90px_90px] items-center bg-[rgba(0,0,0,0.16)] px-[22px] font-mono text-[10.5px] uppercase tracking-[0.16em] text-[var(--cream-38)]">
+                  <div className="grid h-[42px] grid-cols-[56px_1fr_90px_90px] items-center bg-[rgba(0,0,0,0.16)] px-[22px] font-mono text-[10.5px] uppercase tracking-[0.16em] text-[var(--cream-38)]" style={brand ? { background: `linear-gradient(90deg, ${brand.p}26, ${brand.s}12)` } : undefined}>
                     <span>Pos</span><span>Player</span><span className="text-right">Rds</span><span className="text-right">Total</span>
                   </div>
                   {(() => {
@@ -878,7 +883,7 @@ export default function LeagueEventPage() {
             );
           })()}
           <div className={`${card} overflow-hidden`}>
-            <div className="flex items-center gap-3.5 bg-[var(--forest)] px-4 py-2 font-mono text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[var(--cream-38)]">
+            <div className="flex items-center gap-3.5 bg-[var(--forest)] px-4 py-2 font-mono text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[var(--cream-38)]" style={brand ? { background: `linear-gradient(90deg, ${brand.p}26, ${brand.s}10), var(--forest)` } : undefined}>
               <span className="w-8">Pos</span><span className="flex-1">Player</span><span className="hidden w-[184px] text-right sm:block">Last 9</span><span className="w-8 text-right">Thru</span>{event.roundCount > 1 && <span className="hidden w-10 text-right sm:block">Rd</span>}<span className="w-20 text-right">Total</span>
             </div>
             {[...ranked, ...unscored].map((e, i) => {

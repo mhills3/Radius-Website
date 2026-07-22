@@ -64,6 +64,8 @@ export interface League {
   memberCount: number;
   acePotBalance?: number; // running ace-pot ledger (director-maintained until an ace pays out)
   logoUrl?: string;       // league logo (Storage: leagueLogos/{uid}/{leagueId}.jpg)
+  brandPrimary?: string;   // #RRGGBB — league brand tint, layered as gradient washes
+  brandSecondary?: string; // #RRGGBB
   createdAt: number;
   lastUpdated: number;
 }
@@ -157,7 +159,7 @@ const slugify = (name: string) =>
 
 // ---- Leagues ----
 
-export async function createLeague(uid: string, input: { name: string; courseId?: string; courseName?: string; settings: LeagueSettings }): Promise<League | null> {
+export async function createLeague(uid: string, input: { name: string; courseId?: string; courseName?: string; settings: LeagueSettings; brandPrimary?: string; brandSecondary?: string }): Promise<League | null> {
   const profile = await getProfileLite(uid);
   if (!profile) return null;
   const id = freshId();
@@ -166,6 +168,8 @@ export async function createLeague(uid: string, input: { name: string; courseId?
   const league: League = {
     id, name: input.name.trim(), slug,
     courseId: input.courseId, courseName: input.courseName,
+    ...(input.brandPrimary && /^#[0-9a-fA-F]{6}$/.test(input.brandPrimary) ? { brandPrimary: input.brandPrimary } : {}),
+    ...(input.brandSecondary && /^#[0-9a-fA-F]{6}$/.test(input.brandSecondary) ? { brandSecondary: input.brandSecondary } : {}),
     adminIds: [profile.canonicalId],
     createdById: profile.canonicalId, createdByName: profile.name,
     settings: input.settings, memberCount: 1, createdAt: now, lastUpdated: now,
@@ -185,6 +189,8 @@ function toLeague(id: string, d: any): League {
     id, name: d.name ?? "League", slug: d.slug ?? id,
     courseId: d.courseId || undefined, courseName: d.courseName || undefined,
     adminIds: Array.isArray(d.adminIds) ? d.adminIds : [],
+    brandPrimary: typeof d.brandPrimary === "string" && /^#[0-9a-fA-F]{6}$/.test(d.brandPrimary) ? d.brandPrimary : undefined,
+    brandSecondary: typeof d.brandSecondary === "string" && /^#[0-9a-fA-F]{6}$/.test(d.brandSecondary) ? d.brandSecondary : undefined,
     createdById: d.createdById ?? "", createdByName: d.createdByName ?? "",
     settings: {
       format: d.settings?.format ?? "Singles", startFormat: d.settings?.startFormat ?? "Shotgun", description: d.settings?.description ?? "",
@@ -288,6 +294,13 @@ export async function updateLeagueSettings(leagueId: string, settings: LeagueSet
 /** Ace-pot ledger write (director-maintained running balance). */
 export async function setAcePot(leagueId: string, balance: number): Promise<void> {
   await setDoc(doc(db, "leagues", leagueId), { acePotBalance: balance, lastUpdated: Date.now() }, { merge: true });
+}
+
+export async function setLeagueBrand(leagueId: string, primary?: string, secondary?: string): Promise<void> {
+  const patch: Record<string, unknown> = { lastUpdated: Date.now() };
+  if (primary && /^#[0-9a-fA-F]{6}$/.test(primary)) patch.brandPrimary = primary;
+  if (secondary && /^#[0-9a-fA-F]{6}$/.test(secondary)) patch.brandSecondary = secondary;
+  await updateDoc(doc(db, "leagues", leagueId), patch);
 }
 
 export async function setLeagueLogo(leagueId: string, logoUrl: string): Promise<void> {

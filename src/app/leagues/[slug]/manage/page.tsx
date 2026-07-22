@@ -154,10 +154,14 @@ export default function LeagueManagePage() {
     </Link>
   );
 
+  const brand = league.brandPrimary || league.brandSecondary
+    ? { p: (league.brandPrimary ?? league.brandSecondary)!, s: (league.brandSecondary ?? league.brandPrimary)! }
+    : null;
   return (
-    <div className="mx-auto max-w-6xl px-5 pb-24">
+    <div className="relative mx-auto max-w-6xl px-5 pb-24">
+      {brand && <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-40" style={{ background: `linear-gradient(120deg, ${brand.p}24 0%, transparent 50%, ${brand.s}1c 100%)`, maskImage: "linear-gradient(to bottom, black, transparent)", WebkitMaskImage: "linear-gradient(to bottom, black, transparent)" }} />}
       {/* Console header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.06] py-5">
+      <div className="relative flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.06] py-5">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">League tools</p>
           <h1 className="mt-0.5 font-[family-name:var(--font-heading)] text-xl font-extrabold text-[var(--cream)]">{league.name}</h1>

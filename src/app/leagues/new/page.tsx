@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { storage } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthProvider";
-import { EVENT_EXTRAS, createLeague, createEvents, getMyLeagues, setLeagueLogo, searchCourses, EVENT_KINDS, LEAGUE_FORMATS, type League, type CourseHit } from "@/lib/leagues";
+import { EVENT_EXTRAS, createLeague, createEvents, getMyLeagues, setLeagueBrand, setLeagueLogo, searchCourses, EVENT_KINDS, LEAGUE_FORMATS, type League, type CourseHit } from "@/lib/leagues";
 import { inputCls, FieldLabel, Segmented, btnGold, btnGhost, BackLink, IconCalendar, IconTrophy, IconTarget, IconLeaf, IconUsers, IconEye, IconEyeOff, IconPin, IconPlus } from "@/components/leagues/ui";
 
 // ─── Full-screen event wizard, mirroring UDisc's "List your event" step
@@ -44,6 +44,8 @@ function IconTile({ selected, children }: { selected: boolean; children: React.R
   );
 }
 
+const BRAND_SWATCHES = ["#E8B560", "#8FBDE3", "#7FC8A9", "#C89BE8", "#E88F6B", "#E88FA9", "#E8D06B", "#6BC7E8", "#9BE8C8", "#F4F1E8"];
+
 export default function EventWizard() {
   const { user, profile } = useAuth();
   const router = useRouter();
@@ -77,6 +79,8 @@ export default function EventWizard() {
   const [workList, setWorkList] = useState<string[]>([]);
   const [meetingPoint, setMeetingPoint] = useState("");
   const [payoutPlaces, setPayoutPlaces] = useState(0);
+  const [brandPrimary, setBrandPrimary] = useState("");
+  const [brandSecondary, setBrandSecondary] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -146,8 +150,12 @@ export default function EventWizard() {
           courseName: placeName || undefined,
           courseId: course?.id,
           settings: { format, startFormat: "Flex", description: "" },
+          brandPrimary: brandPrimary || undefined,
+          brandSecondary: brandSecondary || undefined,
         });
         if (!league) throw new Error("Couldn't create the event — are you signed in?");
+      } else if ((brandPrimary || brandSecondary) && !chosenLeague?.brandPrimary) {
+        try { await setLeagueBrand(league.id, brandPrimary || undefined, brandSecondary || undefined); } catch { /* non-fatal */ }
       }
       if (logoFile) {
         try {
@@ -544,6 +552,38 @@ export default function EventWizard() {
                 />
               </label>
               {logoPreview && <button onClick={() => { setLogoFile(null); setLogoPreview(""); }} className="w-fit text-xs font-bold text-[var(--sage-dim)] hover:text-[#f08c8c]">Remove logo</button>}
+              {(isLeagueKind || kind === "tournament") && (
+                <div className="mt-2 grid gap-5">
+                  {([["Primary color", brandPrimary, setBrandPrimary], ["Secondary color", brandSecondary, setBrandSecondary]] as const).map(([label, val, set]) => (
+                    <div key={label}>
+                      <FieldLabel>{label} <span className="normal-case tracking-normal text-[var(--cream-38)]">optional — tints your event pages</span></FieldLabel>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {BRAND_SWATCHES.map((c) => (
+                          <button
+                            key={c}
+                            type="button"
+                            onClick={() => set(val === c ? "" : c)}
+                            aria-label={`${label} ${c}`}
+                            className={`h-8 w-8 rounded-lg border transition-all ${val === c ? "scale-110 border-[var(--cream)]" : "border-white/15 hover:border-white/40"}`}
+                            style={{ background: c }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  {(brandPrimary || brandSecondary) && (
+                    <div className="overflow-hidden rounded-xl border border-[var(--hair)]">
+                      <div className="flex h-14 items-center px-5" style={{ background: `linear-gradient(120deg, ${brandPrimary || brandSecondary}33 0%, transparent 55%, ${brandSecondary || brandPrimary}26 100%), var(--card)` }}>
+                        <span className="font-[family-name:var(--font-heading)] text-[15px] font-bold text-[var(--cream)]">{evName.trim() || "Your event"}</span>
+                        <span className="ml-auto flex gap-1.5">
+                          {brandPrimary && <i className="h-3 w-3 rounded-[4px]" style={{ background: brandPrimary }} />}
+                          {brandSecondary && <i className="h-3 w-3 rounded-[4px]" style={{ background: brandSecondary }} />}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
