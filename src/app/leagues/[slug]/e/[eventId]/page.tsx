@@ -4,11 +4,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { getLeagueBySlug, getLeagueMembers, getEvent, getCards, checkIn, updateEntry, removeEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, reassignBagTags, computeStandings, computeHandicaps, applyHandicaps, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCoursePars, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember } from "@/lib/leagues";
+import { EVENT_EXTRAS, getLeagueBySlug, getLeagueMembers, getEvent, getCards, checkIn, updateEntry, removeEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, reassignBagTags, computeStandings, computeHandicaps, applyHandicaps, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCoursePars, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
-import { SectionTitle, Avatar, Pos, btnGold, card, plural, BackLink, IconSliders, IconPin, IconDisc, IconEyeOff, IconUsers, IconCalendar, IconTrophy, IconTarget, IconLeaf } from "@/components/leagues/ui";
+import { SectionTitle, Avatar, Pos, btnGold, card, plural, BackLink, IconSliders, IconSparkles, IconMoon, IconHeart, IconTag, IconVenus, IconDollar, IconPin, IconDisc, IconEyeOff, IconUsers, IconCalendar, IconTrophy, IconTarget, IconLeaf } from "@/components/leagues/ui";
 
 const KIND_ICON: Record<string, React.ComponentType<{ className?: string }>> = { league: IconCalendar, tournament: IconTrophy, clinic: IconTarget, cleanup: IconLeaf, social: IconUsers };
+const EXTRA_ICON: Record<string, React.ComponentType<{ className?: string }>> = { ace_pool: IconDisc, ctp: IconTarget, bag_tags: IconTag, glow: IconMoon, beginner: IconSparkles, women: IconVenus, juniors: IconUsers, charity: IconHeart };
 
 const warnedNames = new Set<string>();
 const menuItem = "block w-full rounded-lg px-3 py-2 text-left text-[13.5px] font-semibold text-[var(--cream-60)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)]";
@@ -415,7 +416,7 @@ export default function LeagueEventPage() {
         {admin && open && (() => {
           const primary = liveNow
             ? { label: "Complete event", fn: complete }
-            : { label: copied ? "Copied ✓" : "Check-in link", fn: copyLink };
+            : { label: copied ? "Copied ✓" : "Share link", fn: copyLink };
           const secondary = liveNow
             ? (event.roundCount < 6 ? { label: `Add round ${event.roundCount + 1}`, fn: addRound } : null)
             : (isTeamFormat ? { label: "Randomize teams", fn: doTeams } : { label: "Apply handicaps", fn: doHandicaps });
@@ -432,7 +433,7 @@ export default function LeagueEventPage() {
                   <button onClick={() => { setMenuOpen((o) => !o); setConfirmCancel(false); }} aria-label="More league tools" aria-expanded={menuOpen} className="grid h-9 w-9 place-items-center rounded-[10px] text-[var(--cream-60)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)]">⋯</button>
                   {menuOpen && (
                     <div className="absolute right-0 top-full z-20 mt-2 min-w-[210px] rounded-xl border border-[var(--hair)] bg-[var(--card-raised)] p-1.5">
-                      <button onClick={() => { copyLink(); setMenuOpen(false); }} className={menuItem}>Copy check-in link</button>
+                      {liveNow && <button onClick={() => { copyLink(); setMenuOpen(false); }} className={menuItem}>Copy check-in link</button>}
                       {!isTeamFormat && <button onClick={() => { doHandicaps(); setMenuOpen(false); }} className={menuItem}>Apply handicaps</button>}
                       {isTeamFormat && <button onClick={() => { doTeams(); setMenuOpen(false); }} className={menuItem}>Randomize teams</button>}
                       {event.roundCount < 6 && <button onClick={() => { addRound(); setMenuOpen(false); }} className={menuItem}>Add round {event.roundCount + 1}</button>}
@@ -567,6 +568,37 @@ export default function LeagueEventPage() {
                 <Desc text={event.description} />
               </div>
             ) : null}
+
+            <div className="mb-10">
+              <div className="mb-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--blue)]">Details</div>
+              <div className="grid gap-2.5 sm:grid-cols-2">
+                {(() => {
+                  const Fact = ({ icon: Ic, label, sub }: { icon: React.ComponentType<{ className?: string }>; label: string; sub?: string }) => (
+                    <div className="flex items-center gap-3.5 rounded-xl border border-[var(--hair)] bg-[var(--card)] bg-gradient-to-b from-white/[0.045] to-transparent px-4 py-3.5">
+                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] bg-[var(--gold-dim)] text-[var(--gold)]"><Ic className="h-[18px] w-[18px]" /></span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-bold text-[var(--cream)]">{label}</span>
+                        {sub && <span className="block truncate text-xs text-[var(--cream-60)]">{sub}</span>}
+                      </span>
+                    </div>
+                  );
+                  const kindDef = EVENT_KINDS.find((k) => k.key === event.kind);
+                  return (
+                    <>
+                      {kindDef && <Fact icon={KIND_ICON[event.kind!] ?? IconCalendar} label={kindDef.label} />}
+                      <Fact icon={IconDisc} label={event.format} sub={`${event.startFormat} start`} />
+                      <Fact icon={IconTarget} label={event.roundCount > 1 ? `${event.roundCount} × ${event.holes} holes` : `${event.holes} holes`} />
+                      <Fact icon={IconDollar} label={event.buyIn ? "Pay to play" : "Free to play"} sub={event.buyIn ? `$${event.buyIn} buy-in` : undefined} />
+                      {divisions.length > 0 && <Fact icon={IconUsers} label="Divisions" sub={divisions.join(" · ")} />}
+                      {(event.extras ?? []).map((x) => {
+                        const t = EVENT_EXTRAS.find((e2) => e2.key === x);
+                        return t ? <Fact key={x} icon={EXTRA_ICON[x] ?? IconDisc} label={t.label} sub={t.hint} /> : null;
+                      })}
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
 
             {(event.contactEmail || event.contactPhone) && (
               <p className="text-sm text-[var(--cream-60)]">

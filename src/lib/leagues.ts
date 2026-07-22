@@ -93,6 +93,7 @@ export interface LeagueEvent {
   buyIn?: number;     // dollars per player; the paid toggle × buyIn = collected pot
   kind?: string;        // EVENT_KINDS key — discovery category
   isPrivate?: boolean;  // private events are link/search-only, excluded from discovery
+  extras?: string[];    // optional-extras tags (EVENT_EXTRAS keys): ace pool, glow, beginner-friendly…
   description?: string; // event-specific notes (markdown-lite)
   contactEmail?: string;
   contactPhone?: string;
@@ -309,7 +310,18 @@ export async function getLeagueMembers(leagueId: string): Promise<LeagueMember[]
 // ---- Events ----
 
 /** Create one event per date (recurring = the caller passes every date in the season). */
-export async function createEvents(uid: string, league: League, input: { name: string; dates: number[]; courseId?: string; courseName?: string; format?: string; startFormat?: string; roundCount?: number; holes?: number; capacity?: number; buyIn?: number; kind?: string; isPrivate?: boolean; description?: string; contactEmail?: string; contactPhone?: string }): Promise<LeagueEvent[]> {
+export const EVENT_EXTRAS = [
+  { key: "ace_pool", label: "Ace pool", hint: "Optional side pot" },
+  { key: "ctp", label: "CTP pot", hint: "Closest to the pin" },
+  { key: "bag_tags", label: "Bag tags", hint: "Tags in play" },
+  { key: "glow", label: "Glow round", hint: "After dark, lit discs" },
+  { key: "beginner", label: "Beginner-friendly", hint: "New players welcome" },
+  { key: "women", label: "Women-friendly", hint: "Women and girls welcome" },
+  { key: "juniors", label: "Junior-friendly", hint: "Juniors welcome" },
+  { key: "charity", label: "Charity event", hint: "Proceeds support a cause" },
+] as const;
+
+export async function createEvents(uid: string, league: League, input: { name: string; dates: number[]; courseId?: string; courseName?: string; format?: string; startFormat?: string; roundCount?: number; holes?: number; capacity?: number; buyIn?: number; kind?: string; isPrivate?: boolean; description?: string; contactEmail?: string; contactPhone?: string; extras?: string[] }): Promise<LeagueEvent[]> {
   const now = Date.now();
   const out: LeagueEvent[] = [];
   for (const date of input.dates) {
@@ -330,6 +342,7 @@ export async function createEvents(uid: string, league: League, input: { name: s
       description: input.description?.trim() || undefined,
       contactEmail: input.contactEmail?.trim() || undefined,
       contactPhone: input.contactPhone?.trim() || undefined,
+      extras: input.extras?.filter((x) => EVENT_EXTRAS.some((t) => t.key === x)).length ? input.extras.filter((x) => EVENT_EXTRAS.some((t) => t.key === x)) : undefined,
       entryCount: 0, createdAt: now,
     };
     await setDoc(doc(db, "leagueEvents", id), JSON.parse(JSON.stringify(ev)), { merge: true });
@@ -349,6 +362,7 @@ function toEvent(id: string, d: any): LeagueEvent {
     roundCount: Math.max(1, Number(d.roundCount) || 1),
     holes: Number(d.holes) > 0 ? Number(d.holes) : 18,
     capacity: Number(d.capacity) > 0 ? Number(d.capacity) : undefined,
+    extras: Array.isArray(d.extras) ? d.extras.filter((x: unknown) => typeof x === "string") : undefined,
     buyIn: Number(d.buyIn) > 0 ? Number(d.buyIn) : undefined,
     kind: (d.kind as string) || undefined,
     isPrivate: d.isPrivate === true,

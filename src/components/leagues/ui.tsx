@@ -100,6 +100,11 @@ export const IconDisc = ({ className }: IconProps) => (
     <ellipse cx="12" cy="12" rx="9" ry="5.5" /><ellipse cx="12" cy="12" rx="4.5" ry="2.5" />
   </svg>
 );
+export const IconSparkles = ({ className }: IconProps) => <I className={className} d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z" />;
+export const IconMoon = ({ className }: IconProps) => <I className={className} d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />;
+export const IconHeart = ({ className }: IconProps) => <I className={className} d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21.2l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8z" />;
+export const IconTag = ({ className }: IconProps) => <I className={className} d="M20.6 13.4L12 22 2 12V2h10l8.6 8.6a2 2 0 0 1 0 2.8zM7.5 7.5h.01" />;
+export const IconVenus = ({ className }: IconProps) => <I className={className} d="M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM12 15v7M9 19h6" />;
 export const IconSliders = ({ className }: IconProps) => <I className={className} d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" />;
 export const IconDollar = ({ className }: IconProps) => <I className={className} d="M12 2v20M17 5.5H9.8a3.3 3.3 0 0 0 0 6.6h4.4a3.3 3.3 0 0 1 0 6.6H6.5" />;
 

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { storage } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthProvider";
-import { createLeague, createEvents, getMyLeagues, setLeagueLogo, searchCourses, EVENT_KINDS, LEAGUE_FORMATS, type League, type CourseHit } from "@/lib/leagues";
+import { EVENT_EXTRAS, createLeague, createEvents, getMyLeagues, setLeagueLogo, searchCourses, EVENT_KINDS, LEAGUE_FORMATS, type League, type CourseHit } from "@/lib/leagues";
 import { inputCls, FieldLabel, Segmented, btnGold, btnGhost, BackLink, IconCalendar, IconTrophy, IconTarget, IconLeaf, IconUsers, IconEye, IconEyeOff, IconPin, IconPlus } from "@/components/leagues/ui";
 
 // ─── Full-screen event wizard, mirroring UDisc's "List your event" step
@@ -69,6 +69,7 @@ export default function EventWizard() {
   const [byAddress, setByAddress] = useState(false);
   const [buyIn, setBuyIn] = useState("");
   const [capacity, setCapacity] = useState("");
+  const [extras, setExtras] = useState<string[]>([]);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -160,6 +161,7 @@ export default function EventWizard() {
         holes: holesN,
         buyIn: Number(buyIn) > 0 ? Number(buyIn) : undefined,
         capacity: Number(capacity) > 0 ? Number(capacity) : undefined,
+        extras: extras.length ? extras : undefined,
         kind, isPrivate, description: desc,
         contactEmail: email, contactPhone: phone,
       });
@@ -186,7 +188,7 @@ export default function EventWizard() {
     { key: "details", label: "Details", value: evName.trim() || undefined },
     { key: "when", label: "Schedule", value: date ? `${new Date(`${date}T${time}`).toLocaleDateString(undefined, { month: "short", day: "numeric" })}${isLeagueKind && nCount > 1 ? ` · ×${nCount}` : !isLeagueKind && nCount > 1 ? ` · ${nCount} rds` : ""}` : undefined },
     { key: "where", label: "Location", value: placeName || undefined },
-    { key: "money", label: "Buy-in", value: Number(buyIn) > 0 ? `$${buyIn}` : undefined },
+    { key: "money", label: "Buy-in", value: [Number(buyIn) > 0 ? `$${buyIn}` : null, extras.length ? EVENT_EXTRAS.filter((t) => extras.includes(t.key)).map((t) => t.label).join(", ") : null].filter(Boolean).join(" · ") || undefined },
     { key: "contact", label: "Contact", value: email.trim() || phone.trim() || undefined },
     { key: "logo", label: "Logo", value: logoFile ? "Added" : undefined },
     { key: "review", label: "Review" },
@@ -408,6 +410,19 @@ export default function EventWizard() {
                   <FieldLabel>Field cap <span className="normal-case tracking-normal text-[var(--cream-38)]">optional</span></FieldLabel>
                   <input inputMode="numeric" value={capacity} onChange={(e) => setCapacity(e.target.value)} placeholder="72" className={`${inputCls} w-[140px]`} />
                 </label>
+              </div>
+              <div>
+                <FieldLabel>Extras <span className="normal-case tracking-normal text-[var(--cream-38)]">optional — shown on the event page</span></FieldLabel>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  {EVENT_EXTRAS.map((t) => {
+                    const on = extras.includes(t.key);
+                    return (
+                      <button key={t.key} type="button" onClick={() => setExtras((xs) => (on ? xs.filter((x) => x !== t.key) : [...xs, t.key]))}
+                        className={`h-10 rounded-xl border px-4 text-[13px] font-bold transition-all ${on ? "border-[var(--gold)] bg-[var(--gold-dim)] text-[var(--gold)]" : "border-white/[0.09] bg-white/[0.03] text-[var(--text-body)] hover:border-white/25"}`}
+                      >{t.label}</button>
+                    );
+                  })}
+                </div>
               </div>
               <p className="max-w-md text-xs leading-relaxed text-[var(--sage-dim)]">Set a buy-in and the event gets a money board: who&apos;s paid, pot collected, payouts, and what&apos;s left. Leave it blank for a free event.</p>
             </div>

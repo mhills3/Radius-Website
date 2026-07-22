@@ -83,7 +83,7 @@ export default function SeedPage() {
         setDoc(doc(db, "leagueEvents", evId, "entries", entryId), { checkedInAt: now - 2 * H, seedTag: DEMO_TAG, ...e });
 
       say("Live event (you are T3)…");
-      const live = await mkEvent({ name: "Cape Ann Weekly · Wk 12", kind: "league", date: now - 1.5 * H, courseId: rc(0)?.id, courseName: rc(0)?.name ?? "Stage Fort Park", buyIn: 10, capacity: 24, entryCount: 19 });
+      const live = await mkEvent({ extras: ["ace_pool", "ctp", "bag_tags"], name: "Cape Ann Weekly · Wk 12", kind: "league", date: now - 1.5 * H, courseId: rc(0)?.id, courseName: rc(0)?.name ?? "Stage Fort Park", buyIn: 10, capacity: 24, entryCount: 19 });
       const liveScores = [
         { holes: [3,3,2,3,3,2,3,3,3,2,3,3,3,2], thru: 14 },
         { holes: [3,2,3,3,3,3,2,3,3,3,2,3,3,3,3], thru: 15 },
@@ -102,7 +102,7 @@ export default function SeedPage() {
       }
 
       say("Complete tournament (full board + payouts)…");
-      const done = await mkEvent({ name: "Birchwood Fall Classic", kind: "tournament", date: now - 3 * D, courseId: rc(1)?.id, courseName: rc(1)?.name ?? "Birchwood DGC", roundCount: 2, buyIn: 45, capacity: 72, entryCount: 14, status: "complete", description: "Two rounds on the full layout. Tee assignments drop the night before.\n- CTP on 7 and 14\n- Ace pot carries" , contactEmail: "demo@radiusdiscgolf.com" });
+      const done = await mkEvent({ extras: ["ace_pool", "bag_tags"], name: "Birchwood Fall Classic", kind: "tournament", date: now - 3 * D, courseId: rc(1)?.id, courseName: rc(1)?.name ?? "Birchwood DGC", roundCount: 2, buyIn: 45, capacity: 72, entryCount: 14, status: "complete", description: "Two rounds on the full layout. Tee assignments drop the night before.\n- CTP on 7 and 14\n- Ace pot carries" , contactEmail: "demo@radiusdiscgolf.com" });
       const finals = [[54, 51], [53, 53], [55, 52], [54, 54], [56, 53], [55, 55], [57, 54], [56, 56], [58, 55], [57, 57], [59, 56], [58, 58], [60, 57], [59, 59]];
       for (let i = 0; i < 14; i++) {
         const isYou = i === 2;
@@ -115,7 +115,7 @@ export default function SeedPage() {
       }
 
       say("Scheduled weekly (6 checked in, no cap)…");
-      const thu = await mkEvent({ name: "Thursday Night Flights", kind: "league", date: now + 2 * D, courseId: rc(2)?.id, courseName: rc(2)?.name ?? "Maudslay State Park", buyIn: 10, entryCount: 6 });
+      const thu = await mkEvent({ extras: ["beginner", "women", "glow"], name: "Thursday Night Flights", kind: "league", date: now + 2 * D, courseId: rc(2)?.id, courseName: rc(2)?.name ?? "Maudslay State Park", buyIn: 10, entryCount: 6 });
       for (let i = 0; i < 6; i++) await mkEntry(thu, freshId(), { name: FAKE[(i + 3) % FAKE.length], division: DIVS[i % 3] });
 
       say("Open tournament (just opened)…");
@@ -123,7 +123,7 @@ export default function SeedPage() {
       for (let i = 0; i < 9; i++) await mkEntry(open, freshId(), { name: FAKE[(i + 9) % FAKE.length] });
 
       say("Doubles with teams…");
-      const dbl = await mkEvent({ name: "Sunday Doubles", kind: "social", format: "Doubles", date: now + 5 * D, courseId: rc(4)?.id, courseName: rc(4)?.name ?? "Borderland State Park", buyIn: 12, capacity: 24, entryCount: 10 });
+      const dbl = await mkEvent({ extras: ["charity"], name: "Sunday Doubles", kind: "social", format: "Doubles", date: now + 5 * D, courseId: rc(4)?.id, courseName: rc(4)?.name ?? "Borderland State Park", buyIn: 12, capacity: 24, entryCount: 10 });
       for (let i = 0; i < 10; i++) await mkEntry(dbl, freshId(), { name: FAKE[(i + 12) % FAKE.length], teamId: Math.floor(i / 2) + 1 });
 
       say("Empty league night (zero-state)…");
