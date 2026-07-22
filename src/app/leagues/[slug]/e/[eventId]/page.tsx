@@ -103,7 +103,6 @@ export default function LeagueEventPage() {
   const [nowTs] = useState(() => Date.now());
   const [staff, setStaff] = useState<LeagueMember[]>([]);
   const [pars, setPars] = useState<number[] | null>(null);
-  const [holeDists, setHoleDists] = useState<(number | null)[] | null>(null);
   const [teamSize] = useState(2);
   const [messages, setMessages] = useState<EventMessage[]>([]);
   const [courseMeta, setCourseMeta] = useState<CourseMeta | null>(null);
@@ -129,7 +128,6 @@ export default function LeagueEventPage() {
         reload(ev.id);
         if (ev.courseId) getCourseHoles(ev.courseId).then((hs) => {
           setPars(hs ? hs.map((h) => h.par) : null);
-          setHoleDists(hs ? hs.map((h) => h.distFt) : null);
           if (!hs) console.warn(`[events] course ${ev.courseId} has no par data — scores render raw strokes; backfill pars to enable to-par`);
         }).catch(() => {});
       }
@@ -666,17 +664,11 @@ export default function LeagueEventPage() {
                             <div className="grid grid-cols-9 gap-1.5">
                               {played.map(({ h, i }) => {
                                 const par = pars![i] ?? 3;
-                                const dist = holeDists?.[i];
                                 const tone = h <= par - 2 ? "bg-[var(--gold)] text-[#141B16]"
                                   : h === par - 1 ? "bg-[var(--blue)] text-[#141B16]"
                                   : h === par ? "bg-white/[0.06] text-[var(--cream)]"
                                   : "border border-[var(--hair-strong)] text-[var(--cream-38)]";
-                                return (
-                                  <span key={i} className="flex flex-col items-center gap-1">
-                                    <span className="font-mono text-[8.5px] leading-tight text-[var(--cream-38)]"><b className="font-semibold text-[var(--cream-60)]">{i + 1}</b>{dist ? <span className="ml-0.5">{dist}′</span> : ""}</span>
-                                    <span title={`Hole ${i + 1} · par ${par}${dist ? ` · ${dist} ft` : ""}`} className={`grid h-9 w-full place-items-center rounded-lg font-mono text-[13.5px] font-bold ${tone}`}>{h}</span>
-                                  </span>
-                                );
+                                return <span key={i} title={`Hole ${i + 1} · par ${par}`} className={`grid h-9 place-items-center rounded-lg font-mono text-[13.5px] font-bold ${tone}`}>{h}</span>;
                               })}
                             </div>
                             <div className="mt-2.5 flex items-center gap-4 font-mono text-[9px] uppercase tracking-[0.12em] text-[var(--cream-38)]">
