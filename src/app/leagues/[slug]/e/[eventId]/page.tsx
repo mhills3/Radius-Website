@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { EVENT_EXTRAS, getLeagueBySlug, getLeagueMembers, getEvent, getCards, checkIn, updateEntry, removeEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, reassignBagTags, computeStandings, computeHandicaps, applyHandicaps, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCoursePars, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember } from "@/lib/leagues";
+import { EVENT_EXTRAS, getLeagueBySlug, getLeagueMembers, getEvent, getCards, checkIn, updateEntry, removeEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, reassignBagTags, computeStandings, computeHandicaps, applyHandicaps, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCourseHoles, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { SectionTitle, Avatar, Pos, btnGold, card, plural, BackLink, IconSliders, IconShare, IconClock, IconSparkles, IconMoon, IconHeart, IconTag, IconVenus, IconDollar, IconPin, IconDisc, IconEyeOff, IconUsers, IconCalendar, IconTrophy, IconTarget, IconLeaf } from "@/components/leagues/ui";
 
@@ -103,6 +103,7 @@ export default function LeagueEventPage() {
   const [nowTs] = useState(() => Date.now());
   const [staff, setStaff] = useState<LeagueMember[]>([]);
   const [pars, setPars] = useState<number[] | null>(null);
+  const [holeDists, setHoleDists] = useState<(number | null)[] | null>(null);
   const [teamSize] = useState(2);
   const [messages, setMessages] = useState<EventMessage[]>([]);
   const [courseMeta, setCourseMeta] = useState<CourseMeta | null>(null);
@@ -126,9 +127,10 @@ export default function LeagueEventPage() {
       setEvent(ev ?? null);
       if (ev) {
         reload(ev.id);
-        if (ev.courseId) getCoursePars(ev.courseId).then((p) => {
-          setPars(p);
-          if (!p) console.warn(`[events] course ${ev.courseId} has no par data — scores render raw strokes; backfill pars to enable to-par`);
+        if (ev.courseId) getCourseHoles(ev.courseId).then((hs) => {
+          setPars(hs ? hs.map((h) => h.par) : null);
+          setHoleDists(hs ? hs.map((h) => h.distFt) : null);
+          if (!hs) console.warn(`[events] course ${ev.courseId} has no par data — scores render raw strokes; backfill pars to enable to-par`);
         }).catch(() => {});
       }
     }).catch(() => setEvent(null));
@@ -664,11 +666,17 @@ export default function LeagueEventPage() {
                             <div className="grid grid-cols-9 gap-1.5">
                               {played.map(({ h, i }) => {
                                 const par = pars![i] ?? 3;
+                                const dist = holeDists?.[i];
                                 const tone = h <= par - 2 ? "bg-[var(--gold)] text-[#141B16]"
                                   : h === par - 1 ? "bg-[var(--blue)] text-[#141B16]"
                                   : h === par ? "bg-white/[0.06] text-[var(--cream)]"
                                   : "border border-[var(--hair-strong)] text-[var(--cream-38)]";
-                                return <span key={i} title={`Hole ${i + 1} · par ${par}`} className={`grid h-9 place-items-center rounded-lg font-mono text-[13.5px] font-bold ${tone}`}>{h}</span>;
+                                return (
+                                  <span key={i} className="flex flex-col items-center gap-1">
+                                    <span className="font-mono text-[8.5px] leading-tight text-[var(--cream-38)]"><b className="font-semibold text-[var(--cream-60)]">{i + 1}</b>{dist ? <span className="ml-0.5">{dist}′</span> : ""}</span>
+                                    <span title={`Hole ${i + 1} · par ${par}${dist ? ` · ${dist} ft` : ""}`} className={`grid h-9 w-full place-items-center rounded-lg font-mono text-[13.5px] font-bold ${tone}`}>{h}</span>
+                                  </span>
+                                );
                               })}
                             </div>
                             <div className="mt-2.5 flex items-center gap-4 font-mono text-[9px] uppercase tracking-[0.12em] text-[var(--cream-38)]">

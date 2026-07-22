@@ -666,24 +666,44 @@ export function latestScoredEvent(events: LeagueEvent[]): LeagueEvent | undefine
 // Per-hole pars from the event's course doc (holes[] or first layout) — powers
 // birdie/eagle/bogey dot coloring with REAL data only. Cached per course.
 const parCache = new Map<string, number[] | null>();
-export async function getCoursePars(courseId: string): Promise<number[] | null> {
-  if (parCache.has(courseId)) return parCache.get(courseId)!;
+export interface HoleInfo { par: number; distFt: number | null }
+const holeInfoCache = new Map<string, HoleInfo[] | null>();
+/** Per-hole par + tee→basket distance (feet, computed from coords when present). */
+export async function getCourseHoles(courseId: string): Promise<HoleInfo[] | null> {
+  if (holeInfoCache.has(courseId)) return holeInfoCache.get(courseId)!;
   try {
     const snap = await getDoc(doc(db, "courses", courseId));
-    let pars: number[] | null = null;
+    let out: HoleInfo[] | null = null;
     if (snap.exists()) {
       const d = snap.data();
       const holeList = Array.isArray(d.holes) && d.holes.length ? d.holes
         : Array.isArray(d.layouts) && d.layouts[0]?.holes?.length ? d.layouts[0].holes : null;
       if (holeList) {
-        pars = [...holeList]
-          .sort((a, b) => (Number(a.holeNumber) || 0) - (Number(b.holeNumber) || 0))
-          .map((h) => Number(h.par) > 0 ? Number(h.par) : 3);
+        const ftBetween = (aLat: number, aLng: number, bLat: number, bLng: number) => {
+          const toR = (x: number) => (x * Math.PI) / 180;
+          const h = Math.sin(toR(bLat - aLat) / 2) ** 2 + Math.cos(toR(aLat)) * Math.cos(toR(bLat)) * Math.sin(toR(bLng - aLng) / 2) ** 2;
+          return Math.round(2 * 20925524.9 * Math.asin(Math.sqrt(h)));
+        };
+        out = [...holeList]
+          .sort((a, b) => (Number(a.holeNumber ?? a.number) || 0) - (Number(b.holeNumber ?? b.number) || 0))
+          .map((h) => {
+            const tLat = Number(h.teeLat), tLng = Number(h.teeLng), bLat = Number(h.basketLat), bLng = Number(h.basketLng);
+            const coordsOk = tLat && tLng && bLat && bLng;
+            const dist = coordsOk ? ftBetween(tLat, tLng, bLat, bLng) : null;
+            return { par: Number(h.par) > 0 ? Number(h.par) : 3, distFt: dist && dist > 40 && dist < 2500 ? dist : null };
+          });
       }
     }
-    parCache.set(courseId, pars);
-    return pars;
-  } catch { parCache.set(courseId, null); return null; }
+    holeInfoCache.set(courseId, out);
+    return out;
+  } catch { holeInfoCache.set(courseId, null); return null; }
+}
+export async function getCoursePars(courseId: string): Promise<number[] | null> {
+  if (parCache.has(courseId)) return parCache.get(courseId)!;
+  const holes = await getCourseHoles(courseId);
+  const pars = holes ? holes.map((h) => h.par) : null;
+  parCache.set(courseId, pars);
+  return pars;
 }
 
 // ---- Standings ----
