@@ -237,6 +237,12 @@ export default function LeagueEventPage() {
     return `Player ${e.id.slice(-4)}`;
   };
   const nameById = (id: string) => { const e = entryOf(id); return e ? nameOf(e) : `Player ${id.slice(-4)}`; };
+  // Every user reference links to their public profile when a username exists.
+  const usernameById = (id: string) => entryOf(id)?.username ?? staff.find((m) => m.id === id)?.username;
+  const PLink = ({ id, className, children }: { id: string; className?: string; children: React.ReactNode }) => {
+    const u = usernameById(id);
+    return u ? <Link href={`/u/${u}`} className={`${className ?? ""} transition-colors hover:underline`}>{children}</Link> : <span className={className}>{children}</span>;
+  };
   const scoreOf = (e: EventEntry) => (typeof e.score === "number" ? e.score : liveTotal(e));
   const adjOf = (e: EventEntry) => scoreOf(e)! + (e.penalty ?? 0) + (e.startingScore ?? 0);
   const parTotal = pars && pars.length === event.holes ? pars.reduce((a, b) => a + b, 0) : null;
@@ -345,8 +351,8 @@ export default function LeagueEventPage() {
             <div className="grid gap-2">
               {unassigned.map((e) => (
                 <div key={e.id} className="flex items-center gap-3 text-sm">
-                  <Avatar url={e.photo} name={nameOf(e)} size={26} />
-                  <span className="min-w-0 flex-1 truncate font-semibold text-[var(--cream)]">{nameOf(e)}</span>
+                  <PLink id={e.id}><Avatar url={e.photo} name={nameOf(e)} size={26} /></PLink>
+                  <PLink id={e.id} className="min-w-0 flex-1 truncate font-semibold text-[var(--cream)]">{nameOf(e)}</PLink>
                   {admin && open && teamSelect(e)}
                 </div>
               ))}
@@ -521,8 +527,8 @@ export default function LeagueEventPage() {
                         >
                           <span className={`font-mono ${you ? "text-[var(--gold)]" : i === 0 ? "text-[var(--cream)]" : "text-[var(--cream-38)]"}`}>{i + 1}</span>
                           <span className="flex min-w-0 items-center gap-[11px] font-semibold text-[var(--cream)]">
-                            <Avatar url={e.photo} name={nameOf(e)} size={30} ring={false} gold={you} />
-                            <span className="truncate">{nameOf(e)}</span>
+                            <PLink id={e.id}><Avatar url={e.photo} name={nameOf(e)} size={30} ring={false} gold={you} /></PLink>
+                            <PLink id={e.id} className="truncate">{nameOf(e)}</PLink>
                             {you && <span className="rounded border border-[rgba(232,181,96,.4)] px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.14em] text-[var(--gold)]">You</span>}
                             {(e.payout ?? 0) > 0 && <span className="font-mono text-xs font-bold text-[#5fcf80]">${e.payout}</span>}
                           </span>
@@ -558,7 +564,7 @@ export default function LeagueEventPage() {
                       return (
                         <div key={e.id} className={`grid grid-cols-[34px_1fr_62px_62px] items-center border-t border-[var(--hair)] px-5 py-[11px] text-[13.5px] ${you ? "bg-[var(--gold-dim)]" : ""}`}>
                           <span className={`font-mono ${you ? "text-[var(--gold)]" : "text-[var(--cream-38)]"}`}>{i + 1}</span>
-                          <span className="flex min-w-0 items-center gap-2 font-semibold text-[var(--cream)]"><span className="truncate">{nameOf(e)}</span>{you && <span className="rounded border border-[rgba(232,181,96,.4)] px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.14em] text-[var(--gold)]">You</span>}</span>
+                          <span className="flex min-w-0 items-center gap-2 font-semibold text-[var(--cream)]"><PLink id={e.id} className="truncate">{nameOf(e)}</PLink>{you && <span className="rounded border border-[rgba(232,181,96,.4)] px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.14em] text-[var(--gold)]">You</span>}</span>
                           <span className="text-right font-mono text-xs text-[var(--cream-38)]">{typeof e.score !== "number" && thru ? `THRU ${thru}` : ""}</span>
                           <span className={`text-right font-mono font-bold ${scoreTone(fmtLive(e), you)}`}>{fmtLive(e)}</span>
                         </div>
@@ -641,10 +647,10 @@ export default function LeagueEventPage() {
                   <div className="mt-5 flex items-center gap-4">
                     <span className="relative shrink-0">
                       <span aria-hidden className="absolute -inset-2.5 rounded-full" style={{ background: "radial-gradient(closest-side, rgba(232,181,96,0.35), transparent)" }} />
-                      <span className="relative block rounded-full border-2 border-[var(--gold)] p-[3px]"><Avatar url={ranked[0].photo} name={nameOf(ranked[0])} size={56} ring={false} /></span>
+                      <PLink id={ranked[0].id} className="relative block rounded-full border-2 border-[var(--gold)] p-[3px]"><Avatar url={ranked[0].photo} name={nameOf(ranked[0])} size={56} ring={false} /></PLink>
                     </span>
                     <div className="min-w-0 flex-1">
-                      <div className="truncate font-[family-name:var(--font-heading)] text-[20px] font-extrabold leading-tight text-[var(--cream)]">{nameOf(ranked[0])}</div>
+                      <div className="truncate font-[family-name:var(--font-heading)] text-[20px] font-extrabold leading-tight text-[var(--cream)]"><PLink id={ranked[0].id}>{nameOf(ranked[0])}</PLink></div>
                       {(ranked[0].roundScores?.filter((r) => r != null).length ?? 0) > 1 && <div className="mt-1 font-mono text-[12px] text-[var(--cream-60)]">rounds of {ranked[0].roundScores!.filter((r) => r != null).join(", ")}</div>}
                     </div>
                     <div className="shrink-0 text-right">
@@ -1028,10 +1034,10 @@ export default function LeagueEventPage() {
             )}
             {messages.map((m) => (
               <div key={m.id} className="flex items-start gap-2.5">
-                <Avatar url={m.senderPhoto} name={m.senderName} size={28} />
+                <PLink id={m.senderId}><Avatar url={m.senderPhoto} name={m.senderName} size={28} /></PLink>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-baseline gap-x-2">
-                    <span className="text-sm font-bold text-[var(--cream)]">{m.senderName}</span>
+                    <PLink id={m.senderId} className="text-sm font-bold text-[var(--cream)]">{m.senderName}</PLink>
                     {isDirector(m.senderId) && <span className="rounded-full bg-[var(--gold-dim)] px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-[var(--gold)]">Director</span>}
                     <span className="text-[10px] text-[var(--sage-dim)]">{new Date(m.timestamp).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</span>
                   </div>
@@ -1089,8 +1095,8 @@ export default function LeagueEventPage() {
                 <div className="space-y-2">
                   {c.playerIds.map((pid) => (
                     <div key={pid} className="flex items-center gap-2 text-sm text-[var(--text-body)]">
-                      <Avatar url={entryOf(pid)?.photo} name={nameById(pid)} size={22} ring={false} />
-                      <span className="truncate">{nameById(pid)}</span>
+                      <PLink id={pid}><Avatar url={entryOf(pid)?.photo} name={nameById(pid)} size={22} ring={false} /></PLink>
+                      <PLink id={pid} className="truncate">{nameById(pid)}</PLink>
                     </div>
                   ))}
                 </div>
