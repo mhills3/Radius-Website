@@ -8,6 +8,7 @@ import { getLeagueBySlug, getLeagueMembers, getEvent, getCards, checkIn, updateE
 import { resolveCanonicalId } from "@/lib/account";
 import { SectionTitle, Avatar, Pos, btnGold, card, plural, IconPin, IconDisc, IconEyeOff, IconUsers } from "@/components/leagues/ui";
 
+const warnedNames = new Set<string>();
 const menuItem = "block w-full rounded-lg px-3 py-2 text-left text-[13.5px] font-semibold text-[var(--cream-60)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)]";
 const pillWord = "inline-flex h-8 items-center rounded-full border border-[var(--hair-strong)] bg-[rgba(20,27,22,0.45)] px-3.5 text-xs text-[var(--cream-60)] backdrop-blur-[6px]";
 const pillMono = "inline-flex h-8 items-center rounded-full border border-[var(--hair-strong)] bg-[rgba(20,27,22,0.45)] px-3.5 font-mono text-[11.5px] tracking-[0.06em] text-[var(--cream-60)] backdrop-blur-[6px]";
@@ -220,10 +221,19 @@ export default function LeagueEventPage() {
   if (event === undefined) return <main className="mx-auto max-w-4xl px-5 pt-16 text-sm text-[var(--sage-dim)]">Loading…</main>;
   if (event === null) return <main className="mx-auto max-w-4xl px-5 pt-16"><p className="text-sm text-[var(--sage-dim)]">Event not found.</p></main>;
 
-  const nameOf = (id: string) => entries.find((e) => e.id === id)?.name ?? "Player";
   const entryOf = (id: string) => entries.find((e) => e.id === id);
   const divisions = league?.settings.divisions ?? [];
   const shown = divFilter ? entries.filter((e) => e.division === divFilter) : entries;
+  // Never render a literal "You" or an empty name: the gold YOU chip is the
+  // only you-marker. Missing names fall back to Player + id tail and log once.
+  const nameOf = (e: { id: string; name?: string }) => {
+    const n = (e.name ?? "").trim();
+    if (n && !/^you$/i.test(n)) return n;
+    if (e.id === cid && user?.displayName) return user.displayName;
+    if (!warnedNames.has(e.id)) { warnedNames.add(e.id); console.warn(`[events] entry ${e.id} has a missing or placeholder display name`); }
+    return `Player ${e.id.slice(-4)}`;
+  };
+  const nameById = (id: string) => { const e = entryOf(id); return e ? nameOf(e) : `Player ${id.slice(-4)}`; };
   const scoreOf = (e: EventEntry) => (typeof e.score === "number" ? e.score : liveTotal(e));
   const adjOf = (e: EventEntry) => scoreOf(e)! + (e.penalty ?? 0) + (e.startingScore ?? 0);
   const parTotal = pars && pars.length === event.holes ? pars.reduce((a, b) => a + b, 0) : null;
@@ -330,8 +340,8 @@ export default function LeagueEventPage() {
             <div className="grid gap-2">
               {unassigned.map((e) => (
                 <div key={e.id} className="flex items-center gap-3 text-sm">
-                  <Avatar url={e.photo} name={e.name} size={26} />
-                  <span className="min-w-0 flex-1 truncate font-semibold text-[var(--cream)]">{e.name}</span>
+                  <Avatar url={e.photo} name={nameOf(e)} size={26} />
+                  <span className="min-w-0 flex-1 truncate font-semibold text-[var(--cream)]">{nameOf(e)}</span>
                   {admin && open && teamSelect(e)}
                 </div>
               ))}
@@ -362,7 +372,7 @@ export default function LeagueEventPage() {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={courseMeta.cover} alt="" decoding="async" onLoad={() => setCoverLoaded(true)} onError={() => setCourseMeta((m) => (m ? { ...m, cover: undefined } : m))} className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${coverLoaded ? "opacity-100" : "opacity-0"}`} />
         )}
-        <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(20,27,22,.35) 0%, rgba(20,27,22,.15) 35%, rgba(20,27,22,.85) 78%, #141B16 100%)" }} />
+        <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(20,27,22,.45) 0%, rgba(20,27,22,.18) 35%, rgba(20,27,22,.85) 70%, #141B16 100%)" }} />
         <div className="relative z-[2] mx-auto flex h-full max-w-4xl flex-col justify-between px-5 pb-[30px] pt-7">
           <div>
             <Link href="/leagues" className="font-mono text-[11.5px] tracking-[0.1em] text-[var(--cream-60)] transition-colors hover:text-[var(--cream)]">← EVENTS</Link>
@@ -497,8 +507,8 @@ export default function LeagueEventPage() {
                         >
                           <span className={`font-mono ${you ? "text-[var(--gold)]" : i === 0 ? "text-[var(--cream)]" : "text-[var(--cream-38)]"}`}>{i + 1}</span>
                           <span className="flex min-w-0 items-center gap-[11px] font-semibold text-[var(--cream)]">
-                            <Avatar url={e.photo} name={e.name} size={30} ring={false} gold={you} />
-                            <span className="truncate">{e.name}</span>
+                            <Avatar url={e.photo} name={nameOf(e)} size={30} ring={false} gold={you} />
+                            <span className="truncate">{nameOf(e)}</span>
                             {you && <span className="rounded border border-[rgba(232,181,96,.4)] px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.14em] text-[var(--gold)]">You</span>}
                             {(e.payout ?? 0) > 0 && <span className="font-mono text-xs font-bold text-[#5fcf80]">${e.payout}</span>}
                           </span>
@@ -534,7 +544,7 @@ export default function LeagueEventPage() {
                       return (
                         <div key={e.id} className={`grid grid-cols-[34px_1fr_62px_62px] items-center border-t border-[var(--hair)] px-5 py-[11px] text-[13.5px] ${you ? "bg-[var(--gold-dim)]" : ""}`}>
                           <span className={`font-mono ${you ? "text-[var(--gold)]" : "text-[var(--cream-38)]"}`}>{i + 1}</span>
-                          <span className="flex min-w-0 items-center gap-2 font-semibold text-[var(--cream)]"><span className="truncate">{e.name}</span>{you && <span className="rounded border border-[rgba(232,181,96,.4)] px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.14em] text-[var(--gold)]">You</span>}</span>
+                          <span className="flex min-w-0 items-center gap-2 font-semibold text-[var(--cream)]"><span className="truncate">{nameOf(e)}</span>{you && <span className="rounded border border-[rgba(232,181,96,.4)] px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.14em] text-[var(--gold)]">You</span>}</span>
                           <span className="text-right font-mono text-xs text-[var(--cream-38)]">{typeof e.score !== "number" && thru ? `THRU ${thru}` : ""}</span>
                           <span className={`text-right font-mono font-bold ${scoreTone(fmtLive(e), you)}`}>{fmtLive(e)}</span>
                         </div>
@@ -570,9 +580,9 @@ export default function LeagueEventPage() {
               <div className={`${card} p-6`}>
                 <div className="mb-4 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">Winner</div>
                 <div className="flex items-center gap-3.5">
-                  <span className="shrink-0 rounded-full border-2 border-[var(--gold)] p-px"><Avatar url={ranked[0].photo} name={ranked[0].name} size={44} ring={false} /></span>
+                  <span className="shrink-0 rounded-full border-2 border-[var(--gold)] p-px"><Avatar url={ranked[0].photo} name={nameOf(ranked[0])} size={44} ring={false} /></span>
                   <div className="min-w-0">
-                    <div className="truncate font-[family-name:var(--font-heading)] text-base font-bold text-[var(--cream)]">{ranked[0].name}</div>
+                    <div className="truncate font-[family-name:var(--font-heading)] text-base font-bold text-[var(--cream)]">{nameOf(ranked[0])}</div>
                     <div className="mt-0.5 font-mono text-[13px] text-[var(--gold)]">{fmtTotal(ranked[0])}{(ranked[0].roundScores?.filter((r) => r != null).length ?? 0) > 1 ? ` · rounds of ${ranked[0].roundScores!.filter((r) => r != null).join(", ")}` : ""}</div>
                   </div>
                 </div>
@@ -612,7 +622,7 @@ export default function LeagueEventPage() {
                   <div className="mb-3.5 flex items-center">
                     <span className="flex -space-x-2">
                       {entries.slice(0, 6).map((e) => (
-                        <span key={e.id} className="rounded-full ring-2 ring-[var(--forest)]"><Avatar url={e.photo} name={e.name} size={28} ring={false} /></span>
+                        <span key={e.id} className="rounded-full ring-2 ring-[var(--forest)]"><Avatar url={e.photo} name={nameOf(e)} size={28} ring={false} /></span>
                       ))}
                     </span>
                     {entries.length > 6 && <span className="z-10 -ml-2 grid h-7 w-7 place-items-center rounded-full bg-[var(--card-raised)] font-mono text-[10px] font-semibold text-[var(--cream-60)] ring-2 ring-[var(--forest)]">+{entries.length - 6}</span>}
@@ -676,9 +686,9 @@ export default function LeagueEventPage() {
             <div className={`${card} overflow-hidden`}>
               {entries.map((e) => (
                 <div key={e.id} className="flex items-center gap-3.5 border-b border-white/[0.05] px-4 py-3 text-sm last:border-b-0">
-                  {e.username ? <Link href={`/u/${e.username}`}><Avatar url={e.photo} name={e.name} size={32} /></Link> : <Avatar url={e.photo} name={e.name} size={32} />}
+                  {e.username ? <Link href={`/u/${e.username}`}><Avatar url={e.photo} name={nameOf(e)} size={32} /></Link> : <Avatar url={e.photo} name={nameOf(e)} size={32} />}
                   <span className="min-w-0 flex-1">
-                    <span className="truncate font-bold text-[var(--cream)]">{e.username ? <Link href={`/u/${e.username}`} className="hover:underline">{e.name}</Link> : e.name}</span>
+                    <span className="truncate font-bold text-[var(--cream)]">{e.username ? <Link href={`/u/${e.username}`} className="hover:underline">{nameOf(e)}</Link> : nameOf(e)}</span>
                     <span className="block text-xs text-[var(--sage-dim)]">Checked in {new Date(e.checkedInAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</span>
                   </span>
                   {typeof e.tag === "number" && <span className="rounded-full bg-white/[0.08] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[var(--cream)]">#{e.tag}</span>}
@@ -764,10 +774,10 @@ export default function LeagueEventPage() {
               return (
                 <div key={e.id} className={`flex min-h-[58px] items-center gap-3.5 border-b border-[var(--hair)] px-4 py-2.5 text-sm transition-colors last:border-b-0 ${you ? "border-l-[3px] border-l-[var(--gold)] bg-gradient-to-r from-[var(--gold-dim)] via-transparent to-transparent" : ""}`}>
                   <Pos n={pos} you={you} />
-                  <Avatar url={e.photo} name={e.name} size={34} gold={you} />
+                  <Avatar url={e.photo} name={nameOf(e)} size={34} gold={you} />
                   <span className="min-w-0 flex-1">
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                      <span className="truncate font-bold text-[var(--cream)]">{e.username ? <Link href={`/u/${e.username}`} className="hover:underline">{e.name}</Link> : e.name}</span>
+                      <span className="truncate font-bold text-[var(--cream)]">{e.username ? <Link href={`/u/${e.username}`} className="hover:underline">{nameOf(e)}</Link> : nameOf(e)}</span>
                       {you && <span className="rounded-full bg-[var(--gold)] px-1.5 py-0.5 font-mono text-[8px] font-bold text-[#141B16]">YOU</span>}
                       {typeof e.tag === "number" && <span className="rounded-full bg-white/[0.08] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[var(--cream)]" title="Bag tag">#{e.tag}</span>}
                       {(e.payout ?? 0) > 0 && <span className="rounded-full bg-[#5fcf80]/15 px-1.5 py-0.5 font-mono text-[10px] font-bold text-[#5fcf80]" title="Payout">${e.payout}</span>}
@@ -965,8 +975,8 @@ export default function LeagueEventPage() {
                 <div className="space-y-2">
                   {c.playerIds.map((pid) => (
                     <div key={pid} className="flex items-center gap-2 text-sm text-[var(--text-body)]">
-                      <Avatar url={entryOf(pid)?.photo} name={nameOf(pid)} size={22} ring={false} />
-                      <span className="truncate">{nameOf(pid)}</span>
+                      <Avatar url={entryOf(pid)?.photo} name={nameById(pid)} size={22} ring={false} />
+                      <span className="truncate">{nameById(pid)}</span>
                     </div>
                   ))}
                 </div>

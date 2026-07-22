@@ -46,9 +46,16 @@ export default function SeedPage() {
       // covers make the discovery photo strips reviewable with demo data.
       let real: { id: string; name: string }[] = [];
       try {
-        const snap = await getDocs(query(collection(db, "courses"), orderBy("coverPhotoUrl"), startAt("http"), limit(20)));
+        const snap = await getDocs(query(collection(db, "courses"), orderBy("coverPhotoUrl"), startAt("http"), limit(40)));
+        const hasPars = (c: Record<string, unknown>) => {
+          const holes = (c.holes ?? (c.layouts as { holes?: unknown[] }[] | undefined)?.[0]?.holes) as { par?: number }[] | undefined;
+          return Array.isArray(holes) && holes.length >= 9 && holes.some((h) => typeof h?.par === "number");
+        };
         real = snap.docs
-          .filter((d) => /^https?:\/\//.test(String(d.data().coverPhotoUrl)) && d.data().name)
+          .filter((d) => {
+            const c = d.data();
+            return /^https?:\/\//.test(String(c.coverPhotoUrl)) && c.name && (c.state || c.city) && hasPars(c);
+          })
           .map((d) => ({ id: d.id, name: String(d.data().name) }));
       } catch { say("(no photo courses found — strips will show the contour fallback)"); }
       const rc = (i: number) => real.length ? real[i % real.length] : null;
@@ -60,7 +67,7 @@ export default function SeedPage() {
         settings: { format: "Singles", startFormat: "Shotgun", description: "Sample data for design review. Delete from the seed page when done.", divisions: DIVS, bestN: 6, handicapPercent: 90, bagTags: true },
         memberCount: 1, acePotBalance: 85, createdAt: now, lastUpdated: now, seedTag: DEMO_TAG,
       });
-      await setDoc(doc(db, "leagues", leagueId, "members", cid), { name: "You", role: "owner", joinedAt: now });
+      await setDoc(doc(db, "leagues", leagueId, "members", cid), { name: "Mikey", role: "owner", joinedAt: now });
 
       const mkEvent = async (ev: Record<string, unknown>) => {
         const id = freshId();
@@ -89,7 +96,7 @@ export default function SeedPage() {
         const isYou = i === 2;
         const sc = isYou ? youLive : liveScores[i];
         await mkEntry(live, isYou ? cid : freshId(), {
-          name: isYou ? "You" : FAKE[i], division: DIVS[i % 3], paid: i < 15,
+          name: isYou ? "Mikey" : FAKE[i], division: DIVS[i % 3], paid: i < 15,
           ...(sc ? { holeScores: sc.holes, thruHole: sc.thru } : {}),
         });
       }
@@ -101,7 +108,7 @@ export default function SeedPage() {
         const isYou = i === 2;
         const [r1, r2] = finals[i];
         await mkEntry(done, isYou ? cid : freshId(), {
-          name: isYou ? "You" : FAKE[i + 5], division: DIVS[i % 3], paid: true,
+          name: isYou ? "Mikey" : FAKE[i + 5], division: DIVS[i % 3], paid: true,
           roundScores: [r1, r2], score: r1 + r2,
           ...(i === 0 ? { payout: 150, tag: 1 } : i === 1 ? { payout: 100, tag: 2 } : isYou ? { payout: 70, tag: 3 } : { tag: i + 1 }),
         });
