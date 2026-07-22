@@ -643,9 +643,13 @@ export default function LeagueEventPage() {
                       <span aria-hidden className="absolute -inset-2.5 rounded-full" style={{ background: "radial-gradient(closest-side, rgba(232,181,96,0.35), transparent)" }} />
                       <span className="relative block rounded-full border-2 border-[var(--gold)] p-[3px]"><Avatar url={ranked[0].photo} name={nameOf(ranked[0])} size={56} ring={false} /></span>
                     </span>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="truncate font-[family-name:var(--font-heading)] text-[20px] font-extrabold leading-tight text-[var(--cream)]">{nameOf(ranked[0])}</div>
-                      <div className="mt-1 font-mono text-[16px] font-bold text-[var(--gold)]">{fmtTotal(ranked[0])}{(ranked[0].roundScores?.filter((r) => r != null).length ?? 0) > 1 && <span className="ml-1.5 text-[12px] font-normal text-[var(--cream-60)]">rounds of {ranked[0].roundScores!.filter((r) => r != null).join(", ")}</span>}</div>
+                      {(ranked[0].roundScores?.filter((r) => r != null).length ?? 0) > 1 && <div className="mt-1 font-mono text-[12px] text-[var(--cream-60)]">rounds of {ranked[0].roundScores!.filter((r) => r != null).join(", ")}</div>}
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <div className="font-mono text-[42px] font-bold leading-none tracking-[-0.02em] text-[var(--gold)]">{fmtTotal(ranked[0])}</div>
+                      <div className="mt-1.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.18em] text-[var(--cream-38)]">Final</div>
                     </div>
                   </div>
                   {(() => {
