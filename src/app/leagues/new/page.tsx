@@ -70,6 +70,13 @@ export default function EventWizard() {
   const [buyIn, setBuyIn] = useState("");
   const [capacity, setCapacity] = useState("");
   const [extras, setExtras] = useState<string[]>([]);
+  const [focus, setFocus] = useState("Putting");
+  const [skillLevel, setSkillLevel] = useState("All levels");
+  const [durationMin, setDurationMin] = useState(90);
+  const [bring, setBring] = useState("");
+  const [workList, setWorkList] = useState<string[]>([]);
+  const [meetingPoint, setMeetingPoint] = useState("");
+  const [payoutPlaces, setPayoutPlaces] = useState(0);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -95,6 +102,8 @@ export default function EventWizard() {
   }, [courseQ, course]);
 
   const isLeagueKind = kind === "league";
+  const isScoringKind = kind !== "clinic" && kind !== "cleanup" && kind !== "social";
+  const isSessionKind = kind === "clinic" || kind === "cleanup";
   const steps: StepKey[] = useMemo(() => ["type", "details", "when", "where", "money", "contact", "logo", "review"], []);
   const step = steps[stepIdx];
   const kindMeta = EVENT_KINDS.find((k) => k.key === kind);
@@ -162,6 +171,13 @@ export default function EventWizard() {
         buyIn: Number(buyIn) > 0 ? Number(buyIn) : undefined,
         capacity: Number(capacity) > 0 ? Number(capacity) : undefined,
         extras: extras.length ? extras : undefined,
+        focus: kind === "clinic" ? focus : undefined,
+        skillLevel: kind === "clinic" ? skillLevel : undefined,
+        durationMin: isSessionKind ? durationMin : undefined,
+        bring: isSessionKind ? bring : undefined,
+        workList: kind === "cleanup" ? workList : undefined,
+        meetingPoint: kind === "cleanup" ? meetingPoint : undefined,
+        payoutPlaces: kind === "tournament" && payoutPlaces > 1 ? payoutPlaces : undefined,
         kind, isPrivate, description: desc,
         contactEmail: email, contactPhone: phone,
       });
@@ -188,6 +204,7 @@ export default function EventWizard() {
     { key: "details", label: "Details", value: evName.trim() || undefined },
     { key: "when", label: "Schedule", value: date ? `${new Date(`${date}T${time}`).toLocaleDateString(undefined, { month: "short", day: "numeric" })}${isLeagueKind && nCount > 1 ? ` · ×${nCount}` : !isLeagueKind && nCount > 1 ? ` · ${nCount} rds` : ""}` : undefined },
     { key: "where", label: "Location", value: placeName || undefined },
+    { key: "details", label: "Setup", value: kind === "clinic" ? `${focus} · ${skillLevel}` : kind === "cleanup" ? (workList.length ? workList.join(", ") : undefined) : undefined },
     { key: "money", label: "Buy-in", value: [Number(buyIn) > 0 ? `$${buyIn}` : null, extras.length ? EVENT_EXTRAS.filter((t) => extras.includes(t.key)).map((t) => t.label).join(", ") : null].filter(Boolean).join(" · ") || undefined },
     { key: "contact", label: "Contact", value: email.trim() || phone.trim() || undefined },
     { key: "logo", label: "Logo", value: logoFile ? "Added" : undefined },
@@ -280,11 +297,42 @@ export default function EventWizard() {
                   <textarea ref={descRef} value={desc} onChange={(e) => setDesc(e.target.value)} rows={5} placeholder="CTPs, ace pot, where to meet, what to bring…" className="w-full resize-none bg-transparent px-4 py-3 text-sm text-[var(--cream)] placeholder-[var(--sage-dim)] outline-none" />
                 </div>
               </div>
-              <div>
-                <FieldLabel>Play format *</FieldLabel>
-                <Segmented options={[...LEAGUE_FORMATS]} value={format} onChange={setFormat} />
-              </div>
-              {myLeagues.length > 0 && (
+              {isScoringKind && (
+                <div>
+                  <FieldLabel>Play format *</FieldLabel>
+                  <Segmented options={[...LEAGUE_FORMATS]} value={format} onChange={setFormat} />
+                </div>
+              )}
+              {kind === "clinic" && (
+                <>
+                  <div>
+                    <FieldLabel>Focus</FieldLabel>
+                    <Segmented options={["Putting", "Driving", "Form", "Field work"]} value={focus} onChange={setFocus} />
+                  </div>
+                  <div>
+                    <FieldLabel>Skill level</FieldLabel>
+                    <Segmented options={["Beginner", "Intermediate", "All levels"]} value={skillLevel} onChange={setSkillLevel} />
+                  </div>
+                </>
+              )}
+              {kind === "cleanup" && (
+                <>
+                  <div>
+                    <FieldLabel>Work list</FieldLabel>
+                    <div className="flex flex-wrap gap-2">
+                      {["Trimming", "Trash", "Tee pads", "Signage", "Planting"].map((w) => {
+                        const on = workList.includes(w);
+                        return <button key={w} type="button" onClick={() => setWorkList((xs) => (on ? xs.filter((x) => x !== w) : [...xs, w]))} className={`h-10 rounded-xl border px-4 text-[13px] font-bold transition-all ${on ? "border-[var(--gold)] bg-[var(--gold-dim)] text-[var(--gold)]" : "border-white/[0.09] bg-white/[0.03] text-[var(--text-body)] hover:border-white/25"}`}>{w}</button>;
+                      })}
+                    </div>
+                  </div>
+                  <label className="block">
+                    <FieldLabel>Meeting point</FieldLabel>
+                    <input value={meetingPoint} onChange={(e) => setMeetingPoint(e.target.value)} placeholder="Parking lot by hole 1" className={inputCls} />
+                  </label>
+                </>
+              )}
+              {isScoringKind && myLeagues.length > 0 && (
                 <label className="block">
                   <FieldLabel>League <span className="normal-case tracking-normal text-[var(--sage-dim)]">— optional; otherwise one is set up for you</span></FieldLabel>
                   <select value={leagueChoice} onChange={(e) => setLeagueChoice(e.target.value)} className={inputCls}>
@@ -317,6 +365,17 @@ export default function EventWizard() {
                 <label className="block"><FieldLabel>Start date *</FieldLabel><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={`${inputCls} min-w-[190px]`} autoFocus /></label>
                 <label className="block"><FieldLabel>Tee time</FieldLabel><input type="time" value={time} onChange={(e) => setTime(e.target.value)} className={`${inputCls} min-w-[140px]`} /></label>
               </div>
+              {isSessionKind && (
+                <div>
+                  <FieldLabel>Duration</FieldLabel>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {[60, 90, 120, 180].map((n) => (
+                      <button key={n} onClick={() => setDurationMin(n)} className={`h-11 min-w-[52px] rounded-xl border px-4 font-mono text-sm font-bold transition-all ${durationMin === n ? "border-[var(--gold)] bg-[var(--gold-dim)] text-[var(--gold)]" : "border-white/[0.09] bg-white/[0.03] text-[var(--text-body)] hover:border-white/25"}`}>{n >= 60 ? `${n / 60}h${n % 60 ? ` ${n % 60}m` : ""}` : `${n}m`}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {!isSessionKind && (
               <div>
                 <FieldLabel>Holes per round</FieldLabel>
                 <div className="flex flex-wrap items-center gap-2">
@@ -327,6 +386,7 @@ export default function EventWizard() {
                   {useCustomHoles && <input inputMode="numeric" value={customHoles} onChange={(e) => setCustomHoles(e.target.value)} placeholder="27" className={`${inputCls} w-24`} autoFocus />}
                 </div>
               </div>
+              )}
               {(isLeagueKind || kind === "tournament") && (
               <div>
                 <FieldLabel>{isLeagueKind ? "How many weeks?" : "How many rounds?"}</FieldLabel>
@@ -402,15 +462,33 @@ export default function EventWizard() {
           {step === "money" && (
             <div className="grid gap-5">
               <div className="flex flex-wrap gap-5">
+                {kind !== "cleanup" && (
+                  <label className="block">
+                    <FieldLabel>{kind === "clinic" ? "Price per player ($)" : "Buy-in per player ($)"}</FieldLabel>
+                    <input inputMode="numeric" value={buyIn} onChange={(e) => setBuyIn(e.target.value)} placeholder="0, free event" className={`${inputCls} w-[180px]`} autoFocus />
+                  </label>
+                )}
                 <label className="block">
-                  <FieldLabel>Buy-in per player ($)</FieldLabel>
-                  <input inputMode="numeric" value={buyIn} onChange={(e) => setBuyIn(e.target.value)} placeholder="0, free event" className={`${inputCls} w-[180px]`} autoFocus />
-                </label>
-                <label className="block">
-                  <FieldLabel>Field cap <span className="normal-case tracking-normal text-[var(--cream-38)]">optional</span></FieldLabel>
-                  <input inputMode="numeric" value={capacity} onChange={(e) => setCapacity(e.target.value)} placeholder="72" className={`${inputCls} w-[140px]`} />
+                  <FieldLabel>{kind === "clinic" ? "Spots" : kind === "cleanup" ? "Volunteer cap" : kind === "social" ? "Group cap" : "Field cap"} <span className="normal-case tracking-normal text-[var(--cream-38)]">optional</span></FieldLabel>
+                  <input inputMode="numeric" value={capacity} onChange={(e) => setCapacity(e.target.value)} placeholder={kind === "clinic" ? "12" : kind === "cleanup" ? "20" : "72"} className={`${inputCls} w-[140px]`} />
                 </label>
               </div>
+              {kind === "tournament" && (
+                <div>
+                  <FieldLabel>Places paid <span className="normal-case tracking-normal text-[var(--cream-38)]">optional — suggests payout splits from the pot</span></FieldLabel>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {[0, 2, 3, 4, 5].map((n) => (
+                      <button key={n} onClick={() => setPayoutPlaces(n)} className={`h-11 min-w-[52px] rounded-xl border px-4 font-mono text-sm font-bold transition-all ${payoutPlaces === n ? "border-[var(--gold)] bg-[var(--gold-dim)] text-[var(--gold)]" : "border-white/[0.09] bg-white/[0.03] text-[var(--text-body)] hover:border-white/25"}`}>{n === 0 ? "Skip" : n}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {isSessionKind && (
+                <label className="block">
+                  <FieldLabel>What to bring <span className="normal-case tracking-normal text-[var(--cream-38)]">optional</span></FieldLabel>
+                  <input value={bring} onChange={(e) => setBring(e.target.value)} placeholder={kind === "clinic" ? "Putters and a full bag" : "Gloves, trimmers, water"} className={inputCls} />
+                </label>
+              )}
               <div>
                 <FieldLabel>Extras <span className="normal-case tracking-normal text-[var(--cream-38)]">optional — shown on the event page</span></FieldLabel>
                 <div className="mt-1 flex flex-wrap gap-2">

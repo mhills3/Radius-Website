@@ -105,6 +105,7 @@ export const IconMoon = ({ className }: IconProps) => <I className={className} d
 export const IconHeart = ({ className }: IconProps) => <I className={className} d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21.2l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8z" />;
 export const IconTag = ({ className }: IconProps) => <I className={className} d="M20.6 13.4L12 22 2 12V2h10l8.6 8.6a2 2 0 0 1 0 2.8zM7.5 7.5h.01" />;
 export const IconVenus = ({ className }: IconProps) => <I className={className} d="M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM12 15v7M9 19h6" />;
+export const IconClock = ({ className }: IconProps) => <I className={className} d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 7v5l3.5 2" />;
 export const IconShare = ({ className }: IconProps) => <I className={className} d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13" />;
 export const IconSliders = ({ className }: IconProps) => <I className={className} d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" />;
 export const IconDollar = ({ className }: IconProps) => <I className={className} d="M12 2v20M17 5.5H9.8a3.3 3.3 0 0 0 0 6.6h4.4a3.3 3.3 0 0 1 0 6.6H6.5" />;

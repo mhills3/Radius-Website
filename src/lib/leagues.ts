@@ -94,6 +94,14 @@ export interface LeagueEvent {
   kind?: string;        // EVENT_KINDS key — discovery category
   isPrivate?: boolean;  // private events are link/search-only, excluded from discovery
   extras?: string[];    // optional-extras tags (EVENT_EXTRAS keys): ace pool, glow, beginner-friendly…
+  // Per-kind detail fields (all optional; display-layer)
+  focus?: string;        // clinic: Putting | Driving | Form | Field work
+  skillLevel?: string;   // clinic: Beginner | Intermediate | All levels
+  durationMin?: number;  // clinic/cleanup session length
+  bring?: string;        // clinic/cleanup: what to bring
+  workList?: string[];   // cleanup: work items
+  meetingPoint?: string; // cleanup: where to meet
+  payoutPlaces?: number; // tournament: how many places paid (suggestion engine)
   description?: string; // event-specific notes (markdown-lite)
   contactEmail?: string;
   contactPhone?: string;
@@ -321,7 +329,7 @@ export const EVENT_EXTRAS = [
   { key: "charity", label: "Charity event", hint: "Proceeds support a cause" },
 ] as const;
 
-export async function createEvents(uid: string, league: League, input: { name: string; dates: number[]; courseId?: string; courseName?: string; format?: string; startFormat?: string; roundCount?: number; holes?: number; capacity?: number; buyIn?: number; kind?: string; isPrivate?: boolean; description?: string; contactEmail?: string; contactPhone?: string; extras?: string[] }): Promise<LeagueEvent[]> {
+export async function createEvents(uid: string, league: League, input: { name: string; dates: number[]; courseId?: string; courseName?: string; format?: string; startFormat?: string; roundCount?: number; holes?: number; capacity?: number; buyIn?: number; kind?: string; isPrivate?: boolean; description?: string; contactEmail?: string; contactPhone?: string; extras?: string[]; focus?: string; skillLevel?: string; durationMin?: number; bring?: string; workList?: string[]; meetingPoint?: string; payoutPlaces?: number }): Promise<LeagueEvent[]> {
   const now = Date.now();
   const out: LeagueEvent[] = [];
   for (const date of input.dates) {
@@ -343,6 +351,13 @@ export async function createEvents(uid: string, league: League, input: { name: s
       contactEmail: input.contactEmail?.trim() || undefined,
       contactPhone: input.contactPhone?.trim() || undefined,
       extras: input.extras?.filter((x) => EVENT_EXTRAS.some((t) => t.key === x)).length ? input.extras.filter((x) => EVENT_EXTRAS.some((t) => t.key === x)) : undefined,
+      focus: input.focus?.trim() || undefined,
+      skillLevel: input.skillLevel?.trim() || undefined,
+      durationMin: input.durationMin && input.durationMin > 0 ? Math.floor(input.durationMin) : undefined,
+      bring: input.bring?.trim() || undefined,
+      workList: input.workList?.length ? input.workList : undefined,
+      meetingPoint: input.meetingPoint?.trim() || undefined,
+      payoutPlaces: input.payoutPlaces && input.payoutPlaces > 1 ? Math.min(Math.floor(input.payoutPlaces), 10) : undefined,
       entryCount: 0, createdAt: now,
     };
     await setDoc(doc(db, "leagueEvents", id), JSON.parse(JSON.stringify(ev)), { merge: true });
@@ -363,6 +378,13 @@ function toEvent(id: string, d: any): LeagueEvent {
     holes: Number(d.holes) > 0 ? Number(d.holes) : 18,
     capacity: Number(d.capacity) > 0 ? Number(d.capacity) : undefined,
     extras: Array.isArray(d.extras) ? d.extras.filter((x: unknown) => typeof x === "string") : undefined,
+    focus: (d.focus as string) || undefined,
+    skillLevel: (d.skillLevel as string) || undefined,
+    durationMin: Number(d.durationMin) > 0 ? Number(d.durationMin) : undefined,
+    bring: (d.bring as string) || undefined,
+    workList: Array.isArray(d.workList) ? d.workList.filter((x: unknown) => typeof x === "string") : undefined,
+    meetingPoint: (d.meetingPoint as string) || undefined,
+    payoutPlaces: Number(d.payoutPlaces) > 1 ? Number(d.payoutPlaces) : undefined,
     buyIn: Number(d.buyIn) > 0 ? Number(d.buyIn) : undefined,
     kind: (d.kind as string) || undefined,
     isPrivate: d.isPrivate === true,

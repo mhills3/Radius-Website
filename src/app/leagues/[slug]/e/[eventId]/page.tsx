@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { EVENT_EXTRAS, getLeagueBySlug, getLeagueMembers, getEvent, getCards, checkIn, updateEntry, removeEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, reassignBagTags, computeStandings, computeHandicaps, applyHandicaps, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCoursePars, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
-import { SectionTitle, Avatar, Pos, btnGold, card, plural, BackLink, IconSliders, IconShare, IconSparkles, IconMoon, IconHeart, IconTag, IconVenus, IconDollar, IconPin, IconDisc, IconEyeOff, IconUsers, IconCalendar, IconTrophy, IconTarget, IconLeaf } from "@/components/leagues/ui";
+import { SectionTitle, Avatar, Pos, btnGold, card, plural, BackLink, IconSliders, IconShare, IconClock, IconSparkles, IconMoon, IconHeart, IconTag, IconVenus, IconDollar, IconPin, IconDisc, IconEyeOff, IconUsers, IconCalendar, IconTrophy, IconTarget, IconLeaf } from "@/components/leagues/ui";
 
 const KIND_ICON: Record<string, React.ComponentType<{ className?: string }>> = { league: IconCalendar, tournament: IconTrophy, clinic: IconTarget, cleanup: IconLeaf, social: IconUsers };
 const EXTRA_ICON: Record<string, React.ComponentType<{ className?: string }>> = { ace_pool: IconDisc, ctp: IconTarget, bag_tags: IconTag, glow: IconMoon, beginner: IconSparkles, women: IconVenus, juniors: IconUsers, charity: IconHeart };
@@ -266,6 +266,8 @@ export default function LeagueEventPage() {
     : null;
   const anyHcp = entries.some((e) => (e.startingScore ?? 0) !== 0);
   const open = event.status !== "complete" && event.status !== "cancelled";
+  // Clinics, cleanups, and socials have no scoring surface at all.
+  const scoringKind = event.kind !== "clinic" && event.kind !== "cleanup" && event.kind !== "social";
   const paidCount = entries.filter((e) => e.paid).length;
   const paidOut = entries.reduce((a, e) => a + (e.payout ?? 0), 0);
   const isTeamFormat = event.format === "Doubles" || event.format === "Teams";
@@ -394,8 +396,12 @@ export default function LeagueEventPage() {
             </div>
             <div className="mt-4 flex flex-wrap items-center gap-2.5">
               <span className={`${pillMono}`}>{fmtDate(event.date)}</span>
-              <span className={`${pillWord}`}>{event.format} · {event.startFormat}</span>
-              <span className={`${pillMono}`}>{event.roundCount > 1 ? `${event.roundCount} × ${event.holes} holes` : `${event.holes} holes`}</span>
+              {(event.kind !== "clinic" && event.kind !== "cleanup") && <span className={`${pillWord}`}>{event.format} · {event.startFormat}</span>}
+              {(event.kind !== "clinic" && event.kind !== "cleanup") ? (
+                <span className={`${pillMono}`}>{event.roundCount > 1 ? `${event.roundCount} × ${event.holes} holes` : `${event.holes} holes`}</span>
+              ) : event.durationMin ? (
+                <span className={`${pillMono}`}>{event.durationMin >= 60 ? `${Math.floor(event.durationMin / 60)}h${event.durationMin % 60 ? ` ${event.durationMin % 60}m` : ""}` : `${event.durationMin} min`}</span>
+              ) : null}
               {event.kind && EVENT_KINDS.find((k) => k.key === event.kind) && (
                 <span className={`${pillWord} gap-1.5`}>{(() => { const Ic = KIND_ICON[event.kind!]; return Ic ? <Ic className="h-3.5 w-3.5" /> : null; })()}{EVENT_KINDS.find((k) => k.key === event.kind)!.label}</span>
               )}
@@ -414,7 +420,7 @@ export default function LeagueEventPage() {
 
       <div className="mx-auto max-w-4xl px-5">
         {admin && open && (() => {
-          const secondary = liveNow
+          const secondary = !scoringKind ? null : liveNow
             ? (event.roundCount < 6 ? { label: `Add round ${event.roundCount + 1}`, fn: addRound } : null)
             : (isTeamFormat ? { label: "Randomize teams", fn: doTeams } : { label: "Apply handicaps", fn: doHandicaps });
           return (
@@ -430,9 +436,9 @@ export default function LeagueEventPage() {
                   <button onClick={() => { setMenuOpen((o) => !o); setConfirmCancel(false); }} aria-label="More league tools" aria-expanded={menuOpen} className="grid h-9 w-9 place-items-center rounded-[10px] text-[var(--cream-60)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)]">⋯</button>
                   {menuOpen && (
                     <div className="absolute right-0 top-full z-20 mt-2 min-w-[210px] rounded-xl border border-[var(--hair)] bg-[var(--card-raised)] p-1.5">
-                      {!isTeamFormat && <button onClick={() => { doHandicaps(); setMenuOpen(false); }} className={menuItem}>Apply handicaps</button>}
-                      {isTeamFormat && <button onClick={() => { doTeams(); setMenuOpen(false); }} className={menuItem}>Randomize teams</button>}
-                      {event.roundCount < 6 && <button onClick={() => { addRound(); setMenuOpen(false); }} className={menuItem}>Add round {event.roundCount + 1}</button>}
+                      {scoringKind && !isTeamFormat && <button onClick={() => { doHandicaps(); setMenuOpen(false); }} className={menuItem}>Apply handicaps</button>}
+                      {scoringKind && isTeamFormat && <button onClick={() => { doTeams(); setMenuOpen(false); }} className={menuItem}>Randomize teams</button>}
+                      {scoringKind && event.roundCount < 6 && <button onClick={() => { addRound(); setMenuOpen(false); }} className={menuItem}>Add round {event.roundCount + 1}</button>}
                       <button onClick={() => { if (confirmCancel) { cancel(); setMenuOpen(false); setConfirmCancel(false); } else setConfirmCancel(true); }} className={`${menuItem} text-[#f08c8c] hover:bg-[#f08c8c]/10 hover:text-[#f08c8c] ${confirmCancel ? "font-bold" : ""}`}>{confirmCancel ? "Confirm cancel event" : "Cancel event"}</button>
                     </div>
                   )}
@@ -476,7 +482,7 @@ export default function LeagueEventPage() {
       <nav className="mb-9 mt-1.5 flex gap-[34px] border-b border-[var(--hair)]">
         {([
           { k: "about" as const, label: event.status === "complete" ? "Recap" : "About", n: 0 },
-          { k: "scores" as const, label: "Scores", n: 0 },
+          ...(scoringKind ? [{ k: "scores" as const, label: "Scores", n: 0 }] : []),
           { k: "players" as const, label: "Players", n: entries.length },
           { k: "chat" as const, label: "Chat", n: messages.length },
         ]).map(({ k, label, n }) => (
@@ -492,7 +498,7 @@ export default function LeagueEventPage() {
       {tab === "about" && (
         <section className="mb-[44px] grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_350px] lg:gap-11">
           <div className="min-w-0">
-            {event.status === "complete" && ranked.length > 0 && (
+            {scoringKind && event.status === "complete" && ranked.length > 0 && (
               <div className="mb-10">
                 <div className="mb-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">Final results</div>
                 <div className={`${card} overflow-hidden`}>
@@ -534,7 +540,7 @@ export default function LeagueEventPage() {
               </div>
             )}
 
-            {liveNow && ranked.length > 0 && (
+            {scoringKind && liveNow && ranked.length > 0 && (
               <div className="mb-10">
                 <div className={`${card} overflow-hidden`}>
                   <div className="flex items-center justify-between px-5 pb-3 pt-4">
@@ -588,10 +594,19 @@ export default function LeagueEventPage() {
                   return (
                     <>
                       {kindDef && <Fact icon={KIND_ICON[event.kind!] ?? IconCalendar} label={kindDef.label} />}
-                      <Fact icon={IconDisc} label={event.format} sub={`${event.startFormat} start`} />
-                      <Fact icon={IconTarget} label={event.roundCount > 1 ? `${event.roundCount} × ${event.holes} holes` : `${event.holes} holes`} />
-                      <Fact icon={IconDollar} label={event.buyIn ? "Pay to play" : "Free to play"} sub={event.buyIn ? `$${event.buyIn} buy-in` : undefined} />
-                      {divisions.length > 0 && <Fact icon={IconUsers} label="Divisions" sub={divisions.join(" · ")} />}
+                      {scoringKind && <Fact icon={IconDisc} label={event.format} sub={`${event.startFormat} start`} />}
+                      {scoringKind ? (
+                        <Fact icon={IconTarget} label={event.roundCount > 1 ? `${event.roundCount} × ${event.holes} holes` : `${event.holes} holes`} />
+                      ) : event.durationMin ? (
+                        <Fact icon={IconClock} label={event.durationMin >= 60 ? `${Math.floor(event.durationMin / 60)}h${event.durationMin % 60 ? ` ${event.durationMin % 60}m` : ""}` : `${event.durationMin} min`} sub="Planned length" />
+                      ) : null}
+                      {event.focus && <Fact icon={IconTarget} label={event.focus} sub={event.skillLevel ? `${event.skillLevel}` : "Session focus"} />}
+                      {event.workList && event.workList.length > 0 && <Fact icon={IconLeaf} label="Work list" sub={event.workList.join(" · ")} />}
+                      {event.meetingPoint && <Fact icon={IconPin} label="Meet at" sub={event.meetingPoint} />}
+                      {event.bring && <Fact icon={IconTag} label="Bring" sub={event.bring} />}
+                      {event.kind !== "cleanup" && <Fact icon={IconDollar} label={event.buyIn ? (event.kind === "clinic" ? "Price" : "Pay to play") : "Free to play"} sub={event.buyIn ? `$${event.buyIn}${event.kind === "clinic" ? "" : " buy-in"}` : undefined} />}
+                      {event.payoutPlaces && <Fact icon={IconTrophy} label={`Top ${event.payoutPlaces} paid`} sub="Payouts from the pot" />}
+                      {scoringKind && divisions.length > 0 && <Fact icon={IconUsers} label="Divisions" sub={divisions.join(" · ")} />}
                       {(event.extras ?? []).map((x) => {
                         const t = EVENT_EXTRAS.find((e2) => e2.key === x);
                         return t ? <Fact key={x} icon={EXTRA_ICON[x] ?? IconDisc} label={t.label} sub={t.hint} /> : null;
@@ -615,7 +630,7 @@ export default function LeagueEventPage() {
             )}
           </div>
           <div className="grid content-start gap-4 lg:sticky lg:top-6">
-            {event.status === "complete" && ranked.length > 0 && (
+            {scoringKind && event.status === "complete" && ranked.length > 0 && (
               <div className="relative overflow-hidden rounded-2xl border border-[rgba(232,181,96,0.35)] bg-[var(--card)] p-6">
                 <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(340px 200px at 85% -20%, rgba(232,181,96,.20), transparent 65%), radial-gradient(280px 180px at -10% 110%, rgba(232,181,96,.09), transparent 60%), linear-gradient(180deg, rgba(232,181,96,.05), transparent 55%)" }} />
                 <IconTrophy className="pointer-events-none absolute -right-5 -top-5 h-32 w-32 rotate-12 text-[var(--gold)] opacity-[0.08]" />
@@ -666,7 +681,7 @@ export default function LeagueEventPage() {
               </div>
             )}
 
-            {liveNow && me && cid && ranked.some((x) => x.id === cid) && (() => {
+            {scoringKind && liveNow && me && cid && ranked.some((x) => x.id === cid) && (() => {
               const myIdx = ranked.findIndex((x) => x.id === cid);
               const mineDelta = deltaOf(ranked[myIdx]);
               const tied = ranked.filter((x) => deltaOf(x) === mineDelta).length > 1;
@@ -724,9 +739,11 @@ export default function LeagueEventPage() {
               <div className="ml-[5px] border-l border-[var(--hair-strong)] pl-[22px]">
                 <div className="relative">
                   <span className="absolute -left-[27px] top-1.5 h-2 w-2 rounded-full border-2 border-[var(--blue)] bg-[var(--forest)]" />
-                  <div className="font-[family-name:var(--font-heading)] text-[14.5px] font-semibold text-[var(--cream)]">{event.roundCount === 1 ? "Round 1" : event.roundCount === 2 ? "Rounds 1 and 2" : `Rounds 1–${event.roundCount}`}</div>
+                  <div className="font-[family-name:var(--font-heading)] text-[14.5px] font-semibold text-[var(--cream)]">{event.kind === "clinic" ? "Session" : event.kind === "cleanup" ? "Work day" : event.roundCount === 1 ? "Round 1" : event.roundCount === 2 ? "Rounds 1 and 2" : `Rounds 1–${event.roundCount}`}</div>
                   <div className="mt-1 font-mono text-xs text-[var(--blue)]">{fmtDate(event.date)}</div>
-                  <div className="mt-[3px] text-[12.5px] text-[var(--cream-60)]">{event.holes} holes{event.roundCount > 1 ? " per round" : ""} · {event.startFormat}{event.courseName ? ` · ${event.courseName}` : ""}</div>
+                  <div className="mt-[3px] text-[12.5px] text-[var(--cream-60)]">{event.kind === "clinic" || event.kind === "cleanup"
+                    ? [event.durationMin ? (event.durationMin >= 60 ? `${Math.floor(event.durationMin / 60)}h${event.durationMin % 60 ? ` ${event.durationMin % 60}m` : ""}` : `${event.durationMin} min`) : null, event.meetingPoint, event.courseName].filter(Boolean).join(" · ")
+                    : `${event.holes} holes${event.roundCount > 1 ? " per round" : ""} · ${event.startFormat}${event.courseName ? ` · ${event.courseName}` : ""}`}</div>
                 </div>
               </div>
             </div>
@@ -788,11 +805,22 @@ export default function LeagueEventPage() {
               <div className={`mt-1 font-mono text-xl font-extrabold ${s.gold ? "text-[var(--gold)]" : "text-[var(--cream)]"}`}>{s.value}</div>
             </div>
           ))}
+          {admin && event.payoutPlaces && paidCount > 0 ? (() => {
+            const pot = paidCount * event.buyIn!;
+            const curves: Record<number, number[]> = { 2: [60, 40], 3: [50, 30, 20], 4: [40, 30, 20, 10], 5: [35, 25, 20, 12, 8] };
+            const curve = curves[Math.min(event.payoutPlaces!, 5)] ?? curves[3];
+            const cuts = curve.map((pct) => Math.round((pot * pct) / 100));
+            return (
+              <p className="col-span-2 font-mono text-[10.5px] tracking-[0.06em] text-[var(--cream-38)] sm:col-span-4">
+                Suggested from the ${pot} pot: {cuts.map((c, i) => `${i + 1}${["st", "nd", "rd"][i] ?? "th"} $${c}`).join(" · ")} — enter actual payouts on the rows.
+              </p>
+            );
+          })() : null}
         </section>
       )}
 
       {/* Leaderboard */}
-      {tab === "scores" && (
+      {tab === "scores" && scoringKind && (
       <section className="mb-[44px]">
         <SectionTitle
           right={divisions.length > 1 && entries.some((e) => e.division) ? (
