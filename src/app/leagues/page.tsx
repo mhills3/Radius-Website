@@ -25,7 +25,7 @@ const KIND_CHIP: Record<string, { label: string; icon: React.ComponentType<{ cla
 /** Month calendar with activity dots — click a marked day to filter the list. */
 /** Card photo strip: course cover with dissolve-into-card gradients, contour
     fallback when no photo exists or the URL is dead, frosted date chip overlay. */
-function CourseStrip({ url, ms }: { url?: string; ms: number }) {
+function CourseStrip({ url, isLogo, ms }: { url?: string; isLogo?: boolean; ms: number }) {
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
   const d = new Date(ms);
@@ -43,11 +43,11 @@ function CourseStrip({ url, ms }: { url?: string; ms: number }) {
       {url && !failed && (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={url} alt="" loading="lazy" decoding="async" onLoad={() => setLoaded(true)} onError={() => setFailed(true)}
-          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${loaded ? "opacity-100" : "opacity-0"}`} />
+          className={`absolute inset-0 h-full w-full transition-opacity duration-200 ${isLogo ? "object-contain p-5" : "object-cover"} ${loaded ? "opacity-100" : "opacity-0"}`} />
       )}
-      <div aria-hidden className="absolute inset-0 bg-[rgba(20,27,22,0.25)]" />
-      <div aria-hidden className="absolute inset-0 hidden sm:block" style={{ background: "linear-gradient(90deg, transparent 55%, rgba(23,32,25,.92) 100%)" }} />
-      <div aria-hidden className="absolute inset-0 sm:hidden" style={{ background: "linear-gradient(180deg, transparent 55%, rgba(23,32,25,.92) 100%)" }} />
+      {!isLogo && <div aria-hidden className="absolute inset-0 bg-[rgba(20,27,22,0.25)]" />}
+      {!isLogo && <div aria-hidden className="absolute inset-0 hidden sm:block" style={{ background: "linear-gradient(90deg, transparent 55%, rgba(23,32,25,.92) 100%)" }} />}
+      {!isLogo && <div aria-hidden className="absolute inset-0 sm:hidden" style={{ background: "linear-gradient(180deg, transparent 55%, rgba(23,32,25,.92) 100%)" }} />}
       <div className="absolute left-3 top-3 min-w-[46px] rounded-xl border border-[var(--hair)] bg-[rgba(20,27,22,0.85)] px-2 py-1.5 text-center backdrop-blur-[6px]">
         <div className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[var(--cream-60)]">{d.toLocaleDateString(undefined, { month: "short" })}</div>
         <div className="font-mono text-[19px] font-bold leading-[1.1] text-[var(--cream)]">{d.getDate()}</div>
@@ -168,6 +168,7 @@ export default function LeaguesPage() {
   }, [upcoming]);
 
   const slugOf = useMemo(() => new Map(all.map((l) => [l.id, l.slug])), [all]);
+  const logoOf = useMemo(() => new Map(all.filter((l) => l.logoUrl).map((l) => [l.id, l.logoUrl!])), [all]);
   const eventDays = useMemo(() => {
     const m = new Map<string, number>();
     for (const e of upcoming) { const k = dayKey(e.date); m.set(k, (m.get(k) ?? 0) + 1); }
@@ -341,7 +342,7 @@ export default function LeaguesPage() {
                   const slug = slugOf.get(ev.leagueId);
                   const inner = (
                     <div className="grid sm:grid-cols-[220px_1fr]">
-                      <CourseStrip url={ev.courseId ? covers.get(ev.courseId) : undefined} ms={ev.date} />
+                      {(() => { const logo = logoOf.get(ev.leagueId); return <CourseStrip url={logo ?? (ev.courseId ? covers.get(ev.courseId) : undefined)} isLogo={!!logo} ms={ev.date} />; })()}
                       <div className="min-w-0 p-6">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 truncate font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">{ev.name}</div>
