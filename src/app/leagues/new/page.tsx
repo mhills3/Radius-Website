@@ -65,6 +65,7 @@ export default function EventWizard() {
   const [useCustomHoles, setUseCustomHoles] = useState(false);
   const [weeksMode, setWeeksMode] = useState<"preset" | "custom" | "until">("preset");
   const [untilDate, setUntilDate] = useState("");
+  const [regCloseMin, setRegCloseMin] = useState(0);
   const [course, setCourse] = useState<CourseHit | null>(null);
   const [customPlace, setCustomPlace] = useState("");
   const [byAddress, setByAddress] = useState(false);
@@ -183,6 +184,7 @@ export default function EventWizard() {
         workList: kind === "cleanup" ? workList : undefined,
         meetingPoint: kind === "cleanup" ? meetingPoint : undefined,
         payoutPlaces: kind === "tournament" && payoutPlaces > 1 ? payoutPlaces : undefined,
+        registrationCloseOffsetMin: regCloseMin || undefined,
         kind, isPrivate, description: desc,
         contactEmail: email, contactPhone: phone,
       });
@@ -369,6 +371,15 @@ export default function EventWizard() {
               <div className="flex flex-wrap gap-4">
                 <label className="block"><FieldLabel>Start date *</FieldLabel><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={`${inputCls} min-w-[190px]`} autoFocus /></label>
                 <label className="block"><FieldLabel>Tee time</FieldLabel><input type="time" value={time} onChange={(e) => setTime(e.target.value)} className={`${inputCls} min-w-[140px]`} /></label>
+              </div>
+              <div>
+                <FieldLabel>Registration closes</FieldLabel>
+                <div className="flex flex-wrap items-center gap-2">
+                  {([[0, "At tee time"], [60, "1h before"], [1440, "1 day before"], [-60, "1h after"], [-180, "3h after"]] as const).map(([m, label]) => (
+                    <button key={m} onClick={() => setRegCloseMin(m)} className={`h-11 rounded-xl border px-4 text-sm font-bold transition-all ${regCloseMin === m ? "border-[var(--gold)] bg-[var(--gold-dim)] text-[var(--gold)]" : "border-white/[0.09] bg-white/[0.03] text-[var(--text-body)] hover:border-white/25"}`}>{label}</button>
+                  ))}
+                </div>
+                {isLeagueKind && nCount > 1 && <p className="mt-2 text-xs text-[var(--sage-dim)]">Applies to every week of the season.</p>}
               </div>
               {isSessionKind && (
                 <div>

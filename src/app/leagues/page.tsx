@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
-import { createLeague, getMyLeagues, getAllLeagues, getUpcomingEvents, getLeagueEvents, getEntries, getCourseMeta, isLeagueAdmin, LEAGUE_FORMATS, type CourseMeta, START_FORMATS, type League, type LeagueEvent, type EventEntry } from "@/lib/leagues";
+import { createLeague, getMyLeagues, getAllLeagues, getUpcomingEvents, getLeagueEvents, getEntries, getCourseMeta, isLeagueAdmin, registrationOpen, LEAGUE_FORMATS, type CourseMeta, START_FORMATS, type League, type LeagueEvent, type EventEntry } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { inputCls, FieldLabel, Segmented, btnGold, btnGhost, card, cardHover, plural, pluralWord, IconCalendar, IconTrophy, IconTarget, IconLeaf, IconUsers, IconPin } from "@/components/leagues/ui";
 
@@ -198,17 +198,18 @@ export default function LeaguesPage() {
 
   const slugOf = useMemo(() => new Map(all.map((l) => [l.id, l.slug])), [all]);
   const logoOf = useMemo(() => new Map(all.filter((l) => l.logoUrl).map((l) => [l.id, l.logoUrl!])), [all]);
+  const calendarSource = useMemo(() => (tab === "My events" ? upcoming : upcoming.filter((e) => registrationOpen(e))), [tab, upcoming]);
   const eventDays = useMemo(() => {
     const m = new Map<string, number>();
-    for (const e of upcoming) { const k = dayKey(e.date); m.set(k, (m.get(k) ?? 0) + 1); }
+    for (const e of calendarSource) { const k = dayKey(e.date); m.set(k, (m.get(k) ?? 0) + 1); }
     return m;
-  }, [upcoming]);
+  }, [calendarSource]);
   const upNext = useMemo(() => {
-    const e = [...upcoming].sort((a, b) => a.date - b.date).find((x) => x.date >= today.getTime() - 3600_000);
+    const e = [...calendarSource].sort((a, b) => a.date - b.date).find((x) => x.date >= today.getTime() - 3600_000);
     if (!e) return null;
     const s2 = slugOf.get(e.leagueId);
     return s2 ? { href: `/leagues/${s2}/e/${e.id}`, name: e.name, courseName: e.courseName, date: e.date } : null;
-  }, [upcoming, slugOf, today]);
+  }, [calendarSource, slugOf, today]);
 
   // My events = events you run OR are signed up for (checked in).
   const [signedUp, setSignedUp] = useState<Set<string>>(new Set());
@@ -242,9 +243,10 @@ export default function LeaguesPage() {
   }, [tab, adminLeagueIds, upcoming]);
 
   const needle = q.trim().toLowerCase();
+  // Public feed hides events past their registration close; entrants/admins keep them under My events.
   const tabEvents = tab === "My events"
     ? [...upcoming.filter((e) => adminLeagueIds.has(e.leagueId) || signedUp.has(e.id)), ...privateMine].sort((a, b) => a.date - b.date)
-    : upcoming;
+    : upcoming.filter((e) => registrationOpen(e));
   const shownEvents = tabEvents.filter((e) =>
     (!dayFilter || dayKey(e.date) === dayFilter)
     && (kindFilter === "all" || (e.kind ?? "league") === kindFilter)
@@ -374,7 +376,7 @@ export default function LeaguesPage() {
             </div>
             );
           })()}
-          {live && (
+          {live && (tab === "My events" || registrationOpen(live.ev)) && (
               <Link href={slugOf.get(live.ev.leagueId) ? `/leagues/${slugOf.get(live.ev.leagueId)}/e/${live.ev.id}` : "#"} className="relative mb-3 block overflow-hidden rounded-2xl border border-[var(--hair)] bg-[var(--card)] p-6 transition-colors hover:border-[var(--hair-strong)]">
                 <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(600px 300px at 80% -10%, rgba(143,189,227,.10), transparent 60%)" }} />
                 <div className="relative">

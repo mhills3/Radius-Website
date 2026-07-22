@@ -68,9 +68,13 @@
 
       match /entries/{entryId} {
         allow read: if true;
-        // Own check-in; directors anything; live-score mirror from cardmates
-        // (holeScores/thruHole only — never the authoritative score fields).
-        allow create: if request.auth != null && entryId == canonicalId();
+        // Own check-in (only while registration is open — absent
+        // registrationCloseAt means it closes at event start); directors
+        // anything; live-score mirror from cardmates (holeScores/thruHole
+        // only — never the authoritative score fields).
+        allow create: if request.auth != null && entryId == canonicalId()
+          && request.time.toMillis() < get(/databases/$(database)/documents/leagueEvents/$(eventId)).data
+               .get('registrationCloseAt', get(/databases/$(database)/documents/leagueEvents/$(eventId)).data.date);
         allow update: if isLeagueAdmin(eventLeagueId())
           || (request.auth != null && entryId == canonicalId())
           || (isCheckedIn()

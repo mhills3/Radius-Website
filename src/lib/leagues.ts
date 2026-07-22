@@ -103,6 +103,7 @@ export interface LeagueEvent {
   meetingPoint?: string; // cleanup: where to meet
   payoutPlaces?: number; // tournament: how many places paid (suggestion engine)
   teamNames?: Record<string, string>; // Doubles/Teams: teamId -> chosen team name
+  registrationCloseAt?: number; // ms epoch; absent = registration closes at event start
   description?: string; // event-specific notes (markdown-lite)
   contactEmail?: string;
   contactPhone?: string;
@@ -332,7 +333,7 @@ export const EVENT_EXTRAS = [
   { key: "charity", label: "Charity event", hint: "Proceeds support a cause" },
 ] as const;
 
-export async function createEvents(uid: string, league: League, input: { name: string; dates: number[]; courseId?: string; courseName?: string; format?: string; startFormat?: string; roundCount?: number; holes?: number; capacity?: number; buyIn?: number; kind?: string; isPrivate?: boolean; description?: string; contactEmail?: string; contactPhone?: string; extras?: string[]; focus?: string; skillLevel?: string; durationMin?: number; bring?: string; workList?: string[]; meetingPoint?: string; payoutPlaces?: number }): Promise<LeagueEvent[]> {
+export async function createEvents(uid: string, league: League, input: { name: string; dates: number[]; courseId?: string; courseName?: string; format?: string; startFormat?: string; roundCount?: number; holes?: number; capacity?: number; buyIn?: number; kind?: string; isPrivate?: boolean; description?: string; contactEmail?: string; contactPhone?: string; extras?: string[]; focus?: string; skillLevel?: string; durationMin?: number; bring?: string; workList?: string[]; meetingPoint?: string; payoutPlaces?: number; registrationCloseOffsetMin?: number }): Promise<LeagueEvent[]> {
   const now = Date.now();
   const out: LeagueEvent[] = [];
   for (const date of input.dates) {
@@ -361,6 +362,7 @@ export async function createEvents(uid: string, league: League, input: { name: s
       workList: input.workList?.length ? input.workList : undefined,
       meetingPoint: input.meetingPoint?.trim() || undefined,
       payoutPlaces: input.payoutPlaces && input.payoutPlaces > 1 ? Math.min(Math.floor(input.payoutPlaces), 10) : undefined,
+      registrationCloseAt: input.registrationCloseOffsetMin ? date - input.registrationCloseOffsetMin * 60_000 : undefined,
       entryCount: 0, createdAt: now,
     };
     await setDoc(doc(db, "leagueEvents", id), JSON.parse(JSON.stringify(ev)), { merge: true });
@@ -389,6 +391,7 @@ function toEvent(id: string, d: any): LeagueEvent {
     meetingPoint: (d.meetingPoint as string) || undefined,
     payoutPlaces: Number(d.payoutPlaces) > 1 ? Number(d.payoutPlaces) : undefined,
     teamNames: d.teamNames && typeof d.teamNames === "object" ? Object.fromEntries(Object.entries(d.teamNames).filter(([, v]) => typeof v === "string" && v)) as Record<string, string> : undefined,
+    registrationCloseAt: Number(d.registrationCloseAt) > 0 ? Number(d.registrationCloseAt) : undefined,
     buyIn: Number(d.buyIn) > 0 ? Number(d.buyIn) : undefined,
     kind: (d.kind as string) || undefined,
     isPrivate: d.isPrivate === true,
@@ -444,7 +447,13 @@ export async function removeEntry(eventId: string, entryId: string): Promise<voi
 
 // ---- Entries (check-in) ----
 
+/** Registration window: absent registrationCloseAt means it closes at event start. */
+export function registrationOpen(event: LeagueEvent, nowMs = Date.now()): boolean {
+  return nowMs < (event.registrationCloseAt ?? event.date);
+}
+
 export async function checkIn(uid: string, event: LeagueEvent, division?: string): Promise<EventEntry | null> {
+  if (!registrationOpen(event)) throw new Error("Registration is closed for this event.");
   const profile = await getProfileLite(uid);
   if (!profile) return null;
   const now = Date.now();

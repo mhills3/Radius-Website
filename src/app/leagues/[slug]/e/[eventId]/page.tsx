@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { EVENT_EXTRAS, getLeagueBySlug, getLeagueMembers, getEvent, getCards, checkIn, updateEntry, removeEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, reassignBagTags, computeStandings, computeHandicaps, applyHandicaps, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCourseHoles, setTeamName, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember } from "@/lib/leagues";
+import { EVENT_EXTRAS, registrationOpen, getLeagueBySlug, getLeagueMembers, getEvent, getCards, checkIn, updateEntry, removeEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, reassignBagTags, computeStandings, computeHandicaps, applyHandicaps, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCourseHoles, setTeamName, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { SectionTitle, Avatar, Pos, btnGold, card, plural, BackLink, IconSliders, IconShare, IconClock, IconSparkles, IconMoon, IconHeart, IconTag, IconVenus, IconDollar, IconPin, IconDisc, IconEyeOff, IconUsers, IconCalendar, IconTrophy, IconTarget, IconLeaf } from "@/components/leagues/ui";
 
@@ -459,7 +459,9 @@ export default function LeagueEventPage() {
               <StatusChip status={event.status} liveNow={liveNow} />
               {open && (
                 <span className="ml-auto flex flex-wrap items-center gap-2.5">
-                  {user ? (
+                  {!me && !registrationOpen(event, nowTs) ? (
+                    <span className="inline-flex items-center rounded-full border border-[var(--hair-strong)] bg-[rgba(20,27,22,0.5)] px-3.5 py-2 font-mono text-[10.5px] uppercase tracking-[0.12em] text-[var(--cream-38)] backdrop-blur-[6px]">Registration is closed</span>
+                  ) : user ? (
                     me ? (
                       !(liveNow && cid && ranked.some((x) => x.id === cid)) && (
                         <span className="inline-flex items-center gap-1.5 rounded-full border border-[#5fcf80]/25 bg-[rgba(20,27,22,0.5)] px-3.5 py-2 font-mono text-[10.5px] tracking-[0.08em] text-[#5fcf80] backdrop-blur-[6px]">✓ Checked in{me.division ? ` · ${me.division}` : ""}</span>
