@@ -100,6 +100,7 @@ export const IconDisc = ({ className }: IconProps) => (
     <ellipse cx="12" cy="12" rx="9" ry="5.5" /><ellipse cx="12" cy="12" rx="4.5" ry="2.5" />
   </svg>
 );
+export const IconSliders = ({ className }: IconProps) => <I className={className} d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" />;
 export const IconDollar = ({ className }: IconProps) => <I className={className} d="M12 2v20M17 5.5H9.8a3.3 3.3 0 0 0 0 6.6h4.4a3.3 3.3 0 0 1 0 6.6H6.5" />;
 
 /** "1 player", "3 players" — the one pluralizer for every count label in the flow. */

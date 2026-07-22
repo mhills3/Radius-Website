@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { getLeagueBySlug, getLeagueMembers, getEvent, getCards, checkIn, updateEntry, removeEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, reassignBagTags, computeStandings, computeHandicaps, applyHandicaps, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCoursePars, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
-import { SectionTitle, Avatar, Pos, btnGold, card, plural, BackLink, IconPin, IconDisc, IconEyeOff, IconUsers, IconCalendar, IconTrophy, IconTarget, IconLeaf } from "@/components/leagues/ui";
+import { SectionTitle, Avatar, Pos, btnGold, card, plural, BackLink, IconSliders, IconPin, IconDisc, IconEyeOff, IconUsers, IconCalendar, IconTrophy, IconTarget, IconLeaf } from "@/components/leagues/ui";
 
 const KIND_ICON: Record<string, React.ComponentType<{ className?: string }>> = { league: IconCalendar, tournament: IconTrophy, clinic: IconTarget, cleanup: IconLeaf, social: IconUsers };
 
@@ -420,13 +420,16 @@ export default function LeagueEventPage() {
             ? (event.roundCount < 6 ? { label: `Add round ${event.roundCount + 1}`, fn: addRound } : null)
             : (isTeamFormat ? { label: "Randomize teams", fn: doTeams } : { label: "Apply handicaps", fn: doHandicaps });
           return (
-            <div className="mt-5 flex h-[52px] items-center justify-between rounded-xl border border-[var(--hair)] bg-[var(--card)] px-4">
-              <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[var(--cream-38)]">League tools</span>
-              <div className="flex items-center gap-2">
+            <div className="mt-5 flex h-14 items-center justify-between rounded-xl border border-[var(--hair)] bg-[var(--card)] bg-gradient-to-b from-white/[0.045] to-transparent py-2 pl-4 pr-2.5">
+              <span className="flex items-center gap-3">
+                <span className="grid h-8 w-8 place-items-center rounded-[10px] bg-[var(--gold-dim)] text-[var(--gold)]"><IconSliders className="h-4 w-4" /></span>
+                <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[var(--cream-38)]">League tools</span>
+              </span>
+              <div className="flex items-center gap-1.5">
                 <button onClick={primary.fn} disabled={busy} className="h-9 rounded-[10px] bg-[var(--gold)] px-4 text-[13.5px] font-bold text-[#141B16] transition-colors hover:bg-[var(--gold-bright)] disabled:opacity-50">{primary.label}</button>
-                {secondary && <button onClick={secondary.fn} disabled={busy} className="h-9 rounded-[10px] border border-[var(--hair-strong)] px-4 text-[13.5px] font-semibold text-[var(--cream-60)] transition-colors hover:text-[var(--cream)] disabled:opacity-50">{secondary.label}</button>}
+                {secondary && <button onClick={secondary.fn} disabled={busy} className="h-9 rounded-[10px] px-4 text-[13.5px] font-semibold text-[var(--cream-60)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)] disabled:opacity-50">{secondary.label}</button>}
                 <div className="relative" ref={menuRef}>
-                  <button onClick={() => { setMenuOpen((o) => !o); setConfirmCancel(false); }} aria-label="More league tools" aria-expanded={menuOpen} className="grid h-9 w-9 place-items-center rounded-[10px] border border-[var(--hair-strong)] text-[var(--cream-60)] transition-colors hover:text-[var(--cream)]">⋯</button>
+                  <button onClick={() => { setMenuOpen((o) => !o); setConfirmCancel(false); }} aria-label="More league tools" aria-expanded={menuOpen} className="grid h-9 w-9 place-items-center rounded-[10px] text-[var(--cream-60)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)]">⋯</button>
                   {menuOpen && (
                     <div className="absolute right-0 top-full z-20 mt-2 min-w-[210px] rounded-xl border border-[var(--hair)] bg-[var(--card-raised)] p-1.5">
                       <button onClick={() => { copyLink(); setMenuOpen(false); }} className={menuItem}>Copy check-in link</button>
