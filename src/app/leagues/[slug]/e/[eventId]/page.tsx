@@ -226,26 +226,26 @@ export default function LeagueEventPage() {
   const shown = divFilter ? entries.filter((e) => e.division === divFilter) : entries;
   const scoreOf = (e: EventEntry) => (typeof e.score === "number" ? e.score : liveTotal(e));
   const adjOf = (e: EventEntry) => scoreOf(e)! + (e.penalty ?? 0) + (e.startingScore ?? 0);
-  const ranked = [...shown].filter((e) => scoreOf(e) != null && !e.dnf).sort((a, b) => adjOf(a) - adjOf(b));
-  const unscored = shown.filter((e) => !ranked.includes(e));
-  // Signed to-par totals when real pars are loaded; raw strokes otherwise.
   const parTotal = pars && pars.length === event.holes ? pars.reduce((a, b) => a + b, 0) : null;
-  const fmtTotal = (e: EventEntry) => {
-    const raw = adjOf(e);
-    if (parTotal == null) return String(raw);
-    const roundsPlayed = e.roundScores?.filter((r) => r != null).length || event.roundCount;
-    const d = raw - parTotal * roundsPlayed;
-    return d === 0 ? "E" : d > 0 ? `+${d}` : String(d);
-  };
-  // Mid-round to par: strokes vs par of only the holes actually played.
-  const fmtLive = (e: EventEntry) => {
-    if (parTotal == null || !pars) return String(adjOf(e));
-    if (typeof e.score === "number") return fmtTotal(e);
+  // Numeric to-par for an entry: finished scores against full-round par, live
+  // scores against the par of only the holes actually played.
+  const deltaOf = (e: EventEntry) => {
+    if (parTotal == null) return adjOf(e);
+    if (typeof e.score === "number") {
+      const roundsPlayed = e.roundScores?.filter((r) => r != null).length || event.roundCount;
+      return adjOf(e) - parTotal * roundsPlayed;
+    }
     let strokes = 0, par = 0;
-    (e.holeScores ?? []).forEach((h, i) => { if (h > 0) { strokes += h; par += pars[i] ?? 3; } });
-    const d = strokes + (e.penalty ?? 0) + (e.startingScore ?? 0) - par;
-    return d === 0 ? "E" : d > 0 ? `+${d}` : String(d);
+    (e.holeScores ?? []).forEach((h, i) => { if (h > 0) { strokes += h; par += pars![i] ?? 3; } });
+    return strokes + (e.penalty ?? 0) + (e.startingScore ?? 0) - par;
   };
+  const isLiveBoard = event.status === "scheduled" && entries.some((e) => typeof e.score !== "number" && e.holeScores?.some((h) => h > 0));
+  const ranked = [...shown].filter((e) => scoreOf(e) != null && !e.dnf).sort((a, b) => (isLiveBoard ? deltaOf(a) - deltaOf(b) : adjOf(a) - adjOf(b)));
+  const unscored = shown.filter((e) => !ranked.includes(e));
+  // Signed to-par strings when real pars are loaded; raw strokes otherwise.
+  const signed = (d: number) => (d === 0 ? "E" : d > 0 ? `+${d}` : String(d));
+  const fmtTotal = (e: EventEntry) => (parTotal == null ? String(adjOf(e)) : signed(deltaOf(e)));
+  const fmtLive = fmtTotal;
   const scoreTone = (txt: string, you: boolean) => (you ? "text-[var(--gold)]" : txt === "E" ? "text-[var(--cream-60)]" : "text-[var(--blue)]");
   const allRounds = ranked.flatMap((e) => e.roundScores?.filter((r) => r != null) ?? []);
   const hotRound = allRounds.length
@@ -585,12 +585,12 @@ export default function LeagueEventPage() {
 
             {liveNow && me && cid && ranked.some((x) => x.id === cid) && (() => {
               const myIdx = ranked.findIndex((x) => x.id === cid);
-              const mineAdj = adjOf(ranked[myIdx]);
-              const tied = ranked.filter((x) => adjOf(x) === mineAdj).length > 1;
-              const back = mineAdj - adjOf(ranked[0]);
+              const mineDelta = deltaOf(ranked[myIdx]);
+              const tied = ranked.filter((x) => deltaOf(x) === mineDelta).length > 1;
+              const back = mineDelta - deltaOf(ranked[0]);
               const thru = me.thruHole ?? me.holeScores?.filter((h) => h > 0).length ?? 0;
               const holesLeft = Math.max(0, event.holes - thru);
-              const pos = tied ? `T${ranked.findIndex((x) => adjOf(x) === mineAdj) + 1}` : `${myIdx + 1}${["st", "nd", "rd"][myIdx] ?? "th"}`;
+              const pos = tied ? `T${ranked.findIndex((x) => deltaOf(x) === mineDelta) + 1}` : `${myIdx + 1}${["st", "nd", "rd"][myIdx] ?? "th"}`;
               const standing = back === 0 ? (tied ? "tied for the lead" : "leading") : `${back} back`;
               const line = `${pos} of ${ranked.length} · ${standing}${holesLeft > 0 && holesLeft < event.holes ? ` with ${plural(holesLeft, "hole")} to play` : ""}`;
               return (
