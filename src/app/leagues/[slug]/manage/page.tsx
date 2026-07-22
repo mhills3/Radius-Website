@@ -4,8 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRole, isLeagueAdmin, LEAGUE_FORMATS, START_FORMATS, type League, type LeagueEvent, type LeagueMember, type StandingRow } from "@/lib/leagues";
+import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRole, setLeagueBrand, setLeagueLogo, isLeagueAdmin, BRAND_SWATCHES, LEAGUE_FORMATS, START_FORMATS, type League, type LeagueEvent, type LeagueMember, type StandingRow } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
+import { storage } from "@/lib/firebase";
+import { getDownloadURL, ref as storageRef, uploadBytes } from "firebase/storage";
 import { inputCls, FieldLabel, Segmented, Avatar, Pos, btnGold, btnGhost, card, cardHover, IconCalendar, IconUsers, IconPlus, IconPin } from "@/components/leagues/ui";
 
 // ─── League tools: the director console (UDisc "League tools" equivalent).
@@ -29,6 +31,7 @@ export default function LeagueManagePage() {
   const { slug } = useParams<{ slug: string }>();
   const { user } = useAuth();
   const [league, setLeague] = useState<League | null | undefined>(undefined);
+  const [brandNote, setBrandNote] = useState("");
   const [events, setEvents] = useState<LeagueEvent[]>([]);
   const [members, setMembers] = useState<LeagueMember[]>([]);
   const [standings, setStandings] = useState<StandingRow[]>([]);
@@ -308,6 +311,58 @@ export default function LeagueManagePage() {
           )}
 
           {section === "settings" && (
+            <div className="grid gap-6">
+            <div className={`${card} p-6`}>
+              <h3 className="mb-5 font-[family-name:var(--font-heading)] text-[15px] font-bold text-[var(--cream)]">Brand</h3>
+              <div className="grid gap-5">
+                <div className="flex items-center gap-4">
+                  <label className={`grid h-20 w-20 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-xl border-2 border-dashed transition-colors ${league.logoUrl ? "border-[var(--gold)]/40" : "border-white/15 hover:border-[var(--gold)]/50"}`}>
+                    {league.logoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={league.logoUrl} alt="League logo" className="h-full w-full object-cover" />
+                    ) : (
+                      <IconPlus className="h-5 w-5 text-[var(--gold)]" />
+                    )}
+                    <input type="file" accept="image/jpeg,image/png" className="hidden" onChange={async (e) => {
+                      const f = e.target.files?.[0];
+                      if (!f || !user) return;
+                      try {
+                        const r = storageRef(storage, `leagueLogos/${user.uid}/${league.id}.jpg`);
+                        await uploadBytes(r, f, { contentType: f.type || "image/jpeg" });
+                        const url = await getDownloadURL(r);
+                        await setLeagueLogo(league.id, url);
+                        setLeague({ ...league, logoUrl: url });
+                      } catch { setBrandNote("Logo upload was blocked — storage rules don't cover leagueLogos yet."); }
+                    }} />
+                  </label>
+                  <div className="text-xs leading-relaxed text-[var(--cream-60)]">Event logo — shows on discovery cards in place of the course photo.<br />JPEG or PNG, ~256×256.</div>
+                </div>
+                {([["Primary color", league.brandPrimary, "p"], ["Secondary color", league.brandSecondary, "s"]] as const).map(([label, val, which]) => (
+                  <div key={label}>
+                    <FieldLabel>{label}</FieldLabel>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {BRAND_SWATCHES.map((c) => (
+                        <button key={c} type="button" aria-label={`${label} ${c}`}
+                          onClick={async () => {
+                            const clear = val === c;
+                            try {
+                              await setLeagueBrand(league.id, which === "p" ? (clear ? null : c) : undefined, which === "s" ? (clear ? null : c) : undefined);
+                              setLeague({ ...league, ...(which === "p" ? { brandPrimary: clear ? undefined : c } : { brandSecondary: clear ? undefined : c }) });
+                              setBrandNote("Saved");
+                              setTimeout(() => setBrandNote(""), 1500);
+                            } catch { setBrandNote("Couldn't save"); }
+                          }}
+                          className={`h-8 w-8 rounded-lg border transition-all ${val === c ? "scale-110 border-[var(--cream)]" : "border-white/15 hover:border-white/40"}`}
+                          style={{ background: c }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                {brandNote && <p className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-[var(--cream-38)]">{brandNote}</p>}
+                <p className="text-xs text-[var(--sage-dim)]">Colors tint every page of your events — hero, leaderboards, console. Click a selected swatch to clear it.</p>
+              </div>
+            </div>
             <div className={`${card} p-6`}>
               <div className="grid gap-5 sm:grid-cols-2">
                 <div><FieldLabel>Play format</FieldLabel><Segmented options={[...LEAGUE_FORMATS]} value={formatDraft} onChange={setFormatDraft} /></div>
@@ -332,6 +387,7 @@ export default function LeagueManagePage() {
                 <button onClick={saveSettings} disabled={busy} className={btnGold}>{busy ? "Saving…" : "Save settings"}</button>
                 {saved && <span className="text-sm font-bold text-[#5fcf80]">Saved ✓</span>}
               </div>
+            </div>
             </div>
           )}
 

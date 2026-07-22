@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { storage } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthProvider";
-import { EVENT_EXTRAS, createLeague, createEvents, getMyLeagues, setLeagueBrand, setLeagueLogo, searchCourses, EVENT_KINDS, LEAGUE_FORMATS, type League, type CourseHit } from "@/lib/leagues";
+import { BRAND_SWATCHES, EVENT_EXTRAS, createLeague, createEvents, getMyLeagues, setLeagueBrand, setLeagueLogo, searchCourses, EVENT_KINDS, LEAGUE_FORMATS, type League, type CourseHit } from "@/lib/leagues";
 import { inputCls, FieldLabel, Segmented, btnGold, btnGhost, BackLink, IconCalendar, IconTrophy, IconTarget, IconLeaf, IconUsers, IconEye, IconEyeOff, IconPin, IconPlus } from "@/components/leagues/ui";
 
 // ─── Full-screen event wizard, mirroring UDisc's "List your event" step
@@ -44,8 +44,6 @@ function IconTile({ selected, children }: { selected: boolean; children: React.R
   );
 }
 
-const BRAND_SWATCHES = ["#E8B560", "#8FBDE3", "#7FC8A9", "#C89BE8", "#E88F6B", "#E88FA9", "#E8D06B", "#6BC7E8", "#9BE8C8", "#F4F1E8"];
-
 export default function EventWizard() {
   const { user, profile } = useAuth();
   const router = useRouter();
@@ -65,7 +63,8 @@ export default function EventWizard() {
   const [holes, setHoles] = useState(18);
   const [customHoles, setCustomHoles] = useState("");
   const [useCustomHoles, setUseCustomHoles] = useState(false);
-  const [useCustomN, setUseCustomN] = useState(false);
+  const [weeksMode, setWeeksMode] = useState<"preset" | "custom" | "until">("preset");
+  const [untilDate, setUntilDate] = useState("");
   const [course, setCourse] = useState<CourseHit | null>(null);
   const [customPlace, setCustomPlace] = useState("");
   const [byAddress, setByAddress] = useState(false);
@@ -114,7 +113,11 @@ export default function EventWizard() {
   const chosenLeague = myLeagues.find((l) => l.id === leagueChoice);
   const countable = isLeagueKind || kind === "tournament";
   const holesN = useCustomHoles ? Math.max(1, Math.min(Number(customHoles) || 18, 36)) : holes;
-  const nCount = !countable ? 1 : useCustomN ? Math.max(1, Math.min(Number(customN) || 1, isLeagueKind ? 26 : 6)) : (isLeagueKind ? repeat : rounds);
+  const nCount = !countable ? 1
+    : weeksMode === "until" && isLeagueKind && date && untilDate
+      ? Math.max(1, Math.min(26, Math.floor((new Date(untilDate).getTime() - new Date(date).getTime()) / (7 * 86400_000)) + 1))
+    : weeksMode === "custom" ? Math.max(1, Math.min(Number(customN) || 1, isLeagueKind ? 26 : 6))
+    : (isLeagueKind ? repeat : rounds);
   const placeName = course?.name ?? customPlace.trim();
 
   const canNext: Record<StepKey, boolean> = {
@@ -402,16 +405,18 @@ export default function EventWizard() {
                   {(isLeagueKind ? [1, 4, 8, 12] : [1, 2, 3, 4, 5]).map((n) => (
                     <button
                       key={n}
-                      onClick={() => { setUseCustomN(false); (isLeagueKind ? setRepeat : setRounds)(n); }}
-                      className={`h-11 min-w-[52px] rounded-xl border px-4 font-mono text-sm font-bold transition-all ${!useCustomN && (isLeagueKind ? repeat : rounds) === n ? "border-[var(--gold)] bg-[var(--gold-dim)] text-[var(--gold)]" : "border-white/[0.09] bg-white/[0.03] text-[var(--text-body)] hover:border-white/25"}`}
+                      onClick={() => { setWeeksMode("preset"); (isLeagueKind ? setRepeat : setRounds)(n); }}
+                      className={`h-11 min-w-[52px] rounded-xl border px-4 font-mono text-sm font-bold transition-all ${weeksMode === "preset" && (isLeagueKind ? repeat : rounds) === n ? "border-[var(--gold)] bg-[var(--gold-dim)] text-[var(--gold)]" : "border-white/[0.09] bg-white/[0.03] text-[var(--text-body)] hover:border-white/25"}`}
                     >{n}</button>
                   ))}
-                  <button onClick={() => setUseCustomN(true)} className={`h-11 rounded-xl border px-4 text-sm font-bold transition-all ${useCustomN ? "border-[var(--gold)] bg-[var(--gold-dim)] text-[var(--gold)]" : "border-white/[0.09] bg-white/[0.03] text-[var(--text-body)] hover:border-white/25"}`}>Custom</button>
-                  {useCustomN && <input inputMode="numeric" value={customN} onChange={(e) => setCustomN(e.target.value)} placeholder={isLeagueKind ? "≤26" : "≤6"} className={`${inputCls} w-24`} autoFocus />}
+                  {isLeagueKind && <button onClick={() => setWeeksMode("until")} className={`h-11 rounded-xl border px-4 text-sm font-bold transition-all ${weeksMode === "until" ? "border-[var(--gold)] bg-[var(--gold-dim)] text-[var(--gold)]" : "border-white/[0.09] bg-white/[0.03] text-[var(--text-body)] hover:border-white/25"}`}>Until a date</button>}
+                  <button onClick={() => setWeeksMode("custom")} className={`h-11 rounded-xl border px-4 text-sm font-bold transition-all ${weeksMode === "custom" ? "border-[var(--gold)] bg-[var(--gold-dim)] text-[var(--gold)]" : "border-white/[0.09] bg-white/[0.03] text-[var(--text-body)] hover:border-white/25"}`}>Custom</button>
+                  {weeksMode === "custom" && <input inputMode="numeric" value={customN} onChange={(e) => setCustomN(e.target.value)} placeholder={isLeagueKind ? "≤26" : "≤6"} className={`${inputCls} w-24`} autoFocus />}
+                  {weeksMode === "until" && <input type="date" value={untilDate} min={date || undefined} onChange={(e) => setUntilDate(e.target.value)} className={`${inputCls} min-w-[180px]`} autoFocus />}
                 </div>
                 <p className="mt-3 text-xs text-[var(--sage-dim)]">
                   {isLeagueKind
-                    ? nCount > 1 ? `Creates ${nCount} weekly events starting ${date || "your start date"} — the whole season in one go.` : "One league night. You can schedule the rest of the season any time."
+                    ? weeksMode === "until" && untilDate ? `${nCount} weekly ${nCount === 1 ? "event" : "events"}, ${date || "start"} through ${untilDate}.` : nCount > 1 ? `Creates ${nCount} weekly events starting ${date || "your start date"} — the whole season in one go.` : "One league night. You can schedule the rest of the season any time."
                     : nCount > 1 ? `${nCount} rounds, one leaderboard — scores total across all rounds.` : "Single-round event."}
                 </p>
               </div>

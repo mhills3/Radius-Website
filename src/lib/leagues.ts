@@ -31,7 +31,7 @@ export const START_FORMATS = ["Shotgun", "Tee times", "Flex"] as const;
 
 /** Event kinds — discovery categories AND behavior hints (league = weekly repeat, tournament = multi-round). */
 export const EVENT_KINDS = [
-  { key: "league", label: "League / Weekly", blurb: "A recurring league night — schedule the whole season at once." },
+  { key: "league", label: "League", blurb: "A recurring league night — schedule the whole season at once." },
   { key: "tournament", label: "Tournament", blurb: "One-off or multi-round competition with cumulative scoring." },
   { key: "clinic", label: "Clinic", blurb: "Instruction and practice — form work, putting, field sessions." },
   { key: "cleanup", label: "Course cleanup", blurb: "Work day — trimming, trash, tee pads. The course thanks you." },
@@ -296,10 +296,14 @@ export async function setAcePot(leagueId: string, balance: number): Promise<void
   await setDoc(doc(db, "leagues", leagueId), { acePotBalance: balance, lastUpdated: Date.now() }, { merge: true });
 }
 
-export async function setLeagueBrand(leagueId: string, primary?: string, secondary?: string): Promise<void> {
+export const BRAND_SWATCHES = ["#E8B560", "#8FBDE3", "#7FC8A9", "#C89BE8", "#E88F6B", "#E88FA9", "#E8D06B", "#6BC7E8", "#9BE8C8", "#F4F1E8"];
+/** Set (hex) or clear (null) league brand colors; undefined leaves a field untouched. */
+export async function setLeagueBrand(leagueId: string, primary?: string | null, secondary?: string | null): Promise<void> {
   const patch: Record<string, unknown> = { lastUpdated: Date.now() };
-  if (primary && /^#[0-9a-fA-F]{6}$/.test(primary)) patch.brandPrimary = primary;
-  if (secondary && /^#[0-9a-fA-F]{6}$/.test(secondary)) patch.brandSecondary = secondary;
+  if (primary === null) patch.brandPrimary = deleteField();
+  else if (primary && /^#[0-9a-fA-F]{6}$/.test(primary)) patch.brandPrimary = primary;
+  if (secondary === null) patch.brandSecondary = deleteField();
+  else if (secondary && /^#[0-9a-fA-F]{6}$/.test(secondary)) patch.brandSecondary = secondary;
   await updateDoc(doc(db, "leagues", leagueId), patch);
 }
 
