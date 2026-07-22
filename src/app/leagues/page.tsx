@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
-import { createLeague, getMyLeagues, getAllLeagues, getUpcomingEvents, getEntries, getCourseCovers, isLeagueAdmin, LEAGUE_FORMATS, START_FORMATS, type League, type LeagueEvent, type EventEntry } from "@/lib/leagues";
+import { createLeague, getMyLeagues, getAllLeagues, getUpcomingEvents, getLeagueEvents, getEntries, getCourseCovers, isLeagueAdmin, LEAGUE_FORMATS, START_FORMATS, type League, type LeagueEvent, type EventEntry } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { inputCls, FieldLabel, Segmented, btnGold, btnGhost, card, cardHover, plural, pluralWord, IconCalendar, IconTrophy, IconTarget, IconLeaf, IconUsers } from "@/components/leagues/ui";
 
@@ -198,9 +198,24 @@ export default function LeaguesPage() {
     return () => { dead = true; };
   }, [tab, cid, upcoming]);
   const adminLeagueIds = useMemo(() => new Set(mine.filter((l) => isLeagueAdmin(l, cid)).map((l) => l.id)), [mine, cid]);
+  // Private events never enter the public feed, so pull them for leagues you run.
+  const [privateMine, setPrivateMine] = useState<LeagueEvent[]>([]);
+  useEffect(() => {
+    if (tab !== "My events" || adminLeagueIds.size === 0) { setPrivateMine([]); return; }
+    let dead = false;
+    Promise.all([...adminLeagueIds].map((id) => getLeagueEvents(id).catch(() => [] as LeagueEvent[]))).then((lists) => {
+      if (dead) return;
+      const nowMs = Date.now();
+      const seen = new Set(upcoming.map((e) => e.id));
+      setPrivateMine(lists.flat().filter((e) => e.isPrivate && e.status === "scheduled" && e.date >= nowMs - 6 * 3600_000 && !seen.has(e.id)));
+    });
+    return () => { dead = true; };
+  }, [tab, adminLeagueIds, upcoming]);
 
   const needle = q.trim().toLowerCase();
-  const tabEvents = tab === "My events" ? upcoming.filter((e) => adminLeagueIds.has(e.leagueId) || signedUp.has(e.id)) : upcoming;
+  const tabEvents = tab === "My events"
+    ? [...upcoming.filter((e) => adminLeagueIds.has(e.leagueId) || signedUp.has(e.id)), ...privateMine].sort((a, b) => a.date - b.date)
+    : upcoming;
   const shownEvents = tabEvents.filter((e) =>
     (!dayFilter || dayKey(e.date) === dayFilter)
     && (!needle || `${e.name} ${e.leagueName} ${e.courseName ?? ""}`.toLowerCase().includes(needle))
@@ -347,7 +362,10 @@ export default function LeaguesPage() {
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 truncate font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">{ev.name}</div>
                           {(() => { const k = KIND_CHIP[ev.kind ?? ""]; const Ic = k?.icon; return (
-                            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[var(--blue-dim)] px-2.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--blue)]">{Ic && <Ic className="h-3 w-3" />}{k?.label ?? "EVENT"}</span>
+                            <span className="flex shrink-0 items-center gap-1.5">
+                              {ev.isPrivate && <span className="inline-flex items-center gap-1 rounded-full border border-[var(--hair-strong)] px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--cream-38)]">Private</span>}
+                              <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--blue-dim)] px-2.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--blue)]">{Ic && <Ic className="h-3 w-3" />}{k?.label ?? "EVENT"}</span>
+                            </span>
                           ); })()}
                         </div>
                         <div className="mt-0.5 truncate text-[13px] text-[var(--cream-60)]">
