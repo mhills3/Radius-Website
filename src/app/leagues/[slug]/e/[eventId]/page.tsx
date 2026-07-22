@@ -616,19 +616,28 @@ export default function LeagueEventPage() {
           </div>
           <div className="grid content-start gap-4 lg:sticky lg:top-6">
             {event.status === "complete" && ranked.length > 0 && (
-              <div className={`${card} p-6`}>
-                <div className="mb-4 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">Winner</div>
-                <div className="flex items-center gap-3.5">
-                  <span className="shrink-0 rounded-full border-2 border-[var(--gold)] p-px"><Avatar url={ranked[0].photo} name={nameOf(ranked[0])} size={44} ring={false} /></span>
-                  <div className="min-w-0">
-                    <div className="truncate font-[family-name:var(--font-heading)] text-base font-bold text-[var(--cream)]">{nameOf(ranked[0])}</div>
-                    <div className="mt-0.5 font-mono text-[13px] text-[var(--gold)]">{fmtTotal(ranked[0])}{(ranked[0].roundScores?.filter((r) => r != null).length ?? 0) > 1 ? ` · rounds of ${ranked[0].roundScores!.filter((r) => r != null).join(", ")}` : ""}</div>
+              <div className="relative overflow-hidden rounded-2xl border border-[rgba(232,181,96,0.35)] bg-[var(--card)] p-6">
+                <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(340px 200px at 85% -20%, rgba(232,181,96,.20), transparent 65%), radial-gradient(280px 180px at -10% 110%, rgba(232,181,96,.09), transparent 60%), linear-gradient(180deg, rgba(232,181,96,.05), transparent 55%)" }} />
+                <IconTrophy className="pointer-events-none absolute -right-5 -top-5 h-32 w-32 rotate-12 text-[var(--gold)] opacity-[0.08]" />
+                <div className="relative">
+                  <div className="flex items-center gap-2.5 font-mono text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--gold)]">
+                    <span aria-hidden className="h-px w-5 bg-[rgba(232,181,96,0.5)]" />Winner<span aria-hidden className="h-px flex-1 bg-[rgba(232,181,96,0.22)]" />
                   </div>
-                </div>
-                <div className="mt-[18px] flex gap-6 border-t border-[var(--hair)] pt-4">
-                  <div><div className="font-mono text-base font-bold text-[var(--cream)]">{ranked.length}</div><div className="mt-0.5 font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Field</div></div>
-                  {hotRound != null && <div><div className="font-mono text-base font-bold text-[var(--cream)]">{hotRound}</div><div className="mt-0.5 font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Hot round</div></div>}
-                  <div><div className="font-mono text-base font-bold text-[var(--cream)]">{event.roundCount * event.holes}</div><div className="mt-0.5 font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Holes</div></div>
+                  <div className="mt-5 flex items-center gap-4">
+                    <span className="relative shrink-0">
+                      <span aria-hidden className="absolute -inset-2.5 rounded-full" style={{ background: "radial-gradient(closest-side, rgba(232,181,96,0.35), transparent)" }} />
+                      <span className="relative block rounded-full border-2 border-[var(--gold)] p-[3px]"><Avatar url={ranked[0].photo} name={nameOf(ranked[0])} size={56} ring={false} /></span>
+                    </span>
+                    <div className="min-w-0">
+                      <div className="truncate font-[family-name:var(--font-heading)] text-[20px] font-extrabold leading-tight text-[var(--cream)]">{nameOf(ranked[0])}</div>
+                      <div className="mt-1 font-mono text-[16px] font-bold text-[var(--gold)]">{fmtTotal(ranked[0])}{(ranked[0].roundScores?.filter((r) => r != null).length ?? 0) > 1 && <span className="ml-1.5 text-[12px] font-normal text-[var(--cream-60)]">rounds of {ranked[0].roundScores!.filter((r) => r != null).join(", ")}</span>}</div>
+                    </div>
+                  </div>
+                  <div className="mt-5 flex gap-6 border-t border-[rgba(232,181,96,0.2)] pt-4">
+                    <div><div className="font-mono text-base font-bold text-[var(--cream)]">{ranked.length}</div><div className="mt-0.5 font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Field</div></div>
+                    {hotRound != null && <div><div className="font-mono text-base font-bold text-[var(--cream)]">{hotRound}</div><div className="mt-0.5 font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Hot round</div></div>}
+                    <div><div className="font-mono text-base font-bold text-[var(--cream)]">{event.roundCount * event.holes}</div><div className="mt-0.5 font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Holes</div></div>
+                  </div>
                 </div>
               </div>
             )}
