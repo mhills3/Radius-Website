@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { EVENT_EXTRAS, getLeagueBySlug, getLeagueMembers, getEvent, getCards, checkIn, updateEntry, removeEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, reassignBagTags, computeStandings, computeHandicaps, applyHandicaps, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCoursePars, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
-import { SectionTitle, Avatar, Pos, btnGold, card, plural, BackLink, IconSliders, IconSparkles, IconMoon, IconHeart, IconTag, IconVenus, IconDollar, IconPin, IconDisc, IconEyeOff, IconUsers, IconCalendar, IconTrophy, IconTarget, IconLeaf } from "@/components/leagues/ui";
+import { SectionTitle, Avatar, Pos, btnGold, card, plural, BackLink, IconSliders, IconShare, IconSparkles, IconMoon, IconHeart, IconTag, IconVenus, IconDollar, IconPin, IconDisc, IconEyeOff, IconUsers, IconCalendar, IconTrophy, IconTarget, IconLeaf } from "@/components/leagues/ui";
 
 const KIND_ICON: Record<string, React.ComponentType<{ className?: string }>> = { league: IconCalendar, tournament: IconTrophy, clinic: IconTarget, cleanup: IconLeaf, social: IconUsers };
 const EXTRA_ICON: Record<string, React.ComponentType<{ className?: string }>> = { ace_pool: IconDisc, ctp: IconTarget, bag_tags: IconTag, glow: IconMoon, beginner: IconSparkles, women: IconVenus, juniors: IconUsers, charity: IconHeart };
@@ -414,9 +414,6 @@ export default function LeagueEventPage() {
 
       <div className="mx-auto max-w-4xl px-5">
         {admin && open && (() => {
-          const primary = liveNow
-            ? { label: "Complete event", fn: complete }
-            : { label: copied ? "Copied ✓" : "Share link", fn: copyLink };
           const secondary = liveNow
             ? (event.roundCount < 6 ? { label: `Add round ${event.roundCount + 1}`, fn: addRound } : null)
             : (isTeamFormat ? { label: "Randomize teams", fn: doTeams } : { label: "Apply handicaps", fn: doHandicaps });
@@ -427,13 +424,12 @@ export default function LeagueEventPage() {
                 <span className="font-[family-name:var(--font-heading)] text-[14.5px] font-bold tracking-[-0.01em] text-[var(--cream)]">League tools</span>
               </span>
               <div className="flex items-center gap-1.5">
-                <button onClick={primary.fn} disabled={busy} className="h-9 rounded-[10px] bg-[var(--gold)] px-4 text-[13.5px] font-bold text-[#141B16] transition-colors hover:bg-[var(--gold-bright)] disabled:opacity-50">{primary.label}</button>
+                {liveNow && <button onClick={complete} disabled={busy} className="h-9 rounded-[10px] bg-[var(--gold)] px-4 text-[13.5px] font-bold text-[#141B16] transition-colors hover:bg-[var(--gold-bright)] disabled:opacity-50">Complete event</button>}
                 {secondary && <button onClick={secondary.fn} disabled={busy} className="h-9 rounded-[10px] px-4 text-[13.5px] font-semibold text-[var(--cream-60)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)] disabled:opacity-50">{secondary.label}</button>}
                 <div className="relative" ref={menuRef}>
                   <button onClick={() => { setMenuOpen((o) => !o); setConfirmCancel(false); }} aria-label="More league tools" aria-expanded={menuOpen} className="grid h-9 w-9 place-items-center rounded-[10px] text-[var(--cream-60)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)]">⋯</button>
                   {menuOpen && (
                     <div className="absolute right-0 top-full z-20 mt-2 min-w-[210px] rounded-xl border border-[var(--hair)] bg-[var(--card-raised)] p-1.5">
-                      {liveNow && <button onClick={() => { copyLink(); setMenuOpen(false); }} className={menuItem}>Copy check-in link</button>}
                       {!isTeamFormat && <button onClick={() => { doHandicaps(); setMenuOpen(false); }} className={menuItem}>Apply handicaps</button>}
                       {isTeamFormat && <button onClick={() => { doTeams(); setMenuOpen(false); }} className={menuItem}>Randomize teams</button>}
                       {event.roundCount < 6 && <button onClick={() => { addRound(); setMenuOpen(false); }} className={menuItem}>Add round {event.roundCount + 1}</button>}
@@ -441,6 +437,9 @@ export default function LeagueEventPage() {
                     </div>
                   )}
                 </div>
+                <button onClick={copyLink} title={copied ? "Link copied" : "Copy check-in link"} aria-label="Copy check-in link" className="ml-1 grid h-9 w-9 place-items-center rounded-[10px] bg-[var(--gold-dim)] text-[var(--gold)] transition-colors hover:bg-[rgba(232,181,96,0.25)]">
+                  {copied ? <span className="text-xs font-bold">✓</span> : <IconShare className="h-4 w-4" />}
+                </button>
               </div>
             </div>
           );
@@ -456,10 +455,13 @@ export default function LeagueEventPage() {
               ) : (
                 <span className="flex items-center gap-2">
                   {divisions.length > 1 && (
-                    <select value={division} onChange={(e) => setDivision(e.target.value)} className="rounded-full border border-white/10 bg-white/[0.05] px-4 py-3 text-sm font-semibold text-[var(--cream)] outline-none focus:border-[var(--gold)]">
-                      <option value="">Choose division</option>
-                      {divisions.map((d) => <option key={d} value={d}>{d}</option>)}
-                    </select>
+                    <span className="relative">
+                      <select value={division} onChange={(e) => setDivision(e.target.value)} className="h-12 appearance-none rounded-full border border-[var(--hair-strong)] bg-[var(--card)] pl-5 pr-11 text-sm font-semibold text-[var(--cream)] outline-none transition-colors focus:border-[var(--gold)]">
+                        <option value="">Choose division</option>
+                        {divisions.map((d) => <option key={d} value={d}>{d}</option>)}
+                      </select>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--cream-38)]"><path d="M6 9l6 6 6-6" /></svg>
+                    </span>
                   )}
                   <button onClick={doCheckIn} disabled={busy || (divisions.length > 1 && !division)} className={btnGold}>{busy ? "…" : "Check in"}</button>
                 </span>
