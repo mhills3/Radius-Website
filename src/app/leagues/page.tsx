@@ -367,7 +367,7 @@ export default function LeaguesPage() {
                   <div key={l.id} className={`${card} flex items-center gap-3 px-4 py-3`}>
                     <span className="min-w-0 flex-1 truncate font-[family-name:var(--font-heading)] text-[14.5px] font-bold text-[var(--cream)]">{l.name}</span>
                     <Link href={`/leagues/${l.slug}#standings`} className="shrink-0 text-[13px] font-semibold text-[var(--cream-60)] transition-colors hover:text-[var(--cream)]">Standings →</Link>
-                    {isLeagueAdmin(l, cid) && <Link href={`/leagues/${l.slug}/manage`} className="shrink-0 rounded-full bg-[var(--gold-dim)] px-3 py-1 text-xs font-bold text-[var(--gold)] transition-colors hover:bg-[rgba(232,181,96,0.25)]">League tools</Link>}
+                    {isLeagueAdmin(l, cid) && <Link href={`/leagues/${l.slug}/manage`} className="shrink-0 rounded-full bg-[var(--gold-dim)] px-3 py-1 text-xs font-bold text-[var(--gold)] transition-colors hover:bg-[rgba(232,181,96,0.25)]">Director tools</Link>}
                   </div>
                 ))}
               </div>

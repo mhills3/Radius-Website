@@ -141,9 +141,18 @@ export default function SeedPage() {
       const open = await mkEvent({ name: "Granite Coast Open", kind: "tournament", date: now + 6 * D, courseId: rc(3)?.id, courseName: rc(3)?.name ?? "Pye Brook Park", roundCount: 2, buyIn: 55, capacity: 84, entryCount: 9 });
       for (let i = 0; i < 9; i++) await mkEntry(open, freshId(), { name: FAKE[(i + 9) % FAKE.length] });
 
-      say("Doubles with teams…");
-      const dbl = await mkEvent({ extras: ["charity"], name: "Sunday Doubles", kind: "social", format: "Doubles", date: now + 5 * D, courseId: rc(4)?.id, courseName: rc(4)?.name ?? "Borderland State Park", buyIn: 12, capacity: 24, entryCount: 10 });
-      for (let i = 0; i < 10; i++) await mkEntry(dbl, freshId(), { name: FAKE[(i + 12) % FAKE.length], teamId: Math.floor(i / 2) + 1 });
+      say("Doubles live with named teams…");
+      const dbl = await mkEvent({ extras: ["charity"], name: "Sunday Doubles", kind: "league", format: "Doubles", date: now - 1 * H, courseId: rc(4)?.id, courseName: rc(4)?.name ?? "Borderland State Park", buyIn: 12, capacity: 24, entryCount: 10, teamNames: { "1": "Chain Gang", "2": "Hyzer Bombers", "3": "Par Buddies" } });
+      const dblPars = rc(4)?.pars?.length ? rc(4)!.pars : Array.from({ length: 18 }, () => 3);
+      for (let i = 0; i < 10; i++) {
+        const teamId = Math.floor(i / 2) + 1;
+        // First three teams carry a shared live card (both partners mirror the same unit card)
+        const unitCard = teamId <= 3 ? cardFor(dblPars, 18, dblPars.slice(0, 12 + teamId).reduce((a, b) => a + b, 0) - (4 - teamId)).slice(0, 12 + teamId) : null;
+        await mkEntry(dbl, freshId(), {
+          name: FAKE[(i + 12) % FAKE.length], teamId,
+          ...(unitCard ? { holeScores: unitCard, thruHole: unitCard.length } : {}),
+        });
+      }
 
       say("Empty league night (zero-state)…");
       await mkEvent({ name: "Merrimack Valley Series", kind: "league", date: now + 9 * D, courseName: "Devens DGC", buyIn: 60, capacity: 48, entryCount: 0 });

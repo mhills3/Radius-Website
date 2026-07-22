@@ -135,7 +135,7 @@ export default function LeagueManagePage() {
   if (league === null) return <main className="mx-auto max-w-5xl px-5 pt-16"><p className="text-sm text-[var(--sage-dim)]">League not found.</p></main>;
   if (!admin) return (
     <main className="mx-auto max-w-5xl px-5 pt-16">
-      <p className="text-sm text-[var(--sage-dim)]">League tools are for directors of this league. <Link href={`/leagues/${league.slug}`} className="font-bold text-[var(--gold)] hover:underline">Back to {league.name}</Link></p>
+      <p className="text-sm text-[var(--sage-dim)]">Director tools are for directors of this league. <Link href={`/leagues/${league.slug}`} className="font-bold text-[var(--gold)] hover:underline">Back to {league.name}</Link></p>
     </main>
   );
 
@@ -162,10 +162,10 @@ export default function LeagueManagePage() {
       {/* Console header */}
       <div className="relative flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.06] py-5">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">League tools</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">Director tools</p>
           <h1 className="mt-0.5 font-[family-name:var(--font-heading)] text-xl font-extrabold text-[var(--cream)]">{league.name}</h1>
         </div>
-        <Link href={`/leagues/${league.slug}`} className="text-xs font-bold text-[var(--sage)] transition-colors hover:text-[var(--gold)]">Exit league tools →</Link>
+        <Link href={`/leagues/${league.slug}`} className="text-xs font-bold text-[var(--sage)] transition-colors hover:text-[var(--gold)]">Exit director tools →</Link>
       </div>
 
       <div className="grid gap-8 pt-8 lg:grid-cols-[220px_1fr]">

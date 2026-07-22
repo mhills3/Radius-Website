@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { EVENT_EXTRAS, getLeagueBySlug, getLeagueMembers, getEvent, getCards, checkIn, updateEntry, removeEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, reassignBagTags, computeStandings, computeHandicaps, applyHandicaps, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCourseHoles, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember } from "@/lib/leagues";
+import { EVENT_EXTRAS, getLeagueBySlug, getLeagueMembers, getEvent, getCards, checkIn, updateEntry, removeEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, reassignBagTags, computeStandings, computeHandicaps, applyHandicaps, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCourseHoles, setTeamName, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { SectionTitle, Avatar, Pos, btnGold, card, plural, BackLink, IconSliders, IconShare, IconClock, IconSparkles, IconMoon, IconHeart, IconTag, IconVenus, IconDollar, IconPin, IconDisc, IconEyeOff, IconUsers, IconCalendar, IconTrophy, IconTarget, IconLeaf } from "@/components/leagues/ui";
 
@@ -115,6 +115,7 @@ export default function LeagueEventPage() {
     return () => { document.removeEventListener("mousedown", onDown); document.removeEventListener("keydown", onKey); };
   }, [menuOpen]);
   const [division, setDivision] = useState("");
+  const [editingTeam, setEditingTeam] = useState<number | null>(null);
   const [divFilter, setDivFilter] = useState("");
   const [hcpNote, setHcpNote] = useState("");
   const [tab, setTab] = useState<"about" | "scores" | "players" | "chat">("about");
@@ -311,9 +312,12 @@ export default function LeagueEventPage() {
     const unassigned: EventEntry[] = [];
     for (const e of shown) (e.teamId ? (byTeam.get(e.teamId) ?? byTeam.set(e.teamId, []).get(e.teamId)!) : unassigned).push(e);
     const teamScore = (members: EventEntry[]) => members.find((m) => typeof m.score === "number")?.score;
+    // Live unit card: the app mirrors the shared card onto every member's entry,
+    // so any member's holeScores IS the team's scorecard.
+    const liveOf = (members: EventEntry[]) => members.find((m) => !m.dnf && typeof m.score !== "number" && m.holeScores?.some((h) => h > 0));
     const teams = [...byTeam.entries()]
-      .map(([id, members]) => ({ id, members, score: teamScore(members) }))
-      .sort((a, b) => (a.score ?? Infinity) - (b.score ?? Infinity));
+      .map(([id, members]) => ({ id, members, score: teamScore(members), live: liveOf(members) }))
+      .sort((a, b) => ((a.score ?? Infinity) - (b.score ?? Infinity)) || ((a.live ? deltaOf(a.live) : Infinity) - (b.live ? deltaOf(b.live) : Infinity)));
     const teamNumbers = [...byTeam.keys()].sort((a, b) => a - b);
     const teamSelect = (e: EventEntry) => (
       <select
@@ -331,14 +335,53 @@ export default function LeagueEventPage() {
         {teams.length === 0 && <div className={`${card} px-6 py-8 text-center text-sm text-[var(--sage-dim)]`}>No teams yet. Randomize above or assign players below.</div>}
         {teams.map((t, i) => (
           <div key={t.id} className={`${card} flex items-center gap-4 p-4 ${i === 0 && t.score != null ? "ring-1 ring-[var(--gold)]/25" : ""}`}>
-            <Pos n={t.score != null ? i + 1 : undefined} />
+            <Pos n={t.score != null || t.live ? i + 1 : undefined} />
             <span className="flex -space-x-2">
               {t.members.map((m) => <UserLink key={m.id} username={usernameById(m.id)}><Avatar url={m.photo} name={m.name} size={32} /></UserLink>)}
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block truncate font-bold text-[var(--cream)]">{t.members.map((m) => m.name).join(" + ")}</span>
-              <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--sage-dim)]">Team {t.id}{t.members.some((m) => m.paid) ? "" : ""}</span>
+              {editingTeam === t.id ? (
+                <input
+                  autoFocus
+                  defaultValue={event!.teamNames?.[String(t.id)] ?? ""}
+                  placeholder={t.members.map((m) => nameOf(m)).join(" + ")}
+                  maxLength={40}
+                  onBlur={async (ev2) => { setEditingTeam(null); try { await setTeamName(event!.id, t.id, ev2.target.value); await reload(event!.id); } catch { /* noop */ } }}
+                  onKeyDown={(ev2) => { if (ev2.key === "Enter") (ev2.target as HTMLInputElement).blur(); if (ev2.key === "Escape") setEditingTeam(null); }}
+                  className={`${adminInput} w-full max-w-[220px] !text-left`}
+                />
+              ) : (
+                <span className="flex items-center gap-1.5">
+                  <span className="block truncate font-bold text-[var(--cream)]">{event!.teamNames?.[String(t.id)] || t.members.map((m) => nameOf(m)).join(" + ")}</span>
+                  {open && (admin || t.members.some((m) => m.id === cid)) && (
+                    <button onClick={() => setEditingTeam(t.id)} title="Name this team" aria-label="Name this team" className="shrink-0 text-[var(--cream-38)] transition-colors hover:text-[var(--cream)]">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-3 w-3"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" /></svg>
+                    </button>
+                  )}
+                </span>
+              )}
+              <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--sage-dim)]">{event!.teamNames?.[String(t.id)] ? t.members.map((m) => nameOf(m)).join(" + ") : `Team ${t.id}`}</span>
             </span>
+            {t.live && (() => {
+              const played = t.live!.holeScores!.map((h, hi) => ({ h, hi })).filter((x) => x.h > 0).slice(-9);
+              return (
+                <span className="hidden items-center gap-2.5 sm:flex">
+                  <span className="flex gap-[4px]">
+                    {played.map(({ h, hi }) => {
+                      const par = pars?.[hi];
+                      const cls = par == null ? "border-[var(--hair-strong)] text-[var(--cream-38)]"
+                        : h <= par - 2 ? "border-[var(--blue)] bg-[var(--blue)] font-bold text-[#141B16]"
+                        : h === par - 1 ? "border-[var(--blue)] bg-[var(--blue-dim)] text-[var(--blue)]"
+                        : h === par ? "border-[var(--hair-strong)] text-[var(--cream-38)]"
+                        : "border-[rgba(244,241,232,.24)] text-[var(--cream-60)]";
+                      return <span key={hi} className={`grid h-4 w-4 place-items-center rounded-full border font-mono text-[8.5px] ${cls}`}>{h}</span>;
+                    })}
+                  </span>
+                  <span className="font-mono text-xs text-[var(--cream-38)]">THRU {t.live!.thruHole ?? t.live!.holeScores!.filter((h) => h > 0).length}</span>
+                  <span className={`font-mono text-base font-extrabold ${scoreTone(fmtLive(t.live!), t.members.some((m) => m.id === cid))}`}>{fmtLive(t.live!)}</span>
+                </span>
+              );
+            })()}
             {admin && open && t.members.map((m) => <span key={m.id}>{teamSelect(m)}</span>)}
             {admin && open ? (
               <input
@@ -474,13 +517,13 @@ export default function LeagueEventPage() {
             <div className="mt-5 flex h-14 items-center justify-between rounded-xl border border-[var(--hair)] bg-[var(--card)] bg-gradient-to-b from-white/[0.045] to-transparent py-2 pl-4 pr-2.5">
               <span className="flex items-center gap-3">
                 <span className="grid h-8 w-8 place-items-center rounded-[10px] bg-[var(--gold-dim)] text-[var(--gold)]"><IconSliders className="h-4 w-4" /></span>
-                <span className="font-[family-name:var(--font-heading)] text-[14.5px] font-bold tracking-[-0.01em] text-[var(--cream)]">League tools</span>
+                <span className="font-[family-name:var(--font-heading)] text-[14.5px] font-bold tracking-[-0.01em] text-[var(--cream)]">Director tools</span>
               </span>
               <div className="flex items-center gap-1.5">
                 {liveNow && <button onClick={complete} disabled={busy} className="h-9 rounded-[10px] bg-[var(--gold)] px-4 text-[13.5px] font-bold text-[#141B16] transition-colors hover:bg-[var(--gold-bright)] disabled:opacity-50">Complete event</button>}
                 {secondary && <button onClick={secondary.fn} disabled={busy} className="h-9 rounded-[10px] px-4 text-[13.5px] font-semibold text-[var(--cream-60)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)] disabled:opacity-50">{secondary.label}</button>}
                 <div className="relative" ref={menuRef}>
-                  <button onClick={() => { setMenuOpen((o) => !o); setConfirmCancel(false); }} aria-label="More league tools" aria-expanded={menuOpen} className="grid h-9 w-9 place-items-center rounded-[10px] text-[var(--cream-60)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)]">⋯</button>
+                  <button onClick={() => { setMenuOpen((o) => !o); setConfirmCancel(false); }} aria-label="More director tools" aria-expanded={menuOpen} className="grid h-9 w-9 place-items-center rounded-[10px] text-[var(--cream-60)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)]">⋯</button>
                   {menuOpen && (
                     <div className="absolute right-0 top-full z-20 mt-2 min-w-[210px] rounded-xl border border-[var(--hair)] bg-[var(--card-raised)] p-1.5">
                       {scoringKind && !isTeamFormat && <button onClick={() => { doHandicaps(); setMenuOpen(false); }} className={menuItem}>Apply handicaps</button>}
@@ -637,7 +680,7 @@ export default function LeagueEventPage() {
               </p>
             )}
             {!event.description && admin && league && event.status !== "complete" && (
-              <p className="mt-10 text-[13px] text-[var(--cream-38)]">No description yet. <Link href={`/leagues/${league.slug}/manage`} className="text-[var(--cream-60)] underline decoration-[var(--hair-strong)] underline-offset-2 hover:text-[var(--gold)]">Add one from league settings.</Link></p>
+              <p className="mt-10 text-[13px] text-[var(--cream-38)]">No description yet. <Link href={`/leagues/${league.slug}/manage`} className="text-[var(--cream-60)] underline decoration-[var(--hair-strong)] underline-offset-2 hover:text-[var(--gold)]">Add one from Director tools.</Link></p>
             )}
           </div>
           <div className="grid content-start gap-4 lg:sticky lg:top-6">

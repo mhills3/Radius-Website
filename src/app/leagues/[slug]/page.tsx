@@ -107,7 +107,7 @@ export default function LeaguePage() {
             <p className="mt-3 text-xs text-[var(--sage-dim)]">Run by {league.createdByName} · {members.length} member{members.length === 1 ? "" : "s"}</p>
           </div>
           {admin && (
-            <Link href={`/leagues/${league.slug}/manage`} className={`${btnGold} shrink-0`}>League tools</Link>
+            <Link href={`/leagues/${league.slug}/manage`} className={`${btnGold} shrink-0`}>Director tools</Link>
           )}
         </div>
       </section>

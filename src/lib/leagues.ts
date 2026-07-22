@@ -102,6 +102,7 @@ export interface LeagueEvent {
   workList?: string[];   // cleanup: work items
   meetingPoint?: string; // cleanup: where to meet
   payoutPlaces?: number; // tournament: how many places paid (suggestion engine)
+  teamNames?: Record<string, string>; // Doubles/Teams: teamId -> chosen team name
   description?: string; // event-specific notes (markdown-lite)
   contactEmail?: string;
   contactPhone?: string;
@@ -387,6 +388,7 @@ function toEvent(id: string, d: any): LeagueEvent {
     workList: Array.isArray(d.workList) ? d.workList.filter((x: unknown) => typeof x === "string") : undefined,
     meetingPoint: (d.meetingPoint as string) || undefined,
     payoutPlaces: Number(d.payoutPlaces) > 1 ? Number(d.payoutPlaces) : undefined,
+    teamNames: d.teamNames && typeof d.teamNames === "object" ? Object.fromEntries(Object.entries(d.teamNames).filter(([, v]) => typeof v === "string" && v)) as Record<string, string> : undefined,
     buyIn: Number(d.buyIn) > 0 ? Number(d.buyIn) : undefined,
     kind: (d.kind as string) || undefined,
     isPrivate: d.isPrivate === true,
@@ -543,6 +545,12 @@ export async function randomizeTeams(eventId: string, entries: EventEntry[], siz
 }
 
 /** Move one player to a team (or null to unassign) — the UDisc "move to team" action. */
+/** Name a team (empty clears). Directors and the team's own players may rename. */
+export async function setTeamName(eventId: string, teamId: number, name: string): Promise<void> {
+  const clean = name.trim().slice(0, 40);
+  await updateDoc(doc(db, "leagueEvents", eventId), { [`teamNames.${teamId}`]: clean || deleteField(), lastUpdated: Date.now() });
+}
+
 export async function setEntryTeam(eventId: string, entryId: string, teamId: number | null): Promise<void> {
   await updateDoc(doc(db, "leagueEvents", eventId, "entries", entryId), { teamId: teamId ?? deleteField() });
 }
