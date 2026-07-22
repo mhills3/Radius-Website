@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { getLeagueBySlug, getLeagueMembers, getEvent, getCards, checkIn, updateEntry, removeEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, reassignBagTags, computeStandings, computeHandicaps, applyHandicaps, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCoursePars, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
-import { SectionTitle, Avatar, Pos, btnGold, btnGhost, card, plural, IconPin, IconDisc, IconEyeOff, IconUsers } from "@/components/leagues/ui";
+import { SectionTitle, Avatar, Pos, btnGold, card, plural, IconPin, IconDisc, IconEyeOff, IconUsers } from "@/components/leagues/ui";
 
+const menuItem = "block w-full rounded-lg px-3 py-2 text-left text-[13.5px] font-semibold text-[var(--cream-60)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)]";
 const pillWord = "inline-flex h-8 items-center rounded-full border border-[var(--hair-strong)] bg-[rgba(20,27,22,0.45)] px-3.5 text-xs text-[var(--cream-60)] backdrop-blur-[6px]";
 const pillMono = "inline-flex h-8 items-center rounded-full border border-[var(--hair-strong)] bg-[rgba(20,27,22,0.45)] px-3.5 font-mono text-[11.5px] tracking-[0.06em] text-[var(--cream-60)] backdrop-blur-[6px]";
 const fmtDate = (ms: number) => { const d = new Date(ms); return `${d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })} · ${d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`; };
@@ -69,6 +70,28 @@ export default function LeagueEventPage() {
   const [cardSize, setCardSize] = useState(4);
   const [scoreDraft, setScoreDraft] = useState<Record<string, string>>({});
   const [copied, setCopied] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!menuOpen) return;
+    menuRef.current?.querySelector("button")?.focus();
+    const close = () => { setMenuOpen(false); setConfirmCancel(false); };
+    const onDown = (e: MouseEvent) => { if (menuRef.current && !menuRef.current.contains(e.target as Node)) close(); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+      if (e.key === "Tab" && menuRef.current) {
+        const items = [...menuRef.current.querySelectorAll<HTMLElement>("button")];
+        if (!items.length) return;
+        const first = items[0], last = items[items.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("mousedown", onDown); document.removeEventListener("keydown", onKey); };
+  }, [menuOpen]);
   const [division, setDivision] = useState("");
   const [divFilter, setDivFilter] = useState("");
   const [hcpNote, setHcpNote] = useState("");
@@ -76,7 +99,7 @@ export default function LeagueEventPage() {
   const [nowTs] = useState(() => Date.now());
   const [staff, setStaff] = useState<LeagueMember[]>([]);
   const [pars, setPars] = useState<number[] | null>(null);
-  const [teamSize, setTeamSize] = useState(2);
+  const [teamSize] = useState(2);
   const [messages, setMessages] = useState<EventMessage[]>([]);
   const [courseMeta, setCourseMeta] = useState<CourseMeta | null>(null);
   const [coverLoaded, setCoverLoaded] = useState(false);
@@ -361,11 +384,43 @@ export default function LeagueEventPage() {
       </section>
 
       <div className="mx-auto max-w-4xl px-5">
+        {admin && open && (() => {
+          const primary = liveNow
+            ? { label: "Complete event", fn: complete }
+            : { label: copied ? "Copied ✓" : "Check-in link", fn: copyLink };
+          const secondary = liveNow
+            ? (event.roundCount < 6 ? { label: `Add round ${event.roundCount + 1}`, fn: addRound } : null)
+            : (isTeamFormat ? { label: "Randomize teams", fn: doTeams } : { label: "Apply handicaps", fn: doHandicaps });
+          return (
+            <div className="mt-5 flex h-[52px] items-center justify-between rounded-xl border border-[var(--hair)] bg-[var(--card)] px-4">
+              <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[var(--cream-38)]">League tools</span>
+              <div className="flex items-center gap-2">
+                <button onClick={primary.fn} disabled={busy} className="h-9 rounded-[10px] bg-[var(--gold)] px-4 text-[13.5px] font-bold text-[#141B16] transition-colors hover:bg-[var(--gold-bright)] disabled:opacity-50">{primary.label}</button>
+                {secondary && <button onClick={secondary.fn} disabled={busy} className="h-9 rounded-[10px] border border-[var(--hair-strong)] px-4 text-[13.5px] font-semibold text-[var(--cream-60)] transition-colors hover:text-[var(--cream)] disabled:opacity-50">{secondary.label}</button>}
+                <div className="relative" ref={menuRef}>
+                  <button onClick={() => { setMenuOpen((o) => !o); setConfirmCancel(false); }} aria-label="More league tools" aria-expanded={menuOpen} className="grid h-9 w-9 place-items-center rounded-[10px] border border-[var(--hair-strong)] text-[var(--cream-60)] transition-colors hover:text-[var(--cream)]">⋯</button>
+                  {menuOpen && (
+                    <div className="absolute right-0 top-full z-20 mt-2 min-w-[210px] rounded-xl border border-[var(--hair)] bg-[var(--card-raised)] p-1.5">
+                      <button onClick={() => { copyLink(); setMenuOpen(false); }} className={menuItem}>Copy check-in link</button>
+                      {!isTeamFormat && <button onClick={() => { doHandicaps(); setMenuOpen(false); }} className={menuItem}>Apply handicaps</button>}
+                      {isTeamFormat && <button onClick={() => { doTeams(); setMenuOpen(false); }} className={menuItem}>Randomize teams</button>}
+                      {event.roundCount < 6 && <button onClick={() => { addRound(); setMenuOpen(false); }} className={menuItem}>Add round {event.roundCount + 1}</button>}
+                      <button onClick={() => { if (confirmCancel) { cancel(); setMenuOpen(false); setConfirmCancel(false); } else setConfirmCancel(true); }} className={`${menuItem} text-[#f08c8c] hover:bg-[#f08c8c]/10 hover:text-[#f08c8c] ${confirmCancel ? "font-bold" : ""}`}>{confirmCancel ? "Confirm cancel event" : "Cancel event"}</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+        {hcpNote && <p className="mt-3 text-xs text-[var(--gold)]">{hcpNote}</p>}
         {open && (
-          <div className="mt-6 flex flex-wrap items-center gap-2.5">
+          <div className="mt-4 flex flex-wrap items-center gap-2.5">
             {user ? (
               me ? (
-                <span className="rounded-full bg-[#5fcf80]/15 px-5 py-3 text-sm font-bold text-[#5fcf80] ring-1 ring-[#5fcf80]/20">✓ Checked in{me.division ? ` · ${me.division}` : ""}</span>
+                !(liveNow && cid && ranked.some((x) => x.id === cid)) && (
+                  <span className="inline-flex items-center gap-1.5 font-mono text-[10.5px] tracking-[0.08em] text-[#5fcf80]">✓ Checked in{me.division ? ` · ${me.division}` : ""}</span>
+                )
               ) : (
                 <span className="flex items-center gap-2">
                   {divisions.length > 1 && (
@@ -380,28 +435,8 @@ export default function LeagueEventPage() {
             ) : (
               <Link href="/login" className={btnGold}>Sign in to check in</Link>
             )}
-            <button onClick={copyLink} className={btnGhost}>{copied ? "Copied ✓" : "Copy check-in link"}</button>
-            {admin && (
-              <>
-                {isTeamFormat && (
-                <span className="flex items-center gap-2">
-                  {event.format === "Teams" && (
-                    <select value={teamSize} onChange={(e) => setTeamSize(Number(e.target.value))} className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-3 text-sm font-semibold text-[var(--cream)] outline-none focus:border-[var(--gold)]">
-                      {[2, 3, 4].map((n) => <option key={n} value={n}>teams of {n}</option>)}
-                    </select>
-                  )}
-                  <button onClick={doTeams} disabled={busy || entries.length < 2} className={btnGhost}>Randomize teams</button>
-                </span>
-              )}
-              {!isTeamFormat && <button onClick={doHandicaps} disabled={busy} title="handicap = % × avg(player − field) over last 5 league rounds, capped" className={btnGhost}>Apply handicaps</button>}
-                {event.roundCount < 6 && <button onClick={addRound} disabled={busy} className={btnGhost}>Add round {event.roundCount + 1}</button>}
-                <button onClick={complete} disabled={busy} className={btnGhost}>Complete event</button>
-                <button onClick={cancel} disabled={busy} className="rounded-full px-4 py-3 text-sm font-semibold text-[#f08c8c] transition-colors hover:bg-[#f08c8c]/10 disabled:opacity-50">Cancel event</button>
-              </>
-            )}
           </div>
         )}
-        {hcpNote && <p className="mt-3 text-xs text-[var(--gold)]">{hcpNote}</p>}
 
       {/* Tabs — same tab, same route; first label reads Recap once the event completes */}
       <nav className="mb-9 mt-1.5 flex gap-[34px] border-b border-[var(--hair)]">
@@ -568,7 +603,10 @@ export default function LeagueEventPage() {
               const line = `${pos} of ${ranked.length} · ${standing}${holesLeft > 0 && holesLeft < event.holes ? ` with ${plural(holesLeft, "hole")} to play` : ""}`;
               return (
                 <div className={`${card} p-6`}>
-                  <div className="mb-3 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">Your position</div>
+                  <div className="mb-3 flex items-center justify-between">
+                    <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">Your position</span>
+                    <span className="inline-flex items-center gap-1 font-mono text-[10.5px] tracking-[0.08em] text-[#5fcf80]">✓{me.division ? ` ${me.division}` : " In"}</span>
+                  </div>
                   <div className="font-[family-name:var(--font-heading)] text-[15px] font-semibold leading-relaxed text-[var(--cream)]">{line}</div>
                 </div>
               );
