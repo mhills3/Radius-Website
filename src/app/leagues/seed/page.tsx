@@ -44,21 +44,39 @@ export default function SeedPage() {
       say("Finding photogenic courses…");
       // orderBy on coverPhotoUrl returns only docs that HAVE the field — real
       // covers make the discovery photo strips reviewable with demo data.
-      let real: { id: string; name: string }[] = [];
+      let real: { id: string; name: string; pars: number[] }[] = [];
       try {
         const snap = await getDocs(query(collection(db, "courses"), orderBy("coverPhotoUrl"), startAt("http"), limit(40)));
         const hasPars = (c: Record<string, unknown>) => {
           const holes = (c.holes ?? (c.layouts as { holes?: unknown[] }[] | undefined)?.[0]?.holes) as { par?: number }[] | undefined;
           return Array.isArray(holes) && holes.length >= 9 && holes.some((h) => typeof h?.par === "number");
         };
+        const parsOf = (c: Record<string, unknown>) => {
+          const holes = (c.holes ?? (c.layouts as { holes?: unknown[] }[] | undefined)?.[0]?.holes) as { par?: number; holeNumber?: number }[] | undefined;
+          return (holes ?? []).slice().sort((a, b) => (a.holeNumber ?? 0) - (b.holeNumber ?? 0)).map((h) => (typeof h.par === "number" ? h.par : 3));
+        };
         real = snap.docs
           .filter((d) => {
             const c = d.data();
             return /^https?:\/\//.test(String(c.coverPhotoUrl)) && c.name && (c.state || c.city) && hasPars(c);
           })
-          .map((d) => ({ id: d.id, name: String(d.data().name) }));
+          .map((d) => ({ id: d.id, name: String(d.data().name), pars: parsOf(d.data()) }));
       } catch { say("(no photo courses found — strips will show the contour fallback)"); }
       const rc = (i: number) => real.length ? real[i % real.length] : null;
+      // Distribute a round total across real pars: birdies/bogeys spread deterministically.
+      const cardFor = (pars: number[], holes: number, total: number) => {
+        const ps = (pars.length >= holes ? pars.slice(0, holes) : Array.from({ length: holes }, (_, i) => pars[i % Math.max(1, pars.length)] ?? 3));
+        const card = [...ps];
+        let delta = total - ps.reduce((a, b) => a + b, 0);
+        let i = 0;
+        while (delta !== 0 && i < 400) {
+          const k = (i * 7) % holes;
+          if (delta < 0 && card[k] > Math.max(2, ps[k] - 1)) { card[k] -= 1; delta += 1; }
+          else if (delta > 0 && card[k] < ps[k] + 2) { card[k] += 1; delta -= 1; }
+          i += 1;
+        }
+        return card;
+      };
 
       say("Creating demo league…");
       await setDoc(doc(db, "leagues", leagueId), {
@@ -110,6 +128,7 @@ export default function SeedPage() {
         await mkEntry(done, isYou ? cid : freshId(), {
           name: isYou ? "Mikey" : FAKE[i + 5], division: DIVS[i % 3], paid: true,
           roundScores: [r1, r2], score: r1 + r2,
+          ...(i < 3 && rc(1)?.pars?.length ? { holeScores: cardFor(rc(1)!.pars, 18, r2), thruHole: 18 } : {}),
           ...(i === 0 ? { payout: 150, tag: 1 } : i === 1 ? { payout: 100, tag: 2 } : isYou ? { payout: 70, tag: 3 } : { tag: i + 1 }),
         });
       }
