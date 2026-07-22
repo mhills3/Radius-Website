@@ -657,12 +657,20 @@ export default function LeagueEventPage() {
                         {played.length > 0 && (
                           <div className="mt-5 border-t border-[rgba(232,181,96,0.2)] pt-4">
                             <div className="mb-2 font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--cream-38)]">{event.roundCount > 1 ? "Final round card" : "Winning card"}{played.length < event.holes ? ` · thru ${played.length}` : ""}</div>
-                            <div className="grid grid-cols-9 gap-1">
+                            <div className="grid grid-cols-9 gap-1.5">
                               {played.map(({ h, i }) => {
                                 const par = pars![i] ?? 3;
-                                const tone = h <= par - 2 ? "bg-[var(--blue)] font-bold text-[#141B16]" : h === par - 1 ? "bg-[var(--blue-dim)] font-bold text-[var(--blue)]" : h === par ? "bg-white/[0.03] text-[var(--cream-60)]" : "bg-white/[0.07] text-[var(--cream-60)]";
-                                return <span key={i} title={`Hole ${i + 1} · par ${par}`} className={`grid h-7 place-items-center rounded-[6px] font-mono text-[11px] ${tone}`}>{h}</span>;
+                                const tone = h <= par - 2 ? "bg-[var(--gold)] text-[#141B16]"
+                                  : h === par - 1 ? "bg-[var(--blue)] text-[#141B16]"
+                                  : h === par ? "bg-white/[0.06] text-[var(--cream)]"
+                                  : "border border-[var(--hair-strong)] text-[var(--cream-38)]";
+                                return <span key={i} title={`Hole ${i + 1} · par ${par}`} className={`grid h-9 place-items-center rounded-lg font-mono text-[13.5px] font-bold ${tone}`}>{h}</span>;
                               })}
+                            </div>
+                            <div className="mt-2.5 flex items-center gap-4 font-mono text-[9px] uppercase tracking-[0.12em] text-[var(--cream-38)]">
+                              <span className="flex items-center gap-1.5"><i className="h-2 w-2 rounded-[3px] bg-[var(--gold)]" />Eagle</span>
+                              <span className="flex items-center gap-1.5"><i className="h-2 w-2 rounded-[3px] bg-[var(--blue)]" />Birdie</span>
+                              <span className="flex items-center gap-1.5"><i className="h-2 w-2 rounded-[3px] bg-white/[0.12]" />Par</span>
                             </div>
                           </div>
                         )}
