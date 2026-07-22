@@ -181,7 +181,8 @@ export default function LeagueManagePage() {
         <div className="min-w-0">
           {section === "dashboard" && (
             <div className="grid gap-8">
-              {/* Setup checklist */}
+              {/* Setup checklist — earns its exit: once every item is done it disappears */}
+              {checklist.some((c) => !c.done) && (
               <div className={`${card} p-6`}>
                 <h2 className="font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">League setup · {checklist.filter((c) => c.done).length}/{checklist.length} complete</h2>
                 <div className="mt-4 grid gap-2">
@@ -200,6 +201,7 @@ export default function LeagueManagePage() {
                   })}
                 </div>
               </div>
+              )}
 
               {/* Quick navigation */}
               <div className="grid gap-3 sm:grid-cols-3">
