@@ -5,14 +5,20 @@ import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
 import { createLeague, getMyLeagues, getAllLeagues, getUpcomingEvents, getEntries, getCourseCovers, LEAGUE_FORMATS, START_FORMATS, type League, type LeagueEvent, type EventEntry } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
-import { inputCls, FieldLabel, SectionTitle, Segmented, btnGold, btnGhost, card, cardHover, plural, pluralWord, IconCalendar, IconDisc } from "@/components/leagues/ui";
+import { inputCls, FieldLabel, SectionTitle, Segmented, btnGold, btnGhost, card, cardHover, plural, pluralWord, IconCalendar, IconTrophy, IconTarget, IconLeaf, IconUsers, IconDisc } from "@/components/leagues/ui";
 
 const MONTH_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const DAY = ["S", "M", "T", "W", "T", "F", "S"];
 const dayKey = (ms: number) => { const d = new Date(ms); return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; };
 
 
-const KIND_CHIP: Record<string, string> = { league: "LEAGUE", tournament: "TOURNAMENT", clinic: "CLINIC", cleanup: "CLEANUP", social: "SOCIAL" };
+const KIND_CHIP: Record<string, { label: string; icon: React.ComponentType<{ className?: string }> }> = {
+  league: { label: "LEAGUE", icon: IconCalendar },
+  tournament: { label: "TOURNAMENT", icon: IconTrophy },
+  clinic: { label: "CLINIC", icon: IconTarget },
+  cleanup: { label: "CLEANUP", icon: IconLeaf },
+  social: { label: "SOCIAL", icon: IconUsers },
+};
 
 function Emblem({ name, size = 52 }: { name: string; size?: number }) {
   return (
@@ -317,7 +323,9 @@ export default function LeaguesPage() {
                       <div className="min-w-0 p-6">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 truncate font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">{ev.name}</div>
-                          <span className="shrink-0 rounded-full border border-[var(--blue-dim)] px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--blue)]">{KIND_CHIP[ev.kind ?? ""] ?? "EVENT"}</span>
+                          {(() => { const k = KIND_CHIP[ev.kind ?? ""]; const Ic = k?.icon; return (
+                            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[var(--blue-dim)] px-2.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--blue)]">{Ic && <Ic className="h-3 w-3" />}{k?.label ?? "EVENT"}</span>
+                          ); })()}
                         </div>
                         <div className="mt-0.5 truncate text-[13px] text-[var(--cream-60)]">
                           {[ev.leagueName !== ev.name ? ev.leagueName : null, `${weekday(ev.date)} ${fmtTime(ev.date)}`].filter(Boolean).join(" · ")}

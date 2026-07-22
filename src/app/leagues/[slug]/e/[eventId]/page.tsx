@@ -6,7 +6,9 @@ import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { getLeagueBySlug, getLeagueMembers, getEvent, getCards, checkIn, updateEntry, removeEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, reassignBagTags, computeStandings, computeHandicaps, applyHandicaps, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCoursePars, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
-import { SectionTitle, Avatar, Pos, btnGold, card, plural, IconPin, IconDisc, IconEyeOff, IconUsers } from "@/components/leagues/ui";
+import { SectionTitle, Avatar, Pos, btnGold, card, plural, IconPin, IconDisc, IconEyeOff, IconUsers, IconCalendar, IconTrophy, IconTarget, IconLeaf } from "@/components/leagues/ui";
+
+const KIND_ICON: Record<string, React.ComponentType<{ className?: string }>> = { league: IconCalendar, tournament: IconTrophy, clinic: IconTarget, cleanup: IconLeaf, social: IconUsers };
 
 const warnedNames = new Set<string>();
 const menuItem = "block w-full rounded-lg px-3 py-2 text-left text-[13.5px] font-semibold text-[var(--cream-60)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)]";
@@ -394,7 +396,7 @@ export default function LeagueEventPage() {
               <span className={`${pillWord}`}>{event.format} · {event.startFormat}</span>
               <span className={`${pillMono}`}>{event.roundCount > 1 ? `${event.roundCount} × ${event.holes} holes` : `${event.holes} holes`}</span>
               {event.kind && EVENT_KINDS.find((k) => k.key === event.kind) && (
-                <span className={`${pillWord}`}>{EVENT_KINDS.find((k) => k.key === event.kind)!.label}</span>
+                <span className={`${pillWord} gap-1.5`}>{(() => { const Ic = KIND_ICON[event.kind!]; return Ic ? <Ic className="h-3.5 w-3.5" /> : null; })()}{EVENT_KINDS.find((k) => k.key === event.kind)!.label}</span>
               )}
               {event.buyIn ? (
                 <span className={`${pillMono} border-[rgba(232,181,96,.4)] text-[var(--gold)]`}>${event.buyIn}</span>
