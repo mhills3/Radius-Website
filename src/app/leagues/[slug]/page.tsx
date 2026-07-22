@@ -89,10 +89,8 @@ export default function LeaguePage() {
   const top3 = standings.slice(0, 3);
   const rest = standings.slice(3);
 
-  const brand = league.brandPrimary ?? league.brandSecondary ?? null;
   return (
     <main className="relative mx-auto max-w-4xl px-5 pb-28">
-      {brand && <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[460px]" style={{ background: `radial-gradient(1050px 520px at 12% 0%, ${brand}52, transparent 65%)`, maskImage: "linear-gradient(to bottom, black 45%, transparent)", WebkitMaskImage: "linear-gradient(to bottom, black 45%, transparent)" }} />}
       {/* Hero */}
       <section className="pb-10 pt-14">
         <BackLink href="/leagues" label="Events" />

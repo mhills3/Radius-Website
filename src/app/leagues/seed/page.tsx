@@ -83,7 +83,6 @@ export default function SeedPage() {
         id: leagueId, name: "North Shore Demo Circuit", slug: leagueSlug,
         courseName: "Stage Fort Park", adminIds: [cid], createdById: cid, createdByName: "Demo",
         settings: { format: "Singles", startFormat: "Shotgun", description: "Sample data for design review. Delete from the seed page when done.", divisions: DIVS, bestN: 6, handicapPercent: 90, bagTags: true },
-        brandPrimary: "#A855F7",
         memberCount: 1, acePotBalance: 85, createdAt: now, lastUpdated: now, seedTag: DEMO_TAG,
       });
       await setDoc(doc(db, "leagues", leagueId, "members", cid), { name: "Mikey", role: "owner", joinedAt: now });

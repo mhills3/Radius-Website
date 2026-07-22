@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { storage } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthProvider";
-import { BRAND_SWATCHES, EVENT_EXTRAS, createLeague, createEvents, getMyLeagues, setLeagueBrand, setLeagueLogo, searchCourses, EVENT_KINDS, LEAGUE_FORMATS, type League, type CourseHit } from "@/lib/leagues";
+import { EVENT_EXTRAS, createLeague, createEvents, getMyLeagues, setLeagueLogo, searchCourses, EVENT_KINDS, LEAGUE_FORMATS, type League, type CourseHit } from "@/lib/leagues";
 import { inputCls, FieldLabel, Segmented, btnGold, btnGhost, BackLink, IconCalendar, IconTrophy, IconTarget, IconLeaf, IconUsers, IconEye, IconEyeOff, IconPin, IconPlus } from "@/components/leagues/ui";
 
 // ─── Full-screen event wizard, mirroring UDisc's "List your event" step
@@ -78,7 +78,6 @@ export default function EventWizard() {
   const [workList, setWorkList] = useState<string[]>([]);
   const [meetingPoint, setMeetingPoint] = useState("");
   const [payoutPlaces, setPayoutPlaces] = useState(0);
-  const [brandPrimary, setBrandPrimary] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -152,11 +151,8 @@ export default function EventWizard() {
           courseName: placeName || undefined,
           courseId: course?.id,
           settings: { format, startFormat: "Flex", description: "" },
-          brandPrimary: brandPrimary || undefined,
         });
         if (!league) throw new Error("Couldn't create the event — are you signed in?");
-      } else if (brandPrimary && !chosenLeague?.brandPrimary) {
-        try { await setLeagueBrand(league.id, brandPrimary); } catch { /* non-fatal */ }
       }
       if (logoFile) {
         try {
@@ -555,33 +551,6 @@ export default function EventWizard() {
                 />
               </label>
               {logoPreview && <button onClick={() => { setLogoFile(null); setLogoPreview(""); }} className="w-fit text-xs font-bold text-[var(--sage-dim)] hover:text-[#f08c8c]">Remove logo</button>}
-              {(isLeagueKind || kind === "tournament") && (
-                <div className="mt-2 grid gap-5">
-                  <div>
-                    <FieldLabel>Brand color <span className="normal-case tracking-normal text-[var(--cream-38)]">optional — washes your event pages</span></FieldLabel>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {BRAND_SWATCHES.map((c) => (
-                        <button
-                          key={c}
-                          type="button"
-                          onClick={() => setBrandPrimary(brandPrimary === c ? "" : c)}
-                          aria-label={`Brand color ${c}`}
-                          className={`h-8 w-8 rounded-lg border transition-all ${brandPrimary === c ? "scale-110 border-[var(--cream)]" : "border-white/15 hover:border-white/40"}`}
-                          style={{ background: c }}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                  {brandPrimary && (
-                    <div className="overflow-hidden rounded-xl border border-[var(--hair)]">
-                      <div className="flex h-16 items-center px-5" style={{ background: `radial-gradient(420px 120px at 10% 0%, ${brandPrimary}66, transparent 70%), var(--forest)` }}>
-                        <span className="font-[family-name:var(--font-heading)] text-[15px] font-bold text-[var(--cream)]">{evName.trim() || "Your event"}</span>
-                        <i className="ml-auto h-3 w-3 rounded-[4px]" style={{ background: brandPrimary }} />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           )}
 

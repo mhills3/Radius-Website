@@ -289,8 +289,6 @@ export default function LeagueEventPage() {
   const open = event.status !== "complete" && event.status !== "cancelled";
   // Clinics, cleanups, and socials have no scoring surface at all.
   const scoringKind = event.kind !== "clinic" && event.kind !== "cleanup" && event.kind !== "social";
-  // League brand colors tint the surfaces; functional gold/blue stay untouched.
-  const brand = league?.brandPrimary ?? league?.brandSecondary ?? null;
   const paidCount = entries.filter((e) => e.paid).length;
   const paidOut = entries.reduce((a, e) => a + (e.payout ?? 0), 0);
   const isTeamFormat = event.format === "Doubles" || event.format === "Teams";
@@ -382,17 +380,6 @@ export default function LeagueEventPage() {
 
   return (
     <main className="relative pb-28">
-      {brand && (
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-[240px] h-[980px]"
-          style={{
-            background: `radial-gradient(1150px 640px at 14% 0%, ${brand}59 0%, transparent 62%), radial-gradient(1000px 620px at 96% 22%, ${brand}1f, transparent 58%)`,
-            maskImage: "linear-gradient(to bottom, black 55%, transparent 100%)",
-            WebkitMaskImage: "linear-gradient(to bottom, black 55%, transparent 100%)",
-          }}
-        />
-      )}
       {/* Photo hero — course cover melts into the page (reference scrim); decoration
           exists ONLY inside the no-photo contour fallback */}
       <section className="relative h-[280px] overflow-hidden md:h-[340px]">
@@ -411,7 +398,6 @@ export default function LeagueEventPage() {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={courseMeta.cover} alt="" decoding="async" onLoad={() => setCoverLoaded(true)} onError={() => setCourseMeta((m) => (m ? { ...m, cover: undefined } : m))} className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${coverLoaded ? "opacity-100" : "opacity-0"}`} />
         )}
-        {brand && <div aria-hidden className="pointer-events-none absolute inset-0 mix-blend-screen" style={{ background: `linear-gradient(135deg, ${brand}42 0%, transparent 55%)` }} />}
         <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(20,27,22,.45) 0%, rgba(20,27,22,.18) 35%, rgba(20,27,22,.85) 70%, #141B16 100%)" }} />
         <div className="relative z-[2] mx-auto flex h-full max-w-4xl flex-col justify-between px-5 pb-[30px] pt-7">
           <div>
