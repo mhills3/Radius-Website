@@ -650,16 +650,15 @@ export default function LeagueEventPage() {
                   </div>
                   {(() => {
                     const w = ranked[0];
-                    const cardHoles = pars && w.holeScores?.filter((h) => h > 0).length === event.holes ? w.holeScores : null;
-                    const birdies = cardHoles ? cardHoles.filter((h, i) => h < (pars![i] ?? 3)).length : null;
-                    const wonBy = ranked.length > 1 ? adjOf(ranked[1]) - adjOf(w) : 0;
+                    const played = pars && w.holeScores ? w.holeScores.slice(0, event.holes).map((h, i) => ({ h, i })).filter((x) => x.h > 0) : [];
+                    const birdies = played.filter((x) => x.h < (pars![x.i] ?? 3)).length;
                     return (
                       <>
-                        {cardHoles && (
+                        {played.length > 0 && (
                           <div className="mt-5 border-t border-[rgba(232,181,96,0.2)] pt-4">
-                            <div className="mb-2 font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--cream-38)]">{event.roundCount > 1 ? "Final round card" : "Winning card"}</div>
+                            <div className="mb-2 font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--cream-38)]">{event.roundCount > 1 ? "Final round card" : "Winning card"}{played.length < event.holes ? ` · thru ${played.length}` : ""}</div>
                             <div className="grid grid-cols-9 gap-1">
-                              {cardHoles.map((h, i) => {
+                              {played.map(({ h, i }) => {
                                 const par = pars![i] ?? 3;
                                 const tone = h <= par - 2 ? "bg-[var(--blue)] font-bold text-[#141B16]" : h === par - 1 ? "bg-[var(--blue-dim)] font-bold text-[var(--blue)]" : h === par ? "bg-white/[0.03] text-[var(--cream-60)]" : "bg-white/[0.07] text-[var(--cream-60)]";
                                 return <span key={i} title={`Hole ${i + 1} · par ${par}`} className={`grid h-7 place-items-center rounded-[6px] font-mono text-[11px] ${tone}`}>{h}</span>;
@@ -667,13 +666,13 @@ export default function LeagueEventPage() {
                             </div>
                           </div>
                         )}
-                        <div className="mt-5 flex flex-wrap gap-x-6 gap-y-3 border-t border-[rgba(232,181,96,0.2)] pt-4">
-                          <div><div className="font-mono text-base font-bold text-[var(--cream)]">{ranked.length}</div><div className="mt-0.5 font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Field</div></div>
-                          {wonBy > 0 && <div><div className="font-mono text-base font-bold text-[var(--cream)]">{wonBy}</div><div className="mt-0.5 font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--cream-38)]">{wonBy === 1 ? "Stroke clear" : "Strokes clear"}</div></div>}
-                          {hotRound != null && <div><div className="font-mono text-base font-bold text-[var(--cream)]">{hotRound}</div><div className="mt-0.5 font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Hot round</div></div>}
-                          {birdies != null && birdies > 0 && <div><div className="font-mono text-base font-bold text-[var(--blue)]">{birdies}</div><div className="mt-0.5 font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--cream-38)]">{birdies === 1 ? "Birdie" : "Birdies"}</div></div>}
-                          {(w.payout ?? 0) > 0 && <div><div className="font-mono text-base font-bold text-[#5fcf80]">${w.payout}</div><div className="mt-0.5 font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Payout</div></div>}
-                        </div>
+                        {(hotRound != null || birdies > 0 || (w.payout ?? 0) > 0) && (
+                          <div className="mt-5 flex flex-wrap gap-x-6 gap-y-3 border-t border-[rgba(232,181,96,0.2)] pt-4">
+                            {hotRound != null && <div><div className="font-mono text-base font-bold text-[var(--cream)]">{hotRound}</div><div className="mt-0.5 font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Hot round</div></div>}
+                            {birdies > 0 && <div><div className="font-mono text-base font-bold text-[var(--blue)]">{birdies}</div><div className="mt-0.5 font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--cream-38)]">{birdies === 1 ? "Birdie" : "Birdies"}</div></div>}
+                            {(w.payout ?? 0) > 0 && <div><div className="font-mono text-base font-bold text-[#5fcf80]">${w.payout}</div><div className="mt-0.5 font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Payout</div></div>}
+                          </div>
+                        )}
                       </>
                     );
                   })()}
