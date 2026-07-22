@@ -205,7 +205,7 @@ function toLeague(id: string, d: any): League {
 // One cached sweep of the public course directory (name/city/state only via the
 // REST mask — ~1.4k tiny rows), then instant client-side filtering.
 /** Course presentation metadata (cover photo, city/state), masked REST read, session-cached. */
-export interface CourseMeta { cover?: string; city?: string; state?: string }
+export interface CourseMeta { cover?: string; city?: string; state?: string; lat?: number; lng?: number }
 const courseMetaCache = new Map<string, CourseMeta | null>();
 export async function getCourseMeta(ids: string[]): Promise<Map<string, CourseMeta>> {
   const wanted = [...new Set(ids.filter(Boolean))];
@@ -213,13 +213,15 @@ export async function getCourseMeta(ids: string[]): Promise<Map<string, CourseMe
   if (missing.length) {
     const { fsGet } = await import("./firestoreRest");
     await Promise.all(missing.map(async (id) => {
-      const d = await fsGet(`courses/${id}`, ["coverPhotoUrl", "city", "state"]);
+      const d = await fsGet(`courses/${id}`, ["coverPhotoUrl", "city", "state", "latitude", "longitude"]);
       if (!d) { courseMetaCache.set(id, null); return; }
       const url = typeof d.coverPhotoUrl === "string" && /^https?:\/\//.test(d.coverPhotoUrl) ? d.coverPhotoUrl : undefined;
       courseMetaCache.set(id, {
         cover: url,
         city: typeof d.city === "string" && d.city ? d.city : undefined,
         state: typeof d.state === "string" && d.state ? d.state : undefined,
+        lat: Number(d.latitude) || undefined,
+        lng: Number(d.longitude) || undefined,
       });
     }));
   }

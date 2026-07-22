@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
-import { createLeague, getMyLeagues, getAllLeagues, getUpcomingEvents, getLeagueEvents, getEntries, getCourseCovers, isLeagueAdmin, LEAGUE_FORMATS, START_FORMATS, type League, type LeagueEvent, type EventEntry } from "@/lib/leagues";
+import { createLeague, getMyLeagues, getAllLeagues, getUpcomingEvents, getLeagueEvents, getEntries, getCourseMeta, isLeagueAdmin, LEAGUE_FORMATS, type CourseMeta, START_FORMATS, type League, type LeagueEvent, type EventEntry } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
-import { inputCls, FieldLabel, Segmented, btnGold, btnGhost, card, cardHover, plural, pluralWord, IconCalendar, IconTrophy, IconTarget, IconLeaf, IconUsers } from "@/components/leagues/ui";
+import { inputCls, FieldLabel, Segmented, btnGold, btnGhost, card, cardHover, plural, pluralWord, IconCalendar, IconTrophy, IconTarget, IconLeaf, IconUsers, IconPin } from "@/components/leagues/ui";
 
 const MONTH_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const DAY = ["S", "M", "T", "W", "T", "F", "S"];
@@ -25,7 +25,7 @@ const KIND_CHIP: Record<string, { label: string; icon: React.ComponentType<{ cla
 /** Month calendar with activity dots — click a marked day to filter the list. */
 /** Card photo strip: course cover with dissolve-into-card gradients, contour
     fallback when no photo exists or the URL is dead, frosted date chip overlay. */
-function CourseStrip({ url, isLogo, ms }: { url?: string; isLogo?: boolean; ms: number }) {
+function CourseStrip({ url, isLogo, ms, distMi }: { url?: string; isLogo?: boolean; ms: number; distMi?: number | null }) {
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
   const d = new Date(ms);
@@ -48,6 +48,11 @@ function CourseStrip({ url, isLogo, ms }: { url?: string; isLogo?: boolean; ms: 
       {!isLogo && <div aria-hidden className="absolute inset-0 bg-[rgba(20,27,22,0.25)]" />}
       {!isLogo && <div aria-hidden className="absolute inset-0 hidden sm:block" style={{ background: "linear-gradient(90deg, transparent 55%, rgba(23,32,25,.92) 100%)" }} />}
       {!isLogo && <div aria-hidden className="absolute inset-0 sm:hidden" style={{ background: "linear-gradient(180deg, transparent 55%, rgba(23,32,25,.92) 100%)" }} />}
+      {distMi != null && (
+        <span className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full border border-[var(--hair)] bg-[rgba(20,27,22,0.85)] px-2 py-0.5 font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--cream-60)] backdrop-blur-[6px]">
+          <IconPin className="h-3 w-3" />{distMi < 10 ? distMi.toFixed(1) : Math.round(distMi)} MI
+        </span>
+      )}
       <div className="absolute left-3 top-3 min-w-[46px] rounded-xl border border-[var(--hair)] bg-[rgba(20,27,22,0.85)] px-2 py-1.5 text-center backdrop-blur-[6px]">
         <div className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[var(--cream-60)]">{d.toLocaleDateString(undefined, { month: "short" })}</div>
         <div className="font-mono text-[19px] font-bold leading-[1.1] text-[var(--cream)]">{d.getDate()}</div>
@@ -161,11 +166,35 @@ export default function LeaguesPage() {
     }).catch(() => setLive(null));
   }, [upcoming]);
 
-  const [covers, setCovers] = useState<Map<string, string>>(new Map());
+  const [courseMeta, setCourseMetaMap] = useState<Map<string, CourseMeta>>(new Map());
   useEffect(() => {
     const ids = upcoming.map((e) => e.courseId).filter((x): x is string => !!x);
-    if (ids.length) getCourseCovers(ids).then(setCovers).catch(() => {});
+    if (ids.length) getCourseMeta(ids).then(setCourseMetaMap).catch(() => {});
   }, [upcoming]);
+  // Where filter: browser geolocation + radius; distance shown on cards once located.
+  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
+  const [locBusy, setLocBusy] = useState(false);
+  const [locErr, setLocErr] = useState(false);
+  const [radiusMi, setRadiusMi] = useState(50);
+  const [kindFilter, setKindFilter] = useState("all");
+  const requestLocation = () => {
+    if (userLoc) { setUserLoc(null); return; }
+    if (!navigator.geolocation) { setLocErr(true); return; }
+    setLocBusy(true); setLocErr(false);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { setUserLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setLocBusy(false); },
+      () => { setLocErr(true); setLocBusy(false); },
+      { maximumAge: 300_000, timeout: 12_000 }
+    );
+  };
+  const milesTo = (e: LeagueEvent): number | null => {
+    if (!userLoc || !e.courseId) return null;
+    const m = courseMeta.get(e.courseId);
+    if (!m?.lat || !m?.lng) return null;
+    const toR = (x: number) => (x * Math.PI) / 180;
+    const h = Math.sin(toR(m.lat - userLoc.lat) / 2) ** 2 + Math.cos(toR(userLoc.lat)) * Math.cos(toR(m.lat)) * Math.sin(toR(m.lng - userLoc.lng) / 2) ** 2;
+    return 2 * 3958.8 * Math.asin(Math.sqrt(h));
+  };
 
   const slugOf = useMemo(() => new Map(all.map((l) => [l.id, l.slug])), [all]);
   const logoOf = useMemo(() => new Map(all.filter((l) => l.logoUrl).map((l) => [l.id, l.logoUrl!])), [all]);
@@ -218,8 +247,10 @@ export default function LeaguesPage() {
     : upcoming;
   const shownEvents = tabEvents.filter((e) =>
     (!dayFilter || dayKey(e.date) === dayFilter)
+    && (kindFilter === "all" || (e.kind ?? "league") === kindFilter)
     && (!needle || `${e.name} ${e.leagueName} ${e.courseName ?? ""}`.toLowerCase().includes(needle))
-  );
+    && (!userLoc || (milesTo(e) ?? Infinity) <= radiusMi)
+  ).sort((a, b) => (userLoc ? (milesTo(a) ?? Infinity) - (milesTo(b) ?? Infinity) : 0) || a.date - b.date);
 
   const submit = async () => {
     if (!user || !name.trim() || busy) return;
@@ -292,6 +323,35 @@ export default function LeaguesPage() {
         </div>
       </section>
 
+      {/* Filter rail — where (geolocation + radius) and event type; when lives in the calendar */}
+      <section className="-mt-2 mb-6 flex flex-wrap items-center gap-2">
+        <button
+          onClick={requestLocation}
+          disabled={locBusy}
+          className={`inline-flex h-9 items-center gap-2 rounded-full border px-4 text-[13px] font-semibold transition-colors disabled:opacity-60 ${userLoc ? "border-[rgba(232,181,96,.4)] bg-[var(--gold-dim)] text-[var(--gold)]" : "border-[var(--hair-strong)] text-[var(--cream-60)] hover:text-[var(--cream)]"}`}
+        >
+          <IconPin className="h-3.5 w-3.5" />
+          {locBusy ? "Locating…" : "Near me"}
+          {userLoc && <span aria-hidden className="ml-0.5 text-[var(--gold)]/70">✕</span>}
+        </button>
+        {userLoc && (
+          <span className="flex items-center gap-1">
+            {[25, 50, 100].map((r) => (
+              <button key={r} onClick={() => setRadiusMi(r)} className={`h-9 rounded-full px-3 font-mono text-[11.5px] font-semibold transition-colors ${radiusMi === r ? "bg-[var(--gold-dim)] text-[var(--gold)]" : "text-[var(--cream-38)] hover:text-[var(--cream)]"}`}>{r} mi</button>
+            ))}
+          </span>
+        )}
+        {locErr && <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-[var(--cream-38)]">Location unavailable</span>}
+        <span aria-hidden className="mx-1.5 h-6 w-px bg-[var(--hair)]" />
+        {[{ key: "all", label: "All types", icon: null as React.ComponentType<{ className?: string }> | null }, ...Object.entries(KIND_CHIP).map(([key, v]) => ({ key, label: v.label.charAt(0) + v.label.slice(1).toLowerCase(), icon: v.icon as React.ComponentType<{ className?: string }> | null }))].map(({ key, label, icon: Ic }) => (
+          <button
+            key={key}
+            onClick={() => setKindFilter(key)}
+            className={`inline-flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-semibold transition-colors ${kindFilter === key ? "border-[rgba(232,181,96,.4)] bg-[var(--gold-dim)] text-[var(--gold)]" : "border-[var(--hair-strong)] text-[var(--cream-60)] hover:text-[var(--cream)]"}`}
+          >{Ic && <Ic className="h-3.5 w-3.5" />}{label}</button>
+        ))}
+      </section>
+
       <section className="grid gap-6 lg:grid-cols-[280px_1fr]">
           <div className="lg:sticky lg:top-6 lg:self-start">
             <Calendar eventDays={eventDays} selected={dayFilter} onSelect={setDayFilter} initial={today} upNext={upNext} />
@@ -357,7 +417,7 @@ export default function LeaguesPage() {
                   const slug = slugOf.get(ev.leagueId);
                   const inner = (
                     <div className="grid sm:grid-cols-[220px_1fr]">
-                      {(() => { const logo = logoOf.get(ev.leagueId); return <CourseStrip url={logo ?? (ev.courseId ? covers.get(ev.courseId) : undefined)} isLogo={!!logo} ms={ev.date} />; })()}
+                      {(() => { const logo = logoOf.get(ev.leagueId); const d = milesTo(ev); return <CourseStrip url={logo ?? (ev.courseId ? courseMeta.get(ev.courseId)?.cover : undefined)} isLogo={!!logo} ms={ev.date} distMi={d} />; })()}
                       <div className="min-w-0 p-6">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 truncate font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">{ev.name}</div>
