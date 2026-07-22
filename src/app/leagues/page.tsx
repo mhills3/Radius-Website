@@ -25,7 +25,7 @@ const KIND_CHIP: Record<string, { label: string; icon: React.ComponentType<{ cla
 /** Month calendar with activity dots — click a marked day to filter the list. */
 /** Card photo strip: course cover with dissolve-into-card gradients, contour
     fallback when no photo exists or the URL is dead, frosted date chip overlay. */
-function CourseStrip({ url, isLogo, ms, distMi }: { url?: string; isLogo?: boolean; ms: number; distMi?: number | null }) {
+function CourseStrip({ url, isLogo, ms, distMi, noDate }: { url?: string; isLogo?: boolean; ms: number; distMi?: number | null; noDate?: boolean }) {
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
   const d = new Date(ms);
@@ -53,10 +53,12 @@ function CourseStrip({ url, isLogo, ms, distMi }: { url?: string; isLogo?: boole
           <IconPin className="h-3 w-3" />{distMi < 10 ? distMi.toFixed(1) : Math.round(distMi)} MI
         </span>
       )}
-      <div className="absolute left-3 top-3 min-w-[46px] rounded-xl border border-[var(--hair)] bg-[rgba(20,27,22,0.85)] px-2 py-1.5 text-center backdrop-blur-[6px]">
-        <div className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[var(--cream-60)]">{d.toLocaleDateString(undefined, { month: "short" })}</div>
-        <div className="font-mono text-[19px] font-bold leading-[1.1] text-[var(--cream)]">{d.getDate()}</div>
-      </div>
+      {!noDate && (
+        <div className="absolute left-3 top-3 min-w-[46px] rounded-xl border border-[var(--hair)] bg-[rgba(20,27,22,0.85)] px-2 py-1.5 text-center backdrop-blur-[6px]">
+          <div className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[var(--cream-60)]">{d.toLocaleDateString(undefined, { month: "short" })}</div>
+          <div className="font-mono text-[19px] font-bold leading-[1.1] text-[var(--cream)]">{d.getDate()}</div>
+        </div>
+      )}
     </div>
   );
 }
@@ -299,7 +301,9 @@ export default function LeaguesPage() {
   const needle = q.trim().toLowerCase();
   // Public feed hides events past their registration close; entrants/admins keep them under My events.
   const tabEvents = tab === "My events"
-    ? [...upcoming.filter((e) => adminLeagueIds.has(e.leagueId) || signedUp.has(e.id)), ...privateMine].sort((a, b) => a.date - b.date)
+    ? [...upcoming.filter((e) => adminLeagueIds.has(e.leagueId) || signedUp.has(e.id)), ...privateMine]
+        .filter((e) => (e.kind ?? "league") !== "league")
+        .sort((a, b) => a.date - b.date)
     : upcoming.filter((e) => registrationOpen(e));
   const shownEvents = tabEvents.filter((e) =>
     (!dayFilter || dayKey(e.date) === dayFilter)
@@ -433,19 +437,37 @@ export default function LeaguesPage() {
           </div>
           <div>
           {tab === "My events" && (() => {
-            const activeMine = mine.filter((l) => upcoming.some((e) => e.leagueId === l.id) || privateMine.some((e) => e.leagueId === l.id));
-            return activeMine.length > 0 && (
-            <div className="mb-5">
-              <div className="grid gap-2">
-                {activeMine.map((l) => (
-                  <div key={l.id} className={`${card} flex items-center gap-3 px-4 py-3`}>
-                    <span className="min-w-0 flex-1 truncate font-[family-name:var(--font-heading)] text-[14.5px] font-bold text-[var(--cream)]">{l.name}</span>
-                    <Link href={`/leagues/${l.slug}#standings`} className="shrink-0 text-[13px] font-semibold text-[var(--cream-60)] transition-colors hover:text-[var(--cream)]">Standings →</Link>
-                    {isLeagueAdmin(l, cid) && <Link href={`/leagues/${l.slug}/manage`} className="shrink-0 rounded-full bg-[var(--gold-dim)] px-3 py-1 text-xs font-bold text-[var(--gold)] transition-colors hover:bg-[rgba(232,181,96,0.25)]">Director tools</Link>}
-                  </div>
-                ))}
+            const myLeagues = mine.filter((l) => !needle || l.name.toLowerCase().includes(needle));
+            return myLeagues.length > 0 && (
+              <div className="mb-4 grid gap-3">
+                {myLeagues.map((l) => {
+                  const next = upcoming.filter((e) => e.leagueId === l.id).sort((a, b) => a.date - b.date)[0];
+                  const art = l.logoUrl ?? (l.courseId ? courseMeta.get(l.courseId)?.cover : undefined);
+                  return (
+                    <Link key={l.id} href={`/leagues/${l.slug}`} className={`${card} ${cardHover} group block overflow-hidden`}>
+                      <div className="grid sm:grid-cols-[220px_1fr]">
+                        <CourseStrip url={art} isLogo={!!l.logoUrl} ms={next?.date ?? 0} noDate={!next} />
+                        <div className="min-w-0 p-6">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 truncate font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">{l.name}</div>
+                            <span className="flex shrink-0 items-center gap-1.5">
+                              {isLeagueAdmin(l, cid) && <span className="rounded-full bg-[var(--gold-dim)] px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--gold)]">Director</span>}
+                              <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--blue-dim)] px-2.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--blue)]"><IconCalendar className="h-3 w-3" />League</span>
+                            </span>
+                          </div>
+                          <div className="mt-0.5 truncate text-[13px] text-[var(--cream-60)]">
+                            {[l.courseName, plural(l.memberCount, "member")].filter(Boolean).join(" · ")}
+                          </div>
+                          <div className="mt-5 font-mono text-[10.5px] tracking-[0.06em] text-[var(--cream-38)]">
+                            {next ? <>Next: <b className="font-medium text-[var(--cream-60)]">{new Date(next.date).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })} · {new Date(next.date).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</b></> : "No upcoming events"}
+                          </div>
+                          <div className="mt-2 text-[13px] font-semibold text-[var(--cream-60)] transition-colors group-hover:text-[var(--cream)]">Open league page →</div>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
-            </div>
             );
           })()}
           {tab === "Events" && liveEvents.length > 0 && (
