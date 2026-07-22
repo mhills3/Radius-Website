@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
 import { createLeague, getMyLeagues, getAllLeagues, getUpcomingEvents, getEntries, getCourseCovers, LEAGUE_FORMATS, START_FORMATS, type League, type LeagueEvent, type EventEntry } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
-import { inputCls, FieldLabel, SectionTitle, Segmented, btnGold, btnGhost, card, cardHover, plural, pluralWord, IconCalendar, IconTrophy, IconTarget, IconLeaf, IconUsers, IconDisc } from "@/components/leagues/ui";
+import { inputCls, FieldLabel, Segmented, btnGold, btnGhost, card, cardHover, plural, pluralWord, IconCalendar, IconTrophy, IconTarget, IconLeaf, IconUsers } from "@/components/leagues/ui";
 
 const MONTH_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const DAY = ["S", "M", "T", "W", "T", "F", "S"];
@@ -20,14 +20,6 @@ const KIND_CHIP: Record<string, { label: string; icon: React.ComponentType<{ cla
   social: { label: "SOCIAL", icon: IconUsers },
 };
 
-function Emblem({ name, size = 52 }: { name: string; size?: number }) {
-  return (
-    <span
-      className="grid shrink-0 place-items-center rounded-2xl bg-[var(--accent-green)] font-[family-name:var(--font-heading)] font-extrabold text-[var(--cream)] ring-1 ring-[var(--hair)]"
-      style={{ width: size, height: size, fontSize: size * 0.42 }}
-    >{(name || "?").charAt(0).toUpperCase()}</span>
-  );
-}
 
 /** Month calendar with activity dots — click a marked day to filter the list. */
 /** Card photo strip: course cover with dissolve-into-card gradients, contour
@@ -188,11 +180,11 @@ export default function LeaguesPage() {
   }, [upcoming, slugOf, today]);
 
   const needle = q.trim().toLowerCase();
-  const shownEvents = upcoming.filter((e) =>
+  const tabEvents = tab === "Your events" ? upcoming.filter((e) => mine.some((l) => l.id === e.leagueId)) : upcoming;
+  const shownEvents = tabEvents.filter((e) =>
     (!dayFilter || dayKey(e.date) === dayFilter)
     && (!needle || `${e.name} ${e.leagueName} ${e.courseName ?? ""}`.toLowerCase().includes(needle))
   );
-  const shownLeagues = (list: League[]) => (!needle ? list : list.filter((l) => `${l.name} ${l.courseName ?? ""}`.toLowerCase().includes(needle)));
 
   const submit = async () => {
     if (!user || !name.trim() || busy) return;
@@ -209,8 +201,6 @@ export default function LeaguesPage() {
   const fmtTime = (ms: number) => new Date(ms).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
   const weekday = (ms: number) => new Date(ms).toLocaleDateString(undefined, { weekday: "short" });
 
-  const others = shownLeagues(all.filter((l) => !mine.some((m) => m.id === l.id)));
-  const mineShown = shownLeagues(mine);
 
   return (
     <main className="mx-auto max-w-5xl px-5 pb-28">
@@ -221,7 +211,7 @@ export default function LeaguesPage() {
           <p className="mt-1 text-sm text-[var(--cream-60)]">Leagues, weeklies, and tournaments near you.</p>
         </div>
         <div className="flex items-center gap-4">
-          {tab === "Events" && <span className="font-mono text-xs uppercase tracking-[0.1em] text-[var(--cream-38)]">{shownEvents.length} upcoming</span>}
+          <span className="font-mono text-xs uppercase tracking-[0.1em] text-[var(--cream-38)]">{shownEvents.length} upcoming</span>
           {user ? (
             <Link href="/leagues/new" className={`${btnGold} inline-flex h-11 items-center`}>Create an event</Link>
           ) : (
@@ -260,15 +250,14 @@ export default function LeaguesPage() {
 
       {/* Controls — every control 44px, no hairline touches this row */}
       <section className="mb-6 mt-6 flex flex-wrap items-center gap-3">
-        <Segmented tall options={["Events", "Leagues"]} value={tab} onChange={(t) => { setTab(t); setDayFilter(null); }} />
+        <Segmented tall options={["Events", "Your events"]} value={tab} onChange={(t) => { setTab(t); setDayFilter(null); }} />
         <div className="relative min-w-[220px] flex-1">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--sage-dim)]"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tab === "Events" ? "Search events, leagues, or courses" : "Search leagues or courses"} className={`${inputCls} h-11 pl-11`} />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search events, leagues, or courses" className={`${inputCls} h-11 pl-11`} />
         </div>
       </section>
 
-      {tab === "Events" ? (
-        <section className="grid gap-6 lg:grid-cols-[280px_1fr]">
+      <section className="grid gap-6 lg:grid-cols-[280px_1fr]">
           <div className="lg:sticky lg:top-6 lg:self-start">
             <Calendar eventDays={eventDays} selected={dayFilter} onSelect={setDayFilter} initial={today} upNext={upNext} />
             {dayFilter && <button onClick={() => setDayFilter(null)} className="mt-3 w-full rounded-full bg-white/[0.05] py-2 text-xs font-bold text-[var(--sage)] transition-colors hover:text-[var(--cream)]">Clear day filter</button>}
@@ -310,8 +299,8 @@ export default function LeaguesPage() {
             {shownEvents.length === 0 ? (
               <div className={`${card} grid place-items-center px-6 py-16 text-center`}>
                 <span className="grid h-14 w-14 place-items-center rounded-full bg-[var(--card-raised)] text-[var(--blue)]"><IconCalendar className="h-6 w-6" /></span>
-                <p className="mt-4 font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">{upcoming.length === 0 ? "No upcoming events" : "Nothing matches"}</p>
-                <p className="mt-1 max-w-xs text-sm text-[var(--sage-dim)]">{upcoming.length === 0 ? "Create one in about a minute." : "Clear the search or day filter."}</p>
+                <p className="mt-4 font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">{tab === "Your events" ? (user ? "Nothing on your calendar" : "Sign in to see your events") : upcoming.length === 0 ? "No upcoming events" : "Nothing matches"}</p>
+                <p className="mt-1 max-w-xs text-sm text-[var(--sage-dim)]">{tab === "Your events" ? (user ? "Events from leagues you play in or run show up here." : "Your leagues and check-ins land here.") : upcoming.length === 0 ? "Create one in about a minute." : "Clear the search or day filter."}</p>
               </div>
             ) : (
               <div className="grid gap-3">
@@ -364,50 +353,7 @@ export default function LeaguesPage() {
             )}
           </div>
         </section>
-      ) : (
-        <>
-          {mineShown.length > 0 && (
-            <section className="mb-10">
-              <SectionTitle>Your leagues</SectionTitle>
-              <div className="grid gap-3">{mineShown.map((l) => <LeagueCard key={l.id} l={l} mine />)}</div>
-            </section>
-          )}
-          <section>
-            <SectionTitle>All leagues</SectionTitle>
-            {others.length === 0 && all.length === 0 ? (
-              <div className={`${card} grid place-items-center px-6 py-16 text-center`}>
-                <span className="grid h-14 w-14 place-items-center rounded-full bg-[var(--card-raised)] text-[var(--blue)]"><IconDisc className="h-6 w-6" /></span>
-                <p className="mt-4 font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">No leagues yet</p>
-                <p className="mt-1 max-w-xs text-sm text-[var(--sage-dim)]">Start the first one from Create an event.</p>
-              </div>
-            ) : others.length === 0 ? (
-              <p className="text-sm text-[var(--sage-dim)]">{needle ? "No other leagues match." : "You run every league on Radius so far."}</p>
-            ) : (
-              <div className="grid gap-3">{others.map((l) => <LeagueCard key={l.id} l={l} />)}</div>
-            )}
-          </section>
-        </>
-      )}
     </main>
   );
 }
 
-function LeagueCard({ l, mine }: { l: League; mine?: boolean }) {
-  return (
-    <Link href={`/leagues/${l.slug}`} className={`${card} ${cardHover} group flex items-center gap-4 p-6`}>
-      <Emblem name={l.name} />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="truncate font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">{l.name}</span>
-          {mine && <span className="shrink-0 rounded-full bg-[var(--gold-dim)] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[var(--gold)]">Director</span>}
-        </div>
-        <div className="mt-0.5 truncate text-sm text-[var(--sage)]">{l.courseName || "Rotating courses"} · {l.settings.format}</div>
-      </div>
-      <div className="shrink-0 text-right">
-        <div className="font-mono text-xl font-extrabold text-[var(--blue)]">{l.memberCount}</div>
-        <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]">{pluralWord(l.memberCount, "member")}</div>
-      </div>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-4 w-4 shrink-0 text-[var(--sage-dim)] transition-all group-hover:translate-x-0.5 group-hover:text-[var(--gold)]"><path d="M9 6l6 6-6 6" /></svg>
-    </Link>
-  );
-}
