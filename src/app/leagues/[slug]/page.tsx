@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, getEntries, computeStandings, setMemberRole, isLeagueAdmin, latestScoredEvent, type League, type LeagueEvent, type LeagueMember, type StandingRow, type EventEntry } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
-import { SectionTitle, Avatar, Pos, btnGold, card, IconPin } from "@/components/leagues/ui";
+import { SectionTitle, Avatar, Pos, btnGold, card, BackLink, IconPin } from "@/components/leagues/ui";
 
 const fmtTime = (ms: number) => new Date(ms).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 const fmtToPar = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`);
@@ -93,7 +93,7 @@ export default function LeaguePage() {
     <main className="mx-auto max-w-4xl px-5 pb-28">
       {/* Hero */}
       <section className="pb-10 pt-14">
-        <Link href="/leagues" className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--cream-38)] transition-colors hover:text-[var(--gold)]">← Events</Link>
+        <BackLink href="/leagues" label="Events" />
         <div className="mt-4 flex flex-wrap items-start justify-between gap-6">
           <div className="min-w-0">
             <h1 className="font-[family-name:var(--font-heading)] text-4xl font-extrabold tracking-tight text-[var(--cream)] sm:text-5xl">{league.name}</h1>

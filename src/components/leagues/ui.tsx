@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 // Shared presentation primitives for the Leagues surfaces — one visual system,
 // tuned to the Radius dark identity (forest ground, Sora display, gold accent).
 
@@ -103,6 +105,16 @@ export const IconDollar = ({ className }: IconProps) => <I className={className}
 /** "1 player", "3 players" — the one pluralizer for every count label in the flow. */
 export const plural = (n: number, one: string, many?: string) => `${n} ${n === 1 ? one : (many ?? one + "s")}`;
 export const pluralWord = (n: number, one: string, many?: string) => (n === 1 ? one : (many ?? one + "s"));
+
+/** Back navigation pill: frosted, 36px, real arrow icon — legible over photos. */
+export function BackLink({ href, label }: { href: string; label: string }) {
+  return (
+    <Link href={href} className="inline-flex h-9 items-center gap-2 rounded-full border border-[var(--hair-strong)] bg-[rgba(20,27,22,0.5)] px-4 font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--cream)] backdrop-blur-[6px] transition-colors hover:border-[var(--cream-38)]">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+      {label}
+    </Link>
+  );
+}
 
 export const btnGold =
   "rounded-[10px] bg-[var(--gold)] px-6 py-3 font-[family-name:var(--font-heading)] text-sm font-extrabold text-[#141B16] transition-all duration-150 hover:-translate-y-px hover:shadow-[0_8px_24px_rgba(232,181,96,0.28)] disabled:cursor-not-allowed disabled:opacity-50";

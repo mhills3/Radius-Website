@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { getLeagueBySlug, getLeagueMembers, getEvent, getCards, checkIn, updateEntry, removeEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, reassignBagTags, computeStandings, computeHandicaps, applyHandicaps, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCoursePars, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
-import { SectionTitle, Avatar, Pos, btnGold, card, plural, IconPin, IconDisc, IconEyeOff, IconUsers, IconCalendar, IconTrophy, IconTarget, IconLeaf } from "@/components/leagues/ui";
+import { SectionTitle, Avatar, Pos, btnGold, card, plural, BackLink, IconPin, IconDisc, IconEyeOff, IconUsers, IconCalendar, IconTrophy, IconTarget, IconLeaf } from "@/components/leagues/ui";
 
 const KIND_ICON: Record<string, React.ComponentType<{ className?: string }>> = { league: IconCalendar, tournament: IconTrophy, clinic: IconTarget, cleanup: IconLeaf, social: IconUsers };
 
@@ -377,7 +377,7 @@ export default function LeagueEventPage() {
         <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(20,27,22,.45) 0%, rgba(20,27,22,.18) 35%, rgba(20,27,22,.85) 70%, #141B16 100%)" }} />
         <div className="relative z-[2] mx-auto flex h-full max-w-4xl flex-col justify-between px-5 pb-[30px] pt-7">
           <div>
-            <Link href="/leagues" className="font-mono text-[11.5px] tracking-[0.1em] text-[var(--cream-60)] transition-colors hover:text-[var(--cream)]">← EVENTS</Link>
+            <BackLink href="/leagues" label="Events" />
           </div>
           <div>
             {event.courseName && (

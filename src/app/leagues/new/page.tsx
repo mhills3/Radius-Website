@@ -7,7 +7,7 @@ import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage
 import { storage } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthProvider";
 import { createLeague, createEvents, getMyLeagues, setLeagueLogo, searchCourses, EVENT_KINDS, LEAGUE_FORMATS, type League, type CourseHit } from "@/lib/leagues";
-import { inputCls, FieldLabel, Segmented, btnGold, btnGhost, IconCalendar, IconTrophy, IconTarget, IconLeaf, IconUsers, IconEye, IconEyeOff, IconPin, IconPlus } from "@/components/leagues/ui";
+import { inputCls, FieldLabel, Segmented, btnGold, btnGhost, BackLink, IconCalendar, IconTrophy, IconTarget, IconLeaf, IconUsers, IconEye, IconEyeOff, IconPin, IconPlus } from "@/components/leagues/ui";
 
 // ─── Full-screen event wizard, mirroring UDisc's "List your event" step
 // architecture exactly: type → details → when → where → (buy-in) → contact →
@@ -211,7 +211,7 @@ export default function EventWizard() {
       <main className="relative mx-auto grid min-h-[80vh] max-w-6xl gap-10 px-5 pb-36 pt-14 lg:grid-cols-[1fr_1.15fr] lg:gap-16">
         {/* Question + answer rail */}
         <div className="lg:pt-16">
-          <Link href="/leagues" className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--cream-38)] transition-colors hover:text-[var(--gold)]">← Events</Link>
+          <BackLink href="/leagues" label="Events" />
           <p className="mt-6 font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--gold)]">Step {stepIdx + 1} of {steps.length}</p>
           <h1 key={step} className="mt-3 max-w-md font-[family-name:var(--font-heading)] text-4xl font-extrabold leading-[1.06] tracking-tight text-[var(--cream)] animate-[fadeIn_0.3s_ease] sm:text-5xl">
             {QUESTION[step].title}
