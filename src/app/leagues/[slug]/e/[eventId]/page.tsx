@@ -423,7 +423,7 @@ export default function LeagueEventPage() {
             <div className="mt-5 flex h-14 items-center justify-between rounded-xl border border-[var(--hair)] bg-[var(--card)] bg-gradient-to-b from-white/[0.045] to-transparent py-2 pl-4 pr-2.5">
               <span className="flex items-center gap-3">
                 <span className="grid h-8 w-8 place-items-center rounded-[10px] bg-[var(--gold-dim)] text-[var(--gold)]"><IconSliders className="h-4 w-4" /></span>
-                <span className="font-mono text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[var(--cream-38)]">League tools</span>
+                <span className="font-[family-name:var(--font-heading)] text-[14.5px] font-bold tracking-[-0.01em] text-[var(--cream)]">League tools</span>
               </span>
               <div className="flex items-center gap-1.5">
                 <button onClick={primary.fn} disabled={busy} className="h-9 rounded-[10px] bg-[var(--gold)] px-4 text-[13.5px] font-bold text-[#141B16] transition-colors hover:bg-[var(--gold-bright)] disabled:opacity-50">{primary.label}</button>
@@ -446,7 +446,7 @@ export default function LeagueEventPage() {
         })()}
         {hcpNote && <p className="mt-3 text-xs text-[var(--gold)]">{hcpNote}</p>}
         {open && (
-          <div className="mt-4 flex flex-wrap items-center gap-2.5">
+          <div className="mt-3 flex flex-wrap items-center justify-end gap-2.5">
             {user ? (
               me ? (
                 !(liveNow && cid && ranked.some((x) => x.id === cid)) && (
@@ -456,7 +456,7 @@ export default function LeagueEventPage() {
                 <span className="flex items-center gap-2">
                   {divisions.length > 1 && (
                     <select value={division} onChange={(e) => setDivision(e.target.value)} className="rounded-full border border-white/10 bg-white/[0.05] px-4 py-3 text-sm font-semibold text-[var(--cream)] outline-none focus:border-[var(--gold)]">
-                      <option value="">Division…</option>
+                      <option value="">Choose division</option>
                       {divisions.map((d) => <option key={d} value={d}>{d}</option>)}
                     </select>
                   )}
