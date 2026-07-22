@@ -109,6 +109,6 @@ export const btnGold =
 export const btnGhost =
   "rounded-[10px] border border-[var(--hair-strong)] px-5 py-3 font-[family-name:var(--font-heading)] text-sm font-bold text-[var(--cream)] transition-colors duration-150 hover:border-[var(--cream-38)] hover:bg-[var(--card)] disabled:opacity-50";
 export const card =
-  "rounded-2xl border border-[var(--hair)] bg-[var(--card)]";
+  "rounded-2xl border border-[var(--hair)] bg-[var(--card)] bg-gradient-to-b from-white/[0.045] to-transparent";
 export const cardHover =
   "transition-all duration-[180ms] ease-out hover:-translate-y-[3px] hover:border-[var(--hair-strong)] hover:bg-[var(--card-raised)]";

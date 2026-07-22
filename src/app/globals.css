@@ -41,8 +41,8 @@ html { scroll-behavior: smooth; }
 .events-scope {
   font-family: var(--font-heading);
   --forest: #141B16;
-  --card: #1A2821;
-  --card-raised: #203028;
+  --card: #172019;
+  --card-raised: #1D2620;
   --accent-green: #2D4A3E;
   --gold: #E8B560;
   --gold-bright: #f0c377;
