@@ -3,12 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
-import { createLeague, getMyLeagues, getAllLeagues, getUpcomingEvents, getEntries, getCourseCovers, LEAGUE_FORMATS, START_FORMATS, type League, type LeagueEvent, type EventEntry } from "@/lib/leagues";
+import { createLeague, getMyLeagues, getAllLeagues, getUpcomingEvents, getEntries, getCourseCovers, isLeagueAdmin, LEAGUE_FORMATS, START_FORMATS, type League, type LeagueEvent, type EventEntry } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { inputCls, FieldLabel, Segmented, btnGold, btnGhost, card, cardHover, plural, pluralWord, IconCalendar, IconTrophy, IconTarget, IconLeaf, IconUsers } from "@/components/leagues/ui";
 
 const MONTH_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const DAY = ["S", "M", "T", "W", "T", "F", "S"];
+const signedUpCache = new Map<string, boolean>();
 const dayKey = (ms: number) => { const d = new Date(ms); return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; };
 
 
@@ -179,8 +180,26 @@ export default function LeaguesPage() {
     return s2 ? { href: `/leagues/${s2}/e/${e.id}`, name: e.name, courseName: e.courseName, date: e.date } : null;
   }, [upcoming, slugOf, today]);
 
+  // My events = events you run OR are signed up for (checked in).
+  const [signedUp, setSignedUp] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (tab !== "My events" || !cid || upcoming.length === 0) return;
+    let dead = false;
+    (async () => {
+      const { fsGet } = await import("@/lib/firestoreRest");
+      const hits = await Promise.all(upcoming.map(async (e) => {
+        const key = `${e.id}_${cid}`;
+        if (!signedUpCache.has(key)) signedUpCache.set(key, !!(await fsGet(`leagueEvents/${e.id}/entries/${cid}`, ["checkedInAt"])));
+        return signedUpCache.get(key) ? e.id : null;
+      }));
+      if (!dead) setSignedUp(new Set(hits.filter((x): x is string => !!x)));
+    })();
+    return () => { dead = true; };
+  }, [tab, cid, upcoming]);
+  const adminLeagueIds = useMemo(() => new Set(mine.filter((l) => isLeagueAdmin(l, cid)).map((l) => l.id)), [mine, cid]);
+
   const needle = q.trim().toLowerCase();
-  const tabEvents = tab === "Your events" ? upcoming.filter((e) => mine.some((l) => l.id === e.leagueId)) : upcoming;
+  const tabEvents = tab === "My events" ? upcoming.filter((e) => adminLeagueIds.has(e.leagueId) || signedUp.has(e.id)) : upcoming;
   const shownEvents = tabEvents.filter((e) =>
     (!dayFilter || dayKey(e.date) === dayFilter)
     && (!needle || `${e.name} ${e.leagueName} ${e.courseName ?? ""}`.toLowerCase().includes(needle))
@@ -250,7 +269,7 @@ export default function LeaguesPage() {
 
       {/* Controls — every control 44px, no hairline touches this row */}
       <section className="mb-6 mt-6 flex flex-wrap items-center gap-3">
-        <Segmented tall options={["Events", "Your events"]} value={tab} onChange={(t) => { setTab(t); setDayFilter(null); }} />
+        <Segmented tall options={["Events", "My events"]} value={tab} onChange={(t) => { setTab(t); setDayFilter(null); }} />
         <div className="relative min-w-[220px] flex-1">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--sage-dim)]"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search events, leagues, or courses" className={`${inputCls} h-11 pl-11`} />
@@ -263,6 +282,20 @@ export default function LeaguesPage() {
             {dayFilter && <button onClick={() => setDayFilter(null)} className="mt-3 w-full rounded-full bg-white/[0.05] py-2 text-xs font-bold text-[var(--sage)] transition-colors hover:text-[var(--cream)]">Clear day filter</button>}
           </div>
           <div>
+          {tab === "My events" && mine.length > 0 && (
+            <div className="mb-5">
+              <div className="mb-2.5 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--cream-38)]">My leagues · season standings</div>
+              <div className="grid gap-2">
+                {mine.map((l) => (
+                  <div key={l.id} className={`${card} flex items-center gap-3 px-4 py-3`}>
+                    <span className="min-w-0 flex-1 truncate font-[family-name:var(--font-heading)] text-[14.5px] font-bold text-[var(--cream)]">{l.name}</span>
+                    <Link href={`/leagues/${l.slug}#standings`} className="shrink-0 text-[13px] font-semibold text-[var(--cream-60)] transition-colors hover:text-[var(--cream)]">Standings →</Link>
+                    {isLeagueAdmin(l, cid) && <Link href={`/leagues/${l.slug}/manage`} className="shrink-0 rounded-full bg-[var(--gold-dim)] px-3 py-1 text-xs font-bold text-[var(--gold)] transition-colors hover:bg-[rgba(232,181,96,0.25)]">League tools</Link>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {live && (
               <Link href={slugOf.get(live.ev.leagueId) ? `/leagues/${slugOf.get(live.ev.leagueId)}/e/${live.ev.id}` : "#"} className="relative mb-3 block overflow-hidden rounded-2xl border border-[var(--hair)] bg-[var(--card)] p-6 transition-colors hover:border-[var(--hair-strong)]">
                 <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(600px 300px at 80% -10%, rgba(143,189,227,.10), transparent 60%)" }} />
@@ -299,8 +332,8 @@ export default function LeaguesPage() {
             {shownEvents.length === 0 ? (
               <div className={`${card} grid place-items-center px-6 py-16 text-center`}>
                 <span className="grid h-14 w-14 place-items-center rounded-full bg-[var(--card-raised)] text-[var(--blue)]"><IconCalendar className="h-6 w-6" /></span>
-                <p className="mt-4 font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">{tab === "Your events" ? (user ? "Nothing on your calendar" : "Sign in to see your events") : upcoming.length === 0 ? "No upcoming events" : "Nothing matches"}</p>
-                <p className="mt-1 max-w-xs text-sm text-[var(--sage-dim)]">{tab === "Your events" ? (user ? "Events from leagues you play in or run show up here." : "Your leagues and check-ins land here.") : upcoming.length === 0 ? "Create one in about a minute." : "Clear the search or day filter."}</p>
+                <p className="mt-4 font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">{tab === "My events" ? (user ? "Nothing on your calendar" : "Sign in to see your events") : upcoming.length === 0 ? "No upcoming events" : "Nothing matches"}</p>
+                <p className="mt-1 max-w-xs text-sm text-[var(--sage-dim)]">{tab === "My events" ? (user ? "Events you run or are checked into show up here." : "Your check-ins and leagues land here.") : upcoming.length === 0 ? "Create one in about a minute." : "Clear the search or day filter."}</p>
               </div>
             ) : (
               <div className="grid gap-3">
