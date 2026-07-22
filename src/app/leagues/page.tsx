@@ -358,11 +358,12 @@ export default function LeaguesPage() {
             {dayFilter && <button onClick={() => setDayFilter(null)} className="mt-3 w-full rounded-full bg-white/[0.05] py-2 text-xs font-bold text-[var(--sage)] transition-colors hover:text-[var(--cream)]">Clear day filter</button>}
           </div>
           <div>
-          {tab === "My events" && mine.length > 0 && (
+          {tab === "My events" && (() => {
+            const activeMine = mine.filter((l) => upcoming.some((e) => e.leagueId === l.id) || privateMine.some((e) => e.leagueId === l.id));
+            return activeMine.length > 0 && (
             <div className="mb-5">
-              <div className="mb-2.5 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--cream-38)]">My leagues · season standings</div>
               <div className="grid gap-2">
-                {mine.map((l) => (
+                {activeMine.map((l) => (
                   <div key={l.id} className={`${card} flex items-center gap-3 px-4 py-3`}>
                     <span className="min-w-0 flex-1 truncate font-[family-name:var(--font-heading)] text-[14.5px] font-bold text-[var(--cream)]">{l.name}</span>
                     <Link href={`/leagues/${l.slug}#standings`} className="shrink-0 text-[13px] font-semibold text-[var(--cream-60)] transition-colors hover:text-[var(--cream)]">Standings →</Link>
@@ -371,7 +372,8 @@ export default function LeaguesPage() {
                 ))}
               </div>
             </div>
-          )}
+            );
+          })()}
           {live && (
               <Link href={slugOf.get(live.ev.leagueId) ? `/leagues/${slugOf.get(live.ev.leagueId)}/e/${live.ev.id}` : "#"} className="relative mb-3 block overflow-hidden rounded-2xl border border-[var(--hair)] bg-[var(--card)] p-6 transition-colors hover:border-[var(--hair-strong)]">
                 <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(600px 300px at 80% -10%, rgba(143,189,227,.10), transparent 60%)" }} />
