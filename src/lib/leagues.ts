@@ -296,7 +296,7 @@ export async function setAcePot(leagueId: string, balance: number): Promise<void
   await setDoc(doc(db, "leagues", leagueId), { acePotBalance: balance, lastUpdated: Date.now() }, { merge: true });
 }
 
-export const BRAND_SWATCHES = ["#E8B560", "#8FBDE3", "#7FC8A9", "#C89BE8", "#E88F6B", "#E88FA9", "#E8D06B", "#6BC7E8", "#9BE8C8", "#F4F1E8"];
+export const BRAND_SWATCHES = ["#A855F7", "#3B82F6", "#22C55E", "#EF4444", "#F59E0B", "#EC4899", "#14B8A6", "#F97316", "#06B6D4", "#EAB308"];
 /** Set (hex) or clear (null) league brand colors; undefined leaves a field untouched. */
 export async function setLeagueBrand(leagueId: string, primary?: string | null, secondary?: string | null): Promise<void> {
   const patch: Record<string, unknown> = { lastUpdated: Date.now() };

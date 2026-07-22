@@ -157,12 +157,10 @@ export default function LeagueManagePage() {
     </Link>
   );
 
-  const brand = league.brandPrimary || league.brandSecondary
-    ? { p: (league.brandPrimary ?? league.brandSecondary)!, s: (league.brandSecondary ?? league.brandPrimary)! }
-    : null;
+  const brand = league.brandPrimary ?? league.brandSecondary ?? null;
   return (
     <div className="relative mx-auto max-w-6xl px-5 pb-24">
-      {brand && <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-40" style={{ background: `linear-gradient(120deg, ${brand.p}24 0%, transparent 50%, ${brand.s}1c 100%)`, maskImage: "linear-gradient(to bottom, black, transparent)", WebkitMaskImage: "linear-gradient(to bottom, black, transparent)" }} />}
+      {brand && <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[420px]" style={{ background: `radial-gradient(1000px 480px at 12% 0%, ${brand}52, transparent 65%)`, maskImage: "linear-gradient(to bottom, black 45%, transparent)", WebkitMaskImage: "linear-gradient(to bottom, black 45%, transparent)" }} />}
       {/* Console header */}
       <div className="relative flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.06] py-5">
         <div>
@@ -337,30 +335,28 @@ export default function LeagueManagePage() {
                   </label>
                   <div className="text-xs leading-relaxed text-[var(--cream-60)]">Event logo — shows on discovery cards in place of the course photo.<br />JPEG or PNG, ~256×256.</div>
                 </div>
-                {([["Primary color", league.brandPrimary, "p"], ["Secondary color", league.brandSecondary, "s"]] as const).map(([label, val, which]) => (
-                  <div key={label}>
-                    <FieldLabel>{label}</FieldLabel>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {BRAND_SWATCHES.map((c) => (
-                        <button key={c} type="button" aria-label={`${label} ${c}`}
-                          onClick={async () => {
-                            const clear = val === c;
-                            try {
-                              await setLeagueBrand(league.id, which === "p" ? (clear ? null : c) : undefined, which === "s" ? (clear ? null : c) : undefined);
-                              setLeague({ ...league, ...(which === "p" ? { brandPrimary: clear ? undefined : c } : { brandSecondary: clear ? undefined : c }) });
-                              setBrandNote("Saved");
-                              setTimeout(() => setBrandNote(""), 1500);
-                            } catch { setBrandNote("Couldn't save"); }
-                          }}
-                          className={`h-8 w-8 rounded-lg border transition-all ${val === c ? "scale-110 border-[var(--cream)]" : "border-white/15 hover:border-white/40"}`}
-                          style={{ background: c }}
-                        />
-                      ))}
-                    </div>
+                <div>
+                  <FieldLabel>Brand color</FieldLabel>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {BRAND_SWATCHES.map((c) => (
+                      <button key={c} type="button" aria-label={`Brand color ${c}`}
+                        onClick={async () => {
+                          const clear = league.brandPrimary === c;
+                          try {
+                            await setLeagueBrand(league.id, clear ? null : c);
+                            setLeague({ ...league, brandPrimary: clear ? undefined : c });
+                            setBrandNote("Saved");
+                            setTimeout(() => setBrandNote(""), 1500);
+                          } catch { setBrandNote("Couldn't save"); }
+                        }}
+                        className={`h-8 w-8 rounded-lg border transition-all ${league.brandPrimary === c ? "scale-110 border-[var(--cream)]" : "border-white/15 hover:border-white/40"}`}
+                        style={{ background: c }}
+                      />
+                    ))}
                   </div>
-                ))}
+                </div>
                 {brandNote && <p className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-[var(--cream-38)]">{brandNote}</p>}
-                <p className="text-xs text-[var(--sage-dim)]">Colors tint every page of your events — hero, leaderboards, console. Click a selected swatch to clear it.</p>
+                <p className="text-xs text-[var(--sage-dim)]">Your color washes the background of every event page and the console. Click the selected swatch to clear it.</p>
               </div>
             </div>
             <div className={`${card} p-6`}>

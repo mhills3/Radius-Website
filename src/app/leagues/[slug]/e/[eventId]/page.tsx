@@ -12,6 +12,24 @@ const KIND_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
 const EXTRA_ICON: Record<string, React.ComponentType<{ className?: string }>> = { ace_pool: IconDisc, ctp: IconTarget, bag_tags: IconTag, glow: IconMoon, beginner: IconSparkles, women: IconVenus, juniors: IconUsers, charity: IconHeart };
 
 const warnedNames = new Set<string>();
+
+function UserLink({ username, className, children }: { username?: string; className?: string; children: React.ReactNode }) {
+  return username
+    ? <Link href={`/u/${username}`} className={`${className ?? ""} transition-colors hover:underline`}>{children}</Link>
+    : <span className={className}>{children}</span>;
+}
+
+function Fact({ icon: Ic, label, sub }: { icon: React.ComponentType<{ className?: string }>; label: string; sub?: string }) {
+  return (
+    <div className="flex items-center gap-3.5 rounded-xl border border-[var(--hair)] bg-[var(--card)] bg-gradient-to-b from-white/[0.045] to-transparent px-4 py-3.5">
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] bg-[var(--gold-dim)] text-[var(--gold)]"><Ic className="h-[18px] w-[18px]" /></span>
+      <span className="min-w-0">
+        <span className="block truncate text-sm font-bold text-[var(--cream)]">{label}</span>
+        {sub && <span className="block truncate text-xs text-[var(--cream-60)]">{sub}</span>}
+      </span>
+    </div>
+  );
+}
 const menuItem = "block w-full rounded-lg px-3 py-2 text-left text-[13.5px] font-semibold text-[var(--cream-60)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)]";
 const pillWord = "inline-flex h-8 items-center rounded-full border border-[var(--hair-strong)] bg-[rgba(20,27,22,0.45)] px-3.5 text-xs text-[var(--cream-60)] backdrop-blur-[6px]";
 const pillMono = "inline-flex h-8 items-center rounded-full border border-[var(--hair-strong)] bg-[rgba(20,27,22,0.45)] px-3.5 font-mono text-[11.5px] tracking-[0.06em] text-[var(--cream-60)] backdrop-blur-[6px]";
@@ -239,10 +257,7 @@ export default function LeagueEventPage() {
   const nameById = (id: string) => { const e = entryOf(id); return e ? nameOf(e) : `Player ${id.slice(-4)}`; };
   // Every user reference links to their public profile when a username exists.
   const usernameById = (id: string) => entryOf(id)?.username ?? staff.find((m) => m.id === id)?.username;
-  const PLink = ({ id, className, children }: { id: string; className?: string; children: React.ReactNode }) => {
-    const u = usernameById(id);
-    return u ? <Link href={`/u/${u}`} className={`${className ?? ""} transition-colors hover:underline`}>{children}</Link> : <span className={className}>{children}</span>;
-  };
+
   const scoreOf = (e: EventEntry) => (typeof e.score === "number" ? e.score : liveTotal(e));
   const adjOf = (e: EventEntry) => scoreOf(e)! + (e.penalty ?? 0) + (e.startingScore ?? 0);
   const parTotal = pars && pars.length === event.holes ? pars.reduce((a, b) => a + b, 0) : null;
@@ -275,9 +290,7 @@ export default function LeagueEventPage() {
   // Clinics, cleanups, and socials have no scoring surface at all.
   const scoringKind = event.kind !== "clinic" && event.kind !== "cleanup" && event.kind !== "social";
   // League brand colors tint the surfaces; functional gold/blue stay untouched.
-  const brand = league?.brandPrimary || league?.brandSecondary
-    ? { p: (league!.brandPrimary ?? league!.brandSecondary)!, s: (league!.brandSecondary ?? league!.brandPrimary)! }
-    : null;
+  const brand = league?.brandPrimary ?? league?.brandSecondary ?? null;
   const paidCount = entries.filter((e) => e.paid).length;
   const paidOut = entries.reduce((a, e) => a + (e.payout ?? 0), 0);
   const isTeamFormat = event.format === "Doubles" || event.format === "Teams";
@@ -322,7 +335,7 @@ export default function LeagueEventPage() {
           <div key={t.id} className={`${card} flex items-center gap-4 p-4 ${i === 0 && t.score != null ? "ring-1 ring-[var(--gold)]/25" : ""}`}>
             <Pos n={t.score != null ? i + 1 : undefined} />
             <span className="flex -space-x-2">
-              {t.members.map((m) => <PLink key={m.id} id={m.id}><Avatar url={m.photo} name={m.name} size={32} /></PLink>)}
+              {t.members.map((m) => <UserLink key={m.id} username={usernameById(m.id)}><Avatar url={m.photo} name={m.name} size={32} /></UserLink>)}
             </span>
             <span className="min-w-0 flex-1">
               <span className="block truncate font-bold text-[var(--cream)]">{t.members.map((m) => m.name).join(" + ")}</span>
@@ -355,8 +368,8 @@ export default function LeagueEventPage() {
             <div className="grid gap-2">
               {unassigned.map((e) => (
                 <div key={e.id} className="flex items-center gap-3 text-sm">
-                  <PLink id={e.id}><Avatar url={e.photo} name={nameOf(e)} size={26} /></PLink>
-                  <PLink id={e.id} className="min-w-0 flex-1 truncate font-semibold text-[var(--cream)]">{nameOf(e)}</PLink>
+                  <UserLink username={usernameById(e.id)}><Avatar url={e.photo} name={nameOf(e)} size={26} /></UserLink>
+                  <UserLink username={usernameById(e.id)} className="min-w-0 flex-1 truncate font-semibold text-[var(--cream)]">{nameOf(e)}</UserLink>
                   {admin && open && teamSelect(e)}
                 </div>
               ))}
@@ -368,8 +381,18 @@ export default function LeagueEventPage() {
   };
 
   return (
-    <main className="pb-28" style={brand ? ({ "--card": `color-mix(in oklab, #172019, ${brand.p} 8%)`, "--card-raised": `color-mix(in oklab, #1D2620, ${brand.p} 10%)`, "--hair": `color-mix(in oklab, rgba(244,241,232,0.08), ${brand.p} 14%)` } as React.CSSProperties) : undefined}>
-      {brand && <div aria-hidden className="pointer-events-none fixed inset-0 z-[5]" style={{ background: `radial-gradient(1100px 620px at 88% -6%, ${brand.p}2b, transparent 60%), radial-gradient(900px 640px at -12% 65%, ${brand.s}22, transparent 55%)` }} />}
+    <main className="relative pb-28">
+      {brand && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-[240px] h-[980px]"
+          style={{
+            background: `radial-gradient(1150px 640px at 14% 0%, ${brand}59 0%, transparent 62%), radial-gradient(1000px 620px at 96% 22%, ${brand}1f, transparent 58%)`,
+            maskImage: "linear-gradient(to bottom, black 55%, transparent 100%)",
+            WebkitMaskImage: "linear-gradient(to bottom, black 55%, transparent 100%)",
+          }}
+        />
+      )}
       {/* Photo hero — course cover melts into the page (reference scrim); decoration
           exists ONLY inside the no-photo contour fallback */}
       <section className="relative h-[280px] overflow-hidden md:h-[340px]">
@@ -388,7 +411,7 @@ export default function LeagueEventPage() {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={courseMeta.cover} alt="" decoding="async" onLoad={() => setCoverLoaded(true)} onError={() => setCourseMeta((m) => (m ? { ...m, cover: undefined } : m))} className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${coverLoaded ? "opacity-100" : "opacity-0"}`} />
         )}
-        {brand && <div aria-hidden className="pointer-events-none absolute inset-0 mix-blend-screen" style={{ background: `linear-gradient(135deg, ${brand.p}47 0%, transparent 45%, ${brand.s}3d 100%)` }} />}
+        {brand && <div aria-hidden className="pointer-events-none absolute inset-0 mix-blend-screen" style={{ background: `linear-gradient(135deg, ${brand}42 0%, transparent 55%)` }} />}
         <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(20,27,22,.45) 0%, rgba(20,27,22,.18) 35%, rgba(20,27,22,.85) 70%, #141B16 100%)" }} />
         <div className="relative z-[2] mx-auto flex h-full max-w-4xl flex-col justify-between px-5 pb-[30px] pt-7">
           <div>
@@ -430,13 +453,13 @@ export default function LeagueEventPage() {
         </div>
       </section>
 
-      <div className="mx-auto max-w-4xl px-5">
+      <div className="relative mx-auto max-w-4xl px-5">
         {admin && open && (() => {
           const secondary = !scoringKind ? null : liveNow
             ? (event.roundCount < 6 ? { label: `Add round ${event.roundCount + 1}`, fn: addRound } : null)
             : (isTeamFormat ? { label: "Randomize teams", fn: doTeams } : { label: "Apply handicaps", fn: doHandicaps });
           return (
-            <div className="mt-5 flex h-14 items-center justify-between rounded-xl border border-[var(--hair)] bg-[var(--card)] bg-gradient-to-b from-white/[0.045] to-transparent py-2 pl-4 pr-2.5" style={brand ? { backgroundImage: `radial-gradient(420px 130px at 100% 0%, ${brand.p}30, transparent 60%), linear-gradient(180deg, rgba(255,255,255,0.045), transparent)` } : undefined}>
+            <div className="mt-5 flex h-14 items-center justify-between rounded-xl border border-[var(--hair)] bg-[var(--card)] bg-gradient-to-b from-white/[0.045] to-transparent py-2 pl-4 pr-2.5">
               <span className="flex items-center gap-3">
                 <span className="grid h-8 w-8 place-items-center rounded-[10px] bg-[var(--gold-dim)] text-[var(--gold)]"><IconSliders className="h-4 w-4" /></span>
                 <span className="font-[family-name:var(--font-heading)] text-[14.5px] font-bold tracking-[-0.01em] text-[var(--cream)]">League tools</span>
@@ -514,7 +537,7 @@ export default function LeagueEventPage() {
               <div className="mb-10">
                 <div className="mb-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">Final results</div>
                 <div className={`${card} overflow-hidden`}>
-                  <div className="grid h-[42px] grid-cols-[56px_1fr_90px_90px] items-center bg-[rgba(0,0,0,0.16)] px-[22px] font-mono text-[10.5px] uppercase tracking-[0.16em] text-[var(--cream-38)]" style={brand ? { background: `linear-gradient(90deg, ${brand.p}38, ${brand.s}1a)` } : undefined}>
+                  <div className="grid h-[42px] grid-cols-[56px_1fr_90px_90px] items-center bg-[rgba(0,0,0,0.16)] px-[22px] font-mono text-[10.5px] uppercase tracking-[0.16em] text-[var(--cream-38)]">
                     <span>Pos</span><span>Player</span><span className="text-right">Rds</span><span className="text-right">Total</span>
                   </div>
                   {(() => {
@@ -533,8 +556,8 @@ export default function LeagueEventPage() {
                         >
                           <span className={`font-mono ${you ? "text-[var(--gold)]" : i === 0 ? "text-[var(--cream)]" : "text-[var(--cream-38)]"}`}>{i + 1}</span>
                           <span className="flex min-w-0 items-center gap-[11px] font-semibold text-[var(--cream)]">
-                            <PLink id={e.id}><Avatar url={e.photo} name={nameOf(e)} size={30} ring={false} gold={you} /></PLink>
-                            <PLink id={e.id} className="truncate">{nameOf(e)}</PLink>
+                            <UserLink username={usernameById(e.id)}><Avatar url={e.photo} name={nameOf(e)} size={30} ring={false} gold={you} /></UserLink>
+                            <UserLink username={usernameById(e.id)} className="truncate">{nameOf(e)}</UserLink>
                             {you && <span className="rounded border border-[rgba(232,181,96,.4)] px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.14em] text-[var(--gold)]">You</span>}
                             {(e.payout ?? 0) > 0 && <span className="font-mono text-xs font-bold text-[#5fcf80]">${e.payout}</span>}
                           </span>
@@ -570,7 +593,7 @@ export default function LeagueEventPage() {
                       return (
                         <div key={e.id} className={`grid grid-cols-[34px_1fr_62px_62px] items-center border-t border-[var(--hair)] px-5 py-[11px] text-[13.5px] ${you ? "bg-[var(--gold-dim)]" : ""}`}>
                           <span className={`font-mono ${you ? "text-[var(--gold)]" : "text-[var(--cream-38)]"}`}>{i + 1}</span>
-                          <span className="flex min-w-0 items-center gap-2 font-semibold text-[var(--cream)]"><PLink id={e.id} className="truncate">{nameOf(e)}</PLink>{you && <span className="rounded border border-[rgba(232,181,96,.4)] px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.14em] text-[var(--gold)]">You</span>}</span>
+                          <span className="flex min-w-0 items-center gap-2 font-semibold text-[var(--cream)]"><UserLink username={usernameById(e.id)} className="truncate">{nameOf(e)}</UserLink>{you && <span className="rounded border border-[rgba(232,181,96,.4)] px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.14em] text-[var(--gold)]">You</span>}</span>
                           <span className="text-right font-mono text-xs text-[var(--cream-38)]">{typeof e.score !== "number" && thru ? `THRU ${thru}` : ""}</span>
                           <span className={`text-right font-mono font-bold ${scoreTone(fmtLive(e), you)}`}>{fmtLive(e)}</span>
                         </div>
@@ -593,15 +616,6 @@ export default function LeagueEventPage() {
               <div className="mb-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--blue)]">Details</div>
               <div className="grid gap-2.5 sm:grid-cols-2">
                 {(() => {
-                  const Fact = ({ icon: Ic, label, sub }: { icon: React.ComponentType<{ className?: string }>; label: string; sub?: string }) => (
-                    <div className="flex items-center gap-3.5 rounded-xl border border-[var(--hair)] bg-[var(--card)] bg-gradient-to-b from-white/[0.045] to-transparent px-4 py-3.5">
-                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] bg-[var(--gold-dim)] text-[var(--gold)]"><Ic className="h-[18px] w-[18px]" /></span>
-                      <span className="min-w-0">
-                        <span className="block truncate text-sm font-bold text-[var(--cream)]">{label}</span>
-                        {sub && <span className="block truncate text-xs text-[var(--cream-60)]">{sub}</span>}
-                      </span>
-                    </div>
-                  );
                   const kindDef = EVENT_KINDS.find((k) => k.key === event.kind);
                   return (
                     <>
@@ -653,10 +667,10 @@ export default function LeagueEventPage() {
                   <div className="mt-5 flex items-center gap-4">
                     <span className="relative shrink-0">
                       <span aria-hidden className="absolute -inset-2.5 rounded-full" style={{ background: "radial-gradient(closest-side, rgba(232,181,96,0.35), transparent)" }} />
-                      <PLink id={ranked[0].id} className="relative block rounded-full border-2 border-[var(--gold)] p-[3px]"><Avatar url={ranked[0].photo} name={nameOf(ranked[0])} size={56} ring={false} /></PLink>
+                      <UserLink username={usernameById(ranked[0].id)} className="relative block rounded-full border-2 border-[var(--gold)] p-[3px]"><Avatar url={ranked[0].photo} name={nameOf(ranked[0])} size={56} ring={false} /></UserLink>
                     </span>
                     <div className="min-w-0 flex-1">
-                      <div className="truncate font-[family-name:var(--font-heading)] text-[20px] font-extrabold leading-tight text-[var(--cream)]"><PLink id={ranked[0].id}>{nameOf(ranked[0])}</PLink></div>
+                      <div className="truncate font-[family-name:var(--font-heading)] text-[20px] font-extrabold leading-tight text-[var(--cream)]"><UserLink username={usernameById(ranked[0].id)}>{nameOf(ranked[0])}</UserLink></div>
                       {(ranked[0].roundScores?.filter((r) => r != null).length ?? 0) > 1 && <div className="mt-1 font-mono text-[12px] text-[var(--cream-60)]">rounds of {ranked[0].roundScores!.filter((r) => r != null).join(", ")}</div>}
                     </div>
                     <div className="shrink-0 text-right">
@@ -884,7 +898,7 @@ export default function LeagueEventPage() {
             );
           })()}
           <div className={`${card} overflow-hidden`}>
-            <div className="flex items-center gap-3.5 bg-[var(--forest)] px-4 py-2 font-mono text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[var(--cream-38)]" style={brand ? { background: `linear-gradient(90deg, ${brand.p}38, ${brand.s}17), var(--forest)` } : undefined}>
+            <div className="flex items-center gap-3.5 bg-[var(--forest)] px-4 py-2 font-mono text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[var(--cream-38)]">
               <span className="w-8">Pos</span><span className="flex-1">Player</span><span className="hidden w-[184px] text-right sm:block">Last 9</span><span className="w-8 text-right">Thru</span>{event.roundCount > 1 && <span className="hidden w-10 text-right sm:block">Rd</span>}<span className="w-20 text-right">Total</span>
             </div>
             {[...ranked, ...unscored].map((e, i) => {
@@ -897,7 +911,7 @@ export default function LeagueEventPage() {
               return (
                 <div key={e.id} className={`flex min-h-[58px] items-center gap-3.5 border-b border-[var(--hair)] px-4 py-2.5 text-sm transition-colors last:border-b-0 ${you ? "border-l-[3px] border-l-[var(--gold)] bg-gradient-to-r from-[var(--gold-dim)] via-transparent to-transparent" : ""}`}>
                   <Pos n={pos} />
-                  <PLink id={e.id}><Avatar url={e.photo} name={nameOf(e)} size={34} /></PLink>
+                  <UserLink username={usernameById(e.id)}><Avatar url={e.photo} name={nameOf(e)} size={34} /></UserLink>
                   <span className="min-w-0 flex-1">
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                       <span className="truncate font-bold text-[var(--cream)]">{e.username ? <Link href={`/u/${e.username}`} className="hover:underline">{nameOf(e)}</Link> : nameOf(e)}</span>
@@ -1040,10 +1054,10 @@ export default function LeagueEventPage() {
             )}
             {messages.map((m) => (
               <div key={m.id} className="flex items-start gap-2.5">
-                <PLink id={m.senderId}><Avatar url={m.senderPhoto} name={m.senderName} size={28} /></PLink>
+                <UserLink username={usernameById(m.senderId)}><Avatar url={m.senderPhoto} name={m.senderName} size={28} /></UserLink>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-baseline gap-x-2">
-                    <PLink id={m.senderId} className="text-sm font-bold text-[var(--cream)]">{m.senderName}</PLink>
+                    <UserLink username={usernameById(m.senderId)} className="text-sm font-bold text-[var(--cream)]">{m.senderName}</UserLink>
                     {isDirector(m.senderId) && <span className="rounded-full bg-[var(--gold-dim)] px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-[var(--gold)]">Director</span>}
                     <span className="text-[10px] text-[var(--sage-dim)]">{new Date(m.timestamp).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</span>
                   </div>
@@ -1101,8 +1115,8 @@ export default function LeagueEventPage() {
                 <div className="space-y-2">
                   {c.playerIds.map((pid) => (
                     <div key={pid} className="flex items-center gap-2 text-sm text-[var(--text-body)]">
-                      <PLink id={pid}><Avatar url={entryOf(pid)?.photo} name={nameById(pid)} size={22} ring={false} /></PLink>
-                      <PLink id={pid} className="truncate">{nameById(pid)}</PLink>
+                      <UserLink username={usernameById(pid)}><Avatar url={entryOf(pid)?.photo} name={nameById(pid)} size={22} ring={false} /></UserLink>
+                      <UserLink username={usernameById(pid)} className="truncate">{nameById(pid)}</UserLink>
                     </div>
                   ))}
                 </div>
