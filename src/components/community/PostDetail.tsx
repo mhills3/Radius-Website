@@ -221,8 +221,8 @@ export default function PostDetail({ post, uid, myReaction, onReact, onClose, on
                 </span>
                 <div className="relative w-full">
                   <textarea value={text} onChange={(e) => setText(e.target.value)} rows={1} placeholder={replyTo ? `Reply to ${replyTo.authorName}…` : "Add a comment…"} className="max-h-32 min-h-[44px] w-full resize-none rounded-2xl border border-white/10 bg-white/[0.04] py-2.5 pl-4 pr-11 text-sm text-[var(--cream)] placeholder-[var(--sage-dim)] outline-none focus:border-[var(--gold)]" />
-                  <button onClick={() => setPickerOpen(true)} title="Tag people" aria-label="Tag people" className="absolute bottom-2.5 right-2.5 grid h-6 w-6 place-items-center rounded-full text-[var(--sage-dim)] transition-colors hover:text-[var(--cream)]">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-4 w-4"><path d="M16 21a6 6 0 0 0-12 0M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM19 8v6M22 11h-6" /></svg>
+                  <button onClick={() => setPickerOpen(true)} title="Tag people" aria-label="Tag people" className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-[var(--sage)] transition-colors hover:bg-white/[0.06] hover:text-[var(--cream)]">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-5 w-5"><path d="M16 21a6 6 0 0 0-12 0M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM19 8v6M22 11h-6" /></svg>
                   </button>
                 </div>
                 <button onClick={submit} disabled={!text.trim() || busy} className="shrink-0 rounded-full bg-[var(--gold)] px-5 py-2.5 text-sm font-bold text-[#16221b] transition-colors hover:bg-[var(--gold-bright)] disabled:cursor-not-allowed disabled:opacity-50">{busy ? "…" : replyTo ? "Reply" : "Post"}</button>
