@@ -16,6 +16,25 @@ export interface Highlight {
 
 const UDG_ID = "UCoXpqth3OS3XzaRcp0TtvXw";
 
+// TEMP pin (2026-07-23): our Funsie Podcast interview holds the 3rd card until
+// it has run its course — delete this block and its use in getHighlights to unpin.
+const FUNSIE_CHANNEL_ID = "UCRqHVhM7qxc7Ids04D8inLw";
+const FUNSIE_INTERVIEW_ID = "OB2rUsyAWZo";
+async function getFunsieInterview(): Promise<Highlight> {
+  const vids = await fetchChannel(FUNSIE_CHANNEL_ID, "Funsie Podcast");
+  return (
+    vids.find((v) => v.id === FUNSIE_INTERVIEW_ID) ?? {
+      id: FUNSIE_INTERVIEW_ID,
+      title: "How They Created a Groundbreaking Disc Golf App!",
+      channel: "Funsie Podcast",
+      channelId: FUNSIE_CHANNEL_ID,
+      published: Date.parse("2026-07-21T00:00:00Z"),
+      url: `https://www.youtube.com/watch?v=${FUNSIE_INTERVIEW_ID}`,
+      thumb: `https://i.ytimg.com/vi/${FUNSIE_INTERVIEW_ID}/hqdefault.jpg`,
+    }
+  );
+}
+
 // Order is cosmetic; UDG is pinned to the featured slot regardless.
 const CHANNELS: { name: string; id: string }[] = [
   { name: "Urban Disc Golf", id: UDG_ID },
@@ -116,5 +135,14 @@ export async function getHighlights(limit = 12): Promise<Highlight[]> {
   const rest = pool.filter((v) => v.id !== udg?.id).sort((a, b) => b.published - a.published);
 
   const list = udg ? [{ ...udg, featured: true }, ...rest] : rest;
-  return list.slice(0, limit);
+
+  // TEMP: Funsie interview pinned to the 3rd card; the slots around it keep rotating.
+  try {
+    const pinned = await getFunsieInterview();
+    const rotated = list.filter((v) => v.id !== pinned.id);
+    rotated.splice(Math.min(2, rotated.length), 0, pinned);
+    return rotated.slice(0, limit);
+  } catch {
+    return list.slice(0, limit);
+  }
 }

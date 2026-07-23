@@ -109,7 +109,7 @@ export default function CommentThread({ postId, initialComments, likeCount }: { 
     setReaction(user.uid, postId, "like", was ? "like" : undefined).catch(() => { setLiked(was); setLikes((l) => l + (was ? 1 : -1)); });
   };
 
-  const ReplyBox = ({ top }: { top: CT }) =>
+  const renderReplyBox = (top: CT) =>
     replyTo && (replyTo.id === top.id || replyTo.parentCommentId === top.id) ? (
       <div className="ml-11 mt-2">
         <div className="mb-1 text-xs text-[var(--sage-dim)]">Replying to <span className="font-semibold text-[var(--text-body)]">{replyTo.authorName}</span> <button onClick={() => setReplyTo(null)} className="ml-1 hover:text-[var(--cream)]">cancel</button></div>
@@ -135,7 +135,7 @@ export default function CommentThread({ postId, initialComments, likeCount }: { 
                   {replies.map((r) => <Row key={r.id} c={r} isReply onReply={startReply} />)}
                 </div>
               )}
-              <ReplyBox top={top} />
+              {renderReplyBox(top)}
             </div>
           );
         })}
