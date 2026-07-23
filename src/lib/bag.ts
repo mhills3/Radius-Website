@@ -78,6 +78,7 @@ export interface RawDisc {
   discName: string;
   wear?: { condition?: string; customSpeed?: number; customGlide?: number; customTurn?: number; customFade?: number };
   nickname?: string;
+  isPuttingPutter?: boolean; // omit unless true (iOS encoder convention)
 }
 
 export interface BagMeta { id: string; name: string; discCount: number; active: boolean }

@@ -196,7 +196,7 @@ export default function BagView({ bag, uid }: { bag: Bag; uid: string }) {
     if (selected?.id === d.id) setSelected({ ...selected, id: newId, nickname, condition: patch.condition, ...customPatch });
     // Single atomic write against the FRESH cloud bag: replace old id -> new entry, tombstone the
     // old id, and carry the disc's id-keyed photo URL to the new id (see replaceDisc).
-    replaceDisc(uid, d.id, replacement).catch(() => { setDiscs(discs); setRawDiscs(rawDiscs); });
+    replaceDisc(uid, d.id, replacement, bag.selectedBagId).catch(() => { setDiscs(discs); setRawDiscs(rawDiscs); });
     // Carry a favorite over to the new id (web/Android favorite by id) so editing doesn't unfavorite it.
     if (d.isFavorite) setFavorites(uid, nextDiscs.filter((x) => x.isFavorite).map((x) => x.id)).catch(() => {});
   };
@@ -209,7 +209,7 @@ export default function BagView({ bag, uid }: { bag: Bag; uid: string }) {
     setRawDiscs(nextRaw);
     setSelected(null);
     // Tombstone the id so iOS/Android honor the deletion instead of re-adding it from their local bag.
-    removeDiscById(uid, d.id).catch(() => { setDiscs(discs); setRawDiscs(rawDiscs); });
+    removeDiscById(uid, d.id, bag.selectedBagId).catch(() => { setDiscs(discs); setRawDiscs(rawDiscs); });
   };
 
   // Move a bag disc out to collection/lost. Bag/collection/lost are mutually exclusive BY NAME.
@@ -224,7 +224,7 @@ export default function BagView({ bag, uid }: { bag: Bag; uid: string }) {
     setLost((cur) => dest === "lost" ? (cur.some((c) => c.name.toLowerCase() === nameKey) ? cur : [...cur, stored]) : cur.filter((c) => c.name.toLowerCase() !== nameKey));
     setSelected(null);
     const revert = () => { setDiscs(discs); setRawDiscs(rawDiscs); setCollection(collection); setLost(lost); };
-    (dest === "collection" ? moveToCollection(uid, d.id, d.name) : markAsLost(uid, d.id, d.name)).catch(revert);
+    (dest === "collection" ? moveToCollection(uid, d.id, d.name, bag.selectedBagId) : markAsLost(uid, d.id, d.name, bag.selectedBagId)).catch(revert);
   };
 
   // Recover a collection/lost disc back into the bag (fresh bag entry under a new id, by name).
@@ -238,7 +238,7 @@ export default function BagView({ bag, uid }: { bag: Bag; uid: string }) {
     setRawDiscs(nextRaw);
     setCollection((cur) => cur.filter((c) => c.name.toLowerCase() !== nameKey));
     setLost((cur) => cur.filter((c) => c.name.toLowerCase() !== nameKey));
-    recoverToBag(uid, raw, d.name).catch(() => { setDiscs(discs); setRawDiscs(rawDiscs); setCollection(collection); setLost(lost); });
+    recoverToBag(uid, raw, d.name, bag.selectedBagId).catch(() => { setDiscs(discs); setRawDiscs(rawDiscs); setCollection(collection); setLost(lost); });
   };
 
   // Permanently delete a disc that's in collection/lost (not in the bag).
@@ -263,7 +263,7 @@ export default function BagView({ bag, uid }: { bag: Bag; uid: string }) {
     setDiscs(nextDiscs);
     setRawDiscs(nextRaw);
     setShowAdd(false);
-    appendDisc(uid, raw).catch(() => { setDiscs(discs); setRawDiscs(rawDiscs); });
+    appendDisc(uid, raw, bag.selectedBagId).catch(() => { setDiscs(discs); setRawDiscs(rawDiscs); });
   };
 
   // Create a custom disc (writes customDiscsJSON union + bag/collection), then reflect it locally.
