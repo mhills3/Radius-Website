@@ -365,16 +365,23 @@ export async function getDashboard(uid: string): Promise<Dashboard | null> {
   const topDiscs = ranked.slice(0, 6);
   const hotSet = new Set(ranked.slice(0, 8).map((d) => d.name));
 
-  // Bag from data/current.myBagJSON, hot = frequently thrown.
+  // Bag = the ACTIVE bag. Multiple-bags accounts carry it in bagsJSON (source of
+  // truth); myBagJSON is the legacy mirror all platforms re-project from the
+  // active bag, kept as the fallback for pre-migration accounts.
   let bag: BagDisc[] = [];
   try {
     const dataSnap = await getDoc(doc(db, `userBackups/${canonicalId}/data/current`));
     if (dataSnap.exists()) {
-      const arr = asArray(dataSnap.data().myBagJSON);
+      const data = dataSnap.data();
+      const allBags = asArray(data.bagsJSON);
+      const active = allBags.length
+        ? (allBags.find((b) => String(b?.id ?? "") === String(data.activeBagId ?? "")) ?? allBags[0])
+        : null;
+      const arr = active ? (Array.isArray(active.discs) ? active.discs : []) : asArray(data.myBagJSON);
       bag = arr
-        .map((d) => ({ name: (d?.discName ?? d?.name ?? "").toString(), hot: false }))
-        .filter((d) => d.name)
-        .map((d) => ({ ...d, hot: hotSet.has(d.name) }));
+        .map((d: Record<string, unknown>) => ({ name: (d?.discName ?? d?.name ?? "").toString(), hot: false }))
+        .filter((d: { name: string }) => d.name)
+        .map((d: { name: string; hot: boolean }) => ({ ...d, hot: hotSet.has(d.name) }));
     }
   } catch {
     /* leave empty */
