@@ -184,7 +184,6 @@ export default function CommunityPage() {
   const TABS: { key: Tab; label: string }[] = [
     { key: "feed", label: "Feed" },
     { key: "forums", label: "Forums" },
-    { key: "meetups", label: "Meetups" },
   ];
 
   return (
