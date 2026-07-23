@@ -45,15 +45,20 @@ const dataDoc = (cid: string) => doc(db, `userBackups/${cid}/data/current`);
 // the ACTIVE bag when bagsJSON exists; legacy accounts keep the old field.
 type BagsCtx = { bags: Record<string, unknown>[]; activeIdx: number } | null;
 
-async function readCurrent(uid: string): Promise<{ ref: ReturnType<typeof dataDoc>; data: Record<string, unknown>; bag: RawDisc[]; bagsCtx: BagsCtx }> {
+async function readCurrent(uid: string, bagId?: string): Promise<{ ref: ReturnType<typeof dataDoc>; data: Record<string, unknown>; bag: RawDisc[]; bagsCtx: BagsCtx }> {
   const cid = await resolveCanonicalId(uid);
   const ref = dataDoc(cid);
   const snap = await getDoc(ref);
   const data = (snap.exists() ? snap.data() : {}) as Record<string, unknown>;
   const bags = decodeJsonArray(data.bagsJSON) as Record<string, unknown>[];
   if (bags.length) {
-    let idx = bags.findIndex((b) => String(b?.id ?? "") === String(data.activeBagId ?? ""));
-    if (idx < 0) idx = 0;
+    // Mutations target the bag being VIEWED when the caller passes one; the
+    // app's active bag is only the default. Falling back silently to a
+    // different bag would edit the wrong bag.
+    const wanted = bagId ?? String(data.activeBagId ?? "");
+    let idx = bags.findIndex((b) => String(b?.id ?? "") === wanted);
+    if (idx < 0 && !bagId) idx = 0;
+    if (idx < 0) throw new Error("This bag no longer exists — refresh and try again.");
     const discs = Array.isArray(bags[idx]?.discs) ? (bags[idx].discs as RawDisc[]) : [];
     return { ref, data, bag: discs, bagsCtx: { bags, activeIdx: idx } };
   }
@@ -62,13 +67,34 @@ async function readCurrent(uid: string): Promise<{ ref: ReturnType<typeof dataDo
 
 /** The bag fields for a mutated disc list: legacy myBagJSON always, plus the
  *  rebuilt bagsJSON (active bag only, other bags byte-preserved) when present. */
-function bagFields(bagsCtx: BagsCtx, next: RawDisc[]): Record<string, unknown> {
-  const out: Record<string, unknown> = { myBagJSON: encodeBag(next) };
-  if (bagsCtx) {
-    const bags = bagsCtx.bags.map((b, i) => (i === bagsCtx.activeIdx ? { ...b, discs: next, updatedAt: Date.now() } : b));
-    out.bagsJSON = encodeJsonB64(bags);
+// iOS decodes bag JSON with try? over the WHOLE array: one malformed entry makes
+// iOS read the entire bagsJSON as empty and republish over it — wiping every bag.
+// Its DiscWear decoder THROWS if a wear object exists without a valid condition
+// string. Sanitize everything we write: wear (when present) always carries one of
+// the five exact condition values; blank nicknames are dropped (matches Android's
+// omit-when-blank); isPuttingPutter is kept only when true (matches iOS encoder).
+const IOS_CONDITIONS = new Set(["Brand New", "Slightly Used", "Seasoned", "Beat In", "Very Beat In"]);
+function sanitizeEntry(r: RawDisc): RawDisc {
+  const out: RawDisc & { isPuttingPutter?: boolean } = { ...r };
+  if (out.wear && typeof out.wear === "object") {
+    const cond = typeof out.wear.condition === "string" && IOS_CONDITIONS.has(out.wear.condition) ? out.wear.condition : "Brand New";
+    out.wear = { ...out.wear, condition: cond };
   }
+  if (typeof out.nickname === "string" && !out.nickname.trim()) delete out.nickname;
+  if (out.isPuttingPutter === false) delete out.isPuttingPutter;
   return out;
+}
+
+function bagFields(bagsCtx: BagsCtx, nextRaw: RawDisc[], data?: Record<string, unknown>): Record<string, unknown> {
+  const next = nextRaw.map(sanitizeEntry);
+  if (!bagsCtx) return { myBagJSON: encodeBag(next) };
+  const bags = bagsCtx.bags.map((b, i) => (i === bagsCtx.activeIdx ? { ...b, discs: next, updatedAt: Date.now() } : b));
+  // Legacy myBagJSON mirrors the ACTIVE bag (matches the apps' legacy bridge),
+  // which may not be the bag that was just edited.
+  const activeId = String(data?.activeBagId ?? "");
+  const activeBag = bags.find((b) => String(b?.id ?? "") === activeId) ?? bags[0];
+  const activeDiscs = Array.isArray(activeBag?.discs) ? (activeBag.discs as RawDisc[]) : [];
+  return { myBagJSON: encodeBag(activeDiscs), bagsJSON: encodeJsonB64(bags) };
 }
 
 /** Merge-write ONLY favoriteDiscs + lastUpdated (matches the app's bag write contract). */
@@ -78,9 +104,9 @@ export async function setFavorites(uid: string, favoriteIds: string[]): Promise<
 }
 
 /** Append one fresh bag entry to the CLOUD bag (duplicate same-name copies allowed, like the apps). */
-export async function appendDisc(uid: string, raw: RawDisc): Promise<void> {
-  const { ref, bag, bagsCtx } = await readCurrent(uid);
-  await setDoc(ref, { ...bagFields(bagsCtx, [...bag, raw]), lastUpdated: Date.now() }, { merge: true });
+export async function appendDisc(uid: string, raw: RawDisc, bagId?: string): Promise<void> {
+  const { ref, data, bag, bagsCtx } = await readCurrent(uid, bagId);
+  await setDoc(ref, { ...bagFields(bagsCtx, [...bag, raw], data), lastUpdated: Date.now() }, { merge: true });
 }
 
 /**
@@ -98,10 +124,10 @@ export async function appendDisc(uid: string, raw: RawDisc): Promise<void> {
  * replacement is appended — the user is explicitly editing this disc right now, so their intent is
  * that it exists with these values.
  */
-export async function replaceDisc(uid: string, oldId: string, replacement: RawDisc): Promise<void> {
-  const { ref, data, bag, bagsCtx } = await readCurrent(uid);
+export async function replaceDisc(uid: string, oldId: string, replacement: RawDisc, bagId?: string): Promise<void> {
+  const { ref, data, bag, bagsCtx } = await readCurrent(uid, bagId);
   const next = bag.some((r) => r?.id === oldId) ? bag.map((r) => (r?.id === oldId ? replacement : r)) : [...bag, replacement];
-  const payload: Record<string, unknown> = { ...bagFields(bagsCtx, next), deletedBagDiscIds: arrayUnion(oldId), lastUpdated: Date.now() };
+  const payload: Record<string, unknown> = { ...bagFields(bagsCtx, next, data), deletedBagDiscIds: arrayUnion(oldId), lastUpdated: Date.now() };
   const photos = data.discPhotoUrls;
   const url = photos && typeof photos === "object" ? (photos as Record<string, unknown>)[oldId] : undefined;
   if (typeof url === "string" && url) payload.discPhotoUrls = { [replacement.id]: url };
@@ -114,9 +140,9 @@ export async function replaceDisc(uid: string, oldId: string, replacement: RawDi
  * by id and re-add any disc the cloud is missing UNLESS its id is tombstoned. arrayUnion preserves
  * tombstones written by other devices.
  */
-export async function removeDiscById(uid: string, id: string): Promise<void> {
-  const { ref, bag, bagsCtx } = await readCurrent(uid);
-  await setDoc(ref, { ...bagFields(bagsCtx, bag.filter((r) => r?.id !== id)), deletedBagDiscIds: arrayUnion(id), lastUpdated: Date.now() }, { merge: true });
+export async function removeDiscById(uid: string, id: string, bagId?: string): Promise<void> {
+  const { ref, data, bag, bagsCtx } = await readCurrent(uid, bagId);
+  await setDoc(ref, { ...bagFields(bagsCtx, bag.filter((r) => r?.id !== id), data), deletedBagDiscIds: arrayUnion(id), lastUpdated: Date.now() }, { merge: true });
 }
 
 /**
@@ -135,21 +161,21 @@ export async function addDiscToBag(uid: string, discName: string): Promise<void>
 // lists by name on adopt, so the disc lands in exactly one place.
 
 /** Move a bag disc into the collection. Removes ONLY that id from the fresh cloud bag. */
-export async function moveToCollection(uid: string, discId: string, discName: string): Promise<void> {
-  const { ref, bag, bagsCtx } = await readCurrent(uid);
-  await setDoc(ref, { ...bagFields(bagsCtx, bag.filter((r) => r?.id !== discId)), myCollection: arrayUnion(discName), lostDiscs: arrayRemove(discName), lastUpdated: Date.now() }, { merge: true });
+export async function moveToCollection(uid: string, discId: string, discName: string, bagId?: string): Promise<void> {
+  const { ref, data, bag, bagsCtx } = await readCurrent(uid, bagId);
+  await setDoc(ref, { ...bagFields(bagsCtx, bag.filter((r) => r?.id !== discId), data), myCollection: arrayUnion(discName), lostDiscs: arrayRemove(discName), lastUpdated: Date.now() }, { merge: true });
 }
 
 /** Mark a bag disc as lost. Removes ONLY that id from the fresh cloud bag. */
-export async function markAsLost(uid: string, discId: string, discName: string): Promise<void> {
-  const { ref, bag, bagsCtx } = await readCurrent(uid);
-  await setDoc(ref, { ...bagFields(bagsCtx, bag.filter((r) => r?.id !== discId)), lostDiscs: arrayUnion(discName), myCollection: arrayRemove(discName), lastUpdated: Date.now() }, { merge: true });
+export async function markAsLost(uid: string, discId: string, discName: string, bagId?: string): Promise<void> {
+  const { ref, data, bag, bagsCtx } = await readCurrent(uid, bagId);
+  await setDoc(ref, { ...bagFields(bagsCtx, bag.filter((r) => r?.id !== discId), data), lostDiscs: arrayUnion(discName), myCollection: arrayRemove(discName), lastUpdated: Date.now() }, { merge: true });
 }
 
 /** Recover a collection/lost disc back into the bag. Appends ONLY the fresh entry to the cloud bag. */
-export async function recoverToBag(uid: string, raw: RawDisc, discName: string): Promise<void> {
-  const { ref, bag, bagsCtx } = await readCurrent(uid);
-  await setDoc(ref, { ...bagFields(bagsCtx, [...bag, raw]), myCollection: arrayRemove(discName), lostDiscs: arrayRemove(discName), lastUpdated: Date.now() }, { merge: true });
+export async function recoverToBag(uid: string, raw: RawDisc, discName: string, bagId?: string): Promise<void> {
+  const { ref, data, bag, bagsCtx } = await readCurrent(uid, bagId);
+  await setDoc(ref, { ...bagFields(bagsCtx, [...bag, raw], data), myCollection: arrayRemove(discName), lostDiscs: arrayRemove(discName), lastUpdated: Date.now() }, { merge: true });
 }
 
 /** Permanently remove a disc from the collection AND lost lists (it's not in the bag). */
@@ -207,7 +233,7 @@ export async function addCustomDisc(uid: string, custom: CustomDiscInput, dest: 
   });
   const payload: Record<string, unknown> = { customDiscsJSON: encodeJsonB64([...byName.values()]), lastUpdated: Date.now() };
   if (dest === "bag") {
-    if (newEntry) Object.assign(payload, bagFields(bagsCtx, [...bag, newEntry]));
+    if (newEntry) Object.assign(payload, bagFields(bagsCtx, [...bag, newEntry], data));
   } else {
     payload.myCollection = arrayUnion(custom.name);
   }
