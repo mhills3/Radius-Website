@@ -75,7 +75,7 @@ export default function ProfileView({ canonicalId, identity }: { canonicalId: st
         <div className="pointer-events-none absolute inset-0" style={{ maskImage: "url(/topo.png)", WebkitMaskImage: "url(/topo.png)", maskSize: "cover", WebkitMaskSize: "cover", backgroundColor: "#fff", opacity: 0.09 }} />
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(15,24,19,0.35),rgba(15,24,19,0.1)_45%,var(--bg-deep))]" />
         <div className="relative mx-auto max-w-6xl px-6 pb-7 pt-24">
-          <Link href="/leaderboard" className="inline-flex items-center gap-1.5 text-sm font-bold text-[var(--gold)] hover:underline">← Leaderboard</Link>
+          <button onClick={() => { if (window.history.length > 1 && document.referrer.startsWith(window.location.origin)) window.history.back(); else window.location.assign("/community"); }} className="inline-flex items-center gap-1.5 text-sm font-bold text-[var(--gold)] hover:underline">← Back</button>
           <div className="mt-5 flex flex-col items-center gap-5 sm:flex-row sm:items-center">
             <span className="grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--bg-mid)] text-3xl font-bold text-[var(--cream)] ring-2 ring-[var(--gold)]/40">
               {identity.photo ? (

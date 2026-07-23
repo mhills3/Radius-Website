@@ -9,6 +9,7 @@ import { type MentionUser } from "@/lib/leaderboard";
 import ReactionBar from "@/components/community/ReactionBar";
 import UserTagPicker from "@/components/community/UserTagPicker";
 import MentionText from "@/components/community/MentionText";
+import { useAuth } from "@/components/AuthProvider";
 
 const fmtScore = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`);
 const scoreColor = (n: number) => (n < 0 ? "#5fcf80" : n === 0 ? "var(--cream)" : "#f08c8c");
@@ -26,6 +27,7 @@ function Avatar({ url, name, size = 36 }: { url?: string; name: string; size?: n
 }
 
 export default function PostDetail({ post, uid, myReaction, onReact, onClose, onCommented }: { post: FeedPost; uid?: string; myReaction?: string; onReact: (type: string) => void; onClose: () => void; onCommented?: () => void }) {
+  const { profile } = useAuth();
   const [comments, setComments] = useState<Comment[] | null>(null);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -206,7 +208,17 @@ export default function PostDetail({ post, uid, myReaction, onReact, onClose, on
                 <div className="mb-2 flex flex-wrap gap-1.5">{mentions.map((u) => <span key={u.id} className="inline-flex items-center gap-1 rounded-full bg-[#4d94fa]/15 px-2.5 py-1 text-xs font-semibold text-[#4d94fa]">@{u.username}<button onClick={() => setMentions((a) => a.filter((x) => x.id !== u.id))} aria-label="Remove tag">✕</button></span>)}</div>
               )}
               <div className="flex items-end gap-2">
-                <button onClick={() => setPickerOpen(true)} title="Tag people" className="shrink-0 rounded-full bg-white/[0.06] px-3 py-2.5 text-sm text-[var(--sage)] transition-colors hover:text-[var(--cream)]">👤</button>
+                <span className="grid h-9 w-9 shrink-0 place-items-center self-center overflow-hidden rounded-full bg-[var(--bg-mid)] text-sm font-bold text-[var(--cream)] ring-1 ring-white/10">
+                  {profile?.profileImageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={profile.profileImageUrl} alt="" className="h-9 w-9 object-cover" />
+                  ) : (
+                    (profile?.name?.[0] ?? "•").toUpperCase()
+                  )}
+                </span>
+                <button onClick={() => setPickerOpen(true)} title="Tag people" aria-label="Tag people" className="shrink-0 rounded-full bg-white/[0.06] p-2.5 text-[var(--sage)] transition-colors hover:text-[var(--cream)]">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-4 w-4"><path d="M16 21a6 6 0 0 0-12 0M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM19 8v6M22 11h-6" /></svg>
+                </button>
                 <textarea value={text} onChange={(e) => setText(e.target.value)} rows={1} placeholder={replyTo ? `Reply to ${replyTo.authorName}…` : "Add a comment…"} className="max-h-32 min-h-[44px] w-full resize-none rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm text-[var(--cream)] placeholder-[var(--sage-dim)] outline-none focus:border-[var(--gold)]" />
                 <button onClick={submit} disabled={!text.trim() || busy} className="shrink-0 rounded-full bg-[var(--gold)] px-5 py-2.5 text-sm font-bold text-[#16221b] transition-colors hover:bg-[var(--gold-bright)] disabled:cursor-not-allowed disabled:opacity-50">{busy ? "…" : replyTo ? "Reply" : "Post"}</button>
               </div>

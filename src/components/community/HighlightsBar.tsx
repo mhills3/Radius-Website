@@ -22,6 +22,7 @@ function fmtViews(n?: number): string {
 
 function Card({ v, onClick }: { v: Highlight; onClick: () => void }) {
   const f = v.featured;
+  const x = v.exclusive;
   const views = fmtViews(v.views);
   return (
     <button
@@ -29,17 +30,24 @@ function Card({ v, onClick }: { v: Highlight; onClick: () => void }) {
       className={`group relative w-[316px] shrink-0 overflow-hidden rounded-2xl text-left transition-all duration-300 hover:-translate-y-1 ${
         f
           ? "ring-[3px] ring-[var(--gold)] shadow-[0_0_20px_-2px_rgba(246,193,101,0.6),0_18px_42px_-18px_rgba(246,193,101,0.65)]"
+          : x
+          ? "ring-[3px] ring-[#5fcf80] shadow-[0_0_20px_-2px_rgba(95,207,128,0.6),0_18px_42px_-18px_rgba(95,207,128,0.65)]"
           : "bg-white/[0.02] ring-1 ring-white/[0.08] hover:bg-white/[0.05] hover:ring-white/20 hover:shadow-[0_18px_40px_-22px_rgba(0,0,0,0.8)]"
       }`}
-      style={f ? { background: "linear-gradient(180deg, rgba(246,193,101,0.12), rgba(246,193,101,0.02))" } : undefined}
+      style={f ? { background: "linear-gradient(180deg, rgba(246,193,101,0.12), rgba(246,193,101,0.02))" } : x ? { background: "linear-gradient(180deg, rgba(95,207,128,0.12), rgba(95,207,128,0.02))" } : undefined}
     >
       <div className="relative aspect-video w-full overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={v.thumb} alt="" loading="lazy" className="h-full w-full scale-[1.06] object-cover transition-transform duration-500 group-hover:scale-[1.12]" />
-        <div className={`absolute inset-0 bg-gradient-to-t from-black/55 to-transparent transition-opacity ${f ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`} />
+        <div className={`absolute inset-0 bg-gradient-to-t from-black/55 to-transparent transition-opacity ${f || x ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`} />
         {f && (
           <span className="absolute left-2.5 top-2.5 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#f8cf80] via-[#f6c165] to-[#e0a23a] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[#16221b] shadow-[0_4px_12px_rgba(246,193,101,0.5)] ring-1 ring-white/50">
             <span className="text-[11px]">★</span> Featured Partner
+          </span>
+        )}
+        {x && (
+          <span className="absolute left-2.5 top-2.5 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#8fe0a8] via-[#5fcf80] to-[#3aa85e] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[#16221b] shadow-[0_4px_12px_rgba(95,207,128,0.5)] ring-1 ring-white/50">
+            <span className="text-[11px]">★</span> Radius Exclusive
           </span>
         )}
         <span className="absolute left-1/2 top-1/2 grid h-11 w-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-black/55 text-white opacity-0 shadow-lg backdrop-blur transition-opacity duration-300 group-hover:opacity-100">
@@ -49,7 +57,7 @@ function Card({ v, onClick }: { v: Highlight; onClick: () => void }) {
       <div className="p-3">
         <div className="line-clamp-2 min-h-[2.5rem] text-[13px] font-semibold leading-snug text-[var(--cream)]">{v.title}</div>
         <div className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-[var(--sage-dim)]">
-          <span className={`truncate font-bold ${f ? "text-[var(--gold)]" : "text-[var(--sage)]"}`}>{v.channel}</span>
+          <span className={`truncate font-bold ${f ? "text-[var(--gold)]" : x ? "text-[#5fcf80]" : "text-[var(--sage)]"}`}>{v.channel}</span>
           <span>·</span><span className="shrink-0">{timeAgo(v.published)}</span>
           {views && (<><span>·</span><span className="shrink-0">{views}</span></>)}
         </div>
