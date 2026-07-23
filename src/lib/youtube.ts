@@ -12,6 +12,7 @@ export interface Highlight {
   thumb: string;
   views?: number;
   featured?: boolean;    // Urban Disc Golf partner card
+  exclusive?: boolean;   // Radius Exclusive card (green treatment)
 }
 
 const UDG_ID = "UCoXpqth3OS3XzaRcp0TtvXw";
@@ -22,8 +23,10 @@ const FUNSIE_CHANNEL_ID = "UCRqHVhM7qxc7Ids04D8inLw";
 const FUNSIE_INTERVIEW_ID = "OB2rUsyAWZo";
 async function getFunsieInterview(): Promise<Highlight> {
   const vids = await fetchChannel(FUNSIE_CHANNEL_ID, "Funsie Podcast");
+  const found = vids.find((v) => v.id === FUNSIE_INTERVIEW_ID);
+  if (found) return { ...found, exclusive: true };
   return (
-    vids.find((v) => v.id === FUNSIE_INTERVIEW_ID) ?? {
+    {
       id: FUNSIE_INTERVIEW_ID,
       title: "How They Created a Groundbreaking Disc Golf App!",
       channel: "Funsie Podcast",
@@ -31,6 +34,7 @@ async function getFunsieInterview(): Promise<Highlight> {
       published: Date.parse("2026-07-21T00:00:00Z"),
       url: `https://www.youtube.com/watch?v=${FUNSIE_INTERVIEW_ID}`,
       thumb: `https://i.ytimg.com/vi/${FUNSIE_INTERVIEW_ID}/hqdefault.jpg`,
+      exclusive: true,
     }
   );
 }
@@ -130,11 +134,16 @@ export async function getHighlights(limit = 12): Promise<Highlight[]> {
     if (longs.length >= 4) pool = longs;
   } catch { /* keep unfiltered */ }
 
-  // Featured = Urban Disc Golf's newest (long-form when the filter applied).
+  // Featured = Urban Disc Golf's newest — but the partner slot expires after
+  // 3 weeks. Once their latest video is older than that, UDG leaves the rail
+  // entirely until they post again (which re-earns the slot automatically).
+  const FEATURED_MAX_AGE = 21 * 86_400_000;
   const udg = pool.find(isUDG);
-  const rest = pool.filter((v) => v.id !== udg?.id).sort((a, b) => b.published - a.published);
+  const udgFresh = !!udg && Date.now() - udg.published <= FEATURED_MAX_AGE;
+  const rest = (udgFresh ? pool.filter((v) => v.id !== udg!.id) : pool.filter((v) => !isUDG(v)))
+    .sort((a, b) => b.published - a.published);
 
-  const list = udg ? [{ ...udg, featured: true }, ...rest] : rest;
+  const list = udgFresh ? [{ ...udg!, featured: true }, ...rest] : rest;
 
   // TEMP: Funsie interview pinned to the 3rd card; the slots around it keep rotating.
   try {

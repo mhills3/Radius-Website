@@ -52,7 +52,7 @@ function Row({ c, isReply, onReply }: { c: CT; isReply?: boolean; onReply: (c: C
 }
 
 export default function CommentThread({ postId, initialComments, likeCount }: { postId: string; initialComments: CT[]; likeCount: number }) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const router = useRouter();
   const [comments, setComments] = useState<CT[]>(initialComments);
   const [text, setText] = useState("");
@@ -153,6 +153,14 @@ export default function CommentThread({ postId, initialComments, likeCount }: { 
       <div className="mt-3">
         {user ? (
           <div className="flex items-end gap-3">
+            <span className="grid h-9 w-9 shrink-0 place-items-center self-center overflow-hidden rounded-full bg-[var(--bg-mid)] text-sm font-bold text-[var(--cream)] ring-1 ring-white/10">
+              {profile?.profileImageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={profile.profileImageUrl} alt="" className="h-9 w-9 object-cover" />
+              ) : (
+                (profile?.name?.[0] ?? "•").toUpperCase()
+              )}
+            </span>
             <textarea value={text} onChange={(e) => setText(e.target.value)} rows={1} placeholder="Add a comment…" className="max-h-32 min-h-[46px] w-full resize-none rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-[var(--cream)] placeholder-[var(--sage-dim)] outline-none focus:border-[var(--gold)]" />
             <button onClick={submitTop} disabled={!text.trim() || busy} className="shrink-0 rounded-full bg-[var(--gold)] px-5 py-3 text-sm font-bold text-[#16221b] transition-colors hover:bg-[var(--gold-bright)] disabled:cursor-not-allowed disabled:opacity-50">{busy ? "…" : "Comment"}</button>
           </div>
