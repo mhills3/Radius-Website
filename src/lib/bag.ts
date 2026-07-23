@@ -214,7 +214,15 @@ export async function getBag(uid: string): Promise<Bag> {
   const outcomeMap = outcomesByDisc(decodedRounds);
 
   const data = dataSnap.exists() ? dataSnap.data() : {};
-  const rawBag = asArray(data.myBagJSON);
+  // Multiple bags (2026-07 app update): bagsJSON = base64 array of named bags of
+  // {discName,id,wear} entries; activeBagId selects the live one and legacy
+  // myBagJSON goes empty after migration. Prefer the active bag when present.
+  const allBags = asArray(data.bagsJSON);
+  const activeBag = allBags.length
+    ? (allBags.find((b) => String(b?.id ?? "") === String(data.activeBagId ?? "")) ?? allBags[0])
+    : null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rawBag: any[] = activeBag ? (Array.isArray(activeBag.discs) ? activeBag.discs : []) : asArray(data.myBagJSON);
   const custom = asArray(data.customDiscsJSON);
   const customMap = new Map<string, { manufacturer?: string; category?: string; speed?: number; glide?: number; turn?: number; fade?: number; color?: string }>();
   for (const c of custom) if (c?.name) customMap.set(String(c.name).toLowerCase(), c);
