@@ -80,6 +80,8 @@ export interface RawDisc {
   nickname?: string;
 }
 
+export interface BagMeta { id: string; name: string; discCount: number; active: boolean }
+
 export interface Bag {
   discs: FlightDisc[];
   rating: BagRating;
@@ -88,6 +90,8 @@ export interface Bag {
   favoriteIds: string[];
   collection: FlightDisc[]; // discs owned but not in the bag (myCollection — name only)
   lost: FlightDisc[];        // discs marked lost (lostDiscs — name only)
+  bags: BagMeta[];           // every named bag (multiple-bags accounts; empty for legacy)
+  selectedBagId?: string;    // which bag this view was built from
 }
 
 export interface DbDisc {
@@ -202,7 +206,7 @@ export async function getBagNames(uid: string): Promise<string[]> {
   }
 }
 
-export async function getBag(uid: string): Promise<Bag> {
+export async function getBag(uid: string, bagId?: string): Promise<Bag> {
   const canonicalId = await resolveCanonicalId(uid);
   const [discDb, dataSnap, userSnap, decodedRounds] = await Promise.all([
     loadDiscDb(),
@@ -218,9 +222,16 @@ export async function getBag(uid: string): Promise<Bag> {
   // {discName,id,wear} entries; activeBagId selects the live one and legacy
   // myBagJSON goes empty after migration. Prefer the active bag when present.
   const allBags = asArray(data.bagsJSON);
+  const wantedId = bagId ?? String(data.activeBagId ?? "");
   const activeBag = allBags.length
-    ? (allBags.find((b) => String(b?.id ?? "") === String(data.activeBagId ?? "")) ?? allBags[0])
+    ? (allBags.find((b) => String(b?.id ?? "") === wantedId) ?? allBags.find((b) => String(b?.id ?? "") === String(data.activeBagId ?? "")) ?? allBags[0])
     : null;
+  const bagsMeta: BagMeta[] = allBags.map((b) => ({
+    id: String(b?.id ?? ""),
+    name: String(b?.name ?? "Bag"),
+    discCount: Array.isArray(b?.discs) ? b.discs.length : 0,
+    active: String(b?.id ?? "") === String(data.activeBagId ?? ""),
+  }));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rawBag: any[] = activeBag ? (Array.isArray(activeBag.discs) ? activeBag.discs : []) : asArray(data.myBagJSON);
   const custom = asArray(data.customDiscsJSON);
@@ -296,5 +307,5 @@ export async function getBag(uid: string): Promise<Bag> {
   const lost = lostNames.map((n) => nameToDisc(n, "lost"));
 
   const rating = rateBag(bagDiscs, armSpeed, discDb.list);
-  return { discs: bagDiscs, rating, armSpeed, rawDiscs: keptRaw, favoriteIds, collection, lost };
+  return { discs: bagDiscs, rating, armSpeed, rawDiscs: keptRaw, favoriteIds, collection, lost, bags: bagsMeta, selectedBagId: activeBag ? String(activeBag.id ?? "") : undefined };
 }
