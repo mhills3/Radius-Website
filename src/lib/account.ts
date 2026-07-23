@@ -32,7 +32,11 @@ function toEpochMillis(v: unknown): number | undefined {
 }
 
 function b64ToUtf8(b64: string): string {
-  return typeof atob !== "undefined" ? atob(b64) : Buffer.from(b64, "base64").toString("utf8");
+  if (typeof atob !== "undefined") {
+    const bin = atob(b64);
+    return new TextDecoder("utf-8").decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
+  }
+  return Buffer.from(b64, "base64").toString("utf8");
 }
 
 // Firestore fields may be a native array/object OR a JSON string OR a base64-JSON string.
@@ -153,6 +157,19 @@ export async function resolveCanonicalId(uid: string): Promise<string> {
   } catch {
     /* fall through */
   }
+  return uid;
+}
+
+/**
+ * Like resolveCanonicalId, but THROWS if the mapping cannot be read. Returns the
+ * uid only when the mapping doc definitively does not exist (uid IS canonical).
+ * Every WRITE that targets userBackups/{canonicalId} must use this variant: the
+ * lenient fallback is fine for reads, but writing under an unresolved uid forks
+ * the user's data onto the alias doc — an edit the apps never see.
+ */
+export async function resolveCanonicalIdStrict(uid: string): Promise<string> {
+  const snap = await getDoc(doc(db, "canonicalIds", uid)); // throws on failure — caller surfaces the error
+  if (snap.exists() && snap.data().canonicalId) return snap.data().canonicalId as string;
   return uid;
 }
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { type Bag, type Cat, type Tier, type FlightDisc, type RawDisc, type DbDisc, CAT_META, TIER_META, tierFor, normCat, plasticColor } from "@/lib/bag";
-import { setFavorites, appendDisc, replaceDisc, removeDiscById, newDisc, freshId, moveToCollection, markAsLost, recoverToBag, deleteStoredDisc, addCustomDisc, type CustomDiscInput } from "@/lib/bagWrite";
+import { setFavorite, swapFavoriteId, appendDisc, replaceDisc, removeDiscById, newDisc, freshId, moveToCollection, markAsLost, recoverToBag, deleteStoredDisc, addCustomDisc, type CustomDiscInput } from "@/lib/bagWrite";
 import FlightChart from "@/components/bag/FlightChart";
 import DiscDetail from "@/components/bag/DiscDetail";
 import DiscGraphic from "@/components/bag/DiscGraphic";
@@ -172,8 +172,9 @@ export default function BagView({ bag, uid }: { bag: Bag; uid: string }) {
     const updated = discs.map((x) => (x.id === d.id ? { ...x, isFavorite: !x.isFavorite } : x));
     setDiscs(updated);
     if (selected?.id === d.id) setSelected({ ...selected, isFavorite: !selected.isFavorite });
-    const favIds = updated.filter((x) => x.isFavorite).map((x) => x.id);
-    setFavorites(uid, favIds).catch(() => setDiscs(discs));
+    // Atomic single-id toggle — a wholesale array write would erase favorites
+    // living in other bags or set from another device since page load.
+    setFavorite(uid, d.id, !d.isFavorite).catch(() => setDiscs(discs));
   };
 
   const saveDisc = (d: FlightDisc, patch: { nickname: string; condition: string; custom: { speed?: number; glide?: number; turn?: number; fade?: number } }) => {
@@ -198,7 +199,7 @@ export default function BagView({ bag, uid }: { bag: Bag; uid: string }) {
     // old id, and carry the disc's id-keyed photo URL to the new id (see replaceDisc).
     replaceDisc(uid, d.id, replacement, bag.selectedBagId).catch(() => { setDiscs(discs); setRawDiscs(rawDiscs); });
     // Carry a favorite over to the new id (web/Android favorite by id) so editing doesn't unfavorite it.
-    if (d.isFavorite) setFavorites(uid, nextDiscs.filter((x) => x.isFavorite).map((x) => x.id)).catch(() => {});
+    if (d.isFavorite) swapFavoriteId(uid, d.id, newId).catch(() => {});
   };
 
   const removeDisc = (d: FlightDisc) => {
@@ -280,7 +281,7 @@ export default function BagView({ bag, uid }: { bag: Bag; uid: string }) {
       const nextRaw = [...rawDiscs, raw];
       setDiscs([...discs, fd]);
       setRawDiscs(nextRaw);
-      addCustomDisc(uid, custom, "bag", raw).catch(() => { setDiscs(discs); setRawDiscs(rawDiscs); });
+      addCustomDisc(uid, custom, "bag", raw, bag.selectedBagId).catch(() => { setDiscs(discs); setRawDiscs(rawDiscs); });
     } else {
       setCollection([...collection, fd]);
       addCustomDisc(uid, custom, "collection").catch(() => setCollection(collection));
