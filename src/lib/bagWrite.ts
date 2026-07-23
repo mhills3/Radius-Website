@@ -78,7 +78,8 @@ function sanitizeEntry(r: RawDisc): RawDisc {
   const out: RawDisc & { isPuttingPutter?: boolean } = { ...r };
   if (out.wear && typeof out.wear === "object") {
     const cond = typeof out.wear.condition === "string" && IOS_CONDITIONS.has(out.wear.condition) ? out.wear.condition : "Brand New";
-    out.wear = { ...out.wear, condition: cond };
+    const num = (x: unknown) => (typeof x === "number" && Number.isFinite(x) ? x : undefined);
+    out.wear = { condition: cond, customSpeed: num(out.wear.customSpeed), customGlide: num(out.wear.customGlide), customTurn: num(out.wear.customTurn), customFade: num(out.wear.customFade) };
   }
   if (typeof out.nickname === "string" && !out.nickname.trim()) delete out.nickname;
   if (out.isPuttingPutter === false) delete out.isPuttingPutter;
@@ -88,7 +89,10 @@ function sanitizeEntry(r: RawDisc): RawDisc {
 function bagFields(bagsCtx: BagsCtx, nextRaw: RawDisc[], data?: Record<string, unknown>): Record<string, unknown> {
   const next = nextRaw.map(sanitizeEntry);
   if (!bagsCtx) return { myBagJSON: encodeBag(next) };
-  const bags = bagsCtx.bags.map((b, i) => (i === bagsCtx.activeIdx ? { ...b, discs: next, updatedAt: Date.now() } : b));
+  // NOTE: per-bag updatedAt is the apps' LWW stamp for NAME/COSMETICS ONLY —
+  // discs merge by union, so a disc edit must NOT bump it (bumping would make
+  // our unchanged cosmetics "newer" and revert a rename made on a device).
+  const bags = bagsCtx.bags.map((b, i) => (i === bagsCtx.activeIdx ? { ...b, discs: next } : b));
   // Legacy myBagJSON mirrors the ACTIVE bag (matches the apps' legacy bridge),
   // which may not be the bag that was just edited.
   const activeId = String(data?.activeBagId ?? "");

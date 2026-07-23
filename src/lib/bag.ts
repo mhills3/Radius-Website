@@ -181,7 +181,9 @@ function asArray(v: unknown): any[] {
     const dec = (s: string) => {
       try { return JSON.parse(s); } catch { return null; }
     };
-    const a = dec(v) ?? dec(b64ToUtf8(v));
+    let b64 = "";
+    try { b64 = b64ToUtf8(v); } catch { /* not base64 */ }
+    const a = dec(v) ?? (b64 ? dec(b64) : null);
     if (Array.isArray(a)) return a;
   }
   return [];
