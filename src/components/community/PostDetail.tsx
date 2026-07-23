@@ -10,6 +10,7 @@ import ReactionBar from "@/components/community/ReactionBar";
 import UserTagPicker from "@/components/community/UserTagPicker";
 import MentionText from "@/components/community/MentionText";
 import { useAuth } from "@/components/AuthProvider";
+import ImageLightbox from "@/components/community/ImageLightbox";
 
 const fmtScore = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`);
 const scoreColor = (n: number) => (n < 0 ? "#5fcf80" : n === 0 ? "var(--cream)" : "#f08c8c");
@@ -28,6 +29,7 @@ function Avatar({ url, name, size = 36 }: { url?: string; name: string; size?: n
 
 export default function PostDetail({ post, uid, myReaction, onReact, onClose, onCommented }: { post: FeedPost; uid?: string; myReaction?: string; onReact: (type: string) => void; onClose: () => void; onCommented?: () => void }) {
   const { profile } = useAuth();
+  const [zoom, setZoom] = useState(false);
   const [comments, setComments] = useState<Comment[] | null>(null);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -91,13 +93,13 @@ export default function PostDetail({ post, uid, myReaction, onReact, onClose, on
     return (
     <div className="flex gap-3">
       {handle ? (
-        <Link href={`/u/${handle}`} aria-label={`${c.authorName}'s profile`}><Avatar url={c.authorPhotoUrl || who?.photo} name={c.authorName} size={isReply ? 28 : 32} /></Link>
+        <Link href={c.authorId ? `/u/${handle}?id=${c.authorId}` : `/u/${handle}`} aria-label={`${c.authorName}'s profile`}><Avatar url={c.authorPhotoUrl || who?.photo} name={c.authorName} size={isReply ? 28 : 32} /></Link>
       ) : (
         <Avatar url={c.authorPhotoUrl || who?.photo} name={c.authorName} size={isReply ? 28 : 32} />
       )}
       <div className="min-w-0 flex-1">
         <div className="rounded-2xl bg-white/[0.05] px-3.5 py-2.5">
-          <div className="text-sm font-bold text-[var(--cream)]">{handle ? <Link href={`/u/${handle}`} className="hover:underline">{nameEl}</Link> : nameEl}</div>
+          <div className="text-sm font-bold text-[var(--cream)]">{handle ? <Link href={c.authorId ? `/u/${handle}?id=${c.authorId}` : `/u/${handle}`} className="hover:underline">{nameEl}</Link> : nameEl}</div>
           <MentionText text={c.text} tagged={c.taggedUsers} className="whitespace-pre-wrap text-[14px] leading-relaxed text-[var(--text-body)]" />
           {c.taggedUsers && c.taggedUsers.length > 0 && (
             <div className="mt-1 flex flex-wrap gap-x-1 text-xs text-[#4d94fa]">{c.taggedUsers.map((u) => <Link key={u.id} href={`/u/${u.username}`} className="hover:underline">@{u.username}</Link>)}</div>
@@ -141,7 +143,7 @@ export default function PostDetail({ post, uid, myReaction, onReact, onClose, on
         <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="border-b border-white/[0.07] p-5">
             {postHandle ? (
-              <Link href={`/u/${postHandle}`} className="group/author flex items-center gap-3">{postAuthorRow}</Link>
+              <Link href={post.authorId ? `/u/${postHandle}?id=${post.authorId}` : `/u/${postHandle}`} className="group/author flex items-center gap-3">{postAuthorRow}</Link>
             ) : (
               <div className="flex items-center gap-3">{postAuthorRow}</div>
             )}
@@ -154,11 +156,12 @@ export default function PostDetail({ post, uid, myReaction, onReact, onClose, on
               </div>
             )}
             {post.imageUrl && (
-              <div className="mt-3 overflow-hidden rounded-xl bg-black/20">
+              <button type="button" onClick={() => setZoom(true)} className="mt-3 block w-full cursor-zoom-in overflow-hidden rounded-xl bg-black/20">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={post.imageUrl} alt="" className="max-h-[420px] w-full object-cover" />
-              </div>
+              </button>
             )}
+            {zoom && post.imageUrl && <ImageLightbox src={post.imageUrl} onClose={() => setZoom(false)} />}
             <div className="mt-3 flex items-center gap-3 text-sm text-[var(--sage)]">
               <ReactionBar count={post.likeCount} reactions={post.reactions} myReaction={myReaction} onReact={onReact} />
               <span className="inline-flex items-center gap-1.5 px-2">

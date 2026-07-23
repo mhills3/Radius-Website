@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useAuth } from "@/components/AuthProvider";
 import { getDashboard, type Dashboard } from "@/lib/account";
 import { getBagNames, getDiscCatalog, normCat } from "@/lib/bag";
 import { buildDiscs, type DiscData } from "@/lib/discs";
@@ -21,6 +22,7 @@ const scoreColor = (n: number) => (n < 0 ? "#5fcf80" : n === 0 ? "var(--cream)" 
 const fmtDate = (ms: number) => (ms ? new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "");
 
 export default function ProfileView({ canonicalId, identity }: { canonicalId: string; identity: { name: string; username: string; photo?: string; bio?: string; homeCourseName?: string; homeCourseId?: string } }) {
+  const { user: viewer } = useAuth();
   const [data, setData] = useState<Dashboard | null>(null);
   const [bag, setBag] = useState<DiscData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -215,11 +217,13 @@ export default function ProfileView({ canonicalId, identity }: { canonicalId: st
             </div>
           )}
 
-          <div className="rounded-2xl bg-[var(--bg-mid)] p-5 text-center">
-            <div className="font-[family-name:var(--font-heading)] text-lg font-bold">Build your own profile</div>
-            <p className="mt-1 text-sm text-[var(--text-body)]">Track rounds, climb the ranks & show off your game.</p>
-            <Link href="/login" className="mt-3 block rounded-full bg-[var(--gold)] px-6 py-2.5 text-sm font-bold text-[#16221b] hover:bg-[var(--gold-bright)]">Join free</Link>
-          </div>
+          {!viewer && (
+            <div className="rounded-2xl bg-[var(--bg-mid)] p-5 text-center">
+              <div className="font-[family-name:var(--font-heading)] text-lg font-bold">Build your own profile</div>
+              <p className="mt-1 text-sm text-[var(--text-body)]">Track rounds, climb the ranks & show off your game.</p>
+              <Link href="/login" className="mt-3 block rounded-full bg-[var(--gold)] px-6 py-2.5 text-sm font-bold text-[#16221b] hover:bg-[var(--gold-bright)]">Join free</Link>
+            </div>
+          )}
         </aside>
       </div>
     </div>

@@ -5,7 +5,7 @@ import { getUserByUsername } from "@/lib/profileServer";
 import { rankForIQ, rankLabel } from "@/lib/rank";
 import ProfileView from "@/components/profile/ProfileView";
 
-type Props = { params: Promise<{ username: string }> };
+type Props = { params: Promise<{ username: string }>; searchParams: Promise<{ id?: string }> };
 const SITE = "https://radiusdiscgolf.com";
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -24,9 +24,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function Page({ params }: Props) {
+export default async function Page({ params, searchParams }: Props) {
   const { username } = await params;
-  const u = await getUserByUsername(username).catch(() => null);
+  const { id } = await searchParams;
+  const u = await getUserByUsername(username, id || undefined).catch(() => null);
   if (!u) notFound();
 
   if (u.hidden) {

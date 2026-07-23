@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
+import ImageLightbox from "@/components/community/ImageLightbox";
 import { type FeedPost, timeAgo } from "@/lib/feed";
 import { type RankInfo } from "@/lib/community";
 import RankPill from "@/components/community/RankPill";
@@ -23,6 +25,7 @@ function Avatar({ url, name, size = 40 }: { url?: string; name: string; size?: n
 }
 
 export default function PostCard({ post, rank, myReaction, onReact, onOpen }: { post: FeedPost; rank?: RankInfo; myReaction?: string; onReact: (type: string) => void; onOpen: () => void }) {
+  const [zoom, setZoom] = useState(false);
   // Author identity is clickable — link by handle (denormalized on the post, else the author's
   // current user doc via rank); avatar falls back to the current profile photo the same way.
   const handle = post.authorHandle || rank?.username;
@@ -41,7 +44,7 @@ export default function PostCard({ post, rank, myReaction, onReact, onOpen }: { 
   return (
     <article className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-4 transition-colors hover:border-white/[0.12]">
       {handle ? (
-        <Link href={`/u/${handle}`} onClick={(e) => e.stopPropagation()} className="group/author flex items-center gap-3">{authorRow}</Link>
+        <Link href={post.authorId ? `/u/${handle}?id=${post.authorId}` : `/u/${handle}`} onClick={(e) => e.stopPropagation()} className="group/author flex items-center gap-3">{authorRow}</Link>
       ) : (
         <div className="flex items-center gap-3">{authorRow}</div>
       )}
@@ -83,11 +86,12 @@ export default function PostCard({ post, rank, myReaction, onReact, onOpen }: { 
       )}
 
       {post.imageUrl && (
-        <div className="mt-3 overflow-hidden rounded-xl bg-black/20">
+        <button type="button" onClick={(e) => { e.stopPropagation(); setZoom(true); }} className="mt-3 block w-full cursor-zoom-in overflow-hidden rounded-xl bg-black/20">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={post.imageUrl} alt="" loading="lazy" decoding="async" className="max-h-[520px] w-full object-cover" />
-        </div>
+        </button>
       )}
+      {zoom && post.imageUrl && <ImageLightbox src={post.imageUrl} onClose={() => setZoom(false)} />}
 
       <div className="mt-3 flex items-center gap-1 border-t border-white/[0.06] pt-2.5 text-sm">
         <ReactionBar count={post.likeCount} reactions={post.reactions} myReaction={myReaction} onReact={onReact} />
@@ -95,9 +99,6 @@ export default function PostCard({ post, rank, myReaction, onReact, onOpen }: { 
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.5L3 21l2-5.6A8.5 8.5 0 1 1 21 11.5z" /></svg>
           {post.commentCount > 0 ? `${post.commentCount}` : "Comment"}
         </button>
-        <Link href={`/community/post/${post.id}`} aria-label="Open post" className="ml-auto inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 font-medium text-[var(--sage)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)]">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M4 12v8h16v-8M16 6l-4-4-4 4M12 2v13" /></svg>
-        </Link>
       </div>
     </article>
   );

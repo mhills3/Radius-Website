@@ -145,11 +145,12 @@ export async function getHighlights(limit = 12): Promise<Highlight[]> {
 
   const list = udgFresh ? [{ ...udg!, featured: true }, ...rest] : rest;
 
-  // TEMP: Funsie interview pinned to the 3rd card; the slots around it keep rotating.
+  // TEMP: Funsie interview pinned — it leads the rail while the partner slot is
+  // vacant; the moment UDG posts fresh (reclaiming slot 1) it moves to card 3.
   try {
     const pinned = await getFunsieInterview();
     const rotated = list.filter((v) => v.id !== pinned.id);
-    rotated.splice(Math.min(2, rotated.length), 0, pinned);
+    rotated.splice(udgFresh ? Math.min(2, rotated.length) : 0, 0, pinned);
     return rotated.slice(0, limit);
   } catch {
     return list.slice(0, limit);
