@@ -74,8 +74,7 @@ export default function BagPage() {
 
   return (
     <div className="bg-[var(--bg-deep)]">
-      {picker && <div className="mx-auto flex max-w-6xl px-6 pt-10">{picker}</div>}
-      <BagView bag={bag} uid={user!.uid} />
+      <BagView bag={bag} uid={user!.uid} switcher={picker} />
     </div>
   );
 }

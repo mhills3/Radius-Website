@@ -157,7 +157,20 @@ export default function CoursesPage() {
   }, [courses]);
   const trending = useMemo(() => [...courses].filter((c) => (c.communityScoreCount ?? 0) > 0).sort((a, b) => (b.communityScoreCount ?? 0) - (a.communityScoreCount ?? 0)).slice(0, 3), [courses]);
   const mostPlayed = useMemo(() => [...courses].filter((c) => (c.communityScoreCount ?? 0) > 0).sort((a, b) => (b.communityScoreCount ?? 0) - (a.communityScoreCount ?? 0)).slice(0, 5), [courses]);
-  const topRated = useMemo(() => [...courses].filter((c) => (c.rating ?? 0) > 0 && c.coverPhotoUrl).sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0)).slice(0, 3), [courses]);
+  // Truly top-rated: a Bayesian weighted score (IMDb-style) so a single 5-star
+  // review can't outrank a heavily-reviewed course. Each course's rating is
+  // pulled toward the global mean in proportion to how few reviews it has;
+  // ties break on review count (more reviews = more trustworthy).
+  const topRated = useMemo(() => {
+    const rated = courses.filter((c) => (c.reviewCount ?? 0) > 0 && (c.rating ?? 0) > 0 && c.coverPhotoUrl);
+    const C = rated.length ? rated.reduce((sum, c) => sum + (c.rating ?? 0), 0) / rated.length : 0;
+    const M = 5; // reviews needed before a course's own average is trusted
+    const weighted = (c: Course) => {
+      const v = c.reviewCount ?? 0, R = c.rating ?? 0;
+      return (v / (v + M)) * R + (M / (v + M)) * C;
+    };
+    return [...rated].sort((a, b) => weighted(b) - weighted(a) || (b.reviewCount ?? 0) - (a.reviewCount ?? 0)).slice(0, 3);
+  }, [courses]);
   const distOf = (c: Course) => (userLoc && c.latitude != null && c.longitude != null ? miles(userLoc, { lat: c.latitude, lng: c.longitude }) : null);
 
   const nearMe = () => {
