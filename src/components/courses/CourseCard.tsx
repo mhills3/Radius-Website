@@ -65,14 +65,17 @@ export default function CourseCard({ course, played }: { course: Course; played?
             ))}
           </div>
         )}
-        {course.communityScoreCount ? (
+        {((course.reviewCount ?? 0) > 0 || (course.communityScoreCount ?? 0) > 0) ? (
           <div className="mt-3 flex items-center gap-2 border-t border-black/5 pt-3 text-xs text-[#8a968d]">
-            <Stars rating={course.rating ?? 0} />
-            {course.reviewCount ? (<><span>{course.reviewCount} review{course.reviewCount === 1 ? "" : "s"}</span><span className="text-black/20">·</span></>) : null}
-            <span className="inline-flex items-center gap-1">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
-              {course.communityScoreCount.toLocaleString()} played
-            </span>
+            {(course.rating ?? 0) > 0 && <Stars rating={course.rating ?? 0} />}
+            {course.reviewCount ? <span>{course.reviewCount} review{course.reviewCount === 1 ? "" : "s"}</span> : null}
+            {(course.reviewCount ?? 0) > 0 && (course.communityScoreCount ?? 0) > 0 ? <span className="text-black/20">·</span> : null}
+            {(course.communityScoreCount ?? 0) > 0 ? (
+              <span className="inline-flex items-center gap-1">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+                {course.communityScoreCount!.toLocaleString()} played
+              </span>
+            ) : null}
           </div>
         ) : null}
       </div>
