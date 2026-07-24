@@ -107,8 +107,9 @@ export default function Nav() {
         {/* ---- Desktop ---- */}
         <div className="hidden items-center gap-1 md:flex">
           {links.map((l) => (
-            <Link key={l.href} href={l.href} className={navPill(l.href)}>
+            <Link key={l.href} href={l.href} className={`${navPill(l.href)} ${l.href === "/leagues" ? "inline-flex items-center gap-1.5" : ""}`}>
               {l.label}
+              {l.href === "/leagues" && <span className="rounded-full bg-[var(--gold)] px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.08em] text-[#141B16]">Soon</span>}
             </Link>
           ))}
           {user ? (
@@ -205,9 +206,10 @@ export default function Nav() {
                     key={l.href}
                     href={l.href}
                     onClick={() => setMobileOpen(false)}
-                    className="border-b border-black/5 py-3.5 text-base font-semibold text-[#16221b]"
+                    className="flex items-center gap-2 border-b border-black/5 py-3.5 text-base font-semibold text-[#16221b]"
                   >
                     {l.label}
+                    {l.href === "/leagues" && <span className="rounded-full bg-[var(--gold)] px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.08em] text-[#141B16]">Soon</span>}
                   </Link>
                 ))}
                 {/* Login is desktop-only — no Log in entry in the mobile menu. */}

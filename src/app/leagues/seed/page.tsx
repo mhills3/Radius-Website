@@ -138,7 +138,7 @@ export default function SeedPage() {
       for (let i = 0; i < 6; i++) await mkEntry(thu, freshId(), { name: FAKE[(i + 3) % FAKE.length], division: DIVS[i % 3] });
 
       say("Open tournament (just opened)…");
-      const open = await mkEvent({ name: "Granite Coast Open", kind: "tournament", date: now + 6 * D, courseId: rc(3)?.id, courseName: rc(3)?.name ?? "Pye Brook Park", roundCount: 2, buyIn: 55, capacity: 84, entryCount: 9 });
+      const open = await mkEvent({ name: "Granite Coast Open", kind: "tournament", date: now + 6 * D, courseId: rc(3)?.id, courseName: rc(3)?.name ?? "Pye Brook Park", roundCount: 2, buyIn: 55, capacity: 84, entryCount: 9, payoutPlaces: 3, description: "PDGA-style A-tier. Two rounds, cash to the top 3 per division." });
       for (let i = 0; i < 9; i++) await mkEntry(open, freshId(), { name: FAKE[(i + 9) % FAKE.length] });
 
       say("Doubles live with named teams…");
@@ -153,6 +153,18 @@ export default function SeedPage() {
           ...(unitCard ? { holeScores: unitCard, thruHole: unitCard.length } : {}),
         });
       }
+
+      say("Putting clinic…");
+      const clinic = await mkEvent({ name: "Saturday Putting Clinic", kind: "clinic", format: "Singles", date: now + 4 * D, courseId: rc(0)?.id, courseName: rc(0)?.name ?? "Stage Fort Park", buyIn: 15, capacity: 12, entryCount: 7, focus: "Putting", skillLevel: "All levels", durationMin: 90, bring: "Putters and a full bag", extras: ["beginner", "women"], description: "Small-group putting fundamentals — footwork, routine, and pressure reps. Coaches on hand." });
+      for (let i = 0; i < 7; i++) await mkEntry(clinic, freshId(), { name: FAKE[(i + 6) % FAKE.length] });
+
+      say("Course cleanup / work day…");
+      const clean = await mkEvent({ name: "Fall Course Cleanup", kind: "cleanup", format: "Singles", date: now + 8 * D, courseId: rc(2)?.id, courseName: rc(2)?.name ?? "Maudslay State Park", capacity: 20, entryCount: 5, durationMin: 180, workList: ["Trimming", "Trash", "Tee pads", "Signage"], meetingPoint: "Parking lot by hole 1", bring: "Gloves, loppers, water", extras: ["charity"], description: "Give the course some love before the winter. Pizza after." });
+      for (let i = 0; i < 5; i++) await mkEntry(clean, freshId(), { name: FAKE[(i + 2) % FAKE.length] });
+
+      say("Casual social round…");
+      const social = await mkEvent({ name: "Friday Fun Round", kind: "social", format: "Singles", date: now + 3 * D, courseId: rc(3)?.id, courseName: rc(3)?.name ?? "Pye Brook Park", capacity: 30, entryCount: 12, extras: ["beginner", "glow"], description: "No stakes, no pressure — just a relaxed round with the crew. Glow discs after sunset." });
+      for (let i = 0; i < 12; i++) await mkEntry(social, freshId(), { name: FAKE[(i + 4) % FAKE.length] });
 
       say("Empty league night (zero-state)…");
       await mkEvent({ name: "Merrimack Valley Series", kind: "league", date: now + 9 * D, courseName: "Devens DGC", buyIn: 60, capacity: 48, entryCount: 0 });
@@ -188,6 +200,38 @@ export default function SeedPage() {
     } finally { setBusy(false); }
   };
 
+  // Branch-only showcase reset: wipe EVERY league + event so the discovery feed
+  // starts clean before seeding. Deletes entries/cards/messages/members/standings
+  // subcollections too. Safe because Events is unpublished (only demo/test data).
+  const wipeAll = async () => {
+    if (!user || busy) return;
+    if (!confirm("Delete ALL leagues and events (including your test ones)? This can't be undone.")) return;
+    setBusy(true); setLog([]);
+    try {
+      say("Deleting all events…");
+      const evs = await getDocs(collection(db, "leagueEvents"));
+      for (const ev of evs.docs) {
+        for (const sub of ["entries", "cards", "messages"]) {
+          const d = await getDocs(collection(db, "leagueEvents", ev.id, sub));
+          await Promise.all(d.docs.map((x) => deleteDoc(x.ref)));
+        }
+        await deleteDoc(ev.ref);
+      }
+      say("Deleting all leagues…");
+      const ls = await getDocs(collection(db, "leagues"));
+      for (const l of ls.docs) {
+        for (const sub of ["members", "standings"]) {
+          const d = await getDocs(collection(db, "leagues", l.id, sub));
+          await Promise.all(d.docs.map((x) => deleteDoc(x.ref)));
+        }
+        await deleteDoc(l.ref);
+      }
+      say(`Wiped ${evs.docs.length} event(s) and ${ls.docs.length} league(s). Clean slate — Load demo data for the showcase set.`);
+    } catch (e) {
+      say(`Failed: ${e instanceof Error ? e.message : "unknown"}`);
+    } finally { setBusy(false); }
+  };
+
   return (
     <main className="mx-auto max-w-xl px-5 pb-24 pt-16">
       <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--gold)]">Dev tool</p>
@@ -199,6 +243,7 @@ export default function SeedPage() {
         <div className="mt-6 flex gap-3">
           <button onClick={seed} disabled={busy} className={btnGold}>{busy ? "Working…" : "Load demo data"}</button>
           <button onClick={clean} disabled={busy} className={btnGhost}>Delete demo data</button>
+          <button onClick={wipeAll} disabled={busy} className="rounded-full px-4 py-3 text-sm font-semibold text-[#f08c8c] transition-colors hover:bg-[#f08c8c]/10 disabled:opacity-50">Wipe ALL events</button>
         </div>
       )}
       {log.length > 0 && (
