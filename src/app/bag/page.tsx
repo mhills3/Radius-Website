@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
 import { getBag, type Bag } from "@/lib/bag";
 import BagView from "@/components/bag/BagView";
@@ -28,18 +27,25 @@ export default function BagPage() {
       .catch(() => setState("empty"));
   }, [loading, user, router, bagId]);
 
-  // Multiple-bags accounts: pick which bag to view (defaults to the app's active bag).
+  // Multiple-bags accounts: VIEW-ONLY switcher (never changes the app's active
+  // bag — the web is forbidden from writing activeBagId). Defaults to the active bag.
   const picker = bag && bag.bags.length > 1 ? (
-    <div className="flex flex-wrap items-center justify-center gap-2 py-4">
-      {bag.bags.map((b) => (
-        <button
-          key={b.id}
-          onClick={() => { setState("loading"); setBagId(b.id); }}
-          className={`rounded-full px-4 py-2 text-sm font-bold transition-colors ${b.id === bag.selectedBagId ? "bg-[var(--gold)] text-[#16221b]" : "bg-white/[0.06] text-[var(--text-body)] hover:text-[var(--cream)]"}`}
-        >
-          {b.name} <span className={b.id === bag.selectedBagId ? "opacity-70" : "text-[var(--sage-dim)]"}>{b.discCount}</span>{b.active ? " ·" : ""}
-        </button>
-      ))}
+    <div className="inline-flex items-center gap-1 rounded-full bg-[var(--bg-mid)] p-1 ring-1 ring-white/[0.07]">
+      {bag.bags.map((b) => {
+        const on = b.id === bag.selectedBagId;
+        return (
+          <button
+            key={b.id}
+            onClick={() => { if (!on) { setState("loading"); setBagId(b.id); } }}
+            title={b.active ? "Active in the Radius app" : undefined}
+            className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-bold transition-colors ${on ? "bg-[var(--gold)] text-[#16221b]" : "text-[var(--text-body)] hover:text-[var(--cream)]"}`}
+          >
+            {b.active && <span className={`h-1.5 w-1.5 rounded-full ${on ? "bg-[#16221b]/60" : "bg-[var(--gold)]"}`} />}
+            {b.name}
+            <span className={`font-mono text-xs ${on ? "text-[#16221b]/60" : "text-[var(--sage-dim)]"}`}>{b.discCount}</span>
+          </button>
+        );
+      })}
     </div>
   ) : null;
 
@@ -59,17 +65,16 @@ export default function BagPage() {
     const bagName = bag?.bags.find((b) => b.id === bag?.selectedBagId)?.name;
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--bg-deep)] px-6 text-center text-[var(--cream)]">
+        {picker && <div className="mb-8">{picker}</div>}
         <h1 className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-[-0.03em]">{bagName ? `${bagName} is empty.` : "Your bag is empty."}</h1>
-        <p className="mx-auto mt-3 max-w-md text-[var(--text-body)]">{bag && bag.bags.length > 1 ? "Pick another bag below, or build this one in the Radius app." : "Build your bag in the Radius app and it'll appear here — flight charts, slot coverage, and all."}</p>
-        {picker}
-        <Link href="/courses" className="mt-4 rounded-full bg-[var(--gold)] px-7 py-3.5 text-sm font-bold text-[#16221b] hover:bg-[var(--gold-bright)]">Explore courses</Link>
+        <p className="mx-auto mt-3 max-w-md text-[var(--text-body)]">{bag && bag.bags.length > 1 ? "Pick another bag above, or build this one in the Radius app." : "Build your bag in the Radius app and it'll appear here — flight charts, slot coverage, and all."}</p>
       </div>
     );
   }
 
   return (
     <div className="bg-[var(--bg-deep)]">
-      {picker && <div className="mx-auto max-w-6xl px-5">{picker}</div>}
+      {picker && <div className="mx-auto flex max-w-6xl px-6 pt-10">{picker}</div>}
       <BagView bag={bag} uid={user!.uid} />
     </div>
   );
