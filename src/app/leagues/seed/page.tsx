@@ -37,10 +37,11 @@ export default function SeedPage() {
       const cid = await resolveCanonicalId(user.uid);
       const now = Date.now();
       const H = 3600_000, D = 24 * H;
-      // Idempotent: clear any previous demo data first so repeated loads never
-      // pile up duplicate leagues. Stable id/slug keeps the league URL constant.
-      say("Clearing old demo data…");
-      const prevEvs = await getDocs(query(collection(db, "leagueEvents"), where("seedTag", "==", DEMO_TAG)));
+      // Clean slate: wipe EVERY existing league + event first (demo orphans AND
+      // manual test leagues), so a load always lands on exactly the curated set
+      // with zero duplicates. Branch-only tool — safe because Events is unpublished.
+      say("Clearing all existing leagues & events…");
+      const prevEvs = await getDocs(collection(db, "leagueEvents"));
       for (const ev of prevEvs.docs) {
         for (const sub of ["entries", "cards", "messages"]) {
           const d = await getDocs(collection(db, "leagueEvents", ev.id, sub));
@@ -48,7 +49,7 @@ export default function SeedPage() {
         }
         await deleteDoc(ev.ref);
       }
-      const prevLs = await getDocs(query(collection(db, "leagues"), where("seedTag", "==", DEMO_TAG)));
+      const prevLs = await getDocs(collection(db, "leagues"));
       for (const l of prevLs.docs) {
         for (const sub of ["members", "standings"]) {
           const d = await getDocs(collection(db, "leagues", l.id, sub));
@@ -56,6 +57,7 @@ export default function SeedPage() {
         }
         await deleteDoc(l.ref);
       }
+      say(`Cleared ${prevEvs.docs.length} event(s), ${prevLs.docs.length} league(s).`);
       const leagueId = "DEMO-NORTH-SHORE-CIRCUIT";
       const leagueSlug = "demo-north-shore-circuit";
       setSlug(leagueSlug);
