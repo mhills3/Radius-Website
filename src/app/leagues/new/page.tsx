@@ -220,7 +220,7 @@ export default function EventWizard() {
 
   if (!user) {
     return (
-      <main className="mx-auto grid min-h-[70vh] max-w-2xl place-items-center px-5 text-center">
+      <main className="relative mx-auto grid min-h-[70vh] max-w-2xl place-items-center px-5 text-center">
         <div>
           <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--gold)]">Radius Events</p>
           <h1 className="mt-3 font-[family-name:var(--font-heading)] text-4xl font-extrabold tracking-tight text-[var(--cream)]">List your event.<br />Score your event.<br /><span className="text-[var(--gold)]">All with Radius.</span></h1>
