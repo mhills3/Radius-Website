@@ -1,7 +1,7 @@
 "use client";
 
 // DEV TOOL — demo data seeder. Creates a clearly-labeled demo league with events
-// in every state (live, complete, filling, doubles, empty) so the events flow can
+// a curated handful (2 past, 1 live, 3 upcoming) so the events flow can
 // be reviewed in full effect. Runs as the signed-in user (Firestore writes are
 // auth-gated). Delete removes everything it created. Branch-only tooling.
 
@@ -37,8 +37,27 @@ export default function SeedPage() {
       const cid = await resolveCanonicalId(user.uid);
       const now = Date.now();
       const H = 3600_000, D = 24 * H;
-      const leagueId = freshId();
-      const leagueSlug = `demo-north-shore-circuit-${leagueId.slice(0, 6).toLowerCase()}`;
+      // Idempotent: clear any previous demo data first so repeated loads never
+      // pile up duplicate leagues. Stable id/slug keeps the league URL constant.
+      say("Clearing old demo data…");
+      const prevEvs = await getDocs(query(collection(db, "leagueEvents"), where("seedTag", "==", DEMO_TAG)));
+      for (const ev of prevEvs.docs) {
+        for (const sub of ["entries", "cards", "messages"]) {
+          const d = await getDocs(collection(db, "leagueEvents", ev.id, sub));
+          await Promise.all(d.docs.map((x) => deleteDoc(x.ref)));
+        }
+        await deleteDoc(ev.ref);
+      }
+      const prevLs = await getDocs(query(collection(db, "leagues"), where("seedTag", "==", DEMO_TAG)));
+      for (const l of prevLs.docs) {
+        for (const sub of ["members", "standings"]) {
+          const d = await getDocs(collection(db, "leagues", l.id, sub));
+          await Promise.all(d.docs.map((x) => deleteDoc(x.ref)));
+        }
+        await deleteDoc(l.ref);
+      }
+      const leagueId = "DEMO-NORTH-SHORE-CIRCUIT";
+      const leagueSlug = "demo-north-shore-circuit";
       setSlug(leagueSlug);
 
       say("Finding photogenic courses…");
@@ -80,9 +99,9 @@ export default function SeedPage() {
 
       say("Creating demo league…");
       await setDoc(doc(db, "leagues", leagueId), {
-        id: leagueId, name: "North Shore Demo Circuit", slug: leagueSlug,
-        courseName: "Stage Fort Park", adminIds: [cid], createdById: cid, createdByName: "Demo",
-        settings: { format: "Singles", startFormat: "Shotgun", description: "Sample data for design review. Delete from the seed page when done.", divisions: DIVS, bestN: 6, handicapPercent: 90, bagTags: true },
+        id: leagueId, name: "North Shore Circuit", slug: leagueSlug,
+        courseId: undefined, courseName: "Stage Fort Park", adminIds: [cid], createdById: cid, createdByName: "Mikey",
+        settings: { format: "Singles", startFormat: "Shotgun", description: "Weekly rounds and the odd tournament around Cape Ann. All skill levels — come throw.", divisions: DIVS, bestN: 6, handicapPercent: 90, bagTags: true },
         memberCount: 1, acePotBalance: 85, createdAt: now, lastUpdated: now, seedTag: DEMO_TAG,
       });
       await setDoc(doc(db, "leagues", leagueId, "members", cid), { name: "Mikey", role: "owner", joinedAt: now });
@@ -90,7 +109,7 @@ export default function SeedPage() {
       const mkEvent = async (ev: Record<string, unknown>) => {
         const id = freshId();
         const data: Record<string, unknown> = {
-          id, leagueId, leagueName: "North Shore Demo Circuit", format: "Singles", startFormat: "Shotgun",
+          id, leagueId, leagueName: "North Shore Circuit", format: "Singles", startFormat: "Shotgun",
           holes: 18, roundCount: 1, status: "scheduled", createdAt: now, seedTag: DEMO_TAG, ...ev,
         };
         for (const k of Object.keys(data)) if (data[k] === undefined) delete data[k];
@@ -100,76 +119,97 @@ export default function SeedPage() {
       const mkEntry = (evId: string, entryId: string, e: Record<string, unknown>) =>
         setDoc(doc(db, "leagueEvents", evId, "entries", entryId), { checkedInAt: now - 2 * H, seedTag: DEMO_TAG, ...e });
 
-      say("Live event (you are T3)…");
-      const live = await mkEvent({ extras: ["ace_pool", "ctp", "bag_tags"], name: "Cape Ann Weekly · Wk 12", kind: "league", date: now - 1.5 * H, courseId: rc(0)?.id, courseName: rc(0)?.name ?? "Stage Fort Park", buyIn: 10, capacity: 24, entryCount: 19 });
-      const liveScores = [
-        { holes: [3,3,2,3,3,2,3,3,3,2,3,3,3,2], thru: 14 },
-        { holes: [3,2,3,3,3,3,2,3,3,3,2,3,3,3,3], thru: 15 },
-        null, // you
-        { holes: [3,3,3,2,3,3,3,3,2,3,3,4,3,3], thru: 14 },
-        { holes: [3,3,4,3,3,3,3,2,3,3,3,3,4], thru: 13 },
-      ];
-      const youLive = { holes: [2,3,3,2,3,4,3,3,2,3,3,3,3,3], thru: 14 };
-      for (let i = 0; i < 19; i++) {
-        const isYou = i === 2;
-        const sc = isYou ? youLive : liveScores[i];
-        await mkEntry(live, isYou ? cid : freshId(), {
-          name: isYou ? "Mikey" : FAKE[i], division: DIVS[i % 3], paid: i < 15,
-          ...(sc ? { holeScores: sc.holes, thruHole: sc.thru } : {}),
-        });
-      }
+      // ── A curated handful: two PAST events (completed, with results) and a
+      //    live one, then a clean set of FUTURE events — all on photogenic
+      //    courses with filled-in data. No repeats.
 
-      say("Complete tournament (full board + payouts)…");
-      const done = await mkEvent({ extras: ["ace_pool", "bag_tags"], name: "Birchwood Fall Classic", kind: "tournament", date: now - 3 * D, courseId: rc(1)?.id, courseName: rc(1)?.name ?? "Birchwood DGC", roundCount: 2, buyIn: 45, capacity: 72, entryCount: 14, status: "complete", description: "Two rounds on the full layout. Tee assignments drop the night before.\n- CTP on 7 and 14\n- Ace pot carries" , contactEmail: "demo@radiusdiscgolf.com" });
+      say("Past · completed tournament…");
+      const done = await mkEvent({
+        name: "Birchwood Fall Classic", kind: "tournament", roundCount: 2, date: now - 12 * D,
+        courseId: rc(1)?.id, courseName: rc(1)?.name ?? "Birchwood DGC", buyIn: 45, capacity: 72, entryCount: 14,
+        status: "complete", payoutPlaces: 3, extras: ["ace_pool", "ctp", "bag_tags"], contactEmail: "circuit@radiusdiscgolf.com",
+        description: "Our biggest tournament of the fall — two rounds on the full layout, CTP on 7 and 14, cash to the top 3.",
+      });
       const finals = [[54, 51], [53, 53], [55, 52], [54, 54], [56, 53], [55, 55], [57, 54], [56, 56], [58, 55], [57, 57], [59, 56], [58, 58], [60, 57], [59, 59]];
       for (let i = 0; i < 14; i++) {
         const isYou = i === 2;
         const [r1, r2] = finals[i];
         await mkEntry(done, isYou ? cid : freshId(), {
-          name: isYou ? "Mikey" : FAKE[i + 5], division: DIVS[i % 3], paid: true,
-          roundScores: [r1, r2], score: r1 + r2,
+          name: isYou ? "Mikey" : FAKE[i + 3], division: DIVS[i % 3], paid: true, roundScores: [r1, r2], score: r1 + r2,
           ...(i < 3 && rc(1)?.pars?.length ? { holeScores: cardFor(rc(1)!.pars, 18, r2), thruHole: 18 } : {}),
           ...(i === 0 ? { payout: 150, tag: 1 } : i === 1 ? { payout: 100, tag: 2 } : isYou ? { payout: 70, tag: 3 } : { tag: i + 1 }),
         });
       }
 
-      say("Scheduled weekly (6 checked in, no cap)…");
-      const thu = await mkEvent({ extras: ["beginner", "women", "glow"], name: "Thursday Night Flights", kind: "league", date: now + 2 * D, courseId: rc(2)?.id, courseName: rc(2)?.name ?? "Maudslay State Park", buyIn: 10, entryCount: 6 });
-      for (let i = 0; i < 6; i++) await mkEntry(thu, freshId(), { name: FAKE[(i + 3) % FAKE.length], division: DIVS[i % 3] });
-
-      say("Open tournament (just opened)…");
-      const open = await mkEvent({ name: "Granite Coast Open", kind: "tournament", date: now + 6 * D, courseId: rc(3)?.id, courseName: rc(3)?.name ?? "Pye Brook Park", roundCount: 2, buyIn: 55, capacity: 84, entryCount: 9, payoutPlaces: 3, description: "PDGA-style A-tier. Two rounds, cash to the top 3 per division." });
-      for (let i = 0; i < 9; i++) await mkEntry(open, freshId(), { name: FAKE[(i + 9) % FAKE.length] });
-
-      say("Doubles live with named teams…");
-      const dbl = await mkEvent({ extras: ["charity"], name: "Sunday Doubles", kind: "league", format: "Doubles", date: now - 1 * H, courseId: rc(4)?.id, courseName: rc(4)?.name ?? "Borderland State Park", buyIn: 12, capacity: 24, entryCount: 10, teamNames: { "1": "Chain Gang", "2": "Hyzer Bombers", "3": "Par Buddies" } });
-      const dblPars = rc(4)?.pars?.length ? rc(4)!.pars : Array.from({ length: 18 }, () => 3);
-      for (let i = 0; i < 10; i++) {
-        const teamId = Math.floor(i / 2) + 1;
-        // First three teams carry a shared live card (both partners mirror the same unit card)
-        const unitCard = teamId <= 3 ? cardFor(dblPars, 18, dblPars.slice(0, 12 + teamId).reduce((a, b) => a + b, 0) - (4 - teamId)).slice(0, 12 + teamId) : null;
-        await mkEntry(dbl, freshId(), {
-          name: FAKE[(i + 12) % FAKE.length], teamId,
-          ...(unitCard ? { holeScores: unitCard, thruHole: unitCard.length } : {}),
+      say("Past · completed league night…");
+      const wk11 = await mkEvent({
+        name: "Cape Ann Weekly · Wk 11", kind: "league", date: now - 5 * D,
+        courseId: rc(0)?.id, courseName: rc(0)?.name ?? "Stage Fort Park", buyIn: 10, capacity: 24, entryCount: 12,
+        status: "complete", extras: ["ace_pool", "bag_tags"], description: "Last week's card — shotgun start, best round counts toward the season.",
+      });
+      const wk11Scores = [50, 51, 52, 53, 53, 54, 55, 55, 56, 57, 58, 60];
+      for (let i = 0; i < 12; i++) {
+        const isYou = i === 3;
+        await mkEntry(wk11, isYou ? cid : freshId(), {
+          name: isYou ? "Mikey" : FAKE[(i + 6) % FAKE.length], division: DIVS[i % 3], paid: true, score: wk11Scores[i],
+          roundScores: [wk11Scores[i]], tag: i + 1,
+          ...(i < 2 && rc(0)?.pars?.length ? { holeScores: cardFor(rc(0)!.pars, 18, wk11Scores[i]), thruHole: 18 } : {}),
         });
       }
 
-      say("Putting clinic…");
-      const clinic = await mkEvent({ name: "Saturday Putting Clinic", kind: "clinic", format: "Singles", date: now + 4 * D, courseId: rc(0)?.id, courseName: rc(0)?.name ?? "Stage Fort Park", buyIn: 15, capacity: 12, entryCount: 7, focus: "Putting", skillLevel: "All levels", durationMin: 90, bring: "Putters and a full bag", extras: ["beginner", "women"], description: "Small-group putting fundamentals — footwork, routine, and pressure reps. Coaches on hand." });
-      for (let i = 0; i < 7; i++) await mkEntry(clinic, freshId(), { name: FAKE[(i + 6) % FAKE.length] });
+      say("Live now · this week's league night…");
+      const live = await mkEvent({
+        name: "Cape Ann Weekly · Wk 12", kind: "league", date: now - 90 * 60000,
+        courseId: rc(0)?.id, courseName: rc(0)?.name ?? "Stage Fort Park", buyIn: 10, capacity: 24, entryCount: 8,
+        extras: ["ace_pool", "ctp", "bag_tags"], description: "In progress right now — live scores update as cards come in.",
+      });
+      const liveCards: Array<{ holes: number[]; thru: number } | null> = [
+        { holes: [3,3,2,3,3,2,3,3,3,2,3,3,3,2], thru: 14 },
+        { holes: [3,2,3,3,3,3,2,3,3,3,2,3,3,3,3], thru: 15 },
+        null, // you
+        { holes: [3,3,3,2,3,3,3,3,2,3,3,4,3,3], thru: 14 },
+        { holes: [3,3,4,3,3,3,3,2,3,3,3,3,4], thru: 13 },
+        { holes: [3,3,3,3,4,3,3,3,3,3,3,3], thru: 12 },
+        { holes: [2,3,3,2,3,3,3,3,3,3,3], thru: 11 },
+        { holes: [3,3,3,3,3,3,3,3,3,3,3,3,3], thru: 13 },
+      ];
+      const youLive = { holes: [2,3,3,2,3,4,3,3,2,3,3,3,3,3], thru: 14 };
+      for (let i = 0; i < 8; i++) {
+        const isYou = i === 2;
+        const sc = isYou ? youLive : liveCards[i];
+        await mkEntry(live, isYou ? cid : freshId(), {
+          name: isYou ? "Mikey" : FAKE[i], division: DIVS[i % 3], paid: i < 6,
+          ...(sc ? { holeScores: sc.holes, thruHole: sc.thru } : {}),
+        });
+      }
 
-      say("Course cleanup / work day…");
-      const clean = await mkEvent({ name: "Fall Course Cleanup", kind: "cleanup", format: "Singles", date: now + 8 * D, courseId: rc(2)?.id, courseName: rc(2)?.name ?? "Maudslay State Park", capacity: 20, entryCount: 5, durationMin: 180, workList: ["Trimming", "Trash", "Tee pads", "Signage"], meetingPoint: "Parking lot by hole 1", bring: "Gloves, loppers, water", extras: ["charity"], description: "Give the course some love before the winter. Pizza after." });
-      for (let i = 0; i < 5; i++) await mkEntry(clean, freshId(), { name: FAKE[(i + 2) % FAKE.length] });
+      say("Upcoming · this Thursday's league…");
+      const thu = await mkEvent({
+        name: "Thursday Night Flights", kind: "league", date: now + 3 * D,
+        courseId: rc(2)?.id, courseName: rc(2)?.name ?? "Maudslay State Park", buyIn: 10, capacity: 40, entryCount: 9,
+        extras: ["beginner", "women", "glow"], description: "Relaxed Thursday league — flighted by skill, glow discs once it gets dark. New players welcome.",
+      });
+      for (let i = 0; i < 9; i++) await mkEntry(thu, freshId(), { name: FAKE[(i + 2) % FAKE.length], division: DIVS[i % 3] });
 
-      say("Casual social round…");
-      const social = await mkEvent({ name: "Friday Fun Round", kind: "social", format: "Singles", date: now + 3 * D, courseId: rc(3)?.id, courseName: rc(3)?.name ?? "Pye Brook Park", capacity: 30, entryCount: 12, extras: ["beginner", "glow"], description: "No stakes, no pressure — just a relaxed round with the crew. Glow discs after sunset." });
-      for (let i = 0; i < 12; i++) await mkEntry(social, freshId(), { name: FAKE[(i + 4) % FAKE.length] });
+      say("Upcoming · A-tier tournament…");
+      const open = await mkEvent({
+        name: "Granite Coast Open", kind: "tournament", roundCount: 2, date: now + 10 * D,
+        courseId: rc(3)?.id, courseName: rc(3)?.name ?? "Pye Brook Park", buyIn: 55, capacity: 84, entryCount: 23,
+        payoutPlaces: 3, extras: ["ace_pool", "ctp"], contactEmail: "circuit@radiusdiscgolf.com",
+        description: "PDGA-style A-tier. Two rounds, tee assignments the night before, cash to the top 3 per division.",
+      });
+      for (let i = 0; i < 23; i++) await mkEntry(open, freshId(), { name: FAKE[(i + 7) % FAKE.length], division: DIVS[i % 3] });
 
-      say("Empty league night (zero-state)…");
-      await mkEvent({ name: "Merrimack Valley Series", kind: "league", date: now + 9 * D, courseName: "Devens DGC", buyIn: 60, capacity: 48, entryCount: 0 });
+      say("Upcoming · putting clinic…");
+      const clinic = await mkEvent({
+        name: "Saturday Putting Clinic", kind: "clinic", date: now + 6 * D,
+        courseId: rc(4)?.id, courseName: rc(4)?.name ?? "Borderland State Park", buyIn: 15, capacity: 12, entryCount: 8,
+        focus: "Putting", skillLevel: "All levels", durationMin: 90, bring: "Putters and a full bag", extras: ["beginner", "women"],
+        description: "Small-group putting fundamentals — footwork, routine, and pressure reps. Coaches on hand, spots are limited.",
+      });
+      for (let i = 0; i < 8; i++) await mkEntry(clinic, freshId(), { name: FAKE[(i + 4) % FAKE.length] });
 
-      say(`Done. Browse /leagues or the demo league directly.`);
+      say("Done — 1 league, 6 events (2 past, 1 live, 3 upcoming). Browse /leagues.");
     } catch (e) {
       say(`Failed: ${e instanceof Error ? e.message : "unknown"}`);
     } finally { setBusy(false); }
@@ -236,7 +276,7 @@ export default function SeedPage() {
     <main className="mx-auto max-w-xl px-5 pb-24 pt-16">
       <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--gold)]">Dev tool</p>
       <h1 className="mt-2 font-[family-name:var(--font-heading)] text-3xl font-extrabold text-[var(--cream)]">Demo data</h1>
-      <p className="mt-2 text-sm text-[var(--cream-60)]">Seeds a demo league with events in every state: live with scores, a completed tournament, filling weeklies, doubles teams, and a zero-state night. Everything is tagged and fully removable.</p>
+      <p className="mt-2 text-sm text-[var(--cream-60)]">Seeds one clean league with a curated handful of events — two completed (a tournament with payouts and a league night, both with results), one live right now, and three upcoming (league, A-tier, clinic). All on real courses with photos. Idempotent: re-loading replaces the demo data, never duplicates it.</p>
       {!user ? (
         <p className="mt-6 text-sm text-[var(--cream-38)]"><Link href="/login" className="font-bold text-[var(--gold)] hover:underline">Sign in</Link> to seed.</p>
       ) : (
