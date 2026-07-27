@@ -102,7 +102,7 @@ export default function SeedPage() {
       say("Creating demo league…");
       await setDoc(doc(db, "leagues", leagueId), {
         id: leagueId, name: "North Shore Circuit", slug: leagueSlug,
-        courseId: undefined, courseName: "Stage Fort Park", adminIds: [cid], createdById: cid, createdByName: "Mikey",
+        courseName: "Stage Fort Park", adminIds: [cid], createdById: cid, createdByName: "Mikey",
         settings: { format: "Singles", startFormat: "Shotgun", description: "Weekly rounds and the odd tournament around Cape Ann. All skill levels — come throw.", divisions: DIVS, bestN: 6, handicapPercent: 90, bagTags: true },
         memberCount: 1, acePotBalance: 85, createdAt: now, lastUpdated: now, seedTag: DEMO_TAG,
       });
