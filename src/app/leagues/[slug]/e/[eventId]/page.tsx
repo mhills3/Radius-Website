@@ -117,6 +117,7 @@ export default function LeagueEventPage() {
   const [division, setDivision] = useState("");
   const [editingTeam, setEditingTeam] = useState<number | null>(null);
   const [divFilter, setDivFilter] = useState("");
+  const [editScores, setEditScores] = useState(false); // admin: reveal per-row score-entry controls; default is the live read-only board
   const [hcpNote, setHcpNote] = useState("");
   const [tab, setTab] = useState<"about" | "scores" | "players" | "chat">("about");
   const [nowTs] = useState(() => Date.now());
@@ -891,12 +892,19 @@ export default function LeagueEventPage() {
       {tab === "scores" && scoringKind && (
       <section className="mb-[44px]">
         <SectionTitle
-          right={divisions.length > 1 && entries.some((e) => e.division) ? (
-            <div className="flex flex-wrap gap-1.5">
-              <button onClick={() => setDivFilter("")} className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide transition-colors ${!divFilter ? "bg-[var(--gold)] text-[#141B16]" : "bg-[var(--card)] text-[var(--cream-38)] hover:text-[var(--cream)]"}`}>All</button>
-              {divisions.map((d) => (
-                <button key={d} onClick={() => setDivFilter(divFilter === d ? "" : d)} className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide transition-colors ${divFilter === d ? "bg-[var(--gold)] text-[#141B16]" : "bg-[var(--card)] text-[var(--cream-38)] hover:text-[var(--cream)]"}`}>{d}</button>
-              ))}
+          right={(divisions.length > 1 && entries.some((e) => e.division)) || (admin && open) ? (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {divisions.length > 1 && entries.some((e) => e.division) && (
+                <>
+                  <button onClick={() => setDivFilter("")} className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide transition-colors ${!divFilter ? "bg-[var(--gold)] text-[#141B16]" : "bg-[var(--card)] text-[var(--cream-38)] hover:text-[var(--cream)]"}`}>All</button>
+                  {divisions.map((d) => (
+                    <button key={d} onClick={() => setDivFilter(divFilter === d ? "" : d)} className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide transition-colors ${divFilter === d ? "bg-[var(--gold)] text-[#141B16]" : "bg-[var(--card)] text-[var(--cream-38)] hover:text-[var(--cream)]"}`}>{d}</button>
+                  ))}
+                </>
+              )}
+              {admin && open && (
+                <button onClick={() => setEditScores((v) => !v)} className={`ml-1 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wide transition-colors ${editScores ? "bg-[var(--gold)] text-[#141B16]" : "border border-[var(--hair-strong)] text-[var(--cream-60)] hover:text-[var(--cream)]"}`}>{editScores ? "Done" : "Enter scores"}</button>
+              )}
             </div>
           ) : undefined}
         >Leaderboard · {entries.length}</SectionTitle>
@@ -965,7 +973,7 @@ export default function LeagueEventPage() {
                   </span>
                   {(e.penalty ?? 0) > 0 && admin && open && <span className="font-mono text-xs font-bold text-[#f08c8c]">+{e.penalty}</span>}
 
-                  {admin && open ? (
+                  {admin && open && editScores ? (
                     <span className="flex items-center gap-1.5">
                       <button onClick={() => patchEntry(e.id, { paid: !e.paid })} title={e.paid ? "Mark unpaid" : "Mark paid"} className={`rounded-full px-2 py-1.5 font-mono text-xs font-bold transition-colors ${e.paid ? "bg-[#5fcf80]/15 text-[#5fcf80]" : "bg-white/[0.05] text-[var(--sage-dim)] hover:text-[var(--cream)]"}`}>$</button>
                       <button onClick={() => patchEntry(e.id, { penalty: (e.penalty ?? 0) > 0 ? undefined : 2 })} title={(e.penalty ?? 0) > 0 ? `Penalty +${e.penalty} — click to clear` : "Add +2 penalty"} className={`rounded-full px-2 py-1.5 font-mono text-xs font-bold transition-colors ${(e.penalty ?? 0) > 0 ? "bg-[#f08c8c]/15 text-[#f08c8c]" : "bg-white/[0.05] text-[var(--sage-dim)] hover:text-[var(--cream)]"}`}>{(e.penalty ?? 0) > 0 ? `+${e.penalty}` : "P"}</button>
@@ -1065,7 +1073,7 @@ export default function LeagueEventPage() {
           </div>
           </>
         )}
-        {admin && open && entries.length > 0 && (
+        {admin && open && editScores && entries.length > 0 && (
           <p className="mt-2.5 font-mono text-[10.5px] uppercase tracking-[0.08em] text-[var(--cream-38)]">Director score entry. App rounds attach automatically once league stamping ships.</p>
         )}
       </section>
