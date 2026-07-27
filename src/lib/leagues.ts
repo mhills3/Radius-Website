@@ -271,6 +271,15 @@ export async function getMyLeagues(uid: string): Promise<League[]> {
   } catch { return []; }
 }
 
+/** Fetch specific leagues by id (for surfacing leagues you're a member of but don't admin). */
+export async function getLeaguesByIds(ids: string[]): Promise<League[]> {
+  const unique = [...new Set(ids.filter(Boolean))];
+  const out = await Promise.all(unique.map(async (id) => {
+    try { const d = await getDoc(doc(db, "leagues", id)); return d.exists() ? toLeague(d.id, d.data()) : null; } catch { return null; }
+  }));
+  return out.filter((l): l is League => !!l);
+}
+
 export async function getAllLeagues(max = 50): Promise<League[]> {
   try {
     const snap = await getDocs(query(collection(db, "leagues"), orderBy("lastUpdated", "desc"), limit(max)));
@@ -279,7 +288,9 @@ export async function getAllLeagues(max = 50): Promise<League[]> {
 }
 
 export function isLeagueAdmin(league: League, cid?: string | null): boolean {
-  return !!cid && league.adminIds.includes(cid);
+  // createdById fallback so an owner is never locked out of director tools even
+  // if adminIds is ever emptied by data drift.
+  return !!cid && (league.adminIds.includes(cid) || league.createdById === cid);
 }
 
 /** Director-side league settings update (field-scoped; never touches adminIds/identity). */
@@ -679,7 +690,14 @@ export async function reassignBagTags(league: League, eventId: string): Promise<
 
 /** The league's latest event that has any scores — the "current leaderboard". */
 export function latestScoredEvent(events: LeagueEvent[]): LeagueEvent | undefined {
-  return [...events].reverse().find((e) => e.status === "complete" || e.status === "active");
+  // Prefer a currently-LIVE event (started, not complete, has scored entries would
+  // be ideal but we only have the doc here — use the time window) so the league
+  // page's "Latest leaderboard" shows tonight's in-progress board; else the most
+  // recent completed/active event. Nothing ever writes status "active", so the
+  // live check is by time window, matching the discovery "live" rule.
+  const now = Date.now();
+  const live = [...events].reverse().find((e) => e.status === "scheduled" && e.date <= now && now <= e.date + 6 * 3600_000 && e.entryCount > 0);
+  return live ?? [...events].reverse().find((e) => e.status === "complete" || e.status === "active");
 }
 
 // Per-hole pars from the event's course doc (holes[] or first layout) — powers

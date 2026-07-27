@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { storage } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthProvider";
-import { EVENT_EXTRAS, createLeague, createEvents, getMyLeagues, setLeagueLogo, searchCourses, EVENT_KINDS, LEAGUE_FORMATS, type League, type CourseHit } from "@/lib/leagues";
+import { EVENT_EXTRAS, createLeague, createEvents, getMyLeagues, setLeagueLogo, searchCourses, EVENT_KINDS, LEAGUE_FORMATS, START_FORMATS, type League, type CourseHit } from "@/lib/leagues";
 import { inputCls, FieldLabel, Segmented, btnGold, btnGhost, BackLink, IconCalendar, IconTrophy, IconTarget, IconLeaf, IconUsers, IconEye, IconEyeOff, IconPin, IconPlus } from "@/components/leagues/ui";
 
 // ─── Full-screen event wizard, mirroring UDisc's "List your event" step
@@ -53,6 +53,7 @@ export default function EventWizard() {
   const [evName, setEvName] = useState("");
   const [desc, setDesc] = useState("");
   const [format, setFormat] = useState<string>(LEAGUE_FORMATS[0]);
+  const [startFormat, setStartFormat] = useState<string>(START_FORMATS[0]);
   const [isPrivate, setIsPrivate] = useState(false);
   const [leagueChoice, setLeagueChoice] = useState(""); // "" = auto-create container
   const [date, setDate] = useState("");
@@ -151,7 +152,7 @@ export default function EventWizard() {
           name: evName.trim(),
           courseName: placeName || undefined,
           courseId: course?.id,
-          settings: { format, startFormat: "Flex", description: "" },
+          settings: { format, startFormat, description: "" },
         });
         if (!league) throw new Error("Couldn't create the event — are you signed in?");
       }
@@ -171,7 +172,7 @@ export default function EventWizard() {
       const created = await createEvents(user.uid, league, {
         name: evName, dates,
         courseId: course?.id, courseName: placeName || undefined,
-        format,
+        format, startFormat,
         roundCount: isLeagueKind ? 1 : nCount,
         holes: holesN,
         buyIn: Number(buyIn) > 0 ? Number(buyIn) : undefined,
@@ -308,6 +309,12 @@ export default function EventWizard() {
                 <div>
                   <FieldLabel>Play format *</FieldLabel>
                   <Segmented options={[...LEAGUE_FORMATS]} value={format} onChange={setFormat} />
+                </div>
+              )}
+              {isScoringKind && (
+                <div>
+                  <FieldLabel>Start format</FieldLabel>
+                  <Segmented options={[...START_FORMATS]} value={startFormat} onChange={setStartFormat} />
                 </div>
               )}
               {kind === "clinic" && (

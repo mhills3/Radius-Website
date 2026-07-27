@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
-import { createLeague, getMyLeagues, getAllLeagues, getUpcomingEvents, getLeagueEvents, getEntries, getCourseMeta, isLeagueAdmin, registrationOpen, LEAGUE_FORMATS, type CourseMeta, START_FORMATS, type League, type LeagueEvent, type EventEntry } from "@/lib/leagues";
+import { createLeague, getMyLeagues, getAllLeagues, getLeaguesByIds, getUpcomingEvents, getLeagueEvents, getEntries, getCourseMeta, isLeagueAdmin, registrationOpen, LEAGUE_FORMATS, type CourseMeta, START_FORMATS, type League, type LeagueEvent, type EventEntry } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { inputCls, FieldLabel, Segmented, btnGold, btnGhost, card, cardHover, plural, pluralWord, IconCalendar, IconTrophy, IconTarget, IconLeaf, IconUsers, IconPin, IconUser, IconLiveDot } from "@/components/leagues/ui";
 
@@ -284,6 +284,18 @@ export default function LeaguesPage() {
     return () => { dead = true; };
   }, [tab, cid, upcoming]);
   const adminLeagueIds = useMemo(() => new Set(mine.filter((l) => isLeagueAdmin(l, cid)).map((l) => l.id)), [mine, cid]);
+  // My events surfaces leagues you're CHECKED INTO too (not just ones you admin),
+  // so a player who signed up on any device sees the league here (matches iOS).
+  const [memberLeagues, setMemberLeagues] = useState<League[]>([]);
+  useEffect(() => {
+    if (tab !== "My events") return;
+    const memberLeagueIds = [...new Set(upcoming.filter((e) => signedUp.has(e.id)).map((e) => e.leagueId))]
+      .filter((id) => !mine.some((l) => l.id === id));
+    if (memberLeagueIds.length === 0) { setMemberLeagues([]); return; }
+    let dead = false;
+    getLeaguesByIds(memberLeagueIds).then((ls) => { if (!dead) setMemberLeagues(ls); }).catch(() => {});
+    return () => { dead = true; };
+  }, [tab, upcoming, signedUp, mine]);
   // Private events never enter the public feed, so pull them for leagues you run.
   const [privateMine, setPrivateMine] = useState<LeagueEvent[]>([]);
   useEffect(() => {
@@ -437,7 +449,7 @@ export default function LeaguesPage() {
           </div>
           <div>
           {tab === "My events" && (() => {
-            const myLeagues = mine.filter((l) => !needle || l.name.toLowerCase().includes(needle));
+            const myLeagues = [...mine, ...memberLeagues].filter((l) => !needle || l.name.toLowerCase().includes(needle));
             return myLeagues.length > 0 && (
               <div className="mb-4 grid gap-3">
                 {myLeagues.map((l) => {

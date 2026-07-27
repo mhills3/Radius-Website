@@ -165,7 +165,9 @@ export default function LeagueEventPage() {
   const doCheckIn = async () => {
     if (!user || !event || busy) return;
     setBusy(true);
-    try { await checkIn(user.uid, event, division || undefined); } finally { setBusy(false); }
+    // Stamp the chosen division; for a single-division league use that lone division (matches iOS).
+    const div = division || (divisions.length === 1 ? divisions[0] : undefined);
+    try { await checkIn(user.uid, event, div); } finally { setBusy(false); }
   };
 
   const doGenerate = async () => {
@@ -186,6 +188,12 @@ export default function LeagueEventPage() {
     if (!event || !league || busy) return;
     setBusy(true);
     try {
+      // Idempotency guard: re-read the live status. reassignBagTags rotates the
+      // tag ladder by finish and is NOT idempotent — a double-complete (stale
+      // client, double-tap, or a second director) would rotate tags twice and
+      // corrupt the ladder. Bail if it's already complete.
+      const fresh = await getEvent(event.id);
+      if (fresh?.status === "complete") { setEvent({ ...event, status: "complete" }); return; }
       await setEventStatus(event.id, "complete");
       setEvent({ ...event, status: "complete" });
       if (league.settings.bagTags) {
@@ -230,6 +238,16 @@ export default function LeagueEventPage() {
     await removeEntry(event.id, entryId);
   };
 
+  // Player self-leave (parity with iOS). Only before the event starts and only
+  // when they haven't started scoring.
+  const [confirmLeave, setConfirmLeave] = useState(false);
+  const leaveSelf = async () => {
+    if (!event || !cid || busy) return;
+    if (!confirmLeave) { setConfirmLeave(true); return; }
+    setBusy(true);
+    try { await removeEntry(event.id, cid); } finally { setBusy(false); setConfirmLeave(false); }
+  };
+
   const doHandicaps = async () => {
     if (!event || !league || busy) return;
     setBusy(true);
@@ -268,7 +286,7 @@ export default function LeagueEventPage() {
   const deltaOf = (e: EventEntry) => {
     if (parTotal == null) return adjOf(e);
     if (typeof e.score === "number") {
-      const roundsPlayed = e.roundScores?.filter((r) => r != null).length || event.roundCount;
+      const roundsPlayed = e.roundScores?.filter((r) => r > 0).length || event.roundCount;
       return adjOf(e) - parTotal * roundsPlayed;
     }
     let strokes = 0, par = 0;
@@ -283,7 +301,7 @@ export default function LeagueEventPage() {
   const fmtTotal = (e: EventEntry) => (parTotal == null ? String(adjOf(e)) : signed(deltaOf(e)));
   const fmtLive = fmtTotal;
   const scoreTone = (txt: string, you: boolean) => (you ? "text-[var(--gold)]" : txt === "E" ? "text-[var(--cream-60)]" : "text-[var(--blue)]");
-  const allRounds = ranked.flatMap((e) => e.roundScores?.filter((r) => r != null) ?? []);
+  const allRounds = ranked.flatMap((e) => e.roundScores?.filter((r) => r > 0) ?? []);
   const hotRound = allRounds.length
     ? (parTotal == null ? String(Math.min(...allRounds)) : (() => { const d = Math.min(...allRounds) - parTotal; return d === 0 ? "E" : d > 0 ? `+${d}` : String(d); })())
     : null;
@@ -465,7 +483,12 @@ export default function LeagueEventPage() {
                   ) : user ? (
                     me ? (
                       !(liveNow && cid && ranked.some((x) => x.id === cid)) && (
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-[#5fcf80]/25 bg-[rgba(20,27,22,0.5)] px-3.5 py-2 font-mono text-[10.5px] tracking-[0.08em] text-[#5fcf80] backdrop-blur-[6px]">✓ Checked in{me.division ? ` · ${me.division}` : ""}</span>
+                        <span className="inline-flex items-center gap-2">
+                          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#5fcf80]/25 bg-[rgba(20,27,22,0.5)] px-3.5 py-2 font-mono text-[10.5px] tracking-[0.08em] text-[#5fcf80] backdrop-blur-[6px]">✓ Checked in{me.division ? ` · ${me.division}` : ""}</span>
+                          {open && typeof me.score !== "number" && !me.holeScores?.some((h) => h > 0) && (
+                            <button onClick={leaveSelf} disabled={busy} className={`rounded-full px-2.5 py-2 font-mono text-[10.5px] uppercase tracking-[0.08em] transition-colors disabled:opacity-50 ${confirmLeave ? "bg-[#f08c8c]/15 font-bold text-[#f08c8c]" : "text-[var(--cream-38)] hover:text-[#f08c8c]"}`}>{confirmLeave ? "Confirm leave" : "Leave"}</button>
+                          )}
+                        </span>
                       )
                     ) : (
                       <span className="flex items-center gap-2">
@@ -593,7 +616,7 @@ export default function LeagueEventPage() {
                             {you && <span className="rounded border border-[rgba(232,181,96,.4)] px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.14em] text-[var(--gold)]">You</span>}
                             {(e.payout ?? 0) > 0 && <span className="font-mono text-xs font-bold text-[#5fcf80]">${e.payout}</span>}
                           </span>
-                          <span className="text-right font-mono text-[var(--cream-60)]">{e.roundScores?.filter((r) => r != null).join(" · ") ?? ""}</span>
+                          <span className="text-right font-mono text-[var(--cream-60)]">{e.roundScores?.filter((r) => r > 0).join(" · ") ?? ""}</span>
                           <span className={`text-right font-mono text-[15px] font-bold ${scoreTone(fmtTotal(e), you)}`}>{fmtTotal(e)}</span>
                         </div>
                       );
@@ -652,8 +675,8 @@ export default function LeagueEventPage() {
                   return (
                     <>
                       {kindDef && <Fact icon={KIND_ICON[event.kind!] ?? IconCalendar} label={kindDef.label} />}
-                      {scoringKind && <Fact icon={IconDisc} label={event.format} sub={`${event.startFormat} start`} />}
-                      {scoringKind ? (
+                      {event.kind !== "clinic" && event.kind !== "cleanup" && <Fact icon={IconDisc} label={event.format} sub={`${event.startFormat} start`} />}
+                      {event.kind !== "clinic" && event.kind !== "cleanup" ? (
                         <Fact icon={IconTarget} label={event.roundCount > 1 ? `${event.roundCount} × ${event.holes} holes` : `${event.holes} holes`} />
                       ) : event.durationMin ? (
                         <Fact icon={IconClock} label={event.durationMin >= 60 ? `${Math.floor(event.durationMin / 60)}h${event.durationMin % 60 ? ` ${event.durationMin % 60}m` : ""}` : `${event.durationMin} min`} sub="Planned length" />
@@ -703,7 +726,7 @@ export default function LeagueEventPage() {
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="truncate font-[family-name:var(--font-heading)] text-[20px] font-extrabold leading-tight text-[var(--cream)]"><UserLink username={usernameById(ranked[0].id)}>{nameOf(ranked[0])}</UserLink></div>
-                      {(ranked[0].roundScores?.filter((r) => r != null).length ?? 0) > 1 && <div className="mt-1 font-mono text-[12px] text-[var(--cream-60)]">rounds of {ranked[0].roundScores!.filter((r) => r != null).join(", ")}</div>}
+                      {(ranked[0].roundScores?.filter((r) => r > 0).length ?? 0) > 1 && <div className="mt-1 font-mono text-[12px] text-[var(--cream-60)]">rounds of {ranked[0].roundScores!.filter((r) => r > 0).join(", ")}</div>}
                     </div>
                     <div className="shrink-0 text-right">
                       <div className="font-mono text-[42px] font-bold leading-none tracking-[-0.02em] text-[var(--gold)]">{fmtTotal(ranked[0])}</div>
