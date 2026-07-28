@@ -345,7 +345,7 @@ export default function LeaguesPage() {
       {/* Compact page header — one hairline, ends above the controls row */}
       <header className="flex flex-wrap items-end justify-between gap-4 border-b border-[var(--hair)] pb-6 pt-10">
         <div>
-          <h1 className="font-[family-name:var(--font-heading)] text-[28px] font-extrabold tracking-[-0.01em] text-[var(--cream)]">Events</h1>
+          <h1 className="flex items-center gap-2.5 font-[family-name:var(--font-heading)] text-[28px] font-extrabold tracking-[-0.01em] text-[var(--cream)]">Events<span className="rounded-full bg-[var(--gold-dim)] px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--gold)]">Beta</span></h1>
           <p className="mt-1 text-sm text-[var(--cream-60)]">Leagues, weeklies, and tournaments near you.</p>
         </div>
         <div className="flex items-center gap-4">
