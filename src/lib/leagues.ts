@@ -117,6 +117,7 @@ export interface EventEntry {
   photo?: string;
   division?: string;
   checkedInAt: number;
+  walkup?: boolean;     // director-added paper/walk-up entrant (no app account, no canonical id)
   paid?: boolean;
   cardId?: string;
   teamId?: number; // Doubles/Teams events: which team this player is on (1-based)
@@ -484,12 +485,34 @@ export async function checkIn(uid: string, event: LeagueEvent, division?: string
   return { id: profile.canonicalId, name: profile.name, username: profile.username || undefined, photo: profile.profileImageUrl, division, checkedInAt: now };
 }
 
+/** Synthetic-id prefix for director-added walk-up entrants — keeps them off the
+ *  canonical-id keyspace so the app's live-score mirror never targets them. */
+const WALKUP_PREFIX = "walkup_";
+export const isWalkup = (id: string): boolean => id.startsWith(WALKUP_PREFIX);
+
+/** Director adds a paper / walk-up player who isn't on the app. Creates an entry
+ *  under a synthetic id (never a canonical id) that the director scores by hand.
+ *  Not tied to any account and never joined to the league roster. */
+export async function addWalkupEntry(event: LeagueEvent, name: string, division?: string): Promise<EventEntry | null> {
+  const clean = name.trim();
+  if (!clean) return null;
+  const id = `${WALKUP_PREFIX}${freshId()}`;
+  const now = Date.now();
+  await setDoc(doc(db, "leagueEvents", event.id, "entries", id), {
+    name: clean, walkup: true, division: division || null, checkedInAt: now,
+  }, { merge: true });
+  const entries = await getEntries(event.id);
+  await setDoc(doc(db, "leagueEvents", event.id), { entryCount: entries.length }, { merge: true });
+  return { id, name: clean, walkup: true, division, checkedInAt: now };
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function toEntry(id: string, e: any): EventEntry {
   return {
     id, name: (e.name ?? "Player") as string, username: (e.username as string) || undefined,
     photo: (e.photo as string) || undefined, division: (e.division as string) || undefined,
-    checkedInAt: Number(e.checkedInAt) || 0, paid: e.paid === true,
+    checkedInAt: Number(e.checkedInAt) || 0, walkup: e.walkup === true || id.startsWith("walkup_"),
+    paid: e.paid === true,
     cardId: (e.cardId as string) || undefined,
     teamId: typeof e.teamId === "number" ? e.teamId : undefined,
     score: typeof e.score === "number" ? e.score : undefined,
@@ -682,7 +705,9 @@ export async function reassignBagTags(league: League, eventId: string): Promise<
     const from = tagOf.get(e.id);
     const to = from != null ? pool[poolIdx++] : nextNew++;
     changes.push({ playerId: e.id, name: e.name, from, to });
-    await setDoc(doc(db, "leagues", league.id, "members", e.id), { tag: to }, { merge: true });
+    // Walk-ups have no roster identity — hold the tag only on this event's entry,
+    // never create a phantom member doc for them.
+    if (!isWalkup(e.id)) await setDoc(doc(db, "leagues", league.id, "members", e.id), { tag: to }, { merge: true });
     await setDoc(doc(db, "leagueEvents", eventId, "entries", e.id), { tag: to }, { merge: true });
   }
   return changes;

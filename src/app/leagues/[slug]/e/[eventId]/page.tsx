@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { EVENT_EXTRAS, registrationOpen, getLeagueBySlug, getLeagueMembers, getEvent, getCards, checkIn, updateEntry, removeEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, reassignBagTags, computeStandings, computeHandicaps, applyHandicaps, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCourseHoles, setTeamName, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember } from "@/lib/leagues";
+import { EVENT_EXTRAS, registrationOpen, getLeagueBySlug, getLeagueMembers, getEvent, getCards, checkIn, updateEntry, removeEntry, addWalkupEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, reassignBagTags, computeStandings, computeHandicaps, applyHandicaps, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCourseHoles, setTeamName, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { SectionTitle, Avatar, Pos, btnGold, card, plural, BackLink, IconSliders, IconShare, IconClock, IconSparkles, IconMoon, IconHeart, IconTag, IconVenus, IconDollar, IconPin, IconDisc, IconEyeOff, IconUsers, IconCalendar, IconTrophy, IconTarget, IconLeaf } from "@/components/leagues/ui";
 
@@ -118,6 +118,9 @@ export default function LeagueEventPage() {
   const [editingTeam, setEditingTeam] = useState<number | null>(null);
   const [divFilter, setDivFilter] = useState("");
   const [editScores, setEditScores] = useState(false); // admin: reveal per-row score-entry controls; default is the live read-only board
+  const [walkName, setWalkName] = useState(""); // admin: name for a walk-up / paper entrant
+  const [walkDiv, setWalkDiv] = useState("");
+  const [addingWalk, setAddingWalk] = useState(false);
   const [hcpNote, setHcpNote] = useState("");
   const [tab, setTab] = useState<"about" | "scores" | "players" | "chat">("about");
   const [nowTs] = useState(() => Date.now());
@@ -236,6 +239,18 @@ export default function LeagueEventPage() {
   const dropEntry = async (entryId: string) => {
     if (!event) return;
     await removeEntry(event.id, entryId);
+  };
+
+  // Director adds a walk-up / paper entrant (no app account). The live entries
+  // subscription brings the new row in; we just clear the field.
+  const addWalkup = async () => {
+    if (!event || !walkName.trim() || addingWalk) return;
+    setAddingWalk(true);
+    try {
+      const div = walkDiv || (divisions.length === 1 ? divisions[0] : undefined);
+      await addWalkupEntry(event, walkName, div);
+      setWalkName(""); setWalkDiv("");
+    } finally { setAddingWalk(false); }
   };
 
   // Player self-leave (parity with iOS). Only before the event starts and only
@@ -936,6 +951,26 @@ export default function LeagueEventPage() {
           ) : undefined}
         >Leaderboard · {entries.length}</SectionTitle>
 
+        {admin && open && editScores && (
+          <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-[var(--hair)] bg-[var(--card)] p-2.5">
+            <span className="pl-1 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--cream-38)]">Add player</span>
+            <input
+              value={walkName}
+              onChange={(ev2) => setWalkName(ev2.target.value)}
+              onKeyDown={(ev2) => { if (ev2.key === "Enter") addWalkup(); }}
+              placeholder="Walk-up name"
+              className={`${adminInput} h-9 min-w-0 flex-1 !text-left`}
+            />
+            {divisions.length > 1 && (
+              <select value={walkDiv} onChange={(ev2) => setWalkDiv(ev2.target.value)} className={`${adminInput} h-9 !text-left`}>
+                <option value="">Division…</option>
+                {divisions.map((d) => <option key={d} value={d}>{d}</option>)}
+              </select>
+            )}
+            <button onClick={addWalkup} disabled={!walkName.trim() || addingWalk} className="h-9 rounded-[10px] bg-[var(--gold)] px-4 text-[13px] font-bold text-[#141B16] transition-colors hover:bg-[var(--gold-bright)] disabled:opacity-40">{addingWalk ? "Adding…" : "Add"}</button>
+          </div>
+        )}
+
         {entries.length === 0 ? (
           <div className={`${card} grid place-items-center px-6 py-14 text-center`}>
             <span className="grid h-12 w-12 place-items-center rounded-full bg-[var(--gold-dim)] text-[var(--gold)]"><IconDisc className="h-6 w-6" /></span>
@@ -987,6 +1022,7 @@ export default function LeagueEventPage() {
                       {(e.startingScore ?? 0) !== 0 && <span className="rounded-full bg-[var(--gold-dim)] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[var(--gold)]" title="Handicap adjustment">HCP {e.startingScore! > 0 ? `+${e.startingScore}` : e.startingScore}</span>}
                       {e.division && !divFilter && <span className="rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[var(--sage-dim)]">{e.division}</span>}
                       {e.dnf && <span className="rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[var(--sage-dim)]">DNF</span>}
+                      {admin && e.walkup && <span className="rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[var(--sage-dim)]" title="Director-added walk-up — score by hand">Walk-up</span>}
                       {typeof e.score !== "number" && liveTotal(e) != null && (
                         <span className="inline-flex items-center gap-1 rounded-full bg-[#5fcf80]/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-[#5fcf80]">
                           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#5fcf80]" />
