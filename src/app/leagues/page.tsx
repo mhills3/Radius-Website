@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
-import { createLeague, getMyLeagues, getAllLeagues, getLeaguesByIds, getUpcomingEvents, getLeagueEvents, getEntries, getCourseMeta, isLeagueAdmin, registrationOpen, LEAGUE_FORMATS, type CourseMeta, START_FORMATS, type League, type LeagueEvent, type EventEntry } from "@/lib/leagues";
+import { getMyLeagues, getAllLeagues, getLeaguesByIds, getUpcomingEvents, getLeagueEvents, getEntries, getCourseMeta, isLeagueAdmin, registrationOpen, type CourseMeta, type League, type LeagueEvent, type EventEntry } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
-import { inputCls, FieldLabel, Segmented, btnGold, btnGhost, card, cardHover, plural, pluralWord, IconCalendar, IconTrophy, IconTarget, IconLeaf, IconUsers, IconPin, IconUser, IconLiveDot } from "@/components/leagues/ui";
+import { inputCls, Segmented, btnGold, card, cardHover, plural, pluralWord, IconCalendar, IconTrophy, IconTarget, IconLeaf, IconUsers, IconPin, IconUser, IconLiveDot } from "@/components/leagues/ui";
 
 const MONTH_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const DAY = ["S", "M", "T", "W", "T", "F", "S"];
@@ -174,14 +174,6 @@ export default function LeaguesPage() {
   const [tab, setTab] = useState("Events");
   const [q, setQ] = useState("");
   const [dayFilter, setDayFilter] = useState<string | null>(null);
-  const [creating, setCreating] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [name, setName] = useState("");
-  const [courseName, setCourseName] = useState("");
-  const [format, setFormat] = useState<string>(LEAGUE_FORMATS[0]);
-  const [startFormat, setStartFormat] = useState<string>(START_FORMATS[0]);
-  const [description, setDescription] = useState("");
-  const [err, setErr] = useState("");
   const [today] = useState(() => new Date());
   const [cid, setCid] = useState<string | null>(null);
   const [live, setLive] = useState<{ ev: LeagueEvent; top: EventEntry[] } | null>(null);
@@ -324,18 +316,6 @@ export default function LeaguesPage() {
     && (!userLoc || (milesTo(e) ?? Infinity) <= radiusMi)
   ).sort((a, b) => (userLoc ? (milesTo(a) ?? Infinity) - (milesTo(b) ?? Infinity) : 0) || a.date - b.date);
 
-  const submit = async () => {
-    if (!user || !name.trim() || busy) return;
-    setBusy(true); setErr("");
-    try {
-      const l = await createLeague(user.uid, { name, courseName: courseName.trim() || undefined, settings: { format, startFormat, description: description.trim() } });
-      if (l) { setMine((m) => [l, ...m]); setAll((a) => [l, ...a]); setCreating(false); setName(""); setCourseName(""); setDescription(""); setTab("Leagues"); }
-      else setErr("Couldn't create the league — are you signed in?");
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "Couldn't create the league.");
-    } finally { setBusy(false); }
-  };
-
   const fmtTime = (ms: number) => new Date(ms).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
   const weekday = (ms: number) => new Date(ms).toLocaleDateString(undefined, { weekday: "short" });
 
@@ -357,34 +337,6 @@ export default function LeaguesPage() {
           )}
         </div>
       </header>
-
-      {/* Create */}
-      {creating && (
-        <section className={`${card} mb-10 p-6 sm:p-8`}>
-          <h2 className="font-[family-name:var(--font-heading)] text-xl font-bold text-[var(--cream)]">New league</h2>
-          <div className="mt-6 grid gap-5 sm:grid-cols-2">
-            <label className="block sm:col-span-2">
-              <FieldLabel>League name</FieldLabel>
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Northshore Tuesday Nights" className={inputCls} />
-            </label>
-            <label className="block sm:col-span-2">
-              <FieldLabel>Home course <span className="normal-case tracking-normal text-[var(--sage-dim)]">— optional, events can rotate</span></FieldLabel>
-              <input value={courseName} onChange={(e) => setCourseName(e.target.value)} placeholder="Search or type a course" className={inputCls} />
-            </label>
-            <div><FieldLabel>Format</FieldLabel><Segmented options={[...LEAGUE_FORMATS]} value={format} onChange={setFormat} /></div>
-            <div><FieldLabel>Start</FieldLabel><Segmented options={[...START_FORMATS]} value={startFormat} onChange={setStartFormat} /></div>
-            <label className="block sm:col-span-2">
-              <FieldLabel>Description</FieldLabel>
-              <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="Buy-ins, expectations, where to meet…" className={inputCls} />
-            </label>
-          </div>
-          {err && <p className="mt-4 text-sm text-[#f08c8c]">{err}</p>}
-          <div className="mt-6 flex items-center gap-3">
-            <button onClick={submit} disabled={!name.trim() || busy} className={btnGold}>{busy ? "Creating…" : "Create league"}</button>
-            <button onClick={() => setCreating(false)} className={btnGhost}>Cancel</button>
-          </div>
-        </section>
-      )}
 
       {/* Controls — every control 44px, no hairline touches this row */}
       <section className="mb-6 mt-6 flex flex-wrap items-center gap-3">

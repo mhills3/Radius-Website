@@ -313,6 +313,10 @@ export default function LeagueEventPage() {
   const paidOut = entries.reduce((a, e) => a + (e.payout ?? 0), 0);
   const isTeamFormat = event.format === "Doubles" || event.format === "Teams";
   const liveNow = event.status === "scheduled" && nowTs >= event.date && nowTs <= event.date + 6 * 3600_000 && entries.length > 0;
+  // Completion must stay reachable AFTER the 6h live window — multi-round events,
+  // next-morning score entry, and backfilled weeks all finish outside it. Without
+  // this the event is stuck "scheduled" forever and never enters standings/recap.
+  const canComplete = scoringKind && event.status === "scheduled" && nowTs >= event.date && entries.length > 0;
   const doTeams = async () => {
     if (busy) return;
     setBusy(true);
@@ -547,7 +551,7 @@ export default function LeagueEventPage() {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-3.5 w-3.5 text-[var(--cream-38)] transition-all group-hover:translate-x-0.5 group-hover:text-[var(--cream)]"><path d="M9 6l6 6-6 6" /></svg>
               </Link>
               <div className="flex items-center gap-1.5">
-                {liveNow && <button onClick={complete} disabled={busy} className="h-9 rounded-[10px] bg-[var(--gold)] px-4 text-[13.5px] font-bold text-[#141B16] transition-colors hover:bg-[var(--gold-bright)] disabled:opacity-50">Complete event</button>}
+                {canComplete && <button onClick={complete} disabled={busy} className="h-9 rounded-[10px] bg-[var(--gold)] px-4 text-[13.5px] font-bold text-[#141B16] transition-colors hover:bg-[var(--gold-bright)] disabled:opacity-50">Complete event</button>}
                 {secondary && <button onClick={secondary.fn} disabled={busy} className="h-9 rounded-[10px] px-4 text-[13.5px] font-semibold text-[var(--cream-60)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)] disabled:opacity-50">{secondary.label}</button>}
                 <div className="relative" ref={menuRef}>
                   <button onClick={() => { setMenuOpen((o) => !o); setConfirmCancel(false); }} aria-label="More director tools" aria-expanded={menuOpen} className="grid h-9 w-9 place-items-center rounded-[10px] text-[var(--cream-60)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)]">⋯</button>
@@ -1097,7 +1101,7 @@ export default function LeagueEventPage() {
           </>
         )}
         {admin && open && editScores && entries.length > 0 && (
-          <p className="mt-2.5 font-mono text-[10.5px] uppercase tracking-[0.08em] text-[var(--cream-38)]">Director score entry. App rounds attach automatically once league stamping ships.</p>
+          <p className="mt-2.5 font-mono text-[10.5px] uppercase tracking-[0.08em] text-[var(--cream-38)]">Director score entry. App rounds attach automatically when players publish.</p>
         )}
       </section>
       )}

@@ -120,8 +120,8 @@ export interface EventEntry {
   paid?: boolean;
   cardId?: string;
   teamId?: number; // Doubles/Teams events: which team this player is on (1-based)
-  // Scores: director-entered on web today; publishedRoundId/leagueEventId
-  // auto-attach arrives with the app-side stamp.
+  // Scores: director-entered on web, or auto-attached when a player publishes a
+  // round in the app (the app stamps publishedRoundId/leagueEventId/score).
   score?: number;       // total strokes (multi-round events: sum of roundScores)
   roundScores?: number[]; // per-round totals for multi-round events (index 0 = round 1)
   scoreToPar?: number;
