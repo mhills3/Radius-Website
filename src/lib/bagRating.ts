@@ -20,11 +20,13 @@ const SLOT_CATS: Cat[] = ["DISTANCE", "FAIRWAY", "MIDRANGE", "PUTTER"];
 const TIERS: Tier[] = ["US", "ST", "OS"];
 const TIER_LABEL: Record<Tier, string> = { US: "Understable", ST: "Straight", OS: "Overstable" };
 
-// iOS slot stability ranges (Models 2.swift BagSlotType.stabilityRange). NOTE these OVERLAP at 1.5
-// (a disc at 1.5 fills BOTH the straight and overstable slots) and -0.5 is understable (US inclusive;
-// straight starts at -0.49). Slot coverage uses range membership, NOT single-tier tierFor().
-const TIER_RANGE: Record<Tier, [number, number]> = { US: [-10, -0.5], ST: [-0.49, 1.5], OS: [1.5, 10] };
-const tierHas = (t: Tier, stab: number): boolean => stab >= TIER_RANGE[t][0] && stab <= TIER_RANGE[t][1];
+// Slot tier — ONE tier per disc (matches the apps' tierForSlot; BagAnalysis.kt). -0.5 is understable
+// (inclusive), 1.5 is straight. A disc sits in exactly one slot, so 1.5 does NOT double-fill.
+function slotTier(stab: number): Tier {
+  if (stab <= -0.5) return "US";
+  if (stab <= 1.5) return "ST";
+  return "OS";
+}
 
 // Wear factor by condition (iOS DiscCondition.wearFactor).
 const WEAR_FACTOR: Record<string, number> = { "Brand New": 0, "Slightly Used": 0.3, "Seasoned": 0.7, "Beat In": 1.2, "Very Beat In": 1.8 };
@@ -39,13 +41,6 @@ function withWear(d: FlightDisc): { sp: number; turn: number; fade: number } {
   if (hasCustom) return { sp: d.customSpeed ?? sp, turn: d.customTurn ?? turn, fade: d.customFade ?? fade };
   const wf = WEAR_FACTOR[d.condition ?? ""] ?? 0;
   return { sp, turn: turn - wf * 0.5, fade: Math.max(0, fade - wf * 0.3) };
-}
-
-// Depth ONLY: iOS re-applies adjustedFlightNumbers(wear) on top of the already-withWear disc, so
-// condition wear lands a second time for non-custom discs (and once on custom discs). Match that.
-function depthStability(effTurn: number, effFade: number, condition?: string): number {
-  const wf = WEAR_FACTOR[condition ?? ""] ?? 0;
-  return (effTurn - wf * 0.5) + Math.max(0, effFade - wf * 0.3);
 }
 
 export function ceilingFor(armSpeed?: string): number {
@@ -81,16 +76,15 @@ export function rateBag(allDiscs: FlightDisc[], armSpeed: string | undefined, ca
         gl: d.glide ?? 0,
         stab: w.turn + w.fade,
         fade: w.fade,
-        adjStab: depthStability(w.turn, w.fade, d.condition), // depth re-applies wear on top
       };
     });
   if (bag.length === 0) return emptyRating(ceiling);
 
   const byCat = (c: Cat) => bag.filter((d) => d.cat === c);
 
-  // 1. Slot coverage (30%) — range membership per iOS (overlaps at 1.5), not single-tier tierFor
+  // 1. Slot coverage (30%) — one tier per disc (apps' tierForSlot), no double-fill
   let totalSlotsCovered = 0;
-  for (const c of SLOT_CATS) for (const t of TIERS) if (byCat(c).some((d) => tierHas(t, d.stab))) totalSlotsCovered++;
+  for (const c of SLOT_CATS) for (const t of TIERS) if (byCat(c).some((d) => slotTier(d.stab) === t)) totalSlotsCovered++;
   const slotCoverage = Math.min(100, Math.trunc((totalSlotsCovered / 12) * 110));
 
   // 2. Role coverage (30%) — 7 roles × 14
@@ -112,10 +106,10 @@ export function rateBag(allDiscs: FlightDisc[], armSpeed: string | undefined, ca
     const cd = byCat(c);
     if (cd.length === 0) continue;
     if (cd.length === 1) { depthPoints += 12; continue; }
-    // iOS sorts/diffs by WEAR-ADJUSTED stability here (only the depth component does this).
-    const sorted = [...cd].sort((a, b) => a.adjStab - b.adjStab);
+    // Sort/diff by the same effective stability every other component uses (apps do NOT re-apply wear).
+    const sorted = [...cd].sort((a, b) => a.stab - b.stab);
     let roles = 1;
-    for (let i = 1; i < sorted.length; i++) if (Math.abs(sorted[i].adjStab - sorted[i - 1].adjStab) > 1.0) roles++;
+    for (let i = 1; i < sorted.length; i++) if (Math.abs(sorted[i].stab - sorted[i - 1].stab) > 1.0) roles++;
     depthPoints += 15 + Math.min(roles, 4) * 2.5;
   }
   const depth = Math.min(100, Math.trunc(depthPoints));
@@ -172,7 +166,7 @@ export function rateBag(allDiscs: FlightDisc[], armSpeed: string | undefined, ca
   const bagNames = new Set(allDiscs.map((d) => d.name.toLowerCase()));
   const suggest = (cat: Cat, tier: Tier): string | undefined => {
     const matches = catalog
-      .filter((d) => normCat(d.category) === cat && !bagNames.has(d.name.toLowerCase()) && tierHas(tier, d.turn + d.fade));
+      .filter((d) => normCat(d.category) === cat && !bagNames.has(d.name.toLowerCase()) && slotTier(d.turn + d.fade) === tier);
     if (!matches.length) return undefined;
     matches.sort((a, b) => {
       const pa = POPULAR.indexOf(a.manufacturer); const pb = POPULAR.indexOf(b.manufacturer);
@@ -183,7 +177,7 @@ export function rateBag(allDiscs: FlightDisc[], armSpeed: string | undefined, ca
   };
   const gaps: BagRating["gaps"] = [];
   for (const c of SLOT_CATS) for (const t of TIERS) {
-    if (!byCat(c).some((d) => tierHas(t, d.stab))) {
+    if (!byCat(c).some((d) => slotTier(d.stab) === t)) {
       gaps.push({ label: `${TIER_LABEL[t]} ${CAT_META[c].short.toLowerCase()}`, category: c, tier: t, suggestion: suggest(c, t) });
     }
   }
