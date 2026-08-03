@@ -379,7 +379,10 @@ export default function CoursesPage() {
                           {legend && (
                             <svg className="h-3.5 w-3.5 shrink-0 text-[#c79a3a]" viewBox="0 0 24 24" fill="currentColor" aria-label="Legend"><path d="M5 19h14l1.5-10-4.5 3.5L12 6l-4 6.5L3.5 9 5 19z" /></svg>
                           )}
-                          <span className={`min-w-0 truncate text-sm ${legend ? "bg-gradient-to-r from-[#9a7a3a] to-[#d4a94a] bg-clip-text font-extrabold text-transparent" : "font-semibold text-[#16221b]"}`} title={legend ? `${b.name} · Legend builder (${b.count} courses)` : b.name}>{b.name}</span>
+                          <span className="flex min-w-0 flex-col">
+                            <span className={`min-w-0 truncate text-sm leading-tight ${legend ? "bg-gradient-to-r from-[#9a7a3a] to-[#d4a94a] bg-clip-text font-extrabold text-transparent" : "font-semibold text-[#16221b]"}`} title={legend ? `${b.name} · Legend builder (${b.count} courses)` : b.name}>{b.name}</span>
+                            {b.username && <span className="min-w-0 truncate text-[11px] leading-tight text-[#8a968d]">@{b.username}</span>}
+                          </span>
                         </span>
                         <span className={`shrink-0 text-xs font-bold ${legend ? "text-[#c79a3a]" : "text-[#6b7a70]"}`}>{b.count}</span>
                       </div>
