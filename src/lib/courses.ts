@@ -403,9 +403,11 @@ export function countryOf(c: { state?: string; latitude?: number; longitude?: nu
 export interface Builder {
   id: string;
   name: string;
+  username?: string;
   count: number;
 }
-/** Users who have built the most courses (merged across cross-platform accounts by name). */
+/** Users who have built the most courses, grouped by CANONICAL identity — one person's linked
+ *  cross-platform accounts combine; two different people who share a display name do NOT. */
 export async function getTopBuilders(max = 10): Promise<Builder[]> {
   const snap = await getDocs(collection(db, "courses"));
   // Credit by builder ACCOUNT (createdById), the same way the app does. A builder's courses are
@@ -422,35 +424,38 @@ export async function getTopBuilders(max = 10): Promise<Builder[]> {
     if (name && name.toLowerCase() !== "community") e.names.set(name, (e.names.get(name) || 0) + 1);
     byId.set(id, e);
   });
-  // Merge accounts that resolve to the same builder name — handles a builder having multiple
-  // un-unified account IDs (e.g. cross-platform). Accounts with no derived name stay keyed by id.
-  const merged = new Map<string, { id: string; count: number; name: string; topIdCount: number }>();
+  // Fold each account into its CANONICAL id. A single person's linked accounts merge; two
+  // DIFFERENT people who happen to share a display name stay separate (the old name-keyed merge
+  // fused them — e.g. two unrelated "Brian" accounts counted as one). Resolve once per distinct
+  // builder id (not per course); most ids have no mapping and resolve to themselves.
+  const canonOf = new Map<string, string>();
+  await Promise.all([...byId.keys()].map(async (id) => { canonOf.set(id, await resolveCanonicalId(id)); }));
+  const merged = new Map<string, { id: string; count: number; names: Map<string, number>; topIdCount: number }>();
   for (const [id, e] of byId) {
-    const name = [...e.names.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || "";
-    const key = name ? name.toLowerCase() : id;
+    const key = canonOf.get(id) || id;
     const m = merged.get(key);
     if (!m) {
-      merged.set(key, { id, count: e.count, name, topIdCount: e.count });
+      merged.set(key, { id, count: e.count, names: new Map(e.names), topIdCount: e.count });
     } else {
       m.count += e.count;
-      if (e.count > m.topIdCount) { m.topIdCount = e.count; m.id = id; } // keep the account with most courses (best avatar)
-      if (name && !m.name) m.name = name;
+      for (const [n, c2] of e.names) m.names.set(n, (m.names.get(n) || 0) + c2);
+      if (e.count > m.topIdCount) { m.topIdCount = e.count; m.id = id; } // account with most courses = best avatar
     }
   }
-  const top = [...merged.values()]
-    .map((m) => ({ id: m.id, count: m.count, name: m.name }))
+  const top: Builder[] = [...merged.values()]
+    .map((m) => ({ id: m.id, count: m.count, name: [...m.names.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || "" }))
     .sort((a, b) => b.count - a.count)
     .slice(0, max);
-  // Resolve any display name we couldn't derive from courses (account only ever posted as "Community").
+  // Fill username (to disambiguate same-name builders) + any missing display name from the
+  // winning account's user doc.
   await Promise.all(
     top.map(async (b) => {
-      if (b.name) return;
       try {
-        const u = await getDoc(doc(db, "users", b.id));
-        const data = u.data();
-        b.name = (((data?.name || data?.displayName || data?.username || "") as string).trim()) || "Course builder";
+        const data = (await getDoc(doc(db, "users", b.id))).data();
+        b.username = ((data?.username as string) || "").trim() || undefined;
+        if (!b.name) b.name = (((data?.name || data?.displayName || data?.username || "") as string).trim()) || "Course builder";
       } catch {
-        b.name = "Course builder";
+        if (!b.name) b.name = "Course builder";
       }
     })
   );
