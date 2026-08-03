@@ -90,7 +90,7 @@ export default function StoryPage() {
           <aside className="lg:sticky lg:top-28 lg:self-start">
             <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#9a7a3a]">A letter from the founder</div>
             <div className="mt-5 flex items-center gap-3.5 lg:flex-col lg:items-start lg:gap-4">
-              <div className="h-20 w-20 shrink-0 rounded-2xl bg-[var(--bg-mid)] bg-no-repeat ring-1 ring-black/10" role="img" aria-label="Mikey Hills" style={{ backgroundImage: "url(/team/mikey.png)", backgroundSize: "125%", backgroundPosition: "center 26%" }} />
+              <div className="h-20 w-20 shrink-0 rounded-full bg-[var(--bg-mid)] bg-no-repeat ring-2 ring-[var(--gold)]/40" role="img" aria-label="Mikey Hills" style={{ backgroundImage: "url(/team/mikey.png)", backgroundSize: "135%", backgroundPosition: "center 26%" }} />
               <div>
                 <div className="font-[family-name:var(--font-heading)] text-lg font-bold">Mikey Hills</div>
                 <div className="text-sm text-[#8a968d]">Founder, Radius</div>
