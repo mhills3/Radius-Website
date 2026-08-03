@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
 import { getDashboard, type Dashboard } from "@/lib/account";
-import { getBagNames, getDiscCatalog, normCat } from "@/lib/bag";
-import { buildDiscs, type DiscData } from "@/lib/discs";
+import { getBagNames, getDiscCatalog, getCustomDiscs, normCat } from "@/lib/bag";
+import { buildDiscs, customToDiscData, type DiscData } from "@/lib/discs";
 import { slugify } from "@/lib/courses";
 import { rankForIQ, rankLabel, rankProgress } from "@/lib/rank";
 import { IqRing } from "@/components/dashboard/charts";
@@ -29,12 +29,14 @@ export default function ProfileView({ canonicalId, identity }: { canonicalId: st
 
   useEffect(() => {
     getDashboard(canonicalId).then(setData).catch(() => setData(null)).finally(() => setLoading(false));
-    Promise.all([getBagNames(canonicalId), getDiscCatalog()])
-      .then(([names, rows]) => {
+    Promise.all([getBagNames(canonicalId), getDiscCatalog(), getCustomDiscs(canonicalId)])
+      .then(([names, rows, custom]) => {
         const byName = new Map(buildDiscs(rows).map((d) => [d.name.toLowerCase(), d]));
+        // Custom discs override the catalog by name (iOS allAvailableDiscs); custom-only discs resolve too.
+        const customMap = new Map(custom.map((c) => [c.name.toLowerCase(), customToDiscData(c)]));
         const seen = new Set<string>();
         const out: DiscData[] = [];
-        for (const n of names) { const d = byName.get(n.trim().toLowerCase()); if (d && !seen.has(d.slug)) { seen.add(d.slug); out.push(d); } }
+        for (const n of names) { const k = n.trim().toLowerCase(); const d = customMap.get(k) ?? byName.get(k); if (d && !seen.has(d.slug)) { seen.add(d.slug); out.push(d); } }
         setBag(out);
       })
       .catch(() => setBag([]));

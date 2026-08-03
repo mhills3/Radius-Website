@@ -3,8 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
-import { getBagNames, getDiscCatalog, normCat, tierFor, type FlightDisc } from "@/lib/bag";
-import { buildDiscs, type DiscData } from "@/lib/discs";
+import { getBagNames, getDiscCatalog, getCustomDiscs, normCat, tierFor, type FlightDisc } from "@/lib/bag";
+import { buildDiscs, customToDiscData, type DiscData } from "@/lib/discs";
 import DiscGraphic from "@/components/bag/DiscGraphic";
 import BagCompareChart from "@/components/profile/BagCompareChart";
 
@@ -36,10 +36,12 @@ export default function BagCompare({ canonicalId, theirBag, theirName, username 
     if (!user) return;
     setBusy(true);
     try {
-      const [names, rows] = await Promise.all([getBagNames(user.uid), getDiscCatalog()]);
+      const [names, rows, custom] = await Promise.all([getBagNames(user.uid), getDiscCatalog(), getCustomDiscs(user.uid)]);
       const byName = new Map(buildDiscs(rows).map((d) => [d.name.toLowerCase(), d]));
+      // Custom discs override the catalog by name (iOS allAvailableDiscs); custom-only discs resolve too.
+      const customMap = new Map(custom.map((c) => [c.name.toLowerCase(), customToDiscData(c)]));
       const seen = new Set<string>(); const out: DiscData[] = [];
-      for (const n of names) { const d = byName.get(n.trim().toLowerCase()); if (d && !seen.has(d.slug)) { seen.add(d.slug); out.push(d); } }
+      for (const n of names) { const k = n.trim().toLowerCase(); const d = customMap.get(k) ?? byName.get(k); if (d && !seen.has(d.slug)) { seen.add(d.slug); out.push(d); } }
       setMine(out);
     } finally { setBusy(false); }
   };
