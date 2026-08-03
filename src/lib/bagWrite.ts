@@ -190,24 +190,26 @@ export function addDiscToBag(uid: string, discName: string): Promise<void> {
 }
 
 // Collection & Lost: bag/collection/lost are kept mutually exclusive BY NAME (matches the apps).
-// A move drops the disc from myBagJSON and adds its NAME to the target list (arrayUnion) while
-// removing it from the other list (arrayRemove). NO tombstone — move-back works because the name
-// leaves the list and the disc reappears in myBagJSON. The apps reconcile the bag against these
-// lists by name on adopt, so the disc lands in exactly one place.
+// A move drops the disc from myBagJSON, adds its NAME to the target list (arrayUnion) / removes it
+// from the other (arrayRemove), AND TOMBSTONES the removed bag-row id (arrayUnion deletedBagDiscIds).
+// The tombstone is REQUIRED: dropping the id from myBagJSON alone doesn't stick — iOS/Android merge
+// the bag by id and re-add any disc the cloud is missing unless its id is tombstoned, so the row
+// would resurrect (and later republish / duplicate on recover). Move-back stays safe: recoverToBag
+// appends a FRESH id (newDisc), which a stale tombstone never blocks.
 
-/** Move a bag disc into the collection. Removes ONLY that id from the fresh cloud bag. */
+/** Move a bag disc into the collection. Removes + tombstones ONLY that id from the fresh cloud bag. */
 export function moveToCollection(uid: string, discId: string, discName: string, bagId?: string): Promise<void> {
   return enqueue(async () => {
     const { ref, data, bag, bagsCtx } = await readCurrent(uid, bagId);
-    await setDoc(ref, { ...bagFields(bagsCtx, bag.filter((r) => r?.id !== discId), data), myCollection: arrayUnion(discName), lostDiscs: arrayRemove(discName), lastUpdated: Date.now() }, { merge: true });
+    await setDoc(ref, { ...bagFields(bagsCtx, bag.filter((r) => r?.id !== discId), data), myCollection: arrayUnion(discName), lostDiscs: arrayRemove(discName), deletedBagDiscIds: arrayUnion(discId), lastUpdated: Date.now() }, { merge: true });
   });
 }
 
-/** Mark a bag disc as lost. Removes ONLY that id from the fresh cloud bag. */
+/** Mark a bag disc as lost. Removes + tombstones ONLY that id from the fresh cloud bag. */
 export function markAsLost(uid: string, discId: string, discName: string, bagId?: string): Promise<void> {
   return enqueue(async () => {
     const { ref, data, bag, bagsCtx } = await readCurrent(uid, bagId);
-    await setDoc(ref, { ...bagFields(bagsCtx, bag.filter((r) => r?.id !== discId), data), lostDiscs: arrayUnion(discName), myCollection: arrayRemove(discName), lastUpdated: Date.now() }, { merge: true });
+    await setDoc(ref, { ...bagFields(bagsCtx, bag.filter((r) => r?.id !== discId), data), lostDiscs: arrayUnion(discName), myCollection: arrayRemove(discName), deletedBagDiscIds: arrayUnion(discId), lastUpdated: Date.now() }, { merge: true });
   });
 }
 
