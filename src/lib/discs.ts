@@ -1,8 +1,26 @@
-import { type DbDisc } from "./bag";
+import { type DbDisc, type CustomDiscDef } from "./bag";
 
 export interface DiscData extends DbDisc {
   stability: number;
   slug: string;
+}
+
+/** Convert a user's custom disc into a DiscData row so bag views can render it like any catalog
+ *  disc. Custom discs win by name over the catalog (iOS UserProfile.allAvailableDiscs). */
+export function customToDiscData(c: CustomDiscDef): DiscData {
+  const manufacturer = c.manufacturer || "Custom";
+  return {
+    name: c.name,
+    manufacturer,
+    category: c.category ?? "",
+    speed: c.speed ?? 0,
+    glide: c.glide ?? 0,
+    turn: c.turn ?? 0,
+    fade: c.fade ?? 0,
+    color: c.color ?? "#a673d9",
+    stability: stabilityOf({ turn: c.turn, fade: c.fade }),
+    slug: discSlug({ manufacturer, name: c.name }),
+  };
 }
 
 export function discSlug(d: { manufacturer: string; name: string }): string {

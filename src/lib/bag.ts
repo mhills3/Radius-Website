@@ -209,6 +209,46 @@ export async function getBagNames(uid: string): Promise<string[]> {
   }
 }
 
+/** A user's custom disc, in the cross-platform customDiscsJSON shape. */
+export interface CustomDiscDef {
+  name: string;
+  manufacturer?: string;
+  category?: string;
+  speed?: number;
+  glide?: number;
+  turn?: number;
+  fade?: number;
+  color?: string;
+}
+
+/**
+ * A user's custom discs (customDiscsJSON on userBackups/{cid}/data/current) — the SAME source
+ * getBag reads. Custom discs override catalog molds by name (iOS UserProfile.allAvailableDiscs).
+ * Used by the profile/compare bag views so they resolve custom discs like the owner's own bag.
+ * Degrades to [] on any error (e.g. if a future rules lockdown restricts cross-user reads).
+ */
+export async function getCustomDiscs(uid: string): Promise<CustomDiscDef[]> {
+  try {
+    const cid = await resolveCanonicalId(uid);
+    const s = await getDoc(doc(db, `userBackups/${cid}/data/current`));
+    if (!s.exists()) return [];
+    return asArray(s.data().customDiscsJSON)
+      .filter((c) => c?.name)
+      .map((c) => ({
+        name: String(c.name),
+        manufacturer: c.manufacturer ? String(c.manufacturer) : undefined,
+        category: c.category ? String(c.category) : undefined,
+        speed: typeof c.speed === "number" ? c.speed : undefined,
+        glide: typeof c.glide === "number" ? c.glide : undefined,
+        turn: typeof c.turn === "number" ? c.turn : undefined,
+        fade: typeof c.fade === "number" ? c.fade : undefined,
+        color: c.color ? String(c.color) : undefined,
+      }));
+  } catch {
+    return [];
+  }
+}
+
 export async function getBag(uid: string, bagId?: string): Promise<Bag> {
   const canonicalId = await resolveCanonicalId(uid);
   const [discDb, dataSnap, userSnap, decodedRounds] = await Promise.all([

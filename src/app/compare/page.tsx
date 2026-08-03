@@ -4,8 +4,8 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getMentionableUsers, findUserByUsername, type MentionUser } from "@/lib/leaderboard";
-import { getBagNames, getDiscCatalog, normCat, tierFor, type FlightDisc } from "@/lib/bag";
-import { buildDiscs, type DiscData } from "@/lib/discs";
+import { getBagNames, getDiscCatalog, getCustomDiscs, normCat, tierFor, type FlightDisc } from "@/lib/bag";
+import { buildDiscs, customToDiscData, type DiscData } from "@/lib/discs";
 import DiscGraphic from "@/components/bag/DiscGraphic";
 import BagCompareChart from "@/components/profile/BagCompareChart";
 import UserTagPicker from "@/components/community/UserTagPicker";
@@ -53,9 +53,11 @@ function CompareInner() {
 
   const loadBag = async (id: string): Promise<DiscData[]> => {
     if (!catMap) return [];
-    const names = await getBagNames(id);
+    const [names, custom] = await Promise.all([getBagNames(id), getCustomDiscs(id)]);
+    // Custom discs override the catalog by name (iOS allAvailableDiscs); custom-only discs resolve too.
+    const customMap = new Map(custom.map((c) => [c.name.toLowerCase(), customToDiscData(c)]));
     const seen = new Set<string>(); const out: DiscData[] = [];
-    for (const n of names) { const d = catMap.get(n.trim().toLowerCase()); if (d && !seen.has(d.slug)) { seen.add(d.slug); out.push(d); } }
+    for (const n of names) { const k = n.trim().toLowerCase(); const d = customMap.get(k) ?? catMap.get(k); if (d && !seen.has(d.slug)) { seen.add(d.slug); out.push(d); } }
     return out;
   };
 
