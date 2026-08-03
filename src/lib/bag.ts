@@ -249,8 +249,11 @@ export async function getBag(uid: string, bagId?: string): Promise<Bag> {
   const discs: FlightDisc[] = rawBag.map((d, i) => {
     const name = (d?.discName ?? d?.name ?? "Disc").toString();
     const key = name.toLowerCase();
-    const isCustom = !dbMap.has(key) && customMap.has(key);
-    const src = dbMap.get(key) ?? customMap.get(key);
+    // Custom discs WIN by name over the catalog (matches iOS UserProfile.allAvailableDiscs):
+    // a custom disc with the same name as a catalog mold replaces it entirely — category
+    // and flight numbers come from the custom definition.
+    const isCustom = customMap.has(key);
+    const src = customMap.get(key) ?? dbMap.get(key);
     const known = !!src;
     const speed = src?.speed;
     const glide = src?.glide;
@@ -295,8 +298,9 @@ export async function getBag(uid: string, bagId?: string): Promise<Bag> {
   // Resolve a bare disc name (no id/wear) to a display disc for the Collection/Lost lists.
   const nameToDisc = (name: string, idPrefix: string): FlightDisc => {
     const key = name.toLowerCase();
-    const isCustom = !dbMap.has(key) && customMap.has(key);
-    const src = dbMap.get(key) ?? customMap.get(key);
+    // Custom wins by name over the catalog — same rule as the bag resolution above.
+    const isCustom = customMap.has(key);
+    const src = customMap.get(key) ?? dbMap.get(key);
     const turn = src?.turn, fade = src?.fade;
     const stability = typeof turn === "number" && typeof fade === "number" ? turn + fade : undefined;
     return {
