@@ -90,6 +90,10 @@ export default function PostDetail({ post, uid, myReaction, onReact, onClose, on
     const nameEl = (
       <>{c.authorName}{handle ? <span className="ml-1.5 text-xs font-normal text-[var(--sage-dim)]">@{handle}</span> : null}</>
     );
+    // Only surface tagged users who AREN'T already @mentioned inline in the text — otherwise the
+    // inline mention (rendered by MentionText) and this list duplicate each other.
+    const inlineHandles = new Set((c.text.match(/@[A-Za-z0-9_]{2,}/g) ?? []).map((h) => h.slice(1).toLowerCase()));
+    const extraTags = (c.taggedUsers ?? []).filter((u) => u.username && !inlineHandles.has(u.username.toLowerCase()));
     return (
     <div className="flex gap-3">
       {handle ? (
@@ -101,8 +105,8 @@ export default function PostDetail({ post, uid, myReaction, onReact, onClose, on
         <div className="rounded-2xl bg-white/[0.05] px-3.5 py-2.5">
           <div className="text-sm font-bold text-[var(--cream)]">{handle ? <Link href={c.authorId ? `/u/${handle}?id=${c.authorId}` : `/u/${handle}`} className="hover:underline">{nameEl}</Link> : nameEl}</div>
           <MentionText text={c.text} tagged={c.taggedUsers} className="whitespace-pre-wrap text-[14px] leading-relaxed text-[var(--text-body)]" />
-          {c.taggedUsers && c.taggedUsers.length > 0 && (
-            <div className="mt-1 flex flex-wrap gap-x-1 text-xs text-[#4d94fa]">{c.taggedUsers.map((u) => <Link key={u.id} href={`/u/${u.username}`} className="hover:underline">@{u.username}</Link>)}</div>
+          {extraTags.length > 0 && (
+            <div className="mt-1 flex flex-wrap gap-x-1 text-xs text-[#4d94fa]">{extraTags.map((u) => <Link key={u.id} href={`/u/${u.username}`} className="hover:underline">@{u.username}</Link>)}</div>
           )}
         </div>
         <div className="mt-1 flex items-center gap-3 pl-1 text-xs text-[var(--sage-dim)]">
