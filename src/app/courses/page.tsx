@@ -76,7 +76,7 @@ export default function CoursesPage() {
 
   // geo + fun stats — canonicalState dedupes "CA" vs "California" so this matches the coverage map.
   const usStateCount = useMemo(() => new Set(courses.map((c) => canonicalState(c.state)).filter(Boolean)).size, [courses]);
-  const countryCount = useMemo(() => new Set(courses.map((c) => countryOf(c))).size, [courses]);
+  const countryCount = useMemo(() => new Set(courses.map((c) => countryOf(c)).filter((co) => co && co !== "International")).size, [courses]);
   const topStates = useMemo(() => {
     const m = new Map<string, number>();
     // Normalize to the 2-letter code so "Mississippi" displays as "MS" AND merges with any "MS" rows.

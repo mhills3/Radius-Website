@@ -385,6 +385,13 @@ const COUNTRY_BOXES: [string, number, number, number, number][] = [
   ["Slovenia", 13.3, 45.4, 16.6, 46.9], ["Hungary", 16.1, 45.7, 22.9, 48.6], ["Belgium", 2.5, 49.5, 6.4, 51.55],
   ["Poland", 14.2, 49.0, 24.2, 54.9], ["Lithuania", 20.9, 53.9, 26.9, 56.45], ["Latvia", 20.9, 55.7, 28.3, 58.1],
   ["Italy", 6.6, 36.6, 18.6, 47.1], ["Spain", -9.4, 36.0, 3.4, 43.9], ["Portugal", -9.6, 36.9, -6.2, 42.2],
+  // More countries with courses that previously fell through to the raw region name (invisible on
+  // the world map + inflated the country count). Boxes are checked in order, so these only catch what
+  // the boxes above miss. Names match the world TopoJSON exactly.
+  ["Iceland", -24.6, 63.2, -13.4, 66.6], ["Cuba", -85.1, 19.7, -73.9, 23.3], ["Brazil", -74.1, -33.8, -34.7, 5.3],
+  ["Israel", 34.2, 29.4, 35.9, 33.4], ["Romania", 20.2, 43.6, 29.8, 48.3], ["Bulgaria", 22.3, 41.2, 28.7, 44.3],
+  ["Saudi Arabia", 34.5, 16.0, 55.7, 32.2], ["Nicaragua", -87.8, 10.7, -83.0, 15.1],
+  ["Papua New Guinea", 140.8, -11.7, 155.9, -1.0], ["Puerto Rico", -67.3, 17.8, -65.2, 18.6],
 ];
 // Canadian provinces/territories — recognized by name so southern courses (Toronto, Ottawa…)
 // resolve to "Canada" instead of leaking the province string.
@@ -397,7 +404,9 @@ export function countryOf(c: { state?: string; latitude?: number; longitude?: nu
     for (const [name, w, s, e, n] of COUNTRY_BOXES) if (lng >= w && lng <= e && lat >= s && lat <= n) return name;
     if ((lat >= 24.5 && lat <= 49.4 && lng >= -125 && lng <= -66.9) || (lat >= 51 && lat <= 71.5 && lng >= -179 && lng <= -129) || (lat >= 18 && lat <= 23 && lng >= -161 && lng <= -154)) return "United States";
   }
-  return c.state?.trim() || "International";
+  // Fall back to a single "International" bucket, NOT the raw state/region string — leaking a region
+  // name (e.g. "São Paulo", "Riyadh") shows as a phantom country on the map + inflates the count.
+  return "International";
 }
 
 export interface Builder {
