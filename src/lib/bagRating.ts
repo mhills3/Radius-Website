@@ -1,7 +1,7 @@
 // Faithful port of the app's BagRater.rate (iOS RecommendationEngine.rateBag).
 // 5 weighted components: slot 30%, role 30%, depth 15%, speed-spread 10%, fit 15%.
 
-import { type FlightDisc, type Cat, type Tier, type DbDisc, CAT_META, tierFor, normCat } from "./bag";
+import { type FlightDisc, type Cat, type Tier, type DbDisc, CAT_META, normCat } from "./bag";
 
 export interface BagRating {
   overall: number;
@@ -19,6 +19,29 @@ export interface BagRating {
 const SLOT_CATS: Cat[] = ["DISTANCE", "FAIRWAY", "MIDRANGE", "PUTTER"];
 const TIERS: Tier[] = ["US", "ST", "OS"];
 const TIER_LABEL: Record<Tier, string> = { US: "Understable", ST: "Straight", OS: "Overstable" };
+
+// Slot tier — ONE tier per disc (matches the apps' tierForSlot; BagAnalysis.kt). -0.5 is understable
+// (inclusive), 1.5 is straight. A disc sits in exactly one slot, so 1.5 does NOT double-fill.
+function slotTier(stab: number): Tier {
+  if (stab <= -0.5) return "US";
+  if (stab <= 1.5) return "ST";
+  return "OS";
+}
+
+// Wear factor by condition (iOS DiscCondition.wearFactor).
+const WEAR_FACTOR: Record<string, number> = { "Brand New": 0, "Slightly Used": 0.3, "Seasoned": 0.7, "Beat In": 1.2, "Very Beat In": 1.8 };
+
+// iOS scores the disc AFTER Disc.withWear(wear) (Models 2.swift): EVERY component uses these numbers,
+// not the factory numbers. If the disc has ANY custom flight override, those win (per field, else
+// factory) and condition wear is skipped; otherwise condition adjusts turn/fade (speed/glide stay
+// factory). turn -= wf*0.5 (more understable), fade = max(0, fade - wf*0.3).
+function withWear(d: FlightDisc): { sp: number; turn: number; fade: number } {
+  const sp = d.speed as number, turn = d.turn as number, fade = d.fade as number;
+  const hasCustom = d.customSpeed != null || d.customGlide != null || d.customTurn != null || d.customFade != null;
+  if (hasCustom) return { sp: d.customSpeed ?? sp, turn: d.customTurn ?? turn, fade: d.customFade ?? fade };
+  const wf = WEAR_FACTOR[d.condition ?? ""] ?? 0;
+  return { sp, turn: turn - wf * 0.5, fade: Math.max(0, fade - wf * 0.3) };
+}
 
 export function ceilingFor(armSpeed?: string): number {
   switch ((armSpeed || "").toUpperCase()) {
@@ -44,21 +67,24 @@ export function rateBag(allDiscs: FlightDisc[], armSpeed: string | undefined, ca
   const ceiling = ceilingFor(armSpeed);
   const bag = allDiscs
     .filter((d) => d.speed != null && d.turn != null && d.fade != null && SLOT_CATS.includes(d.category))
-    .map((d) => ({
-      name: d.name,
-      cat: d.category,
-      sp: d.speed as number,
-      gl: d.glide ?? 0,
-      stab: (d.turn as number) + (d.fade as number),
-      fade: d.fade as number,
-    }));
+    .map((d) => {
+      const w = withWear(d); // effective flight numbers used by every component (iOS scores post-withWear)
+      return {
+        name: d.name,
+        cat: d.category,
+        sp: w.sp,
+        gl: d.glide ?? 0,
+        stab: w.turn + w.fade,
+        fade: w.fade,
+      };
+    });
   if (bag.length === 0) return emptyRating(ceiling);
 
   const byCat = (c: Cat) => bag.filter((d) => d.cat === c);
 
-  // 1. Slot coverage (30%)
+  // 1. Slot coverage (30%) — one tier per disc (apps' tierForSlot), no double-fill
   let totalSlotsCovered = 0;
-  for (const c of SLOT_CATS) for (const t of TIERS) if (byCat(c).some((d) => tierFor(d.stab) === t)) totalSlotsCovered++;
+  for (const c of SLOT_CATS) for (const t of TIERS) if (byCat(c).some((d) => slotTier(d.stab) === t)) totalSlotsCovered++;
   const slotCoverage = Math.min(100, Math.trunc((totalSlotsCovered / 12) * 110));
 
   // 2. Role coverage (30%) — 7 roles × 14
@@ -80,6 +106,7 @@ export function rateBag(allDiscs: FlightDisc[], armSpeed: string | undefined, ca
     const cd = byCat(c);
     if (cd.length === 0) continue;
     if (cd.length === 1) { depthPoints += 12; continue; }
+    // Sort/diff by the same effective stability every other component uses (apps do NOT re-apply wear).
     const sorted = [...cd].sort((a, b) => a.stab - b.stab);
     let roles = 1;
     for (let i = 1; i < sorted.length; i++) if (Math.abs(sorted[i].stab - sorted[i - 1].stab) > 1.0) roles++;
@@ -92,13 +119,15 @@ export function rateBag(allDiscs: FlightDisc[], armSpeed: string | undefined, ca
   const hit = buckets.filter(([lo, hi]) => bag.some((d) => d.sp >= lo && d.sp <= hi)).length;
   const speedSpread = hit === 5 ? 100 : hit === 4 ? 92 : hit === 3 ? 75 : hit === 2 ? 50 : hit === 1 ? 25 : 0;
 
-  // 5. Player fit (15%)
+  // 5. Player fit (15%) — iOS applies a +1 GRACE BAND to the ceiling for at-or-below and the
+  // over-ceiling penalty; the ideal-range bonus still uses the raw ceiling.
   const total = bag.length;
-  const atOrBelow = bag.filter((d) => d.sp <= ceiling).length;
+  const fitCeiling = ceiling + 1;
+  const atOrBelow = bag.filter((d) => d.sp <= fitCeiling).length;
   let fitPoints = (atOrBelow / total) * 60;
   const idealCount = bag.filter((d) => d.sp >= ceiling - 3 && d.sp <= ceiling).length;
   fitPoints += idealCount >= 2 ? 25 : idealCount === 1 ? 15 : 0;
-  fitPoints -= (bag.filter((d) => d.sp > ceiling).length / total) * 30;
+  fitPoints -= (bag.filter((d) => d.sp > fitCeiling).length / total) * 30;
   const playerFit = Math.max(0, Math.min(100, Math.trunc(fitPoints)));
 
   const overall = Math.max(0, Math.min(100, Math.trunc(slotCoverage * 0.3 + roleCoverage * 0.3 + depth * 0.15 + speedSpread * 0.1 + playerFit * 0.15)));
@@ -137,7 +166,7 @@ export function rateBag(allDiscs: FlightDisc[], armSpeed: string | undefined, ca
   const bagNames = new Set(allDiscs.map((d) => d.name.toLowerCase()));
   const suggest = (cat: Cat, tier: Tier): string | undefined => {
     const matches = catalog
-      .filter((d) => normCat(d.category) === cat && !bagNames.has(d.name.toLowerCase()) && tierFor(d.turn + d.fade) === tier);
+      .filter((d) => normCat(d.category) === cat && !bagNames.has(d.name.toLowerCase()) && slotTier(d.turn + d.fade) === tier);
     if (!matches.length) return undefined;
     matches.sort((a, b) => {
       const pa = POPULAR.indexOf(a.manufacturer); const pb = POPULAR.indexOf(b.manufacturer);
@@ -148,7 +177,7 @@ export function rateBag(allDiscs: FlightDisc[], armSpeed: string | undefined, ca
   };
   const gaps: BagRating["gaps"] = [];
   for (const c of SLOT_CATS) for (const t of TIERS) {
-    if (!byCat(c).some((d) => tierFor(d.stab) === t)) {
+    if (!byCat(c).some((d) => slotTier(d.stab) === t)) {
       gaps.push({ label: `${TIER_LABEL[t]} ${CAT_META[c].short.toLowerCase()}`, category: c, tier: t, suggestion: suggest(c, t) });
     }
   }
