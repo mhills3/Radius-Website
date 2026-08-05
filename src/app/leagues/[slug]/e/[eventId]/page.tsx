@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { EVENT_EXTRAS, registrationOpen, getLeagueBySlug, getLeagueMembers, getEvent, getCards, checkIn, updateEntry, removeEntry, addWalkupEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, reassignBagTags, computeStandings, computeHandicaps, applyHandicaps, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCourseHoles, setTeamName, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember } from "@/lib/leagues";
+import { EVENT_EXTRAS, registrationOpen, getLeagueBySlug, getLeagueMembers, getEvent, getCards, checkIn, updateEntry, removeEntry, addWalkupEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, reassignBagTags, computeStandings, computeHandicaps, applyHandicaps, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCourseHoles, setTeamName, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember, type StandingRow } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { SectionTitle, Avatar, Pos, btnGold, card, plural, BackLink, IconSliders, IconShare, IconClock, IconSparkles, IconMoon, IconHeart, IconTag, IconVenus, IconDollar, IconPin, IconDisc, IconEyeOff, IconUsers, IconCalendar, IconTrophy, IconTarget, IconLeaf } from "@/components/leagues/ui";
 
@@ -122,9 +122,11 @@ export default function LeagueEventPage() {
   const [walkDiv, setWalkDiv] = useState("");
   const [addingWalk, setAddingWalk] = useState(false);
   const [hcpNote, setHcpNote] = useState("");
-  const [tab, setTab] = useState<"about" | "scores" | "players" | "chat">("about");
+  const [tab, setTab] = useState<"about" | "scores" | "standings" | "players" | "chat">("about");
   const [nowTs] = useState(() => Date.now());
   const [staff, setStaff] = useState<LeagueMember[]>([]);
+  const [standings, setStandings] = useState<StandingRow[]>([]);
+  const [standingsLoaded, setStandingsLoaded] = useState(false);
   const [pars, setPars] = useState<number[] | null>(null);
   const [teamSize] = useState(2);
   const [messages, setMessages] = useState<EventMessage[]>([]);
@@ -160,6 +162,13 @@ export default function LeagueEventPage() {
     return () => { unsubEntries(); unsubChat(); };
   }, [slug, eventId]);
   useEffect(() => { if (user) resolveCanonicalId(user.uid).then(setCid).catch(() => {}); }, [user]);
+  // Season standings for this event's league — computed on demand when the tab opens.
+  useEffect(() => {
+    if (tab !== "standings" || !league || standingsLoaded) return;
+    computeStandings(league.id, league.settings.bestN)
+      .then((s) => { setStandings(s); setStandingsLoaded(true); })
+      .catch(() => setStandingsLoaded(true));
+  }, [tab, league, standingsLoaded]);
 
   const admin = useMemo(() => !!league && isLeagueAdmin(league, cid), [league, cid]);
   const me = entries.find((e) => e.id === cid);
@@ -592,6 +601,7 @@ export default function LeagueEventPage() {
         {([
           { k: "about" as const, label: event.status === "complete" ? "Recap" : "About", n: 0 },
           ...(scoringKind ? [{ k: "scores" as const, label: "Scores", n: 0 }] : []),
+          ...(scoringKind ? [{ k: "standings" as const, label: "Standings", n: 0 }] : []),
           { k: "players" as const, label: "Players", n: entries.length },
           { k: "chat" as const, label: "Chat", n: messages.length },
         ]).map(({ k, label, n }) => (
@@ -1141,6 +1151,100 @@ export default function LeagueEventPage() {
         )}
       </section>
       )}
+
+      {/* Season standings — mirrors the iOS event Standings tab (podium + your-rank + field) */}
+      {tab === "standings" && (() => {
+        const SILVER = "#BFC7D4", BRONZE = "#C29461", GOLD_HEX = "#E8B560";
+        const photoOf = new Map(entries.filter((e) => e.photo).map((e) => [e.id, e.photo as string]));
+        const rows = standings;
+        const myIdx = cid ? rows.findIndex((r) => r.id === cid) : -1;
+        const ordinal = (n: number) => { const s = ["th", "st", "nd", "rd"], v = n % 100; return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`; };
+        const col = (rank: number, row: StandingRow, tone: string, pedestal: number, avatar: number, title: string, delta: number | null, crowned: boolean) => {
+          const you = cid != null && row.id === cid;
+          const photo = photoOf.get(row.id);
+          return (
+            <div key={rank} className="flex min-w-0 flex-1 flex-col items-center">
+              {crowned && <svg viewBox="0 0 24 24" fill="currentColor" className="mb-1 h-[18px] w-[18px]" style={{ color: GOLD_HEX, filter: "drop-shadow(0 0 8px rgba(232,181,96,0.7))" }}><path d="M3 8l3.6 3L12 4l5.4 7L21 8l-1.7 10.5H4.7L3 8z" /></svg>}
+              <div className="relative grid place-items-center overflow-hidden rounded-full" style={{ width: avatar, height: avatar, boxShadow: `0 0 0 ${crowned ? 3 : 2.5}px ${tone}, 0 0 ${crowned ? 16 : 7}px ${tone}${crowned ? "88" : "44"}` }}>
+                <div className="absolute inset-0 rounded-full bg-white/[0.08]" />
+                <span className="relative font-[family-name:var(--font-heading)] font-bold text-white/70" style={{ fontSize: avatar * 0.4 }}>{row.name.charAt(0).toUpperCase()}</span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {photo && <img src={photo} alt="" className="absolute inset-0 h-full w-full object-cover" />}
+              </div>
+              <div className="mt-1.5 font-mono text-[7px] font-black uppercase tracking-[0.14em]" style={{ color: tone }}>{title}</div>
+              <div className={`mt-0.5 max-w-full truncate px-1 font-[family-name:var(--font-heading)] font-bold ${crowned ? "text-[13px]" : "text-[11px]"} ${you ? "text-[var(--gold)]" : "text-[var(--cream)]"}`}>{row.name}</div>
+              <div className={`font-[family-name:var(--font-heading)] font-black tabular-nums ${crowned ? "text-[26px] leading-tight" : "text-lg"}`} style={{ color: tone }}>{row.points}</div>
+              {delta != null && delta > 0
+                ? <div className="font-[family-name:var(--font-heading)] text-[8px] font-bold tabular-nums text-[var(--cream-38)]">−{delta} back</div>
+                : <div className="font-[family-name:var(--font-heading)] text-[7px] font-black uppercase tracking-[0.2em] text-[var(--cream-38)]">Pts</div>}
+              <div className="mt-1.5 flex w-full max-w-[96px] justify-center rounded-t-lg pt-1.5 font-[family-name:var(--font-heading)] text-base font-black" style={{ height: pedestal, background: `linear-gradient(to bottom, ${tone}66, ${tone}0d)`, color: tone }}>{rank}</div>
+            </div>
+          );
+        };
+        return (
+          <section className="mb-[44px]">
+            <SectionTitle>Season standings</SectionTitle>
+            {!standingsLoaded ? (
+              <div className={`${card} grid place-items-center px-6 py-14 text-sm text-[var(--cream-38)]`}>Loading standings…</div>
+            ) : rows.length === 0 ? (
+              <div className={`${card} grid place-items-center px-6 py-14 text-center`}>
+                <span className="grid h-14 w-14 place-items-center rounded-full bg-[var(--gold-dim)] text-[var(--gold)]"><IconTrophy className="h-6 w-6" /></span>
+                <p className="mt-3 font-[family-name:var(--font-heading)] font-bold text-[var(--cream)]">The podium is empty</p>
+                <p className="mt-1 max-w-xs text-sm text-[var(--cream-38)]">Season points land here once the league&apos;s first event completes.</p>
+              </div>
+            ) : (
+              <>
+                <p className="mb-4 text-[11px] text-[var(--cream-38)]">{plural(rows.length, "player")} · season points settle after every event</p>
+                <div className="relative mb-4 flex items-end justify-center gap-2.5">
+                  <div className="pointer-events-none absolute inset-x-0 top-0 mx-auto h-56 max-w-md" style={{ background: "radial-gradient(220px 180px at 50% 20%, rgba(232,181,96,0.14), transparent 70%)" }} />
+                  {rows.length > 1 && col(2, rows[1], SILVER, 54, 52, "Chasing", rows[0].points - rows[1].points, false)}
+                  {col(1, rows[0], GOLD_HEX, 86, 70, "Season leader", null, true)}
+                  {rows.length > 2 && col(3, rows[2], BRONZE, 38, 46, "In the hunt", rows[0].points - rows[2].points, false)}
+                </div>
+                {myIdx >= 0 && (
+                  <div className="mb-4 flex items-center gap-2.5 rounded-2xl border border-[var(--gold)]/35 px-4 py-3" style={{ background: "linear-gradient(to right, rgba(232,181,96,0.14), var(--card))" }}>
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5 shrink-0 text-[var(--gold)]"><path d="M6 2a1 1 0 0 1 1 1v1h10.6a.5.5 0 0 1 .4.8L16 8.5l2 3.7a.5.5 0 0 1-.4.8H7v9a1 1 0 1 1-2 0V3a1 1 0 0 1 1-1z" /></svg>
+                    <span className="font-[family-name:var(--font-heading)] text-[13px] font-bold text-[var(--cream)]">You&apos;re {ordinal(myIdx + 1)} of {rows.length}</span>
+                    <span className="ml-auto text-[11px] tabular-nums">
+                      {myIdx === 0
+                        ? <span className="font-semibold text-[var(--gold)]">Leading the season</span>
+                        : <span className="text-[var(--cream-60)]">{rows[0].points - rows[myIdx].points} pts off the lead</span>}
+                    </span>
+                  </div>
+                )}
+                {rows.length > 3 && (
+                  <div className="flex flex-col gap-1.5">
+                    {rows.slice(3).map((row, i) => {
+                      const rank = i + 4;
+                      const you = cid != null && row.id === cid;
+                      return (
+                        <div key={row.id} className={`flex items-center gap-2.5 rounded-xl border px-3 py-2.5 ${you ? "border-[var(--gold)]/40 bg-[var(--gold)]/[0.08]" : "border-white/[0.07] bg-[var(--card)]"}`}>
+                          <span className={`w-6 shrink-0 font-[family-name:var(--font-heading)] text-[13px] font-black tabular-nums ${you ? "text-[var(--gold)]" : "text-[var(--cream-38)]"}`}>{rank}</span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className="truncate text-[13.5px] font-semibold text-[var(--cream)]">{row.name}</span>
+                              {you && <span className="rounded-full bg-[var(--gold)] px-1.5 py-0.5 font-[family-name:var(--font-heading)] text-[8px] font-black text-[#141B16]">YOU</span>}
+                            </div>
+                            <div className="mt-0.5 flex items-center gap-2 text-[10px] text-[var(--cream-38)]">
+                              <span>{plural(row.played, "event")}</span>
+                              {row.division && <span>{row.division}</span>}
+                              {row.bestToPar != null && <span className="font-semibold text-[var(--blue)]">best {row.bestToPar === 0 ? "E" : row.bestToPar > 0 ? `+${row.bestToPar}` : row.bestToPar}</span>}
+                            </div>
+                          </div>
+                          <span className="flex items-baseline gap-1">
+                            <span className={`font-[family-name:var(--font-heading)] text-[17px] font-black tabular-nums ${you ? "text-[var(--gold)]" : "text-[var(--blue)]"}`}>{row.points}</span>
+                            <span className="text-[9px] text-[var(--cream-38)]">pts</span>
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+          </section>
+        );
+      })()}
 
       {/* Event chat — two-way, per event (UDisc only has one-way admin blasts) */}
       {tab === "chat" && (
