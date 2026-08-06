@@ -212,7 +212,6 @@ export default function EventWizard() {
     { key: "details", label: "Details", value: evName.trim() || undefined },
     { key: "when", label: "Schedule", value: date ? `${new Date(`${date}T${time}`).toLocaleDateString(undefined, { month: "short", day: "numeric" })}${isLeagueKind && nCount > 1 ? ` · ×${nCount}` : !isLeagueKind && nCount > 1 ? ` · ${nCount} rds` : ""}` : undefined },
     { key: "where", label: "Location", value: placeName || undefined },
-    { key: "details", label: "Setup", value: kind === "clinic" ? `${focus} · ${skillLevel}` : kind === "cleanup" ? (workList.length ? workList.join(", ") : undefined) : undefined },
     { key: "money", label: "Buy-in", value: [Number(buyIn) > 0 ? `$${buyIn}` : null, extras.length ? EVENT_EXTRAS.filter((t) => extras.includes(t.key)).map((t) => t.label).join(", ") : null].filter(Boolean).join(" · ") || undefined },
     { key: "contact", label: "Contact", value: email.trim() || phone.trim() || undefined },
     { key: "logo", label: "Logo", value: logoFile ? "Added" : undefined },
