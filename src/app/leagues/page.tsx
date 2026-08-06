@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
-import { getMyLeagues, getAllLeagues, getLeaguesByIds, getUpcomingEvents, getPastEvents, getLeagueEvents, getEntries, getCourseMeta, isLeagueAdmin, registrationOpen, type CourseMeta, type League, type LeagueEvent, type EventEntry } from "@/lib/leagues";
+import { getMyLeagues, getAllLeagues, getLeaguesByIds, getUpcomingEvents, getLeagueEvents, getEntries, getCourseMeta, isLeagueAdmin, registrationOpen, type CourseMeta, type League, type LeagueEvent, type EventEntry } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { inputCls, Segmented, btnGold, card, cardHover, plural, pluralWord, IconCalendar, IconTrophy, IconTarget, IconLeaf, IconUsers, IconPin, IconUser, IconLiveDot } from "@/components/leagues/ui";
 
@@ -173,6 +173,7 @@ export default function LeaguesPage() {
   const [upcoming, setUpcoming] = useState<LeagueEvent[]>([]);
   const [pastEvents, setPastEvents] = useState<LeagueEvent[]>([]);
   const [pastLoaded, setPastLoaded] = useState(false);
+  const [myPast, setMyPast] = useState(false); // My events sub-toggle: Upcoming | Past
   const [tab, setTab] = useState("Events");
   const [q, setQ] = useState("");
   const [dayFilter, setDayFilter] = useState<string | null>(null);
@@ -186,7 +187,6 @@ export default function LeaguesPage() {
     // Past/results archive — lazy-loaded when the Past tab is first opened.
   }, []);
   useEffect(() => { if (user) { getMyLeagues(user.uid).then(setMine).catch(() => {}); resolveCanonicalId(user.uid).then(setCid).catch(() => {}); } }, [user]);
-  useEffect(() => { if (tab !== "Past" || pastLoaded) return; getPastEvents().then((p) => { setPastEvents(p); setPastLoaded(true); }).catch(() => setPastLoaded(true)); }, [tab, pastLoaded]);
   // Live tile: an event is "live" when its start time has passed, it isn't done,
   // and players have checked in. Real windows only; no tile otherwise.
   useEffect(() => {
@@ -292,6 +292,17 @@ export default function LeaguesPage() {
     getLeaguesByIds(memberLeagueIds).then((ls) => { if (!dead) setMemberLeagues(ls); }).catch(() => {});
     return () => { dead = true; };
   }, [tab, upcoming, signedUp, mine]);
+  // My events → Past: completed events from the leagues you run or belong to (lazy).
+  useEffect(() => {
+    if (tab !== "My events" || !myPast || pastLoaded) return;
+    const ids = [...new Set([...mine.map((l) => l.id), ...memberLeagues.map((l) => l.id)])];
+    if (ids.length === 0) { setPastLoaded(true); return; }
+    Promise.all(ids.map((id) => getLeagueEvents(id).catch(() => [] as LeagueEvent[]))).then((lists) => {
+      const seen = new Set<string>();
+      const past = lists.flat().filter((e) => e.status === "complete" && !seen.has(e.id) && seen.add(e.id)).sort((a, b) => b.date - a.date);
+      setPastEvents(past); setPastLoaded(true);
+    }).catch(() => setPastLoaded(true));
+  }, [tab, myPast, pastLoaded, mine, memberLeagues]);
   // Private events never enter the public feed, so pull them for leagues you run.
   const [privateMine, setPrivateMine] = useState<LeagueEvent[]>([]);
   useEffect(() => {
@@ -308,19 +319,20 @@ export default function LeaguesPage() {
 
   const needle = q.trim().toLowerCase();
   // Public feed hides events past their registration close; entrants/admins keep them under My events.
-  const tabEvents = tab === "Past"
-    ? pastEvents
-    : tab === "My events"
-    ? [...upcoming.filter((e) => adminLeagueIds.has(e.leagueId) || signedUp.has(e.id)), ...privateMine]
-        .filter((e) => (e.kind ?? "league") !== "league")
-        .sort((a, b) => a.date - b.date)
+  const myPastView = tab === "My events" && myPast;
+  const tabEvents = tab === "My events"
+    ? (myPast
+        ? pastEvents
+        : [...upcoming.filter((e) => adminLeagueIds.has(e.leagueId) || signedUp.has(e.id)), ...privateMine]
+            .filter((e) => (e.kind ?? "league") !== "league")
+            .sort((a, b) => a.date - b.date))
     : upcoming.filter((e) => registrationOpen(e));
   const shownEvents = tabEvents.filter((e) =>
     (!dayFilter || dayKey(e.date) === dayFilter)
     && (kindFilter === "all" || (e.kind ?? "league") === kindFilter)
     && (!needle || `${e.name} ${e.leagueName} ${e.courseName ?? ""}`.toLowerCase().includes(needle))
     && (!userLoc || (milesTo(e) ?? Infinity) <= radiusMi)
-  ).sort((a, b) => tab === "Past" ? b.date - a.date : ((userLoc ? (milesTo(a) ?? Infinity) - (milesTo(b) ?? Infinity) : 0) || a.date - b.date));
+  ).sort((a, b) => myPastView ? b.date - a.date : ((userLoc ? (milesTo(a) ?? Infinity) - (milesTo(b) ?? Infinity) : 0) || a.date - b.date));
 
   const fmtTime = (ms: number) => new Date(ms).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
   const weekday = (ms: number) => new Date(ms).toLocaleDateString(undefined, { weekday: "short" });
@@ -335,7 +347,7 @@ export default function LeaguesPage() {
           <p className="mt-1 text-sm text-[var(--cream-60)]">Leagues, weeklies, and tournaments near you.</p>
         </div>
         <div className="flex items-center gap-4">
-          <span className="font-mono text-xs uppercase tracking-[0.1em] text-[var(--cream-38)]">{tab === "Live now" ? `${liveEvents.length} live` : tab === "Past" ? `${shownEvents.length} completed` : `${shownEvents.length} upcoming`}</span>
+          <span className="font-mono text-xs uppercase tracking-[0.1em] text-[var(--cream-38)]">{tab === "Live now" ? `${liveEvents.length} live` : myPastView ? `${shownEvents.length} completed` : `${shownEvents.length} upcoming`}</span>
           {user ? (
             <Link href="/leagues/new" className={`${btnGold} inline-flex h-11 items-center`}>Create an event</Link>
           ) : (
@@ -346,7 +358,7 @@ export default function LeaguesPage() {
 
       {/* Controls — every control 44px, no hairline touches this row */}
       <section className="mb-6 mt-6 flex flex-wrap items-center gap-3">
-        <Segmented tall options={["Events", "My events", "Live now", "Past"]} icons={{ Events: IconCalendar, "My events": IconUser, "Live now": IconLiveDot, Past: IconTrophy }} value={tab} onChange={(t) => { setTab(t); setDayFilter(null); }} />
+        <Segmented tall options={["Events", "My events", "Live now"]} icons={{ Events: IconCalendar, "My events": IconUser, "Live now": IconLiveDot }} value={tab} onChange={(t) => { setTab(t); setDayFilter(null); }} />
         {tab !== "Live now" && <div className="relative min-w-[220px] flex-1">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--sage-dim)]"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search events, leagues, or courses" className={`${inputCls} h-11 pl-11`} />
@@ -478,11 +490,18 @@ export default function LeaguesPage() {
                 </div>
               </Link>
             )}
+            {tab === "My events" && (
+              <div className="mb-4 inline-flex rounded-full border border-[var(--hair-strong)] bg-[var(--card)] p-0.5">
+                {[["Upcoming", false], ["Past", true]].map(([label, val]) => (
+                  <button key={label as string} onClick={() => setMyPast(val as boolean)} className={`rounded-full px-4 py-1.5 text-xs font-bold transition-colors ${myPast === val ? "bg-[var(--gold)] text-[#16221b]" : "text-[var(--cream-60)] hover:text-[var(--cream)]"}`}>{label as string}</button>
+                ))}
+              </div>
+            )}
             {shownEvents.length === 0 ? (
               <div className={`${card} grid place-items-center px-6 py-16 text-center`}>
                 <span className="grid h-14 w-14 place-items-center rounded-full bg-[var(--card-raised)] text-[var(--blue)]"><IconCalendar className="h-6 w-6" /></span>
-                <p className="mt-4 font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">{tab === "Past" ? (pastLoaded ? "No past results yet" : "Loading past events…") : tab === "My events" ? (user ? "Nothing on your calendar" : "Sign in to see your events") : upcoming.length === 0 ? "No upcoming events" : "Nothing matches"}</p>
-                <p className="mt-1 max-w-xs text-sm text-[var(--sage-dim)]">{tab === "Past" ? "Completed events land here — tap one to see the results." : tab === "My events" ? (user ? "Events you run or are checked into show up here." : "Your check-ins and leagues land here.") : upcoming.length === 0 ? "Create one in about a minute." : "Clear the search or day filter."}</p>
+                <p className="mt-4 font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">{myPastView ? (pastLoaded ? "No past results yet" : "Loading past events…") : tab === "My events" ? (user ? "Nothing on your calendar" : "Sign in to see your events") : upcoming.length === 0 ? "No upcoming events" : "Nothing matches"}</p>
+                <p className="mt-1 max-w-xs text-sm text-[var(--sage-dim)]">{myPastView ? "Completed events from your leagues land here — tap one for the results." : tab === "My events" ? (user ? "Events you run or are checked into show up here." : "Your check-ins and leagues land here.") : upcoming.length === 0 ? "Create one in about a minute." : "Clear the search or day filter."}</p>
               </div>
             ) : (
               <div className="grid gap-3">
