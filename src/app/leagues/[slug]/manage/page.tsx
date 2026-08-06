@@ -45,6 +45,8 @@ export default function LeagueManagePage() {
   // Settings drafts
   const [divisionsDraft, setDivisionsDraft] = useState("");
   const [bestNDraft, setBestNDraft] = useState("");
+  const [modelDraft, setModelDraft] = useState<"placement" | "matchplay">("placement");
+  const [viewDraft, setViewDraft] = useState<"gross" | "net" | "both">("gross");
   const [descDraft, setDescDraft] = useState("");
   const [hcpPctDraft, setHcpPctDraft] = useState("");
   const [hcpCapDraft, setHcpCapDraft] = useState("");
@@ -73,6 +75,8 @@ export default function LeagueManagePage() {
         computeStandings(l.id, l.settings.bestN).then(setStandings).catch(() => {});
         setDivisionsDraft((l.settings.divisions ?? []).join(", "));
         setBestNDraft(l.settings.bestN ? String(l.settings.bestN) : "");
+        setModelDraft(l.settings.scoring?.model ?? "placement");
+        setViewDraft(l.settings.scoring?.view ?? "gross");
         setDescDraft(l.settings.description);
         setHcpPctDraft(l.settings.handicapPercent ? String(l.settings.handicapPercent) : "");
         setHcpCapDraft(l.settings.handicapCap ? String(l.settings.handicapCap) : "");
@@ -107,7 +111,8 @@ export default function LeagueManagePage() {
       const bestN = Number(bestNDraft) > 0 ? Math.floor(Number(bestNDraft)) : undefined;
       const handicapPercent = Number(hcpPctDraft) > 0 ? Math.min(150, Math.floor(Number(hcpPctDraft))) : undefined;
       const handicapCap = Number(hcpCapDraft) > 0 ? Math.floor(Number(hcpCapDraft)) : undefined;
-      const settings = { ...league.settings, format: formatDraft, startFormat: startDraft, divisions: divisions.length ? divisions : undefined, bestN, handicapPercent, handicapCap, bagTags: bagTagsDraft, description: descDraft.trim() };
+      const scoring = { ...(league.settings.scoring ?? {}), model: modelDraft, view: viewDraft, aggregate: (bestN ? "bestN" : "sum") as "sum" | "bestN" };
+      const settings = { ...league.settings, format: formatDraft, startFormat: startDraft, divisions: divisions.length ? divisions : undefined, bestN, handicapPercent, handicapCap, bagTags: bagTagsDraft, description: descDraft.trim(), scoring };
       await updateLeagueSettings(league.id, settings);
       const acePot = acePotDraft.trim() !== "" && Number(acePotDraft) >= 0 ? Number(acePotDraft) : undefined;
       if (acePot != null && acePot !== league.acePotBalance) await setAcePot(league.id, acePot);
@@ -378,6 +383,14 @@ export default function LeagueManagePage() {
 
           {section === "settings" && (
             <div className="grid gap-6">
+            <div className={`${card} p-6`}>
+              <h3 className="mb-1 font-[family-name:var(--font-heading)] text-[15px] font-bold text-[var(--cream)]">Scoring</h3>
+              <p className="mb-5 text-xs text-[var(--sage-dim)]">How events turn into your season standings.</p>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div><FieldLabel>Scoring model</FieldLabel><Segmented options={["Placement", "Match play"]} value={modelDraft === "matchplay" ? "Match play" : "Placement"} onChange={(v) => setModelDraft(v === "Match play" ? "matchplay" : "placement")} /><p className="mt-1.5 text-[11px] text-[var(--sage-dim)]">{modelDraft === "matchplay" ? "Head-to-head: win / tie / loss → points, on a weekly schedule." : "Finish position → points down the field."}</p></div>
+                <div><FieldLabel>Standings shown</FieldLabel><Segmented options={["Gross", "Net", "Both"]} value={viewDraft === "net" ? "Net" : viewDraft === "both" ? "Both" : "Gross"} onChange={(v) => setViewDraft(v.toLowerCase() as "gross" | "net" | "both")} /><p className="mt-1.5 text-[11px] text-[var(--sage-dim)]">{viewDraft === "both" ? "Two races — a gross champ and a net (handicap) champ." : viewDraft === "net" ? "Handicap-adjusted (net) decides the season." : "Raw score decides the season."}</p></div>
+              </div>
+            </div>
             <div className={`${card} p-6`}>
               <h3 className="mb-5 font-[family-name:var(--font-heading)] text-[15px] font-bold text-[var(--cream)]">Brand</h3>
               <div className="grid gap-5">
