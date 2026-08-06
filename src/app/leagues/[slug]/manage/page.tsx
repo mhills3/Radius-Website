@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRole, setLeagueLogo, isLeagueAdmin, subscribeLeagueTeams, createLeagueTeam, updateLeagueTeam, deleteLeagueTeam, LEAGUE_FORMATS, START_FORMATS, type League, type LeagueEvent, type LeagueMember, type StandingRow, type LeagueTeam } from "@/lib/leagues";
+import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRole, setLeagueLogo, isLeagueAdmin, subscribeLeagueTeams, createLeagueTeam, updateLeagueTeam, deleteLeagueTeam, subscribeLeagueMatches, generateSchedule, setMatchResult, computeMatchStandings, LEAGUE_FORMATS, START_FORMATS, type League, type LeagueEvent, type LeagueMember, type StandingRow, type LeagueTeam, type LeagueMatch } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { storage } from "@/lib/firebase";
 import { getDownloadURL, ref as storageRef, uploadBytes } from "firebase/storage";
@@ -13,17 +13,7 @@ import { inputCls, FieldLabel, Segmented, Avatar, Pos, btnGold, btnGhost, card, 
 // ─── League tools: the director console (UDisc "League tools" equivalent).
 // Persistent sidebar, dashboard-first, every admin control in one place.
 
-type Section = "dashboard" | "members" | "teams" | "events" | "standings" | "settings" | "quicklink";
-
-const NAV: { key: Section; label: string }[] = [
-  { key: "dashboard", label: "League dashboard" },
-  { key: "members", label: "Members" },
-  { key: "teams", label: "Teams" },
-  { key: "events", label: "Events" },
-  { key: "standings", label: "Standings" },
-  { key: "settings", label: "Settings" },
-  { key: "quicklink", label: "Quick link" },
-];
+type Section = "dashboard" | "members" | "teams" | "matchplay" | "events" | "standings" | "settings" | "quicklink";
 
 const fmtDate = (ms: number) => new Date(ms).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 const fmtToPar = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`);
@@ -36,6 +26,7 @@ export default function LeagueManagePage() {
   const [events, setEvents] = useState<LeagueEvent[]>([]);
   const [members, setMembers] = useState<LeagueMember[]>([]);
   const [teams, setTeams] = useState<LeagueTeam[]>([]);
+  const [matches, setMatches] = useState<LeagueMatch[]>([]);
   const [standings, setStandings] = useState<StandingRow[]>([]);
   const [cid, setCid] = useState<string | null>(null);
   const [section, setSection] = useState<Section>("dashboard");
@@ -89,12 +80,25 @@ export default function LeagueManagePage() {
   }, [slug]);
   useEffect(() => { if (user) resolveCanonicalId(user.uid).then(setCid).catch(() => {}); }, [user]);
   useEffect(() => { if (!league?.id) return; return subscribeLeagueTeams(league.id, setTeams); }, [league?.id]);
+  useEffect(() => { if (!league?.id) return; return subscribeLeagueMatches(league.id, setMatches); }, [league?.id]);
 
   const admin = useMemo(() => !!league && isLeagueAdmin(league, cid), [league, cid]);
   const [now] = useState(() => Date.now());
   const upcoming = events.filter((e) => e.status !== "complete" && e.status !== "cancelled" && e.date > now - 12 * 3600_000);
   const past = events.filter((e) => !upcoming.includes(e)).reverse();
   const photoOf = useMemo(() => new Map(members.map((m) => [m.id, m.photo])), [members]);
+
+  const isMatchPlay = league?.settings.scoring?.model === "matchplay";
+  const nav: { key: Section; label: string }[] = [
+    { key: "dashboard", label: "League dashboard" },
+    { key: "members", label: "Members" },
+    { key: "teams", label: "Teams" },
+    ...(isMatchPlay ? [{ key: "matchplay" as const, label: "Match play" }] : []),
+    { key: "events", label: "Events" },
+    { key: "standings", label: "Standings" },
+    { key: "settings", label: "Settings" },
+    { key: "quicklink", label: "Quick link" },
+  ];
 
   const checklist = league ? [
     { label: "League settings", done: !!league.settings.description || (league.settings.divisions ?? []).length > 1, hint: "Description, format, and defaults", go: "settings" as Section },
@@ -179,7 +183,7 @@ export default function LeagueManagePage() {
       <div className="grid gap-8 pt-8 lg:grid-cols-[220px_1fr]">
         {/* Sidebar */}
         <nav className="flex gap-1 overflow-x-auto lg:sticky lg:top-6 lg:flex-col lg:self-start">
-          {NAV.map((n) => (
+          {nav.map((n) => (
             <button
               key={n.key}
               onClick={() => setSection(n.key)}
@@ -333,6 +337,58 @@ export default function LeagueManagePage() {
                     {unassigned.length === 0 && <p className="text-sm text-[var(--sage-dim)]">Everyone&apos;s on a team.</p>}
                   </div>
                 </div>
+              </div>
+            );
+          })()}
+
+          {section === "matchplay" && (() => {
+            const sides = teams.length > 0 ? teams.map((t) => ({ id: t.id, name: t.name })) : members.map((m) => ({ id: m.id, name: m.name }));
+            const usingTeams = teams.length > 0;
+            const reg = matches.filter((m) => !m.bracket);
+            const rounds = [...new Set(reg.map((m) => m.round))].sort((a, b) => a - b);
+            const mp = computeMatchStandings(matches, league.settings.scoring);
+            return (
+              <div className="space-y-5">
+                <div className={`${card} p-5`}>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h2 className="font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">Match-play schedule</h2>
+                      <p className="mt-1 text-xs text-[var(--sage-dim)]">Round-robin across your {usingTeams ? `${teams.length} teams` : `${members.length} players`} — everyone plays everyone once.</p>
+                    </div>
+                    <button onClick={async () => { if (sides.length < 2 || busy) return; setBusy(true); try { await generateSchedule(league.id, sides); } finally { setBusy(false); } }} disabled={busy || sides.length < 2} className={`${btnGold} !px-4 !py-2 !text-sm`}>{reg.length > 0 ? "Regenerate" : "Generate schedule"}</button>
+                  </div>
+                  {sides.length < 2 && <p className="mt-2 text-xs text-[#f08c8c]">Add at least 2 {usingTeams ? "teams (in the Teams tab)" : "members"} first.</p>}
+                </div>
+
+                {rounds.map((r) => (
+                  <div key={r} className={`${card} p-4`}>
+                    <h3 className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--gold)]">Week {r}</h3>
+                    <div className="space-y-2">
+                      {reg.filter((m) => m.round === r).map((m) => (
+                        <div key={m.id} className="flex items-center gap-2 text-sm">
+                          <button onClick={() => setMatchResult(league.id, m.id, m.winnerId === m.sideAId ? null : m.sideAId)} className={`min-w-0 flex-1 truncate rounded-lg px-3 py-2 text-right transition-colors ${m.winnerId === m.sideAId ? "bg-[var(--gold)]/15 font-bold text-[var(--gold)]" : "bg-white/[0.05] text-[var(--cream)] hover:bg-white/[0.1]"}`}>{m.sideAName}</button>
+                          <button onClick={() => setMatchResult(league.id, m.id, m.winnerId === "tie" ? null : "tie")} className={`shrink-0 rounded-lg px-2.5 py-2 text-xs font-bold transition-colors ${m.winnerId === "tie" ? "bg-white/[0.15] text-[var(--cream)]" : "text-[var(--sage-dim)] hover:text-[var(--cream)]"}`}>tie</button>
+                          <button onClick={() => setMatchResult(league.id, m.id, m.winnerId === m.sideBId ? null : m.sideBId)} className={`min-w-0 flex-1 truncate rounded-lg px-3 py-2 text-left transition-colors ${m.winnerId === m.sideBId ? "bg-[var(--gold)]/15 font-bold text-[var(--gold)]" : "bg-white/[0.05] text-[var(--cream)] hover:bg-white/[0.1]"}`}>{m.sideBName}</button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                {reg.length === 0 && <div className={`${card} p-6 text-sm text-[var(--sage-dim)]`}>No schedule yet — generate one above once you&apos;ve got your {usingTeams ? "teams" : "players"} set.</div>}
+
+                {mp.length > 0 && (
+                  <div className={`${card} overflow-hidden`}>
+                    <div className="border-b border-white/[0.05] px-4 py-3 text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--gold)]">Match standings</div>
+                    {mp.map((row, i) => (
+                      <div key={row.id} className="flex items-center gap-3 border-b border-white/[0.05] px-4 py-2.5 text-sm last:border-b-0">
+                        <span className="w-6 font-mono text-xs text-[var(--sage-dim)]">{i + 1}</span>
+                        <span className="min-w-0 flex-1 truncate font-semibold text-[var(--cream)]">{row.name}</span>
+                        <span className="font-mono text-xs text-[var(--sage-dim)]">{row.wins}-{row.ties}-{row.losses}</span>
+                        <span className="w-10 text-right font-mono font-bold text-[var(--gold)]">{row.points}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })()}
