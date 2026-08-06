@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { EVENT_EXTRAS, registrationOpen, getLeagueBySlug, getLeagueMembers, getEvent, getCards, checkIn, updateEntry, removeEntry, addWalkupEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, reassignBagTags, computeStandings, computeSeasonStandings, computeHandicaps, applyHandicaps, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCourseHoles, setTeamName, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember, type StandingRow, type SeasonStandings } from "@/lib/leagues";
+import { EVENT_EXTRAS, registrationOpen, getLeagueBySlug, getLeagueMembers, setPartnerRequest, getEvent, getCards, checkIn, updateEntry, removeEntry, addWalkupEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, reassignBagTags, computeStandings, computeSeasonStandings, computeHandicaps, applyHandicaps, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCourseHoles, setTeamName, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember, type StandingRow, type SeasonStandings } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { SectionTitle, Avatar, Pos, btnGold, card, plural, BackLink, IconSliders, IconShare, IconClock, IconSparkles, IconMoon, IconHeart, IconTag, IconVenus, IconDollar, IconPin, IconDisc, IconEyeOff, IconUsers, IconCalendar, IconTrophy, IconTarget, IconLeaf } from "@/components/leagues/ui";
 
@@ -128,6 +128,9 @@ export default function LeagueEventPage() {
   const [season, setSeason] = useState<SeasonStandings | null>(null);
   const [standingsLoaded, setStandingsLoaded] = useState(false);
   const [stView, setStView] = useState<"gross" | "net" | "team">("gross");
+  const [partnerReq, setPartnerReq] = useState("");
+  const [partnerSaved, setPartnerSaved] = useState(false);
+  const [partnerLoaded, setPartnerLoaded] = useState(false);
   const [pars, setPars] = useState<number[] | null>(null);
   const [teamSize] = useState(2);
   const [messages, setMessages] = useState<EventMessage[]>([]);
@@ -163,6 +166,16 @@ export default function LeagueEventPage() {
     return () => { unsubEntries(); unsubChat(); };
   }, [slug, eventId]);
   useEffect(() => { if (user) resolveCanonicalId(user.uid).then(setCid).catch(() => {}); }, [user]);
+  // Prefill the player's existing season partner request (teams/match-play leagues).
+  useEffect(() => {
+    if (!league?.id || !cid || partnerLoaded) return;
+    getLeagueMembers(league.id).then((ms) => { setPartnerReq(ms.find((m) => m.id === cid)?.partnerRequest ?? ""); setPartnerLoaded(true); }).catch(() => setPartnerLoaded(true));
+  }, [league?.id, cid, partnerLoaded]);
+  const savePartner = async () => {
+    if (!league || !cid) return;
+    await setPartnerRequest(league.id, cid, partnerReq);
+    setPartnerSaved(true); setTimeout(() => setPartnerSaved(false), 2000);
+  };
   // Season standings for this event's league — computed on demand when the tab opens.
   useEffect(() => {
     if (tab !== "standings" || !league || standingsLoaded) return;
@@ -602,6 +615,16 @@ export default function LeagueEventPage() {
           );
         })()}
         {hcpNote && <p className="mt-3 text-xs text-[var(--gold)]">{hcpNote}</p>}
+
+        {/* Season partner request — teams/match-play leagues. Player requests; director owns the pairings. */}
+        {me && (league.settings.format === "Doubles" || league.settings.format === "Teams" || league.settings.scoring?.model === "matchplay") && (
+          <div className={`${card} mb-6 mt-5 flex flex-wrap items-center gap-3 p-4`}>
+            <span className="text-[13px] font-bold text-[var(--cream)]">Season partner</span>
+            <input value={partnerReq} onChange={(e) => setPartnerReq(e.target.value)} onBlur={savePartner} placeholder="Who would you like to partner with?" className="min-w-[180px] flex-1 rounded-lg border border-white/10 bg-white/[0.05] px-3 py-2 text-sm text-[var(--cream)] outline-none transition-colors focus:border-[var(--gold)]" />
+            <button onClick={savePartner} className={`${btnGold} !px-4 !py-2 !text-sm`}>{partnerSaved ? "Saved ✓" : "Save"}</button>
+            <p className="w-full text-[11px] text-[var(--cream-38)]">Just a request — your director sets the final teams.</p>
+          </div>
+        )}
       {/* Tabs — same tab, same route; first label reads Recap once the event completes */}
       <nav className="mb-9 mt-1.5 flex gap-[34px] border-b border-[var(--hair)]">
         {([
