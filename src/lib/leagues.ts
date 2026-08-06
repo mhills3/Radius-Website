@@ -547,6 +547,43 @@ export function computeMatchStandings(matches: LeagueMatch[], scoring?: LeagueSc
     .sort((a, b) => b.points - a.points || b.wins - a.wins);
 }
 
+/** Director: seed a single-elimination playoff bracket from the top seeds (best first). Uses the
+ *  largest power of two that fits (≤ size, ≤ seeds), pairs 1×N, 2×(N−1)… as round-1 bracket matches.
+ *  Replaces any existing bracket. */
+export async function generateBracket(leagueId: string, seeds: { id: string; name: string }[], size = 8): Promise<number> {
+  let bs = 2; while (bs * 2 <= Math.min(size, seeds.length)) bs *= 2;
+  if (bs > seeds.length) bs = 2;
+  const top = seeds.slice(0, bs);
+  const existing = await getLeagueMatches(leagueId);
+  await Promise.all(existing.filter((m) => m.bracket).map((m) => deleteDoc(doc(db, "leagues", leagueId, "matches", m.id))));
+  const writes: Promise<void>[] = [];
+  for (let i = 0; i < bs / 2; i++) {
+    const a = top[i], b = top[bs - 1 - i], id = freshId();
+    writes.push(setDoc(doc(db, "leagues", leagueId, "matches", id), { round: 1, slot: i, bracket: true, sideAId: a.id, sideBId: b.id, sideAName: a.name, sideBName: b.name }));
+  }
+  await Promise.all(writes);
+  return bs;
+}
+
+/** Director: build the next bracket round from the current round's winners (must all be decided,
+ *  no ties). Returns false if the bracket is already at the final or the round isn't complete. */
+export async function advanceBracket(leagueId: string): Promise<boolean> {
+  const br = (await getLeagueMatches(leagueId)).filter((m) => m.bracket);
+  if (!br.length) return false;
+  const maxRound = Math.max(...br.map((m) => m.round));
+  const cur = br.filter((m) => m.round === maxRound).sort((a, b) => (a.slot ?? 0) - (b.slot ?? 0));
+  if (cur.length <= 1) return false; // final already exists
+  if (cur.some((m) => !m.winnerId || m.winnerId === "tie")) return false; // not all decided
+  const winners = cur.map((m) => (m.winnerId === m.sideAId ? { id: m.sideAId, name: m.sideAName } : { id: m.sideBId, name: m.sideBName }));
+  const writes: Promise<void>[] = [];
+  for (let i = 0; i < winners.length; i += 2) {
+    const a = winners[i], b = winners[i + 1], id = freshId();
+    writes.push(setDoc(doc(db, "leagues", leagueId, "matches", id), { round: maxRound + 1, slot: i / 2, bracket: true, sideAId: a.id, sideBId: b.id, sideAName: a.name, sideBName: b.name }));
+  }
+  await Promise.all(writes);
+  return true;
+}
+
 // ---- Events ----
 
 /** Create one event per date (recurring = the caller passes every date in the season). */

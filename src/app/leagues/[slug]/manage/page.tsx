@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRole, setLeagueLogo, isLeagueAdmin, subscribeLeagueTeams, createLeagueTeam, updateLeagueTeam, deleteLeagueTeam, subscribeLeagueMatches, generateSchedule, setMatchResult, computeMatchStandings, LEAGUE_FORMATS, START_FORMATS, type League, type LeagueEvent, type LeagueMember, type StandingRow, type LeagueTeam, type LeagueMatch } from "@/lib/leagues";
+import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRole, setLeagueLogo, isLeagueAdmin, subscribeLeagueTeams, createLeagueTeam, updateLeagueTeam, deleteLeagueTeam, subscribeLeagueMatches, generateSchedule, setMatchResult, computeMatchStandings, generateBracket, advanceBracket, LEAGUE_FORMATS, START_FORMATS, type League, type LeagueEvent, type LeagueMember, type StandingRow, type LeagueTeam, type LeagueMatch } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { storage } from "@/lib/firebase";
 import { getDownloadURL, ref as storageRef, uploadBytes } from "firebase/storage";
@@ -389,6 +389,52 @@ export default function LeagueManagePage() {
                     ))}
                   </div>
                 )}
+
+                {/* Playoff bracket */}
+                {(() => {
+                  const bracket = matches.filter((m) => m.bracket);
+                  const brRounds = [...new Set(bracket.map((m) => m.round))].sort((a, b) => a - b);
+                  const maxR = brRounds.length ? brRounds[brRounds.length - 1] : 0;
+                  const finalMatch = bracket.find((m) => m.round === maxR && [...new Set(bracket.filter((x) => x.round === maxR).map((x) => x.id))].length === 1);
+                  const champ = finalMatch?.winnerId && finalMatch.winnerId !== "tie" ? (finalMatch.winnerId === finalMatch.sideAId ? finalMatch.sideAName : finalMatch.sideBName) : null;
+                  const curRound = bracket.filter((m) => m.round === maxR);
+                  const canAdvance = curRound.length > 1 && curRound.every((m) => m.winnerId && m.winnerId !== "tie");
+                  return (
+                    <div className={`${card} p-4`}>
+                      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                        <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--gold)]">Playoff bracket</h3>
+                        <div className="flex items-center gap-2">
+                          {canAdvance && <button onClick={() => advanceBracket(league.id)} className={`${btnGhost} !px-3 !py-1.5 !text-xs`}>Advance round →</button>}
+                          <button onClick={() => mp.length >= 2 && generateBracket(league.id, mp.map((r) => ({ id: r.id, name: r.name })))} disabled={mp.length < 2} className={`${btnGold} !px-3 !py-1.5 !text-xs`}>{bracket.length ? "Reseed" : "Seed bracket"}</button>
+                        </div>
+                      </div>
+                      {bracket.length === 0 ? (
+                        <p className="text-sm text-[var(--sage-dim)]">Seed the top finishers into a single-elimination bracket once the regular season wraps.</p>
+                      ) : (
+                        <>
+                          {champ && <div className="mb-3 rounded-xl border border-[var(--gold)]/40 bg-[var(--gold)]/[0.1] px-4 py-2.5 text-center font-[family-name:var(--font-heading)] font-bold text-[var(--gold)]">🏆 {champ} — champion</div>}
+                          <div className="flex gap-4 overflow-x-auto pb-2">
+                            {brRounds.map((r) => (
+                              <div key={r} className="flex min-w-[190px] flex-col justify-around gap-3">
+                                <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--sage-dim)]">{r === maxR && curRound.length === 1 ? "Final" : `Round ${r}`}</div>
+                                {bracket.filter((m) => m.round === r).sort((a, b) => (a.slot ?? 0) - (b.slot ?? 0)).map((m) => (
+                                  <div key={m.id} className="overflow-hidden rounded-lg border border-white/[0.07]">
+                                    {[["A", m.sideAId, m.sideAName], ["B", m.sideBId, m.sideBName]].map(([k, sid, sname]) => (
+                                      <button key={k} onClick={() => setMatchResult(league.id, m.id, m.winnerId === sid ? null : (sid as string))} className={`flex w-full items-center justify-between gap-2 px-2.5 py-2 text-xs transition-colors ${m.winnerId === sid ? "bg-[var(--gold)]/15 font-bold text-[var(--gold)]" : "text-[var(--cream)] hover:bg-white/[0.05]"} ${k === "A" ? "border-b border-white/[0.06]" : ""}`}>
+                                        <span className="min-w-0 truncate">{sname as string}</span>
+                                        {m.winnerId === sid && <span>✓</span>}
+                                      </button>
+                                    ))}
+                                  </div>
+                                ))}
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             );
           })()}
