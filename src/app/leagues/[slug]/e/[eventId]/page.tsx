@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { EVENT_EXTRAS, registrationOpen, getLeagueBySlug, getLeagueMembers, getEvent, getCards, checkIn, updateEntry, removeEntry, addWalkupEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, reassignBagTags, computeStandings, computeHandicaps, applyHandicaps, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCourseHoles, setTeamName, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember, type StandingRow } from "@/lib/leagues";
+import { EVENT_EXTRAS, registrationOpen, getLeagueBySlug, getLeagueMembers, getEvent, getCards, checkIn, updateEntry, removeEntry, addWalkupEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, reassignBagTags, computeStandings, computeSeasonStandings, computeHandicaps, applyHandicaps, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCourseHoles, setTeamName, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember, type StandingRow, type SeasonStandings } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { SectionTitle, Avatar, Pos, btnGold, card, plural, BackLink, IconSliders, IconShare, IconClock, IconSparkles, IconMoon, IconHeart, IconTag, IconVenus, IconDollar, IconPin, IconDisc, IconEyeOff, IconUsers, IconCalendar, IconTrophy, IconTarget, IconLeaf } from "@/components/leagues/ui";
 
@@ -125,8 +125,9 @@ export default function LeagueEventPage() {
   const [tab, setTab] = useState<"about" | "scores" | "standings" | "players" | "chat">("about");
   const [nowTs] = useState(() => Date.now());
   const [staff, setStaff] = useState<LeagueMember[]>([]);
-  const [standings, setStandings] = useState<StandingRow[]>([]);
+  const [season, setSeason] = useState<SeasonStandings | null>(null);
   const [standingsLoaded, setStandingsLoaded] = useState(false);
+  const [stView, setStView] = useState<"gross" | "net" | "team">("gross");
   const [pars, setPars] = useState<number[] | null>(null);
   const [teamSize] = useState(2);
   const [messages, setMessages] = useState<EventMessage[]>([]);
@@ -165,8 +166,13 @@ export default function LeagueEventPage() {
   // Season standings for this event's league — computed on demand when the tab opens.
   useEffect(() => {
     if (tab !== "standings" || !league || standingsLoaded) return;
-    computeStandings(league.id, league.settings.bestN)
-      .then((s) => { setStandings(s); setStandingsLoaded(true); })
+    computeSeasonStandings(league)
+      .then((s) => {
+        setSeason(s);
+        setStandingsLoaded(true);
+        // Default the view to the league's preference (net if net-only), falling back to gross.
+        setStView(league.settings.scoring?.view === "net" ? "net" : "gross");
+      })
       .catch(() => setStandingsLoaded(true));
   }, [tab, league, standingsLoaded]);
 
@@ -1156,8 +1162,14 @@ export default function LeagueEventPage() {
       {tab === "standings" && (() => {
         const SILVER = "#BFC7D4", BRONZE = "#C29461", GOLD_HEX = "#E8B560";
         const photoOf = new Map(entries.filter((e) => e.photo).map((e) => [e.id, e.photo as string]));
-        const rows = standings;
-        const myIdx = cid ? rows.findIndex((r) => r.id === cid) : -1;
+        const g = season?.gross ?? [], nt = season?.net ?? [], teamRows = season?.teams ?? [];
+        const view = league?.settings.scoring?.view; // "gross" | "net" | "both" | undefined
+        const showNet = view === "net" || view === "both";
+        const showTeam = teamRows.length > 0;
+        const eff: "gross" | "net" | "team" = (stView === "team" && !showTeam) || (stView === "net" && !showNet) ? "gross" : stView;
+        const rows: StandingRow[] = eff === "team" ? teamRows.map((t) => ({ id: t.id, name: t.name, played: t.played, points: t.points })) : eff === "net" ? nt : g;
+        const viewPills = [{ k: "gross" as const, label: "Gross" }, ...(showNet ? [{ k: "net" as const, label: "Net" }] : []), ...(showTeam ? [{ k: "team" as const, label: "Teams" }] : [])];
+        const myIdx = cid && eff !== "team" ? rows.findIndex((r) => r.id === cid) : -1;
         const ordinal = (n: number) => { const s = ["th", "st", "nd", "rd"], v = n % 100; return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`; };
         const col = (rank: number, row: StandingRow, tone: string, pedestal: number, avatar: number, title: string, delta: number | null, crowned: boolean) => {
           const you = cid != null && row.id === cid;
@@ -1183,7 +1195,13 @@ export default function LeagueEventPage() {
         };
         return (
           <section className="mb-[44px]">
-            <SectionTitle>Season standings</SectionTitle>
+            <SectionTitle right={viewPills.length > 1 ? (
+              <div className="inline-flex rounded-full border border-[var(--hair-strong)] bg-[var(--card)] p-0.5">
+                {viewPills.map((v) => (
+                  <button key={v.k} onClick={() => setStView(v.k)} className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide transition-colors ${eff === v.k ? "bg-[var(--gold)] text-[#141B16]" : "text-[var(--cream-60)] hover:text-[var(--cream)]"}`}>{v.label}</button>
+                ))}
+              </div>
+            ) : undefined}>Season standings</SectionTitle>
             {!standingsLoaded ? (
               <div className={`${card} grid place-items-center px-6 py-14 text-sm text-[var(--cream-38)]`}>Loading standings…</div>
             ) : rows.length === 0 ? (

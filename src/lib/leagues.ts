@@ -218,6 +218,18 @@ export interface StandingRow {
   points: number;
   bestToPar?: number;
 }
+export interface TeamStandingRow {
+  id: string;
+  name: string;
+  memberIds: string[];
+  played: number;
+  points: number;
+}
+export interface SeasonStandings {
+  gross: StandingRow[];
+  net: StandingRow[];   // net === gross when the league runs no handicaps
+  teams: TeamStandingRow[];
+}
 
 const slugify = (name: string) =>
   name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48) || "league";
@@ -1001,4 +1013,69 @@ export async function computeStandings(leagueId: string, bestN?: number): Promis
     await setDoc(doc(db, "leagues", leagueId, "standings", "current"), { players: JSON.parse(JSON.stringify(list)), bestN: bestN ?? null, updatedAt: Date.now() }, { merge: true });
   } catch { /* read-only viewer */ }
   return list;
+}
+
+/**
+ * Full season table honoring the league's scoring config: individual GROSS + NET races and the
+ * TEAM race (from Doubles/Teams events, grouped by the season LeagueTeam roster). The display
+ * surface renders whichever `settings.scoring.view` selects (gross / net / both) plus teams when
+ * any exist. Compute-only (doesn't persist). Gross === net for leagues with no handicaps.
+ */
+export async function computeSeasonStandings(league: League): Promise<SeasonStandings> {
+  const scoring = league.settings.scoring;
+  const bestN = league.settings.bestN;
+  const events = (await getLeagueEvents(league.id)).filter((e) => e.status === "complete");
+  const teams = await getLeagueTeams(league.id);
+  const teamOf = new Map<string, LeagueTeam>();
+  for (const t of teams) for (const mid of t.memberIds) teamOf.set(mid, t);
+
+  type Acc = { name: string; division?: string; eventPts: number[]; bestToPar?: number };
+  const grossAcc = new Map<string, Acc>(), netAcc = new Map<string, Acc>(), teamPts = new Map<string, number[]>();
+  const accInto = (map: Map<string, Acc>, e: EventEntry, pts: number) => {
+    const a = map.get(e.id) ?? { name: e.name, eventPts: [] };
+    a.eventPts.push(pts);
+    if (e.division) a.division = e.division;
+    if (typeof e.scoreToPar === "number") a.bestToPar = a.bestToPar == null ? e.scoreToPar : Math.min(a.bestToPar, e.scoreToPar);
+    map.set(e.id, a);
+  };
+
+  for (const ev of events) {
+    const entries = await getEntries(ev.id);
+    const g = eventPoints(entries, { net: false, scoring });
+    const n = eventPoints(entries, { net: true, scoring });
+    for (const e of entries) { accInto(grossAcc, e, g.get(e.id) ?? 0); accInto(netAcc, e, n.get(e.id) ?? 0); }
+    // Team race: only Doubles/Teams events. A team's event score = the (shared/best) score of its members.
+    if (ev.format === "Doubles" || ev.format === "Teams") {
+      const scoreByTeam = new Map<string, number>();
+      for (const e of entries) {
+        const t = teamOf.get(e.id);
+        if (!t || typeof e.score !== "number" || e.dnf) continue;
+        const s = e.score + (e.penalty ?? 0);
+        if (!scoreByTeam.has(t.id) || s < scoreByTeam.get(t.id)!) scoreByTeam.set(t.id, s);
+      }
+      const ranked = [...scoreByTeam.entries()].sort((a, b) => a[1] - b[1]);
+      const field = ranked.length;
+      let i = 0;
+      while (i < ranked.length) {
+        let j = i; while (j + 1 < ranked.length && ranked[j + 1][1] === ranked[i][1]) j++;
+        let sum = 0; for (let r = i + 1; r <= j + 1; r++) sum += pointsForRank(r, field, scoring);
+        const shared = Math.floor(sum / (j - i + 1));
+        for (let k = i; k <= j; k++) { const arr = teamPts.get(ranked[k][0]) ?? []; arr.push(shared); teamPts.set(ranked[k][0], arr); }
+        i = j + 1;
+      }
+    }
+  }
+
+  const build = (map: Map<string, Acc>): StandingRow[] =>
+    [...map.entries()].map(([id, p]) => {
+      const counted = bestN && bestN > 0 ? [...p.eventPts].sort((a, b) => b - a).slice(0, bestN) : p.eventPts;
+      return { id, name: p.name, division: p.division, played: p.eventPts.length, points: counted.reduce((a, b) => a + b, 0), bestToPar: p.bestToPar };
+    }).sort((a, b) => b.points - a.points);
+  const teamRows: TeamStandingRow[] = teams.map((t) => {
+    const pts = teamPts.get(t.id) ?? [];
+    const counted = bestN && bestN > 0 ? [...pts].sort((a, b) => b - a).slice(0, bestN) : pts;
+    return { id: t.id, name: t.name, memberIds: t.memberIds, played: pts.length, points: counted.reduce((a, b) => a + b, 0) };
+  }).filter((t) => t.played > 0).sort((a, b) => b.points - a.points);
+
+  return { gross: build(grossAcc), net: build(netAcc), teams: teamRows };
 }
