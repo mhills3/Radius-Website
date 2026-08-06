@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { EVENT_EXTRAS, registrationOpen, getLeagueBySlug, getLeagueMembers, setPartnerRequest, getEvent, getCards, checkIn, updateEntry, removeEntry, addWalkupEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, reassignBagTags, computeStandings, computeSeasonStandings, computeHandicaps, applyHandicaps, subscribeEntries, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCourseHoles, setTeamName, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember, type StandingRow, type SeasonStandings } from "@/lib/leagues";
+import { EVENT_EXTRAS, registrationOpen, getLeagueBySlug, getLeagueMembers, setPartnerRequest, getEvent, getCards, checkIn, updateEntry, removeEntry, addWalkupEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, reassignBagTags, computeStandings, computeSeasonStandings, computeHandicaps, applyHandicaps, subscribeEntries, subscribeLeagueMatches, computeMatchStandings, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCourseHoles, setTeamName, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember, type StandingRow, type SeasonStandings, type LeagueMatch } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { SectionTitle, Avatar, Pos, btnGold, card, plural, BackLink, IconSliders, IconShare, IconClock, IconSparkles, IconMoon, IconHeart, IconTag, IconVenus, IconDollar, IconPin, IconDisc, IconEyeOff, IconUsers, IconCalendar, IconTrophy, IconTarget, IconLeaf } from "@/components/leagues/ui";
 
@@ -131,6 +131,7 @@ export default function LeagueEventPage() {
   const [partnerReq, setPartnerReq] = useState("");
   const [partnerSaved, setPartnerSaved] = useState(false);
   const [partnerLoaded, setPartnerLoaded] = useState(false);
+  const [matches, setMatches] = useState<LeagueMatch[]>([]);
   const [pars, setPars] = useState<number[] | null>(null);
   const [teamSize] = useState(2);
   const [messages, setMessages] = useState<EventMessage[]>([]);
@@ -176,6 +177,11 @@ export default function LeagueEventPage() {
     await setPartnerRequest(league.id, cid, partnerReq);
     setPartnerSaved(true); setTimeout(() => setPartnerSaved(false), 2000);
   };
+  // Match-play leagues: subscribe to the season's schedule/bracket so players see it.
+  useEffect(() => {
+    if (!league?.id || league.settings.scoring?.model !== "matchplay") return;
+    return subscribeLeagueMatches(league.id, setMatches);
+  }, [league?.id, league?.settings.scoring?.model]);
   // Season standings for this event's league — computed on demand when the tab opens.
   useEffect(() => {
     if (tab !== "standings" || !league || standingsLoaded) return;
@@ -1183,6 +1189,84 @@ export default function LeagueEventPage() {
 
       {/* Season standings — mirrors the iOS event Standings tab (podium + your-rank + field) */}
       {tab === "standings" && (() => {
+        // Match-play leagues show the schedule + match standings + bracket (read-only for players).
+        if (league?.settings.scoring?.model === "matchplay") {
+          const reg = matches.filter((m) => !m.bracket);
+          const mpRounds = [...new Set(reg.map((m) => m.round))].sort((a, b) => a - b);
+          const mp = computeMatchStandings(matches, league.settings.scoring);
+          const bracket = matches.filter((m) => m.bracket);
+          const brRounds = [...new Set(bracket.map((m) => m.round))].sort((a, b) => a - b);
+          const maxR = brRounds.length ? brRounds[brRounds.length - 1] : 0;
+          const fin = bracket.filter((m) => m.round === maxR);
+          const champ = fin.length === 1 && fin[0].winnerId && fin[0].winnerId !== "tie" ? (fin[0].winnerId === fin[0].sideAId ? fin[0].sideAName : fin[0].sideBName) : null;
+          const mine = (m: LeagueMatch) => cid != null && (m.sideAId === cid || m.sideBId === cid);
+          const side = (m: LeagueMatch, k: "a" | "b") => {
+            const id = k === "a" ? m.sideAId : m.sideBId, name = k === "a" ? m.sideAName : m.sideBName;
+            const won = m.winnerId === id, tie = m.winnerId === "tie";
+            return <span className={`min-w-0 flex-1 truncate ${k === "b" ? "text-left" : "text-right"} ${won ? "font-bold text-[var(--gold)]" : tie ? "text-[var(--cream-60)]" : "text-[var(--cream)]"}`}>{name}</span>;
+          };
+          return (
+            <section className="mb-[44px] space-y-5">
+              <SectionTitle>Match play</SectionTitle>
+              {matches.length === 0 ? (
+                <div className={`${card} grid place-items-center px-6 py-14 text-center`}>
+                  <span className="grid h-14 w-14 place-items-center rounded-full bg-[var(--gold-dim)] text-[var(--gold)]"><IconTrophy className="h-6 w-6" /></span>
+                  <p className="mt-3 font-[family-name:var(--font-heading)] font-bold text-[var(--cream)]">Schedule coming soon</p>
+                  <p className="mt-1 max-w-xs text-sm text-[var(--cream-38)]">Your director sets the weekly matchups — they&apos;ll show here.</p>
+                </div>
+              ) : (
+                <>
+                  {mp.length > 0 && (
+                    <div className={`${card} overflow-hidden`}>
+                      <div className="border-b border-[var(--hair)] px-4 py-3 text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--gold)]">Standings</div>
+                      {mp.map((row, i) => (
+                        <div key={row.id} className={`flex items-center gap-3 border-b border-[var(--hair)] px-4 py-2.5 text-sm last:border-b-0 ${row.id === cid ? "bg-[var(--gold)]/[0.06]" : ""}`}>
+                          <span className="w-6 font-mono text-xs text-[var(--cream-38)]">{i + 1}</span>
+                          <span className="min-w-0 flex-1 truncate font-semibold text-[var(--cream)]">{row.name}</span>
+                          <span className="font-mono text-xs text-[var(--cream-38)]">{row.wins}-{row.ties}-{row.losses}</span>
+                          <span className="w-10 text-right font-mono font-bold text-[var(--gold)]">{row.points}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {mpRounds.map((r) => (
+                    <div key={r} className={`${card} p-4`}>
+                      <h3 className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--blue)]">Week {r}</h3>
+                      <div className="space-y-1.5">
+                        {reg.filter((m) => m.round === r).map((m) => (
+                          <div key={m.id} className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${mine(m) ? "bg-[var(--gold)]/[0.06] ring-1 ring-[var(--gold)]/25" : "bg-white/[0.03]"}`}>
+                            {side(m, "a")}
+                            <span className="shrink-0 font-mono text-[10px] text-[var(--cream-38)]">{m.winnerId ? "final" : "vs"}</span>
+                            {side(m, "b")}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  {bracket.length > 0 && (
+                    <div className={`${card} p-4`}>
+                      <h3 className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--gold)]">Playoffs</h3>
+                      {champ && <div className="mb-3 rounded-xl border border-[var(--gold)]/40 bg-[var(--gold)]/[0.1] px-4 py-2.5 text-center font-[family-name:var(--font-heading)] font-bold text-[var(--gold)]">🏆 {champ}</div>}
+                      <div className="flex gap-4 overflow-x-auto pb-2">
+                        {brRounds.map((r) => (
+                          <div key={r} className="flex min-w-[170px] flex-col justify-around gap-3">
+                            <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--cream-38)]">{r === maxR && fin.length === 1 ? "Final" : `Round ${r}`}</div>
+                            {bracket.filter((m) => m.round === r).sort((a, b) => (a.slot ?? 0) - (b.slot ?? 0)).map((m) => (
+                              <div key={m.id} className="overflow-hidden rounded-lg border border-[var(--hair)] text-xs">
+                                <div className={`truncate px-2.5 py-2 ${m.winnerId === m.sideAId ? "bg-[var(--gold)]/15 font-bold text-[var(--gold)]" : "text-[var(--cream)]"}`}>{m.sideAName}</div>
+                                <div className={`truncate border-t border-[var(--hair)] px-2.5 py-2 ${m.winnerId === m.sideBId ? "bg-[var(--gold)]/15 font-bold text-[var(--gold)]" : "text-[var(--cream)]"}`}>{m.sideBName}</div>
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </section>
+          );
+        }
         const SILVER = "#BFC7D4", BRONZE = "#C29461", GOLD_HEX = "#E8B560";
         const photoOf = new Map(entries.filter((e) => e.photo).map((e) => [e.id, e.photo as string]));
         const g = season?.gross ?? [], nt = season?.net ?? [], teamRows = season?.teams ?? [];
