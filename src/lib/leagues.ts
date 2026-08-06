@@ -455,6 +455,98 @@ export async function deleteLeagueTeam(leagueId: string, teamId: string): Promis
   await deleteDoc(doc(db, "leagues", leagueId, "teams", teamId));
 }
 
+// ---- Match play (schedule + results) ----
+//
+// A match-play season is a round-robin: each side (season team, or player in singles match play)
+// plays every other once across the regular season, then the top seeds enter a playoff bracket.
+// Sides carry a denormalized name so the schedule/standings render without extra lookups.
+
+export interface LeagueMatch {
+  id: string;
+  round: number;          // 1-based week/round of the round-robin
+  sideAId: string;
+  sideBId: string;
+  sideAName: string;
+  sideBName: string;
+  winnerId?: string | "tie"; // undefined = not played yet
+  eventId?: string;       // the event this matchup was played at (optional link)
+  bracket?: boolean;      // true = playoff bracket match (not a regular-season round-robin fixture)
+  slot?: number;          // bracket seeding slot (for ordering the bracket view)
+}
+
+/** Circle-method round-robin: every id plays every other exactly once. Odd count gets a bye each
+ *  round (that fixture is dropped). Returns pairings tagged with their round number. */
+export function generateRoundRobin(ids: string[]): { round: number; a: string; b: string }[] {
+  const arr = [...ids];
+  if (arr.length < 2) return [];
+  if (arr.length % 2 === 1) arr.push("__BYE__");
+  const n = arr.length, rounds = n - 1, half = n / 2;
+  const rot = [...arr];
+  const out: { round: number; a: string; b: string }[] = [];
+  for (let r = 0; r < rounds; r++) {
+    for (let i = 0; i < half; i++) {
+      const a = rot[i], b = rot[n - 1 - i];
+      if (a !== "__BYE__" && b !== "__BYE__") out.push({ round: r + 1, a, b });
+    }
+    rot.splice(1, 0, rot.pop()!); // keep first fixed, rotate the rest
+  }
+  return out;
+}
+
+export async function getLeagueMatches(leagueId: string): Promise<LeagueMatch[]> {
+  try {
+    const snap = await getDocs(query(collection(db, "leagues", leagueId, "matches"), limit(500)));
+    return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<LeagueMatch, "id">) })).sort((a, b) => (a.bracket === b.bracket ? (a.round - b.round || (a.slot ?? 0) - (b.slot ?? 0)) : a.bracket ? 1 : -1));
+  } catch { return []; }
+}
+
+export function subscribeLeagueMatches(leagueId: string, cb: (matches: LeagueMatch[]) => void): () => void {
+  return onSnapshot(
+    query(collection(db, "leagues", leagueId, "matches"), limit(500)),
+    (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<LeagueMatch, "id">) })).sort((a, b) => (a.bracket === b.bracket ? (a.round - b.round || (a.slot ?? 0) - (b.slot ?? 0)) : a.bracket ? 1 : -1))),
+    () => {}
+  );
+}
+
+/** Director: build the regular-season round-robin schedule from a set of sides ({id,name}).
+ *  Replaces any existing NON-bracket matches (bracket matches are left intact). */
+export async function generateSchedule(leagueId: string, sides: { id: string; name: string }[]): Promise<number> {
+  const nameOf = new Map(sides.map((s) => [s.id, s.name]));
+  const existing = await getLeagueMatches(leagueId);
+  await Promise.all(existing.filter((m) => !m.bracket).map((m) => deleteDoc(doc(db, "leagues", leagueId, "matches", m.id))));
+  const pairs = generateRoundRobin(sides.map((s) => s.id));
+  await Promise.all(pairs.map((p) => {
+    const id = freshId();
+    return setDoc(doc(db, "leagues", leagueId, "matches", id), { round: p.round, sideAId: p.a, sideBId: p.b, sideAName: nameOf.get(p.a) ?? "—", sideBName: nameOf.get(p.b) ?? "—" });
+  }));
+  return pairs.length;
+}
+
+/** Director: set (or clear) a match result. winnerId = a side id, "tie", or null to reset. */
+export async function setMatchResult(leagueId: string, matchId: string, winnerId: string | "tie" | null): Promise<void> {
+  await setDoc(doc(db, "leagues", leagueId, "matches", matchId), { winnerId: winnerId ?? deleteField() }, { merge: true });
+}
+
+export interface MatchStandingRow { id: string; name: string; wins: number; ties: number; losses: number; played: number; points: number; }
+
+/** Match-play standings from played results: W/T/L × the league's match points (default 3/1/0). */
+export function computeMatchStandings(matches: LeagueMatch[], scoring?: LeagueScoring): MatchStandingRow[] {
+  const win = scoring?.matchWin ?? 3, tie = scoring?.matchTie ?? 1, loss = scoring?.matchLoss ?? 0;
+  const nameOf = new Map<string, string>();
+  const rec = new Map<string, { w: number; t: number; l: number }>();
+  const bump = (id: string, k: "w" | "t" | "l") => { const r = rec.get(id) ?? { w: 0, t: 0, l: 0 }; r[k]++; rec.set(id, r); };
+  for (const m of matches) {
+    if (m.bracket) continue; // bracket matches don't feed the season table
+    nameOf.set(m.sideAId, m.sideAName); nameOf.set(m.sideBId, m.sideBName);
+    if (m.winnerId == null) continue;
+    if (m.winnerId === "tie") { bump(m.sideAId, "t"); bump(m.sideBId, "t"); }
+    else { const l = m.winnerId === m.sideAId ? m.sideBId : m.sideAId; bump(m.winnerId, "w"); bump(l, "l"); }
+  }
+  return [...rec.entries()]
+    .map(([id, r]) => ({ id, name: nameOf.get(id) ?? "—", wins: r.w, ties: r.t, losses: r.l, played: r.w + r.t + r.l, points: r.w * win + r.t * tie + r.l * loss }))
+    .sort((a, b) => b.points - a.points || b.wins - a.wins);
+}
+
 // ---- Events ----
 
 /** Create one event per date (recurring = the caller passes every date in the season). */
