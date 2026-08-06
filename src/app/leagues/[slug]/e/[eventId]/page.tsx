@@ -617,7 +617,7 @@ export default function LeagueEventPage() {
         {hcpNote && <p className="mt-3 text-xs text-[var(--gold)]">{hcpNote}</p>}
 
         {/* Season partner request — teams/match-play leagues. Player requests; director owns the pairings. */}
-        {me && (league.settings.format === "Doubles" || league.settings.format === "Teams" || league.settings.scoring?.model === "matchplay") && (
+        {me && league && (league.settings.format === "Doubles" || league.settings.format === "Teams" || league.settings.scoring?.model === "matchplay") && (
           <div className={`${card} mb-6 mt-5 flex flex-wrap items-center gap-3 p-4`}>
             <span className="text-[13px] font-bold text-[var(--cream)]">Season partner</span>
             <input value={partnerReq} onChange={(e) => setPartnerReq(e.target.value)} onBlur={savePartner} placeholder="Who would you like to partner with?" className="min-w-[180px] flex-1 rounded-lg border border-white/10 bg-white/[0.05] px-3 py-2 text-sm text-[var(--cream)] outline-none transition-colors focus:border-[var(--gold)]" />
