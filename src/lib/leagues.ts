@@ -50,6 +50,59 @@ export interface LeagueSettings {
   handicapPercent?: number; // % of a player's field-relative average applied (default 90)
   handicapCap?: number;     // max |strokes| a handicap may reach (0/undefined = uncapped)
   bagTags?: boolean;        // run a real tag ladder: tags reassign by finish on event completion
+  scoring?: LeagueScoring;  // how events turn into season standings (default = placement/linear/gross/sum)
+}
+
+// How a league scores. All fields optional; the defaults below reproduce the original
+// behavior (placement + linear curve + gross + sum), so leagues with no scoring config are unchanged.
+export type ScoringModel = "placement" | "matchplay";
+export type PlacementCurve = "linear" | "table" | "proportional" | "decay";
+export type StandingsView = "gross" | "net" | "both";
+export interface LeagueScoring {
+  model?: ScoringModel;        // "placement" (finish → points) | "matchplay" (H2H W/T/L → points). Default "placement".
+  view?: StandingsView;        // "gross" | "net" | "both". "both" shows two races (gross champ + net champ). Default "gross".
+  aggregate?: "sum" | "bestN"; // season rollup. "bestN" counts each player's top settings.bestN events. Default "sum".
+  // placement curve (model === "placement")
+  curve?: PlacementCurve;      // "linear" (field−rank+1) | "table" (fixed list) | "proportional" (1st=firstPlace, taper to 1) | "decay" (UDisc: N→2 over depth, 1 below). Default "linear".
+  curveTable?: number[];       // "table": points by finish, e.g. [100,90,80,75,...]; ranks past the list get the participation floor.
+  firstPlace?: number;         // "proportional": points for 1st; the field tapers linearly to 1.
+  depthPct?: number;           // "decay": % of the field that earns curve points (rest get the floor). Default 100.
+  // match play (model === "matchplay")
+  matchWin?: number;           // points for a win. Default 3.
+  matchTie?: number;           // points for a tie/halved match. Default 1.
+  matchLoss?: number;          // points for a loss. Default 0.
+}
+
+export const DEFAULT_SCORING: Required<Pick<LeagueScoring, "model" | "view" | "aggregate" | "curve" | "matchWin" | "matchTie" | "matchLoss">> = {
+  model: "placement", view: "gross", aggregate: "sum", curve: "linear", matchWin: 3, matchTie: 1, matchLoss: 0,
+};
+
+/** Placement points for a finishing position, given the field size and the league's curve config. */
+export function pointsForRank(rank: number, field: number, s?: LeagueScoring): number {
+  const curve = s?.curve ?? "linear";
+  const floor = 1; // last-place / participation point
+  if (rank < 1 || field < 1) return floor;
+  switch (curve) {
+    case "table": {
+      const t = s?.curveTable ?? [];
+      return rank <= t.length ? Math.max(floor, Math.round(t[rank - 1])) : floor;
+    }
+    case "proportional": {
+      const first = Math.max(floor, s?.firstPlace ?? field);
+      if (field <= 1) return first;
+      return Math.max(floor, Math.round(first - (first - floor) * (rank - 1) / (field - 1)));
+    }
+    case "decay": {
+      // UDisc-style: 1st = N (field size), decays to 2 at the depth line, floor below it.
+      const depth = Math.max(1, Math.ceil(field * (s?.depthPct ?? 100) / 100));
+      if (rank > depth) return floor;
+      if (depth <= 1) return field;
+      return Math.max(2, Math.round(field - (field - 2) * (rank - 1) / (depth - 1)));
+    }
+    case "linear":
+    default:
+      return Math.max(floor, field - rank + 1);
+  }
 }
 export interface League {
   id: string;
@@ -775,12 +828,31 @@ export async function getCoursePars(courseId: string): Promise<number[] | null> 
 // the minimum. points = max(participants − rank + 1, 1). Recomputed from completed
 // events on demand; Phase 2 adds best-N / season windows / points curves.
 
-export function eventPoints(entries: EventEntry[]): Map<string, number> {
-  const scored = entries.filter((e) => typeof e.score === "number" && !e.dnf);
-  const ranked = [...scored].sort((a, b) => (a.score! + (a.penalty ?? 0) + (a.startingScore ?? 0)) - (b.score! + (b.penalty ?? 0) + (b.startingScore ?? 0)));
+/**
+ * Points each player earns from ONE event (placement model). Ranks by adjusted score
+ * (lower = better); `net` includes the handicap startingScore, gross does not. Points come
+ * from the league's placement curve (pointsForRank), scaled by field size. TIES share the
+ * averaged points for the positions they span, floored (matches UDisc/Metrix). DNF / no-score
+ * but checked-in = the participation floor (1). Default (no opts) = net + linear = original behavior.
+ */
+export function eventPoints(entries: EventEntry[], opts?: { net?: boolean; scoring?: LeagueScoring }): Map<string, number> {
+  const net = opts?.net ?? true;
+  const scoring = opts?.scoring;
+  const adj = (e: EventEntry) => e.score! + (e.penalty ?? 0) + (net ? (e.startingScore ?? 0) : 0);
+  const ranked = entries.filter((e) => typeof e.score === "number" && !e.dnf).sort((a, b) => adj(a) - adj(b));
+  const field = entries.length; // curve scales by who showed up (matches UDisc's N)
   const out = new Map<string, number>();
-  ranked.forEach((e, i) => out.set(e.id, Math.max(entries.length - i, 1)));
-  for (const e of entries) if (!out.has(e.id) && e.checkedInAt) out.set(e.id, 1);
+  let i = 0;
+  while (i < ranked.length) {
+    let j = i;
+    while (j + 1 < ranked.length && adj(ranked[j + 1]) === adj(ranked[i])) j++; // tie group [i..j]
+    let sum = 0;
+    for (let r = i + 1; r <= j + 1; r++) sum += pointsForRank(r, field, scoring); // 1-based ranks
+    const shared = Math.floor(sum / (j - i + 1));
+    for (let k = i; k <= j; k++) out.set(ranked[k].id, shared);
+    i = j + 1;
+  }
+  for (const e of entries) if (!out.has(e.id) && e.checkedInAt) out.set(e.id, 1); // participation floor
   return out;
 }
 
