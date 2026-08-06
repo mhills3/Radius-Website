@@ -127,7 +127,18 @@ export interface LeagueMember {
   photo?: string;
   role: "owner" | "director" | "member";
   tag?: number; // bag-tag number currently held (tag-ladder leagues)
+  partnerRequest?: string; // free-text: who this player asked to be paired with at signup (director-only visible)
   joinedAt: number;
+}
+
+// A season-long team (doubles/teams leagues + match play). Players sign up individually and may
+// REQUEST a partner (member.partnerRequest); the DIRECTOR forms and owns the actual teams here and
+// can reshuffle them any time during the season. Lives at leagues/{leagueId}/teams/{teamId}.
+export interface LeagueTeam {
+  id: string;
+  name: string;
+  memberIds: string[]; // canonical ids on this team (usually 2 for doubles; N for teams)
+  createdAt: number;
 }
 export interface LeagueEvent {
   id: string;
@@ -377,11 +388,59 @@ export async function getLeagueMembers(leagueId: string): Promise<LeagueMember[]
           id: d.id, name: (m.name ?? "Player") as string, username: (m.username as string) || undefined,
           photo: (m.photo as string) || undefined, role: (m.role ?? "member") as LeagueMember["role"],
           tag: typeof m.tag === "number" ? m.tag : undefined,
+          partnerRequest: (m.partnerRequest as string) || undefined,
           joinedAt: Number(m.joinedAt) || 0,
         };
       })
       .sort((a, b) => a.joinedAt - b.joinedAt);
   } catch { return []; }
+}
+
+// ---- Season teams (director-owned) ----
+
+/** A player's own partner REQUEST at signup (free text). Visible to the director only; the director
+ *  forms the real teams. Players write their own member doc; empty string clears it. */
+export async function setPartnerRequest(leagueId: string, memberId: string, request: string): Promise<void> {
+  await setDoc(doc(db, "leagues", leagueId, "members", memberId), { partnerRequest: request.trim() || deleteField() }, { merge: true });
+}
+
+export async function getLeagueTeams(leagueId: string): Promise<LeagueTeam[]> {
+  try {
+    const snap = await getDocs(query(collection(db, "leagues", leagueId, "teams"), limit(200)));
+    return snap.docs
+      .map((d) => { const t = d.data(); return { id: d.id, name: (t.name as string) || "Team", memberIds: Array.isArray(t.memberIds) ? (t.memberIds as string[]) : [], createdAt: Number(t.createdAt) || 0 }; })
+      .sort((a, b) => a.createdAt - b.createdAt);
+  } catch { return []; }
+}
+
+/** Live team roster — fires whenever the director edits teams. */
+export function subscribeLeagueTeams(leagueId: string, cb: (teams: LeagueTeam[]) => void): () => void {
+  return onSnapshot(
+    query(collection(db, "leagues", leagueId, "teams"), limit(200)),
+    (snap) => cb(snap.docs.map((d) => { const t = d.data(); return { id: d.id, name: (t.name as string) || "Team", memberIds: Array.isArray(t.memberIds) ? (t.memberIds as string[]) : [], createdAt: Number(t.createdAt) || 0 }; }).sort((a, b) => a.createdAt - b.createdAt)),
+    () => {}
+  );
+}
+
+/** Director: create a season team. */
+export async function createLeagueTeam(leagueId: string, name: string, memberIds: string[] = []): Promise<LeagueTeam> {
+  const id = freshId();
+  const team = { name: name.trim() || "Team", memberIds, createdAt: Date.now() };
+  await setDoc(doc(db, "leagues", leagueId, "teams", id), team);
+  return { id, ...team };
+}
+
+/** Director: rename a team and/or set its roster (reshuffle any time during the season). */
+export async function updateLeagueTeam(leagueId: string, teamId: string, patch: { name?: string; memberIds?: string[] }): Promise<void> {
+  const upd: Record<string, unknown> = {};
+  if (patch.name != null) upd.name = patch.name.trim() || "Team";
+  if (patch.memberIds != null) upd.memberIds = patch.memberIds;
+  if (Object.keys(upd).length) await updateDoc(doc(db, "leagues", leagueId, "teams", teamId), upd);
+}
+
+/** Director: disband a team. */
+export async function deleteLeagueTeam(leagueId: string, teamId: string): Promise<void> {
+  await deleteDoc(doc(db, "leagues", leagueId, "teams", teamId));
 }
 
 // ---- Events ----
