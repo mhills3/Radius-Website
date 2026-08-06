@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRole, setLeagueLogo, isLeagueAdmin, LEAGUE_FORMATS, START_FORMATS, type League, type LeagueEvent, type LeagueMember, type StandingRow } from "@/lib/leagues";
+import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRole, setLeagueLogo, isLeagueAdmin, subscribeLeagueTeams, createLeagueTeam, updateLeagueTeam, deleteLeagueTeam, LEAGUE_FORMATS, START_FORMATS, type League, type LeagueEvent, type LeagueMember, type StandingRow, type LeagueTeam } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { storage } from "@/lib/firebase";
 import { getDownloadURL, ref as storageRef, uploadBytes } from "firebase/storage";
@@ -13,11 +13,12 @@ import { inputCls, FieldLabel, Segmented, Avatar, Pos, btnGold, btnGhost, card, 
 // ─── League tools: the director console (UDisc "League tools" equivalent).
 // Persistent sidebar, dashboard-first, every admin control in one place.
 
-type Section = "dashboard" | "members" | "events" | "standings" | "settings" | "quicklink";
+type Section = "dashboard" | "members" | "teams" | "events" | "standings" | "settings" | "quicklink";
 
 const NAV: { key: Section; label: string }[] = [
   { key: "dashboard", label: "League dashboard" },
   { key: "members", label: "Members" },
+  { key: "teams", label: "Teams" },
   { key: "events", label: "Events" },
   { key: "standings", label: "Standings" },
   { key: "settings", label: "Settings" },
@@ -34,6 +35,7 @@ export default function LeagueManagePage() {
   const [brandNote, setBrandNote] = useState("");
   const [events, setEvents] = useState<LeagueEvent[]>([]);
   const [members, setMembers] = useState<LeagueMember[]>([]);
+  const [teams, setTeams] = useState<LeagueTeam[]>([]);
   const [standings, setStandings] = useState<StandingRow[]>([]);
   const [cid, setCid] = useState<string | null>(null);
   const [section, setSection] = useState<Section>("dashboard");
@@ -82,6 +84,7 @@ export default function LeagueManagePage() {
     }).catch(() => setLeague(null));
   }, [slug]);
   useEffect(() => { if (user) resolveCanonicalId(user.uid).then(setCid).catch(() => {}); }, [user]);
+  useEffect(() => { if (!league?.id) return; return subscribeLeagueTeams(league.id, setTeams); }, [league?.id]);
 
   const admin = useMemo(() => !!league && isLeagueAdmin(league, cid), [league, cid]);
   const [now] = useState(() => Date.now());
@@ -261,6 +264,73 @@ export default function LeagueManagePage() {
               {members.length === 0 && <p className="p-6 text-sm text-[var(--sage-dim)]">No members yet. Share an event check-in link.</p>}
             </div>
           )}
+
+          {section === "teams" && (() => {
+            const assigned = new Set(teams.flatMap((t) => t.memberIds));
+            const unassigned = members.filter((m) => !assigned.has(m.id));
+            const addTo = (t: LeagueTeam, memberId: string) => updateLeagueTeam(league.id, t.id, { memberIds: [...t.memberIds, memberId] });
+            const removeFrom = (t: LeagueTeam, memberId: string) => updateLeagueTeam(league.id, t.id, { memberIds: t.memberIds.filter((x) => x !== memberId) });
+            return (
+              <div className="space-y-5">
+                <div className={`${card} p-5`}>
+                  <div className="flex items-center justify-between gap-3">
+                    <h2 className="font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">Teams · {teams.length}</h2>
+                    <button onClick={() => createLeagueTeam(league.id, `Team ${teams.length + 1}`)} className={`${btnGold} !px-4 !py-2 !text-sm`}>+ New team</button>
+                  </div>
+                  <p className="mt-1.5 text-xs text-[var(--sage-dim)]">Players sign up individually and can request a partner. You form and own the teams here — reshuffle any time during the season.</p>
+                </div>
+
+                {teams.map((t) => (
+                  <div key={t.id} className={`${card} p-4`}>
+                    <div className="flex items-center gap-2">
+                      <input defaultValue={t.name} onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== t.name) updateLeagueTeam(league.id, t.id, { name: v }); }} className={`${inputCls} !py-1.5 font-bold`} />
+                      <button onClick={() => deleteLeagueTeam(league.id, t.id)} title="Disband team" className="shrink-0 rounded-lg px-2.5 py-1.5 text-sm text-[var(--sage-dim)] transition-colors hover:bg-white/[0.05] hover:text-[#f08c8c]">✕</button>
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      {t.memberIds.map((id) => { const m = members.find((x) => x.id === id); return (
+                        <span key={id} className="inline-flex items-center gap-2 rounded-full bg-white/[0.05] py-1 pl-1 pr-2 ring-1 ring-white/[0.07]">
+                          <Avatar url={m?.photo} name={m?.name || "?"} size={22} ring={false} />
+                          <span className="text-[13px] font-semibold text-[var(--cream)]">{m?.name || `${id.slice(0, 6)}…`}</span>
+                          <button onClick={() => removeFrom(t, id)} title="Remove" className="text-[var(--sage-dim)] transition-colors hover:text-[#f08c8c]">✕</button>
+                        </span>
+                      ); })}
+                      {t.memberIds.length === 0 && <span className="text-xs text-[var(--sage-dim)]">No players yet — add one →</span>}
+                      {unassigned.length > 0 && (
+                        <select value="" onChange={(e) => { if (e.target.value) addTo(t, e.target.value); }} className={`${inputCls} !w-auto !py-1.5 !text-xs`}>
+                          <option value="">+ Add player…</option>
+                          {unassigned.map((m) => <option key={m.id} value={m.id}>{m.name}{m.partnerRequest ? ` (wants ${m.partnerRequest})` : ""}</option>)}
+                        </select>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                <div className={`${card} p-4`}>
+                  <h3 className="font-[family-name:var(--font-heading)] text-sm font-bold text-[var(--cream)]">Unassigned · {unassigned.length}</h3>
+                  <div className="mt-3 space-y-2">
+                    {unassigned.map((m) => (
+                      <div key={m.id} className="flex items-center gap-3">
+                        <Avatar url={m.photo} name={m.name} size={28} ring={false} />
+                        <span className="min-w-0 flex-1">
+                          <span className="truncate text-sm font-semibold text-[var(--cream)]">{m.name}</span>
+                          {m.partnerRequest && <span className="ml-2 text-xs font-semibold text-[var(--gold)]">wants: {m.partnerRequest}</span>}
+                        </span>
+                        {teams.length > 0 ? (
+                          <select value="" onChange={(e) => { const t = teams.find((x) => x.id === e.target.value); if (t) addTo(t, m.id); }} className={`${inputCls} !w-auto !py-1.5 !text-xs`}>
+                            <option value="">Add to…</option>
+                            {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                          </select>
+                        ) : (
+                          <button onClick={() => createLeagueTeam(league.id, `${m.name}'s team`, [m.id])} className={`${btnGhost} !px-3 !py-1.5 !text-xs`}>New team</button>
+                        )}
+                      </div>
+                    ))}
+                    {unassigned.length === 0 && <p className="text-sm text-[var(--sage-dim)]">Everyone&apos;s on a team.</p>}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {section === "events" && (
             <div className="grid gap-8">
