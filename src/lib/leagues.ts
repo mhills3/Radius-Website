@@ -692,6 +692,15 @@ export async function getUpcomingEvents(max = 60): Promise<LeagueEvent[]> {
   } catch { return []; }
 }
 
+/** Discovery "Past": recently COMPLETED public events across all leagues, newest first (results archive). */
+export async function getPastEvents(max = 80): Promise<LeagueEvent[]> {
+  try {
+    const cutoff = Date.now() - 12 * 3600_000;
+    const snap = await getDocs(query(collection(db, "leagueEvents"), where("date", "<", cutoff), orderBy("date", "desc"), limit(max)));
+    return snap.docs.map((d) => toEvent(d.id, d.data())).filter((e) => e.status === "complete" && !e.isPrivate);
+  } catch { return []; }
+}
+
 export async function getEvent(eventId: string): Promise<LeagueEvent | null> {
   try {
     const s = await getDoc(doc(db, "leagueEvents", eventId));
