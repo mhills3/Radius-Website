@@ -6,10 +6,10 @@ import Link from "next/link";
 // tuned to the Radius dark identity (forest ground, Sora display, gold accent).
 
 export const inputCls =
-  "w-full rounded-xl border border-[var(--hair)] bg-[var(--card)] px-4 py-3 text-sm text-[var(--cream)] placeholder-[var(--cream-38)] outline-none transition-colors focus:border-[var(--gold)]";
+  "w-full rounded-xl border border-[var(--hair)] bg-[var(--card)] px-4 py-3 text-base text-[var(--cream)] placeholder-[var(--cream-38)] outline-none transition-colors focus:border-[var(--gold)]";
 
 export function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <span className="mb-1.5 block font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--cream-38)]">{children}</span>;
+  return <span className="mb-2 block font-mono text-xs font-semibold uppercase tracking-[0.14em] text-[var(--cream-60)]">{children}</span>;
 }
 
 export function SectionTitle({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {
@@ -32,7 +32,7 @@ export function Segmented({ options, value, onChange, tall, icons }: { options: 
           key={o}
           type="button"
           onClick={() => onChange(o)}
-          className={`inline-flex items-center justify-center gap-1.5 rounded-full font-bold transition-colors ${tall ? "min-w-[96px] px-4 text-[13px]" : "px-4 py-1.5 text-xs"} ${value === o ? "bg-[var(--gold)] text-[#141B16]" : "text-[var(--cream-60)] hover:text-[var(--cream)]"}`}
+          className={`inline-flex items-center justify-center gap-1.5 rounded-full font-bold transition-colors ${tall ? "min-w-[96px] px-4 text-sm" : "px-4 py-2 text-sm"} ${value === o ? "bg-[var(--gold)] text-[#141B16]" : "text-[var(--cream-60)] hover:text-[var(--cream)]"}`}
         >{Ic && <Ic className="h-3.5 w-3.5 shrink-0" />}{o}</button>
         );
       })}
