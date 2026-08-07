@@ -215,6 +215,8 @@ export interface EventCard {
   id: string;
   number: number;
   startHole: number;
+  teeTime?: number;    // ms epoch — tee-time-start events stagger groups; absent for shotgun cards
+  division?: string;   // tee-time groups are built per division
   playerIds: string[];
 }
 export interface StandingRow {
@@ -952,13 +954,64 @@ export async function generateCards(eventId: string, entries: EventEntry[], size
   return cards;
 }
 
+/**
+ * Tee-time grouping: split entries BY DIVISION, chunk each division into groups of `size`, and
+ * assign continuously staggered start times (`intervalMin` apart) from `startMs`. Divisions go off
+ * in `divisions` order (unlisted/none last). All groups start on hole 1. Replaces the card set.
+ */
+export async function generateTeeTimes(eventId: string, entries: EventEntry[], opts?: { size?: number; intervalMin?: number; startMs?: number; divisions?: string[] }): Promise<EventCard[]> {
+  const size = Math.max(1, opts?.size ?? 4);
+  const interval = Math.max(1, opts?.intervalMin ?? 10) * 60_000;
+  const start = opts?.startMs && opts.startMs > 0 ? opts.startMs : Date.now();
+  const order = opts?.divisions ?? [];
+  const byDiv = new Map<string, EventEntry[]>();
+  for (const e of entries) { const d = e.division || ""; if (!byDiv.has(d)) byDiv.set(d, []); byDiv.get(d)!.push(e); }
+  const divKeys = [...byDiv.keys()].sort((a, b) => {
+    const ia = order.indexOf(a) === -1 ? 999 : order.indexOf(a);
+    const ib = order.indexOf(b) === -1 ? 999 : order.indexOf(b);
+    return ia !== ib ? ia - ib : a.localeCompare(b);
+  });
+  const cards: EventCard[] = [];
+  let slot = 0;
+  for (const d of divKeys) {
+    const group = byDiv.get(d)!;
+    for (let i = 0; i < group.length; i += size) {
+      cards.push({ id: freshId(), number: cards.length + 1, startHole: 1, teeTime: start + slot * interval, division: d || undefined, playerIds: group.slice(i, i + size).map((e) => e.id) });
+      slot++;
+    }
+  }
+  const old = await getCards(eventId);
+  await Promise.all(old.map((c) => setDoc(doc(db, "leagueEvents", eventId, "cards", c.id), { deleted: true }, { merge: true })));
+  for (const c of cards) {
+    await setDoc(doc(db, "leagueEvents", eventId, "cards", c.id), { number: c.number, startHole: 1, teeTime: c.teeTime, division: c.division ?? null, playerIds: c.playerIds, deleted: false }, { merge: true });
+    await Promise.all(c.playerIds.map((pid) => setDoc(doc(db, "leagueEvents", eventId, "entries", pid), { cardId: c.id }, { merge: true })));
+  }
+  return cards;
+}
+
+/** Director edit: change a single group's tee time. */
+export async function setCardTeeTime(eventId: string, cardId: string, teeTime: number): Promise<void> {
+  await setDoc(doc(db, "leagueEvents", eventId, "cards", cardId), { teeTime }, { merge: true });
+}
+
+/** Director edit: move a player from their current group into another group. */
+export async function moveEntryToCard(eventId: string, entryId: string, toCardId: string): Promise<void> {
+  const cards = await getCards(eventId);
+  const to = cards.find((c) => c.id === toCardId);
+  const from = cards.find((c) => c.playerIds.includes(entryId));
+  if (!to || from?.id === toCardId) return;
+  if (from) await setDoc(doc(db, "leagueEvents", eventId, "cards", from.id), { playerIds: from.playerIds.filter((p) => p !== entryId) }, { merge: true });
+  await setDoc(doc(db, "leagueEvents", eventId, "cards", toCardId), { playerIds: [...to.playerIds, entryId] }, { merge: true });
+  await setDoc(doc(db, "leagueEvents", eventId, "entries", entryId), { cardId: toCardId }, { merge: true });
+}
+
 export async function getCards(eventId: string): Promise<EventCard[]> {
   try {
     const snap = await getDocs(query(collection(db, "leagueEvents", eventId, "cards"), limit(60)));
     return snap.docs
       .map((d) => {
         const c = d.data();
-        return c.deleted === true ? null : { id: d.id, number: Number(c.number) || 0, startHole: Number(c.startHole) || 1, playerIds: Array.isArray(c.playerIds) ? c.playerIds : [] };
+        return c.deleted === true ? null : { id: d.id, number: Number(c.number) || 0, startHole: Number(c.startHole) || 1, teeTime: Number(c.teeTime) > 0 ? Number(c.teeTime) : undefined, division: (c.division as string) || undefined, playerIds: Array.isArray(c.playerIds) ? c.playerIds : [] } as EventCard;
       })
       .filter((x): x is EventCard => x !== null)
       .sort((a, b) => a.number - b.number);

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { EVENT_EXTRAS, registrationOpen, getLeagueBySlug, getLeagueMembers, setPartnerRequest, getEvent, getCards, checkIn, updateEntry, removeEntry, addWalkupEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, updateEventSchedule, reassignBagTags, computeStandings, computeSeasonStandings, computeHandicaps, applyHandicaps, subscribeEntries, subscribeLeagueMatches, computeMatchStandings, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCourseHoles, setTeamName, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember, type StandingRow, type SeasonStandings, type LeagueMatch } from "@/lib/leagues";
+import { EVENT_EXTRAS, registrationOpen, getLeagueBySlug, getLeagueMembers, setPartnerRequest, getEvent, getCards, checkIn, updateEntry, removeEntry, addWalkupEntry, generateCards, generateTeeTimes, setCardTeeTime, moveEntryToCard, setEventStatus, setRoundScore, updateEventConfig, updateEventSchedule, reassignBagTags, computeStandings, computeSeasonStandings, computeHandicaps, applyHandicaps, subscribeEntries, subscribeLeagueMatches, computeMatchStandings, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCourseHoles, setTeamName, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember, type StandingRow, type SeasonStandings, type LeagueMatch } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { SectionTitle, Avatar, Pos, btnGold, card, plural, BackLink, IconSliders, IconShare, IconClock, IconSparkles, IconMoon, IconHeart, IconTag, IconVenus, IconDollar, IconPin, IconDisc, IconEyeOff, IconUsers, IconCalendar, IconTrophy, IconTarget, IconLeaf } from "@/components/leagues/ui";
 
@@ -36,6 +36,8 @@ const pillMono = "inline-flex h-8 items-center rounded-full border border-[var(-
 const fmtDate = (ms: number) => { const d = new Date(ms); return `${d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })} · ${d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`; };
 // ms epoch → local "YYYY-MM-DDTHH:mm" for <input type="datetime-local"> (toISOString would shift to UTC).
 const toLocalInput = (ms: number) => { const d = new Date(ms); const p = (n: number) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
+const fmtHM = (ms: number) => new Date(ms).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+const toLocalHM = (ms: number) => { const d = new Date(ms); const p = (n: number) => String(n).padStart(2, "0"); return `${p(d.getHours())}:${p(d.getMinutes())}`; };
 const adminInput = "rounded-lg border border-white/10 bg-white/[0.05] px-2 py-1.5 text-right font-mono text-sm text-[var(--cream)] outline-none transition-colors focus:border-[var(--gold)]";
 
 // Renders the wizard's markdown-lite description: **bold**, _italic_, "- " bullets.
@@ -92,6 +94,7 @@ export default function LeagueEventPage() {
   const [cid, setCid] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [cardSize, setCardSize] = useState(4);
+  const [teeInterval, setTeeInterval] = useState(10); // minutes between tee-time groups
   const [scoreDraft, setScoreDraft] = useState<Record<string, string>>({});
   const [copied, setCopied] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -215,6 +218,30 @@ export default function LeagueEventPage() {
     if (!event || busy) return;
     setBusy(true);
     try { await generateCards(event.id, entries, cardSize); await reload(event.id); } finally { setBusy(false); }
+  };
+
+  const doGenerateTee = async () => {
+    if (!event || busy) return;
+    setBusy(true);
+    try {
+      await generateTeeTimes(event.id, entries, { size: cardSize, intervalMin: teeInterval, startMs: event.roundStarts?.[0] ?? event.date, divisions: league?.settings.divisions });
+      await reload(event.id);
+    } finally { setBusy(false); }
+  };
+
+  const editTeeTime = async (cardId: string, hhmm: string) => {
+    if (!event || !hhmm) return;
+    const base = new Date(event.roundStarts?.[0] ?? event.date);
+    const [h, m] = hhmm.split(":").map(Number);
+    base.setHours(h, m, 0, 0);
+    await setCardTeeTime(event.id, cardId, base.getTime());
+    await reload(event.id);
+  };
+
+  const moveEntry = async (entryId: string, toCardId: string) => {
+    if (!event) return;
+    await moveEntryToCard(event.id, entryId, toCardId);
+    await reload(event.id);
   };
 
   const saveScore = async (entryId: string) => {
@@ -1450,23 +1477,74 @@ export default function LeagueEventPage() {
       </section>
       )}
 
-      {/* Cards */}
-      {tab === "scores" && (
+      {/* Cards / Tee times */}
+      {tab === "scores" && (() => {
+      const isTeeTimes = event.startFormat === "Tee times";
+      return (
       <section>
         <SectionTitle
           right={admin && open && entries.length > 1 ? (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <select value={cardSize} onChange={(e) => setCardSize(Number(e.target.value))} className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-[var(--cream)] outline-none">
-                {[3, 4, 5].map((n) => <option key={n} value={n}>cards of {n}</option>)}
+                {[2, 3, 4, 5].map((n) => <option key={n} value={n}>{isTeeTimes ? `${n} per group` : `cards of ${n}`}</option>)}
               </select>
-              <button onClick={doGenerate} disabled={busy} className="rounded-full bg-white/[0.06] px-4 py-1.5 text-xs font-bold text-[var(--cream)] transition-colors hover:bg-white/[0.1] disabled:opacity-50">
-                {cards.length ? "Reshuffle" : "Generate cards"}
+              {isTeeTimes && (
+                <select value={teeInterval} onChange={(e) => setTeeInterval(Number(e.target.value))} className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-[var(--cream)] outline-none" title="Minutes between groups">
+                  {[7, 8, 10, 12, 15].map((n) => <option key={n} value={n}>{n} min apart</option>)}
+                </select>
+              )}
+              <button onClick={isTeeTimes ? doGenerateTee : doGenerate} disabled={busy} className="rounded-full bg-white/[0.06] px-4 py-1.5 text-xs font-bold text-[var(--cream)] transition-colors hover:bg-white/[0.1] disabled:opacity-50">
+                {isTeeTimes ? (cards.length ? "Regenerate" : "Generate tee times") : (cards.length ? "Reshuffle" : "Generate cards")}
               </button>
             </div>
           ) : undefined}
-        >Cards</SectionTitle>
+        >{isTeeTimes ? "Tee times" : "Cards"}</SectionTitle>
         {cards.length === 0 ? (
-          <p className="text-sm text-[var(--sage-dim)]">No cards yet.{admin ? " Generate them once players check in." : ""}</p>
+          <p className="text-sm text-[var(--sage-dim)]">{isTeeTimes ? "No tee times yet." : "No cards yet."}{admin ? (isTeeTimes ? " Generate them once players are in — they’ll split by division." : " Generate them once players check in.") : ""}</p>
+        ) : isTeeTimes ? (
+          (() => {
+            const groups = new Map<string, EventCard[]>();
+            for (const c of cards) { const d = c.division || ""; if (!groups.has(d)) groups.set(d, []); groups.get(d)!.push(c); }
+            const multiDiv = groups.size > 1;
+            return (
+              <div className="grid gap-6">
+                {[...groups.entries()].map(([div, gcards]) => (
+                  <div key={div || "open"}>
+                    {multiDiv && <div className="mb-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--gold)]">{div || "Open"}</div>}
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      {gcards.map((c) => (
+                        <div key={c.id} className={`${card} p-4`}>
+                          <div className="mb-3 flex items-center justify-between gap-2">
+                            <span className="font-[family-name:var(--font-heading)] text-sm font-extrabold text-[var(--cream)]">Group {c.number}</span>
+                            {admin && open ? (
+                              <input type="time" value={c.teeTime ? toLocalHM(c.teeTime) : ""} onChange={(e) => editTeeTime(c.id, e.target.value)} className="rounded-lg bg-[var(--gold-dim)] px-2 py-1 font-mono text-[11px] font-bold text-[var(--gold)] outline-none [color-scheme:dark]" />
+                            ) : (
+                              <span className="rounded-lg bg-[var(--gold-dim)] px-2 py-1 font-mono text-[10px] font-bold text-[var(--gold)]">{c.teeTime ? fmtHM(c.teeTime) : "—"}</span>
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            {c.playerIds.map((pid) => (
+                              <div key={pid} className="flex items-center gap-2 text-sm text-[var(--text-body)]">
+                                <UserLink username={usernameById(pid)}><Avatar url={entryOf(pid)?.photo} name={nameById(pid)} size={22} ring={false} /></UserLink>
+                                <UserLink username={usernameById(pid)} className="min-w-0 flex-1 truncate">{nameById(pid)}</UserLink>
+                                {admin && open && cards.length > 1 && (
+                                  <select value="" onChange={(e) => { if (e.target.value) moveEntry(pid, e.target.value); }} title="Move to another group" className="shrink-0 rounded-md bg-white/[0.05] px-1.5 py-1 text-[10px] text-[var(--sage)] outline-none">
+                                    <option value="">move…</option>
+                                    {cards.filter((o) => o.id !== c.id).map((o) => <option key={o.id} value={o.id}>Group {o.number}{o.teeTime ? ` · ${fmtHM(o.teeTime)}` : ""}</option>)}
+                                  </select>
+                                )}
+                              </div>
+                            ))}
+                            {c.playerIds.length === 0 && <p className="text-xs text-[var(--cream-38)]">Empty group</p>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {cards.map((c) => (
@@ -1488,7 +1566,8 @@ export default function LeagueEventPage() {
           </div>
         )}
       </section>
-      )}
+      );
+      })()}
       </div>
     </main>
   );

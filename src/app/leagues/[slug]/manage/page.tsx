@@ -512,8 +512,8 @@ export default function LeagueManagePage() {
               {modelDraft === "placement" && (
                 <div className="mt-5 border-t border-[var(--hair)] pt-5">
                   <FieldLabel>Points per place</FieldLabel>
-                  <Segmented options={["Linear", "UDisc decay", "Custom"]} value={curveDraft === "decay" ? "UDisc decay" : curveDraft === "table" ? "Custom" : "Linear"} onChange={(v) => { const c = v === "UDisc decay" ? "decay" : v === "Custom" ? "table" : "linear"; setCurveDraft(c); if (c === "table" && curveTableDraft.length === 0) setCurveTableDraft([10, 8, 6, 5, 4, 3, 2, 1]); }} />
-                  <p className="mt-1.5 text-[11px] text-[var(--sage-dim)]">{curveDraft === "decay" ? "1st = the field size, tapering to 2 down the field, 1 below that (UDisc-style)." : curveDraft === "table" ? "You set exact points for each finishing place; anyone past the list gets 1." : "1st gets N, 2nd N−1, … where N = players who showed. Ties split evenly."}</p>
+                  <Segmented options={["Linear", "Decay", "Custom"]} value={curveDraft === "decay" ? "Decay" : curveDraft === "table" ? "Custom" : "Linear"} onChange={(v) => { const c = v === "Decay" ? "decay" : v === "Custom" ? "table" : "linear"; setCurveDraft(c); if (c === "table" && curveTableDraft.length === 0) setCurveTableDraft([10, 8, 6, 5, 4, 3, 2, 1]); }} />
+                  <p className="mt-1.5 text-[11px] text-[var(--sage-dim)]">{curveDraft === "decay" ? "1st = the field size, tapering to 2 down the field, 1 below that." : curveDraft === "table" ? "You set exact points for each finishing place; anyone past the list gets 1." : "1st gets N, 2nd N−1, … where N = players who showed. Ties split evenly."}</p>
                   {curveDraft === "table" && (
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       {curveTableDraft.map((v, i) => (
