@@ -1,6 +1,7 @@
 import { db } from "./firebase";
 import { collection, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, deleteField, arrayUnion, arrayRemove, onSnapshot, query, where, orderBy, limit } from "firebase/firestore";
 import { getProfileLite, resolveCanonicalId } from "./account";
+import { findUserByUsername } from "./leaderboard";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Radius Leagues — Firestore schema (Phase 1)
@@ -407,6 +408,26 @@ export async function setMemberRole(leagueId: string, memberId: string, role: "d
 /** Director sets a player's division — the league default (also stamped onto entries by the caller). */
 export async function setMemberDivision(leagueId: string, memberId: string, division: string): Promise<void> {
   await setDoc(doc(db, "leagues", leagueId, "members", memberId), { division: division || deleteField() }, { merge: true });
+}
+
+/**
+ * Add a co-director by @username — even if they haven't joined yet. Looks the user up, resolves
+ * their canonical id, ensures a member record, sets role "director", and adds them to adminIds.
+ * Returns the new/updated member, or null if the username isn't found.
+ */
+export async function addDirectorByUsername(leagueId: string, username: string): Promise<LeagueMember | null> {
+  const clean = username.trim().replace(/^@/, "");
+  if (!clean) return null;
+  const user = await findUserByUsername(clean);
+  if (!user) return null;
+  const cid = await resolveCanonicalId(user.id);
+  const ref = doc(db, "leagues", leagueId, "members", cid);
+  const existing = await getDoc(ref);
+  const now = Date.now();
+  if (existing.exists()) await setDoc(ref, { role: "director" }, { merge: true });
+  else await setDoc(ref, { name: user.name || clean, username: user.username || clean, photo: user.photo || null, role: "director", joinedAt: now }, { merge: true });
+  await updateDoc(doc(db, "leagues", leagueId), { adminIds: arrayUnion(cid), lastUpdated: now });
+  return { id: cid, name: user.name || clean, username: user.username || clean, photo: user.photo || undefined, role: "director", joinedAt: Number(existing.data()?.joinedAt) || now };
 }
 
 export async function getLeagueMembers(leagueId: string): Promise<LeagueMember[]> {

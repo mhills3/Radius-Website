@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, getEntries, updateEntry, updateEventDetails, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRole, setMemberDivision, setLeagueLogo, isLeagueAdmin, subscribeLeagueTeams, createLeagueTeam, updateLeagueTeam, deleteLeagueTeam, subscribeLeagueMatches, generateSchedule, setMatchResult, computeMatchStandings, generateBracket, advanceBracket, LEAGUE_FORMATS, TEAM_SIZES, START_FORMATS, isTeamFormat, SUGGESTED_DIVISIONS, type League, type LeagueEvent, type LeagueMember, type EventEntry, type StandingRow, type LeagueTeam, type LeagueMatch } from "@/lib/leagues";
+import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, getEntries, updateEntry, updateEventDetails, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRole, setMemberDivision, addDirectorByUsername, setLeagueLogo, isLeagueAdmin, subscribeLeagueTeams, createLeagueTeam, updateLeagueTeam, deleteLeagueTeam, subscribeLeagueMatches, generateSchedule, setMatchResult, computeMatchStandings, generateBracket, advanceBracket, LEAGUE_FORMATS, TEAM_SIZES, START_FORMATS, isTeamFormat, SUGGESTED_DIVISIONS, type League, type LeagueEvent, type LeagueMember, type EventEntry, type StandingRow, type LeagueTeam, type LeagueMatch } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { storage } from "@/lib/firebase";
 import { getDownloadURL, ref as storageRef, uploadBytes } from "firebase/storage";
@@ -68,6 +68,11 @@ export default function LeagueManagePage() {
   // Event editor (single-event / tournament containers)
   const [ed, setEd] = useState({ name: "", date: "", time: "17:30", rounds: 1, holes: 18, buyIn: "", cap: "" });
   const [eventSaved, setEventSaved] = useState(false);
+
+  // Co-director add-by-username
+  const [coDir, setCoDir] = useState("");
+  const [addingCoDir, setAddingCoDir] = useState(false);
+  const [coDirNote, setCoDirNote] = useState("");
 
   useEffect(() => {
     getLeagueBySlug(slug).then((l) => {
@@ -199,6 +204,19 @@ export default function LeagueManagePage() {
     } finally { setBusy(false); }
   };
 
+  const addCoDirector = async () => {
+    if (!league || !coDir.trim() || addingCoDir) return;
+    setAddingCoDir(true); setCoDirNote("");
+    try {
+      const m = await addDirectorByUsername(league.id, coDir);
+      if (!m) { setCoDirNote("No player found with that username."); return; }
+      setMembers((cur) => (cur.some((x) => x.id === m.id) ? cur.map((x) => (x.id === m.id ? { ...x, role: "director" } : x)) : [...cur, m]));
+      setLeague((l) => (l ? { ...l, adminIds: l.adminIds.includes(m.id) ? l.adminIds : [...l.adminIds, m.id] } : l));
+      setCoDir(""); setCoDirNote(`${m.name || "@" + m.username} is now a director.`);
+      setTimeout(() => setCoDirNote(""), 3500);
+    } finally { setAddingCoDir(false); }
+  };
+
   const schedule = async () => {
     if (!user || !league || !startDate || busy) return;
     setBusy(true);
@@ -318,6 +336,16 @@ export default function LeagueManagePage() {
           )}
 
           {section === "members" && (
+            <div className="grid gap-4">
+            <div className={`${card} p-5`}>
+              <FieldLabel>Add a director <span className="normal-case tracking-normal text-[var(--sage-dim)]">— by @username, even if they haven&apos;t joined</span></FieldLabel>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <input value={coDir} onChange={(e) => setCoDir(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCoDirector(); } }} placeholder="@username" className={`${inputCls} max-w-[240px]`} />
+                <button onClick={addCoDirector} disabled={!coDir.trim() || addingCoDir} className="h-11 shrink-0 rounded-xl border border-[var(--gold)]/40 bg-[var(--gold-dim)] px-4 text-sm font-bold text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/20 disabled:opacity-40">{addingCoDir ? "Adding…" : "+ Add director"}</button>
+                {coDirNote && <span className="text-xs font-semibold text-[var(--cream-60)]">{coDirNote}</span>}
+              </div>
+              <p className="mt-2.5 text-[11px] text-[var(--sage-dim)]">Directors can run everything in here — add as many co-directors as you need. Promote existing players below.</p>
+            </div>
             <div className={`${card} overflow-hidden`}>
               {members.map((m) => (
                 <div key={m.id} className="flex items-center gap-3.5 border-b border-white/[0.05] px-5 py-3.5 last:border-b-0">
@@ -357,6 +385,7 @@ export default function LeagueManagePage() {
                 <p className="px-5 py-3 text-[11px] text-[var(--sage-dim)]">Set each player&apos;s division — it flows into their event entry, tee-time grouping, and division standings.</p>
               )}
               {members.length === 0 && <p className="p-6 text-sm text-[var(--sage-dim)]">No players yet. Share an event check-in link.</p>}
+            </div>
             </div>
           )}
 
