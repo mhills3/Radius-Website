@@ -43,6 +43,7 @@ export default function LeagueManagePage() {
   const [teeEventId, setTeeEventId] = useState<string | null>(null); // which event's tee sheet (leagues have many)
   const [teeSize, setTeeSize] = useState(4);
   const [teeInt, setTeeInt] = useState(10);
+  const [flexEnd, setFlexEnd] = useState(""); // Flex play-window end (datetime-local)
   const [teams, setTeams] = useState<LeagueTeam[]>([]);
   const [matches, setMatches] = useState<LeagueMatch[]>([]);
   const [standings, setStandings] = useState<StandingRow[]>([]);
@@ -141,7 +142,7 @@ export default function LeagueManagePage() {
   const teeEid = teeEvent?.id ?? null;
   useEffect(() => { setTeeEventId(primaryEventId); }, [primaryEventId]);
   useEffect(() => { if (!teeEid) { setTeeCards([]); setTeeEntries([]); return; } getCards(teeEid).then(setTeeCards).catch(() => {}); getEntries(teeEid).then(setTeeEntries).catch(() => {}); }, [teeEid]);
-  useEffect(() => { if (teeEvent) { setTeeSize(teeEvent.teeGroupSize ?? 4); setTeeInt(teeEvent.teeIntervalMin ?? 10); } }, [teeEid]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (teeEvent) { setTeeSize(teeEvent.teeGroupSize ?? 4); setTeeInt(teeEvent.teeIntervalMin ?? 10); setFlexEnd(teeEvent.windowEndsAt ? `${toDateInput(teeEvent.windowEndsAt)}T${toTimeInput(teeEvent.windowEndsAt)}` : ""); } }, [teeEid]); // eslint-disable-line react-hooks/exhaustive-deps
   const teeEntryOf = useMemo(() => new Map(teeEntries.map((e) => [e.id, e])), [teeEntries]);
   useEffect(() => { if (primaryEvent) setEd(edFromEvent(primaryEvent)); }, [primaryEventId]); // eslint-disable-line react-hooks/exhaustive-deps
   // A tournament/one-off is really a single event — exit straight to it, skipping the container page.
@@ -186,6 +187,12 @@ export default function LeagueManagePage() {
       const acePot = acePotDraft.trim() !== "" && Number(acePotDraft) >= 0 ? Number(acePotDraft) : undefined;
       if (acePot != null && acePot !== league.acePotBalance) await setAcePot(league.id, acePot);
       setLeague({ ...league, acePotBalance: acePot ?? league.acePotBalance, settings: { ...settings, divisions: divisions.length > 1 ? divisions : ["Open"] } });
+      // Propagate format/start-format to not-yet-complete events so existing events reflect the change.
+      if (startDraft !== league.settings.startFormat || formatDraft !== league.settings.format) {
+        const live = events.filter((e) => e.status !== "complete" && e.status !== "cancelled");
+        await Promise.all(live.map((e) => updateEventDetails(e.id, { startFormat: startDraft, format: formatDraft })));
+        if (live.length) { const fresh = await getLeagueEvents(league.id); setEvents(fresh); }
+      }
       computeStandings(league.id, bestN).then(setStandings).catch(() => {});
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
@@ -238,6 +245,14 @@ export default function LeagueManagePage() {
     if (!teeEvent || !hole) return;
     setTeeCards((cur) => cur.map((c) => (c.id === cardId ? { ...c, startHole: hole } : c)));
     await setCardStartHole(teeEvent.id, cardId, hole);
+  };
+  const saveFlexWindow = async () => {
+    if (!teeEvent || busy) return;
+    setBusy(true);
+    try {
+      await updateEventDetails(teeEvent.id, { windowEndsAt: flexEnd ? new Date(flexEnd).getTime() : null });
+      const fresh = await getLeagueEvents(league!.id); setEvents(fresh);
+    } finally { setBusy(false); }
   };
   const moveTee = async (pid: string, toCardId: string) => {
     if (!teeEvent) return;
@@ -789,6 +804,17 @@ export default function LeagueManagePage() {
                   <div><FieldLabel>Players per group</FieldLabel><Segmented options={["2", "3", "4"]} value={String(teeSize)} onChange={(v) => setTeeSize(Number(v))} /></div>
                   {teeFormat === "Tee times" && <div><FieldLabel>Minutes between groups</FieldLabel><Segmented options={["8", "10", "12", "15"]} value={String(teeInt)} onChange={(v) => setTeeInt(Number(v))} /></div>}
                 </div>
+                {teeFormat === "Flex" && (
+                  <div className="mt-4">
+                    <FieldLabel>Play window</FieldLabel>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs text-[var(--sage-dim)]">Opens {fmtDate(teeEvent.roundStarts?.[0] || teeEvent.date)} · closes</span>
+                      <input type="datetime-local" value={flexEnd} onChange={(e) => setFlexEnd(e.target.value)} className={`${inputCls} max-w-[240px] [color-scheme:dark]`} />
+                      <button onClick={saveFlexWindow} disabled={busy} className="h-11 shrink-0 rounded-xl border border-[var(--gold)]/40 bg-[var(--gold-dim)] px-4 text-sm font-bold text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/20 disabled:opacity-40">Save window</button>
+                    </div>
+                    <p className="mt-1.5 text-[11px] text-[var(--sage-dim)]">Players tee off any time between open and close, then report their round.</p>
+                  </div>
+                )}
                 <div className="mt-4 flex items-center gap-3">
                   <button onClick={genTee} disabled={busy || teeEntries.length === 0} className={btnGold}>{busy ? "Building…" : teeCards.length ? "Regenerate groups" : "Generate groups"}</button>
                   {teeEntries.length === 0 && <span className="text-xs text-[var(--sage-dim)]">No players in yet.</span>}
@@ -800,6 +826,10 @@ export default function LeagueManagePage() {
                 const groups = new Map<string, EventCard[]>();
                 for (const c of teeCards) { const d = c.division || ""; if (!groups.has(d)) groups.set(d, []); groups.get(d)!.push(c); }
                 const multiDiv = groups.size > 1;
+                // Shotgun A/B waves: when two+ groups share a hole, letter them by order.
+                const byHole = new Map<number, EventCard[]>();
+                if (teeFormat === "Shotgun") for (const c of teeCards) { if (!byHole.has(c.startHole)) byHole.set(c.startHole, []); byHole.get(c.startHole)!.push(c); }
+                const waveOf = (c: EventCard) => { const arr = byHole.get(c.startHole); return arr && arr.length > 1 ? String.fromCharCode(65 + arr.indexOf(c)) : ""; };
                 return (
                   <div className="grid gap-6">
                     {[...groups.entries()].map(([div, gcards]) => (
@@ -813,7 +843,7 @@ export default function LeagueManagePage() {
                                 {teeFormat === "Tee times" ? (
                                   <input type="time" value={c.teeTime ? toTimeInput(c.teeTime) : ""} onChange={(e) => editTee(c.id, e.target.value)} className="rounded-lg bg-[var(--gold-dim)] px-2 py-1 font-mono text-[11px] font-bold text-[var(--gold)] outline-none [color-scheme:dark]" />
                                 ) : teeFormat === "Shotgun" ? (
-                                  <span className="inline-flex items-center gap-1 rounded-lg bg-[var(--gold-dim)] pl-2 pr-1 py-1 font-mono text-[10px] font-bold text-[var(--gold)]">HOLE <input type="number" min={1} max={teeEvent.holes} value={c.startHole} onChange={(e) => editHole(c.id, Number(e.target.value))} className="w-10 rounded bg-transparent text-center text-[11px] font-bold text-[var(--gold)] outline-none" /></span>
+                                  <span className="inline-flex items-center gap-1 rounded-lg bg-[var(--gold-dim)] pl-2 pr-1 py-1 font-mono text-[10px] font-bold text-[var(--gold)]">HOLE <input type="number" min={1} max={teeEvent.holes} value={c.startHole} onChange={(e) => editHole(c.id, Number(e.target.value))} className="w-10 rounded bg-transparent text-center text-[11px] font-bold text-[var(--gold)] outline-none" />{waveOf(c) && <span className="ml-0.5 rounded bg-[var(--gold)]/25 px-1">{waveOf(c)}</span>}</span>
                                 ) : null}
                               </div>
                               <div className="space-y-2">

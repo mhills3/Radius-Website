@@ -182,6 +182,7 @@ export interface LeagueEvent {
   teeGroupSize?: number;   // Tee-times events: players per group (default 4)
   teeIntervalMin?: number; // Tee-times events: minutes between groups (default 10)
   teeGenerated?: boolean;  // tee sheet has been built (auto at registration close, or manually)
+  windowEndsAt?: number;   // Flex events: end of the play window (start = date). Players report by this time.
   capacity?: number;  // field cap; fill bars and spots-remaining render only when set
   buyIn?: number;     // dollars per player; the paid toggle × buyIn = collected pot
   kind?: string;        // EVENT_KINDS key — discovery category
@@ -739,6 +740,7 @@ function toEvent(id: string, d: any): LeagueEvent {
     teeGroupSize: Number(d.teeGroupSize) > 0 ? Number(d.teeGroupSize) : undefined,
     teeIntervalMin: Number(d.teeIntervalMin) > 0 ? Number(d.teeIntervalMin) : undefined,
     teeGenerated: d.teeGenerated === true,
+    windowEndsAt: Number(d.windowEndsAt) > 0 ? Number(d.windowEndsAt) : undefined,
     capacity: Number(d.capacity) > 0 ? Number(d.capacity) : undefined,
     extras: Array.isArray(d.extras) ? d.extras.filter((x: unknown) => typeof x === "string") : undefined,
     focus: (d.focus as string) || undefined,
@@ -763,11 +765,13 @@ function toEvent(id: string, d: any): LeagueEvent {
 /** Director event editor: patch the core details of an existing event (name, date, rounds, holes, money…). */
 export async function updateEventDetails(eventId: string, patch: {
   name?: string; date?: number; roundStarts?: number[] | null; roundCount?: number; holes?: number;
-  buyIn?: number | null; capacity?: number | null; startFormat?: string; courseName?: string;
-  registrationCloseAt?: number | null; teeGroupSize?: number; teeIntervalMin?: number;
+  buyIn?: number | null; capacity?: number | null; format?: string; startFormat?: string; courseName?: string;
+  registrationCloseAt?: number | null; teeGroupSize?: number; teeIntervalMin?: number; windowEndsAt?: number | null;
   timeZone?: string;
 }): Promise<void> {
   const upd: Record<string, unknown> = {};
+  if (patch.format !== undefined) upd.format = patch.format;
+  if (patch.windowEndsAt !== undefined) upd.windowEndsAt = patch.windowEndsAt && patch.windowEndsAt > 0 ? patch.windowEndsAt : deleteField();
   if (patch.name !== undefined) upd.name = patch.name.trim() || "Event";
   if (patch.date !== undefined) upd.date = patch.date;
   if (patch.roundStarts !== undefined) upd.roundStarts = patch.roundStarts && patch.roundStarts.length > 1 ? patch.roundStarts : deleteField();
@@ -1087,7 +1091,8 @@ export async function generateGroups(eventId: string, entries: EventEntry[], opt
   for (const d of divKeys) {
     const group = byDiv.get(d)!;
     for (let i = 0; i < group.length; i += size) {
-      const startHole = opts.format === "Shotgun" ? ((slot * 2) % holeCount) + 1 : 1;
+      // Shotgun: one group per hole; when groups exceed holes, wrap into A/B/C waves on the same holes.
+      const startHole = opts.format === "Shotgun" ? (slot % holeCount) + 1 : 1;
       const teeTime = opts.format === "Tee times" ? start + slot * interval : undefined;
       cards.push({ id: freshId(), number: cards.length + 1, startHole, teeTime, division: d || undefined, playerIds: group.slice(i, i + size).map((e) => e.id) });
       slot++;
