@@ -58,6 +58,7 @@ export interface LeagueSettings {
   handicapCap?: number;     // max |strokes| a handicap may reach (0/undefined = uncapped)
   bagTags?: boolean;        // run a real tag ladder: tags reassign by finish on event completion
   checkIns?: boolean;       // enable day-of check-in tracking (TD marks who's arrived; unlocks ~3h before start)
+  checklistDone?: string[]; // setup-checklist items the director manually ticked off
   scoring?: LeagueScoring;  // how events turn into season standings (default = placement/linear/gross/sum)
 }
 
@@ -308,6 +309,7 @@ function toLeague(id: string, d: any): League {
       handicapCap: Number(d.settings?.handicapCap) || undefined,
       bagTags: d.settings?.bagTags === true,
       checkIns: d.settings?.checkIns === true,
+      checklistDone: Array.isArray(d.settings?.checklistDone) ? d.settings.checklistDone.filter((x: unknown) => typeof x === "string") : undefined,
       scoring: d.settings?.scoring && typeof d.settings.scoring === "object" ? d.settings.scoring as LeagueScoring : undefined,
     },
     memberCount: Number(d.memberCount) || 0,

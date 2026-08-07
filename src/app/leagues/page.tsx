@@ -523,7 +523,11 @@ export default function LeaguesPage() {
                           ); })()}
                         </div>
                         <div className="mt-0.5 truncate text-[13px] text-[var(--cream-60)]">
-                          {[ev.leagueName !== ev.name ? ev.leagueName : null, `${weekday(ev.date)} ${fmtTime(ev.date)}`].filter(Boolean).join(" · ")}
+                          {[ev.leagueName !== ev.name ? ev.leagueName : null,
+                            ev.roundStarts && ev.roundStarts.length > 1
+                              ? ev.roundStarts.map((ms, i) => `R${i + 1} ${new Date(ms).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`).join(" · ")
+                              : `${weekday(ev.date)} ${fmtTime(ev.date)}`,
+                          ].filter(Boolean).join(" · ")}
                         </div>
                         <div className="mt-5 flex gap-[22px]">
                           <span><span className={`block text-[15px] font-bold ${ev.buyIn ? "font-mono text-[var(--blue)]" : "text-[var(--cream)]"}`}>{ev.buyIn ? `$${ev.buyIn}` : "Free"}</span><span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Buy-in</span></span>
@@ -532,7 +536,7 @@ export default function LeaguesPage() {
                           {ev.roundCount > 1 && <span><span className="block font-mono text-[15px] font-bold text-[var(--blue)]">{ev.roundCount}×{ev.holes}</span><span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Rounds</span></span>}
                         </div>
                         {!ev.capacity && (
-                          <div className="mt-4 font-mono text-[10.5px] tracking-[0.06em] text-[var(--cream-38)]">{ev.entryCount > 0 ? <><b className="font-medium text-[var(--cream-60)]">{ev.entryCount}</b> checked in</> : "Be the first in"}</div>
+                          <div className="mt-4 font-mono text-[10.5px] tracking-[0.06em] text-[var(--cream-38)]">{ev.entryCount > 0 ? <><b className="font-medium text-[var(--cream-60)]">{ev.entryCount}</b> joined</> : "Be the first to join"}</div>
                         )}
                         {ev.capacity && (() => {
                           const pct = Math.min(100, Math.round((ev.entryCount / ev.capacity!) * 100));

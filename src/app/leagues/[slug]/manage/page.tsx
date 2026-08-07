@@ -167,12 +167,21 @@ export default function LeagueManagePage() {
     { key: "quicklink", label: "Quick link" },
   ];
 
+  const manualDone = league?.settings.checklistDone ?? [];
   const checklist = league ? [
-    { label: `${NOUN} settings`, done: !!league.settings.description || (league.settings.divisions ?? []).length > 1, hint: "Description, format, and defaults", go: "settings" as Section },
-    { label: "Divisions", done: (league.settings.divisions ?? []).length > 1, hint: "Add divisions so players self-sort at check-in", go: "settings" as Section },
-    { label: isLeagueKind ? "First event" : "Schedule it", done: events.length > 0, hint: isLeagueKind ? "Schedule a night or a whole season" : "Set the date, rounds, and tee times", go: "events" as Section },
-    { label: "Scoring configured", done: !!league.settings.scoring?.model || !!league.settings.bestN || standings.length > 0, hint: "Model, points-per-place, and best-N", go: "settings" as Section },
-  ] : [];
+    { key: "settings", label: `${NOUN} settings`, done: !!league.settings.description || (league.settings.divisions ?? []).length > 1, hint: "Description, format, and defaults", go: "settings" as Section },
+    { key: "divisions", label: "Divisions", done: (league.settings.divisions ?? []).length > 1, hint: "Add divisions so players self-sort at check-in", go: "settings" as Section },
+    { key: "schedule", label: isLeagueKind ? "First event" : "Schedule it", done: events.length > 0, hint: isLeagueKind ? "Schedule a night or a whole season" : "Set the date, rounds, and tee times", go: "events" as Section },
+    { key: "scoring", label: "Scoring configured", done: !!league.settings.scoring?.model || !!league.settings.bestN || standings.length > 0, hint: "Model, points-per-place, and best-N", go: "settings" as Section },
+  ].map((c) => ({ ...c, done: c.done || manualDone.includes(c.key) })) : [];
+
+  const toggleChecklist = async (key: string) => {
+    if (!league) return;
+    const next = manualDone.includes(key) ? manualDone.filter((k) => k !== key) : [...manualDone, key];
+    const settings = { ...league.settings, checklistDone: next };
+    setLeague({ ...league, settings });
+    await updateLeagueSettings(league.id, settings);
+  };
 
   const saveSettings = async () => {
     if (!league || busy) return;
@@ -389,14 +398,16 @@ export default function LeagueManagePage() {
                   {checklist.map((c, ci) => {
                     const isNext = !c.done && checklist.findIndex((x) => !x.done) === ci;
                     return (
-                    <button key={c.label} onClick={() => setSection(c.go)} className={`group flex items-center gap-3 rounded-xl border border-[var(--hair)] bg-[var(--forest)] px-4 py-3 text-left transition-colors hover:border-[var(--hair-strong)] ${isNext ? "border-l-[3px] border-l-[rgba(232,181,96,0.45)]" : ""}`}>
-                      <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[10px] font-bold ${c.done ? "bg-[var(--gold)] text-[#141B16]" : isNext ? "border border-[var(--gold)]/60 text-transparent" : "border border-[var(--hair-strong)] text-transparent"}`}>✓</span>
-                      <span className="min-w-0 flex-1">
-                        <span className={`block text-sm font-bold ${c.done ? "text-[var(--cream-38)] line-through decoration-[var(--hair-strong)]" : "text-[var(--cream)]"}`}>{c.label}</span>
-                        <span className="block text-xs text-[var(--cream-38)]">{c.hint}</span>
-                      </span>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-4 w-4 shrink-0 text-[var(--cream-38)] group-hover:text-[var(--gold)]"><path d="M9 6l6 6-6 6" /></svg>
-                    </button>
+                    <div key={c.key} className={`group flex items-center gap-3 rounded-xl border border-[var(--hair)] bg-[var(--forest)] px-4 py-3 transition-colors hover:border-[var(--hair-strong)] ${isNext ? "border-l-[3px] border-l-[rgba(232,181,96,0.45)]" : ""}`}>
+                      <button onClick={() => toggleChecklist(c.key)} title={c.done ? "Mark not done" : "Mark done"} className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[10px] font-bold transition-colors ${c.done ? "bg-[var(--gold)] text-[#141B16]" : isNext ? "border border-[var(--gold)]/60 text-transparent hover:border-[var(--gold)]" : "border border-[var(--hair-strong)] text-transparent hover:border-[var(--cream-38)]"}`}>✓</button>
+                      <button onClick={() => setSection(c.go)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                        <span className="min-w-0 flex-1">
+                          <span className={`block text-sm font-bold ${c.done ? "text-[var(--cream-38)] line-through decoration-[var(--hair-strong)]" : "text-[var(--cream)]"}`}>{c.label}</span>
+                          <span className="block text-xs text-[var(--cream-38)]">{c.hint}</span>
+                        </span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-4 w-4 shrink-0 text-[var(--cream-38)] group-hover:text-[var(--gold)]"><path d="M9 6l6 6-6 6" /></svg>
+                      </button>
+                    </div>
                     );
                   })}
                 </div>
@@ -892,16 +903,6 @@ export default function LeagueManagePage() {
 
           {section === "settings" && (
             <div className="grid gap-6">
-            {scoringContainer && primaryEvent && (
-              <button onClick={() => setSection("teetimes")} className="flex items-center gap-4 rounded-2xl border border-[var(--gold)]/40 bg-[var(--gold-dim)] p-5 text-left transition-colors hover:bg-[var(--gold)]/15">
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[10px] bg-[var(--gold)]/20 text-[var(--gold)]"><IconClock className="h-5 w-5" /></span>
-                <span className="min-w-0 flex-1">
-                  <span className="block font-[family-name:var(--font-heading)] text-[15px] font-bold text-[var(--cream)]">{startsNoun(primaryEvent.startFormat)} &amp; groups</span>
-                  <span className="block text-xs text-[var(--cream-60)]">Set group size{primaryEvent.startFormat === "Tee times" ? ", tee interval," : ""} and hand-tweak the {startsNoun(primaryEvent.startFormat).toLowerCase()} sheet — split by division.</span>
-                </span>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-5 w-5 shrink-0 text-[var(--gold)]"><path d="M9 6l6 6-6 6" /></svg>
-              </button>
-            )}
             <div className={`${card} p-6`}>
               <h3 className="mb-1 font-[family-name:var(--font-heading)] text-[15px] font-bold text-[var(--cream)]">Scoring</h3>
               <p className="mb-5 text-xs text-[var(--sage-dim)]">How events turn into your season standings.</p>
@@ -1012,9 +1013,9 @@ export default function LeagueManagePage() {
                 <label className="block sm:col-span-2"><FieldLabel>Description</FieldLabel><textarea value={descDraft} onChange={(e) => setDescDraft(e.target.value)} rows={2} className={inputCls} /></label>
               </div>
               <p className="mt-4 text-xs leading-relaxed text-[var(--sage-dim)]">Handicaps are public math: <span className="font-mono text-[var(--sage)]">% × avg(player − field) over last 5 rounds</span>, capped — apply them per event, override any player inline.</p>
-              <div className="mt-5 flex items-center gap-3">
-                <button onClick={saveSettings} disabled={busy} className={btnGold}>{busy ? "Saving…" : "Save settings"}</button>
+              <div className="mt-5 flex items-center justify-end gap-3">
                 {saved && <span className="text-sm font-bold text-[#5fcf80]">Saved ✓</span>}
+                <button onClick={saveSettings} disabled={busy} className={btnGold}>{busy ? "Saving…" : "Save settings"}</button>
               </div>
             </div>
             </div>
