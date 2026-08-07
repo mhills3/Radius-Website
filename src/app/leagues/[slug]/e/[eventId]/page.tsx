@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { EVENT_EXTRAS, registrationOpen, getLeagueBySlug, getLeagueMembers, setPartnerRequest, getEvent, getCards, checkIn, updateEntry, removeEntry, addWalkupEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, reassignBagTags, computeStandings, computeSeasonStandings, computeHandicaps, applyHandicaps, subscribeEntries, subscribeLeagueMatches, computeMatchStandings, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCourseHoles, setTeamName, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember, type StandingRow, type SeasonStandings, type LeagueMatch } from "@/lib/leagues";
+import { EVENT_EXTRAS, registrationOpen, getLeagueBySlug, getLeagueMembers, setPartnerRequest, getEvent, getCards, checkIn, updateEntry, removeEntry, addWalkupEntry, generateCards, setEventStatus, setRoundScore, updateEventConfig, updateEventSchedule, reassignBagTags, computeStandings, computeSeasonStandings, computeHandicaps, applyHandicaps, subscribeEntries, subscribeLeagueMatches, computeMatchStandings, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCourseHoles, setTeamName, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember, type StandingRow, type SeasonStandings, type LeagueMatch } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { SectionTitle, Avatar, Pos, btnGold, card, plural, BackLink, IconSliders, IconShare, IconClock, IconSparkles, IconMoon, IconHeart, IconTag, IconVenus, IconDollar, IconPin, IconDisc, IconEyeOff, IconUsers, IconCalendar, IconTrophy, IconTarget, IconLeaf } from "@/components/leagues/ui";
 
@@ -34,6 +34,8 @@ const menuItem = "block w-full rounded-lg px-3 py-2 text-left text-[13.5px] font
 const pillWord = "inline-flex h-8 items-center rounded-full border border-[var(--hair-strong)] bg-[rgba(20,27,22,0.45)] px-3.5 text-xs text-[var(--cream-60)] backdrop-blur-[6px]";
 const pillMono = "inline-flex h-8 items-center rounded-full border border-[var(--hair-strong)] bg-[rgba(20,27,22,0.45)] px-3.5 font-mono text-[11.5px] tracking-[0.06em] text-[var(--cream-60)] backdrop-blur-[6px]";
 const fmtDate = (ms: number) => { const d = new Date(ms); return `${d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })} · ${d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`; };
+// ms epoch → local "YYYY-MM-DDTHH:mm" for <input type="datetime-local"> (toISOString would shift to UTC).
+const toLocalInput = (ms: number) => { const d = new Date(ms); const p = (n: number) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
 const adminInput = "rounded-lg border border-white/10 bg-white/[0.05] px-2 py-1.5 text-right font-mono text-sm text-[var(--cream)] outline-none transition-colors focus:border-[var(--gold)]";
 
 // Renders the wizard's markdown-lite description: **bold**, _italic_, "- " bullets.
@@ -94,6 +96,8 @@ export default function LeagueEventPage() {
   const [copied, setCopied] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [schedEdit, setSchedEdit] = useState(false); // admin: reveal per-round datetime editor on the Schedule card
+  const [schedDraft, setSchedDraft] = useState<string[]>([]); // datetime-local strings, one per round
   const menuRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!menuOpen) return;
@@ -248,6 +252,18 @@ export default function LeagueEventPage() {
       const roundCount = Math.min(event.roundCount + 1, 6);
       await updateEventConfig(event.id, { roundCount });
       setEvent({ ...event, roundCount });
+    } finally { setBusy(false); }
+  };
+
+  const saveSchedule = async () => {
+    if (!event || busy) return;
+    const starts = schedDraft.map((s) => (s ? new Date(s).getTime() : 0));
+    if (starts.some((t) => !t)) { setHcpNote("Set a day and time for every round."); return; }
+    setBusy(true);
+    try {
+      await updateEventSchedule(event.id, starts);
+      setEvent({ ...event, date: starts[0], roundStarts: starts.length > 1 ? starts : undefined });
+      setSchedEdit(false);
     } finally { setBusy(false); }
   };
 
@@ -868,17 +884,39 @@ export default function LeagueEventPage() {
             {/* TODO: registration rail card lands here when paid events ship (buy-in checkout). Deliberately not built yet. */}
 
             <div className={`${card} p-6`}>
-              <div className="mb-4 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--blue)]">Schedule</div>
-              <div className="ml-[5px] border-l border-[var(--hair-strong)] pl-[22px]">
-                <div className="relative">
-                  <span className="absolute -left-[27px] top-1.5 h-2 w-2 rounded-full border-2 border-[var(--blue)] bg-[var(--forest)]" />
-                  <div className="font-[family-name:var(--font-heading)] text-[14.5px] font-semibold text-[var(--cream)]">{event.kind === "clinic" ? "Session" : event.kind === "cleanup" ? "Work day" : event.roundCount === 1 ? "Round 1" : event.roundCount === 2 ? "Rounds 1 and 2" : `Rounds 1–${event.roundCount}`}</div>
-                  <div className="mt-1 font-mono text-xs text-[var(--blue)]">{fmtDate(event.date)}</div>
-                  <div className="mt-[3px] text-[12.5px] text-[var(--cream-60)]">{event.kind === "clinic" || event.kind === "cleanup"
-                    ? [event.durationMin ? (event.durationMin >= 60 ? `${Math.floor(event.durationMin / 60)}h${event.durationMin % 60 ? ` ${event.durationMin % 60}m` : ""}` : `${event.durationMin} min`) : null, event.meetingPoint, event.courseName].filter(Boolean).join(" · ")
-                    : `${event.holes} holes${event.roundCount > 1 ? " per round" : ""} · ${event.startFormat}${event.courseName ? ` · ${event.courseName}` : ""}`}</div>
-                </div>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--blue)]">Schedule</div>
+                {admin && open && scoringKind && event.roundCount > 1 && (
+                  <button onClick={() => { if (!schedEdit) setSchedDraft(Array.from({ length: event.roundCount }, (_, i) => toLocalInput(event.roundStarts?.[i] ?? event.date))); setSchedEdit((v) => !v); }} className="font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--gold)] transition-opacity hover:opacity-80">{schedEdit ? "Cancel" : event.roundStarts ? "Edit times" : "Set round times"}</button>
+                )}
               </div>
+              {schedEdit ? (
+                <div className="grid gap-2.5">
+                  {schedDraft.map((v, i) => (
+                    <label key={i} className="flex flex-wrap items-center gap-3">
+                      <span className="w-14 shrink-0 font-mono text-xs font-bold uppercase tracking-wide text-[var(--gold)]">Rd {i + 1}</span>
+                      <input type="datetime-local" value={v} onChange={(e) => setSchedDraft((xs) => xs.map((x, j) => (j === i ? e.target.value : x)))} className="rounded-lg border border-[var(--hair-strong)] bg-[var(--card)] px-3 py-2 text-sm text-[var(--cream)] outline-none transition-colors focus:border-[var(--gold)]" />
+                    </label>
+                  ))}
+                  <button onClick={saveSchedule} disabled={busy} className="mt-1 w-fit rounded-full bg-[var(--gold)] px-4 py-1.5 text-[11px] font-bold uppercase tracking-wide text-[#141B16] transition-colors hover:bg-[var(--gold-bright)] disabled:opacity-50">Save schedule</button>
+                </div>
+              ) : (
+                <div className="ml-[5px] border-l border-[var(--hair-strong)] pl-[22px]">
+                  {(event.roundStarts && event.roundStarts.length > 1 ? event.roundStarts : [event.date]).map((ms, i, arr) => (
+                    <div key={i} className={`relative ${i < arr.length - 1 ? "pb-5" : ""}`}>
+                      <span className="absolute -left-[27px] top-1.5 h-2 w-2 rounded-full border-2 border-[var(--blue)] bg-[var(--forest)]" />
+                      <div className="font-[family-name:var(--font-heading)] text-[14.5px] font-semibold text-[var(--cream)]">{event.kind === "clinic" ? "Session" : event.kind === "cleanup" ? "Work day" : arr.length > 1 ? `Round ${i + 1}` : event.roundCount === 1 ? "Round 1" : event.roundCount === 2 ? "Rounds 1 and 2" : `Rounds 1–${event.roundCount}`}</div>
+                      <div className="mt-1 font-mono text-xs text-[var(--blue)]">{fmtDate(ms)}</div>
+                      <div className="mt-[3px] text-[12.5px] text-[var(--cream-60)]">{event.kind === "clinic" || event.kind === "cleanup"
+                        ? [event.durationMin ? (event.durationMin >= 60 ? `${Math.floor(event.durationMin / 60)}h${event.durationMin % 60 ? ` ${event.durationMin % 60}m` : ""}` : `${event.durationMin} min`) : null, event.meetingPoint, event.courseName].filter(Boolean).join(" · ")
+                        : `${event.holes} holes${arr.length <= 1 && event.roundCount > 1 ? " per round" : ""} · ${event.startFormat}${event.courseName ? ` · ${event.courseName}` : ""}`}</div>
+                    </div>
+                  ))}
+                  {admin && open && scoringKind && event.roundCount > 1 && !event.roundStarts && (
+                    <p className="mt-3 text-[11px] text-[var(--gold)]">Round times aren&apos;t set — tap <b className="font-semibold">Set round times</b> so players know when each round starts.</p>
+                  )}
+                </div>
+              )}
             </div>
 
             {staff.length > 0 && (

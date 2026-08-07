@@ -152,6 +152,7 @@ export interface LeagueEvent {
   startFormat: string;
   status: "scheduled" | "active" | "complete" | "cancelled";
   roundCount: number; // 1 = weekly league night; >1 = multi-round event (cumulative total)
+  roundStarts?: number[]; // per-round start times (ms epoch), length === roundCount, [0] === date; set for multi-day/multi-round events
   holes: number;      // holes per round (9 / 18 / custom) — context for every score
   capacity?: number;  // field cap; fill bars and spots-remaining render only when set
   buyIn?: number;     // dollars per player; the paid toggle × buyIn = collected pot
@@ -598,7 +599,7 @@ export const EVENT_EXTRAS = [
   { key: "charity", label: "Charity event", hint: "Proceeds support a cause" },
 ] as const;
 
-export async function createEvents(uid: string, league: League, input: { name: string; dates: number[]; courseId?: string; courseName?: string; format?: string; startFormat?: string; roundCount?: number; holes?: number; capacity?: number; buyIn?: number; kind?: string; isPrivate?: boolean; description?: string; contactEmail?: string; contactPhone?: string; extras?: string[]; focus?: string; skillLevel?: string; durationMin?: number; bring?: string; workList?: string[]; meetingPoint?: string; payoutPlaces?: number; registrationCloseOffsetMin?: number }): Promise<LeagueEvent[]> {
+export async function createEvents(uid: string, league: League, input: { name: string; dates: number[]; roundStarts?: number[]; courseId?: string; courseName?: string; format?: string; startFormat?: string; roundCount?: number; holes?: number; capacity?: number; buyIn?: number; kind?: string; isPrivate?: boolean; description?: string; contactEmail?: string; contactPhone?: string; extras?: string[]; focus?: string; skillLevel?: string; durationMin?: number; bring?: string; workList?: string[]; meetingPoint?: string; payoutPlaces?: number; registrationCloseOffsetMin?: number }): Promise<LeagueEvent[]> {
   const now = Date.now();
   const out: LeagueEvent[] = [];
   for (const date of input.dates) {
@@ -612,6 +613,10 @@ export async function createEvents(uid: string, league: League, input: { name: s
       format: input.format ?? league.settings.format,
       startFormat: input.startFormat ?? league.settings.startFormat,
       status: "scheduled", roundCount: Math.max(1, Math.min(input.roundCount ?? 1, 6)),
+      // Per-round start times only when the director scheduled a multi-round event with distinct rounds.
+      roundStarts: input.roundStarts && input.roundStarts.length > 1
+        ? [date, ...input.roundStarts.slice(1)].slice(0, Math.max(1, Math.min(input.roundCount ?? 1, 6)))
+        : undefined,
       holes: Math.max(1, Math.min(input.holes ?? 18, 36)),
       capacity: input.capacity && input.capacity > 0 ? Math.floor(input.capacity) : undefined,
       buyIn: input.buyIn && input.buyIn > 0 ? input.buyIn : undefined,
@@ -645,6 +650,7 @@ function toEvent(id: string, d: any): LeagueEvent {
     format: d.format ?? "Singles", startFormat: d.startFormat ?? "Shotgun",
     status: (d.status ?? "scheduled") as LeagueEvent["status"],
     roundCount: Math.max(1, Number(d.roundCount) || 1),
+    roundStarts: Array.isArray(d.roundStarts) && d.roundStarts.length > 1 ? d.roundStarts.map((x: unknown) => Number(x) || 0) : undefined,
     holes: Number(d.holes) > 0 ? Number(d.holes) : 18,
     capacity: Number(d.capacity) > 0 ? Number(d.capacity) : undefined,
     extras: Array.isArray(d.extras) ? d.extras.filter((x: unknown) => typeof x === "string") : undefined,
@@ -672,6 +678,15 @@ export async function updateEventConfig(eventId: string, patch: { roundCount?: n
   const upd: Record<string, unknown> = {};
   if (patch.roundCount != null) upd.roundCount = Math.max(1, Math.min(patch.roundCount, 6));
   if (patch.buyIn !== undefined) upd.buyIn = patch.buyIn && patch.buyIn > 0 ? patch.buyIn : deleteField();
+  await updateDoc(doc(db, "leagueEvents", eventId), upd);
+}
+
+/** Set per-round start times for a multi-round event. roundStarts[0] becomes the event's canonical date. */
+export async function updateEventSchedule(eventId: string, roundStarts: number[]): Promise<void> {
+  const cleaned = roundStarts.map((x) => Number(x) || 0).filter((x) => x > 0);
+  if (!cleaned.length) return;
+  const upd: Record<string, unknown> = { date: cleaned[0] };
+  upd.roundStarts = cleaned.length > 1 ? cleaned : deleteField();
   await updateDoc(doc(db, "leagueEvents", eventId), upd);
 }
 

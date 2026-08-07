@@ -60,6 +60,8 @@ export default function EventWizard() {
   const [time, setTime] = useState("17:30");
   const [repeat, setRepeat] = useState(1);
   const [rounds, setRounds] = useState(1);
+  // Per-round day/time for multi-round tournaments (index 0 = Round 2, …). Round 1 uses the main date/time.
+  const [extraStarts, setExtraStarts] = useState<{ date: string; time: string }[]>([]);
   const [customN, setCustomN] = useState("");
   const [holes, setHoles] = useState(18);
   const [customHoles, setCustomHoles] = useState("");
@@ -120,10 +122,13 @@ export default function EventWizard() {
     : (isLeagueKind ? repeat : rounds);
   const placeName = course?.name ?? customPlace.trim();
 
+  const multiRoundTourney = kind === "tournament" && rounds > 1;
+  const setRoundVal = (i: number, patch: { date?: string; time?: string }) =>
+    setExtraStarts((xs) => { const next = [...xs]; while (next.length <= i) next.push({ date: "", time: "" }); next[i] = { ...next[i], ...patch }; return next; });
   const canNext: Record<StepKey, boolean> = {
     type: !!kind,
     details: !!evName.trim(),
-    when: !!date,
+    when: !!date && (!multiRoundTourney || Array.from({ length: rounds - 1 }).every((_, i) => !!extraStarts[i]?.date)),
     where: !!placeName,
     money: true, contact: true, logo: true, review: true,
   };
@@ -169,8 +174,14 @@ export default function EventWizard() {
       const dates = isLeagueKind
         ? Array.from({ length: nCount }, (_, i) => base.getTime() + i * 7 * 24 * 3600_000)
         : [base.getTime()];
+      const roundStarts = multiRoundTourney
+        ? [base.getTime(), ...Array.from({ length: rounds - 1 }, (_, i) => {
+            const rv = extraStarts[i];
+            return new Date(`${rv?.date || date}T${rv?.time || time || "17:30"}`).getTime();
+          })]
+        : undefined;
       const created = await createEvents(user.uid, league, {
-        name: evName, dates,
+        name: evName, dates, roundStarts,
         courseId: course?.id, courseName: placeName || undefined,
         format, startFormat,
         roundCount: isLeagueKind ? 1 : nCount,
@@ -431,6 +442,25 @@ export default function EventWizard() {
                     : nCount > 1 ? `${nCount} rounds, one leaderboard — scores total across all rounds.` : "Single-round event."}
                 </p>
               </div>
+              )}
+              {multiRoundTourney && (
+                <div>
+                  <FieldLabel>Round schedule <span className="normal-case tracking-normal text-[var(--cream-38)]">— set a day &amp; time for each round</span></FieldLabel>
+                  <div className="grid gap-2.5">
+                    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--gold)]/25 bg-[var(--gold-dim)] px-4 py-3">
+                      <span className="w-14 shrink-0 font-mono text-xs font-bold uppercase tracking-wide text-[var(--gold)]">Rd 1</span>
+                      <span className="text-sm text-[var(--cream)]">{date ? new Date(`${date}T${time || "17:30"}`).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "Set the start date above"}</span>
+                    </div>
+                    {Array.from({ length: rounds - 1 }, (_, i) => (
+                      <div key={i} className="flex flex-wrap items-center gap-3 rounded-xl border border-white/[0.09] bg-white/[0.03] px-4 py-3">
+                        <span className="w-14 shrink-0 font-mono text-xs font-bold uppercase tracking-wide text-[var(--gold)]">Rd {i + 2}</span>
+                        <input type="date" value={extraStarts[i]?.date ?? ""} min={date || undefined} onChange={(e) => setRoundVal(i, { date: e.target.value })} className={`${inputCls} min-w-[170px] flex-none`} />
+                        <input type="time" value={extraStarts[i]?.time ?? time} onChange={(e) => setRoundVal(i, { time: e.target.value })} className={`${inputCls} w-[130px] flex-none`} />
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-xs text-[var(--sage-dim)]">Each round&apos;s day and time shows on the event page and schedule.</p>
+                </div>
               )}
             </div>
           )}
