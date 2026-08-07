@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, getEntries, updateEntry, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRole, setMemberDivision, setLeagueLogo, isLeagueAdmin, subscribeLeagueTeams, createLeagueTeam, updateLeagueTeam, deleteLeagueTeam, subscribeLeagueMatches, generateSchedule, setMatchResult, computeMatchStandings, generateBracket, advanceBracket, LEAGUE_FORMATS, TEAM_SIZES, START_FORMATS, isTeamFormat, SUGGESTED_DIVISIONS, type League, type LeagueEvent, type LeagueMember, type EventEntry, type StandingRow, type LeagueTeam, type LeagueMatch } from "@/lib/leagues";
+import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, getEntries, updateEntry, updateEventDetails, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRole, setMemberDivision, setLeagueLogo, isLeagueAdmin, subscribeLeagueTeams, createLeagueTeam, updateLeagueTeam, deleteLeagueTeam, subscribeLeagueMatches, generateSchedule, setMatchResult, computeMatchStandings, generateBracket, advanceBracket, LEAGUE_FORMATS, TEAM_SIZES, START_FORMATS, isTeamFormat, SUGGESTED_DIVISIONS, type League, type LeagueEvent, type LeagueMember, type EventEntry, type StandingRow, type LeagueTeam, type LeagueMatch } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { storage } from "@/lib/firebase";
 import { getDownloadURL, ref as storageRef, uploadBytes } from "firebase/storage";
@@ -16,6 +16,9 @@ import { inputCls, FieldLabel, Segmented, Avatar, Pos, btnGold, btnGhost, card, 
 type Section = "dashboard" | "members" | "teams" | "matchplay" | "events" | "standings" | "settings" | "quicklink";
 
 const fmtDate = (ms: number) => new Date(ms).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+const pad2 = (n: number) => String(n).padStart(2, "0");
+const toDateInput = (ms: number) => { const d = new Date(ms); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; };
+const toTimeInput = (ms: number) => { const d = new Date(ms); return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
 const fmtToPar = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`);
 
 export default function LeagueManagePage() {
@@ -61,6 +64,10 @@ export default function LeagueManagePage() {
   const [buyIn, setBuyIn] = useState("");
   const [holes, setHoles] = useState(18);
   const [cap, setCap] = useState("");
+
+  // Event editor (single-event / tournament containers)
+  const [ed, setEd] = useState({ name: "", date: "", time: "17:30", rounds: 1, holes: 18, buyIn: "", cap: "" });
+  const [eventSaved, setEventSaved] = useState(false);
 
   useEffect(() => {
     getLeagueBySlug(slug).then((l) => {
@@ -108,6 +115,11 @@ export default function LeagueManagePage() {
   const divisions = (league?.settings.divisions ?? []).filter((d) => d && d !== "Open").length ? (league!.settings.divisions ?? []) : [];
   useEffect(() => { if (!primaryEventId) { setEntries([]); return; } getEntries(primaryEventId).then(setEntries).catch(() => {}); }, [primaryEventId]);
   const entryOf = useMemo(() => new Map(entries.map((e) => [e.id, e])), [entries]);
+  useEffect(() => {
+    if (!primaryEvent) return;
+    const start = primaryEvent.roundStarts?.[0] ?? primaryEvent.date;
+    setEd({ name: primaryEvent.name, date: toDateInput(start), time: toTimeInput(start), rounds: primaryEvent.roundCount, holes: primaryEvent.holes, buyIn: primaryEvent.buyIn ? String(primaryEvent.buyIn) : "", cap: primaryEvent.capacity ? String(primaryEvent.capacity) : "" });
+  }, [primaryEventId]); // eslint-disable-line react-hooks/exhaustive-deps
   // A tournament/one-off is really a single event — exit straight to it, skipping the container page.
   const exitHref = !isLeagueKind && primaryEvent ? `/leagues/${slug}/e/${primaryEvent.id}` : `/leagues/${slug}`;
   const isTeeTimes = (league?.settings.startFormat ?? "") === "Tee times";
@@ -116,7 +128,7 @@ export default function LeagueManagePage() {
     { key: "members", label: "Players" },
     ...(isTeamLeague ? [{ key: "teams" as const, label: "Teams" }] : []),
     ...(isMatchPlay ? [{ key: "matchplay" as const, label: "Match play" }] : []),
-    { key: "events", label: "Events" },
+    { key: "events", label: isLeagueKind ? "Events" : "Event" },
     { key: "settings", label: "Settings" },
     { key: "quicklink", label: "Quick link" },
   ];
@@ -167,6 +179,24 @@ export default function LeagueManagePage() {
       await updateEntry(primaryEventId, memberId, { division });
       setEntries((cur) => cur.map((e) => (e.id === memberId ? { ...e, division: division || undefined } : e)));
     }
+  };
+
+  const saveEvent = async () => {
+    if (!league || !primaryEvent || busy || !ed.date) return;
+    setBusy(true); setEventSaved(false);
+    try {
+      const round1 = new Date(`${ed.date}T${ed.time || "17:30"}`).getTime();
+      // Keep round-1 in sync with any per-round schedule; later rounds keep their own times.
+      const roundStarts = primaryEvent.roundStarts && primaryEvent.roundStarts.length > 1
+        ? [round1, ...primaryEvent.roundStarts.slice(1, ed.rounds)]
+        : null;
+      await updateEventDetails(primaryEvent.id, {
+        name: ed.name, date: round1, roundStarts, roundCount: ed.rounds, holes: ed.holes,
+        buyIn: ed.buyIn.trim() === "" ? null : Number(ed.buyIn), capacity: ed.cap.trim() === "" ? null : Number(ed.cap),
+      });
+      const fresh = await getLeagueEvents(league.id); setEvents(fresh);
+      setEventSaved(true); setTimeout(() => setEventSaved(false), 2500);
+    } finally { setBusy(false); }
   };
 
   const schedule = async () => {
@@ -513,20 +543,32 @@ export default function LeagueManagePage() {
                   <button onClick={schedule} disabled={!startDate || busy} className={`${btnGold} mt-5`}>{busy ? "Scheduling…" : weeks > 1 ? `Create ${weeks} events` : "Create event"}</button>
                 </div>
               ) : primaryEvent ? (
-                <Link href={`/leagues/${slug}/e/${primaryEvent.id}`} className={`${card} ${cardHover} flex items-center gap-4 p-6`}>
-                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[10px] bg-[var(--gold-dim)] text-[var(--gold)]"><IconCalendar /></span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-[family-name:var(--font-heading)] text-[15px] font-bold text-[var(--cream)]">Manage the event</span>
-                    <span className="block text-xs text-[var(--cream-60)]">A {NOUN.toLowerCase()} is a single event — set its date, rounds, and tee times on the event page. No weekly scheduling here.</span>
-                  </span>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-5 w-5 shrink-0 text-[var(--gold)]"><path d="M9 6l6 6-6 6" /></svg>
-                </Link>
+                <div className={`${card} p-6`}>
+                  <div className="flex items-center justify-between gap-3">
+                    <h2 className="font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">{NOUN} details</h2>
+                    <Link href={`/leagues/${slug}/e/${primaryEvent.id}`} className="font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--gold)] transition-opacity hover:opacity-80">View event page →</Link>
+                  </div>
+                  <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                    <label className="block sm:col-span-2"><FieldLabel>Name</FieldLabel><input value={ed.name} onChange={(e) => setEd((s) => ({ ...s, name: e.target.value }))} placeholder={league.name} className={inputCls} /></label>
+                    <label className="block"><FieldLabel>Start date</FieldLabel><input type="date" value={ed.date} onChange={(e) => setEd((s) => ({ ...s, date: e.target.value }))} className={inputCls} /></label>
+                    <label className="block"><FieldLabel>{ed.rounds > 1 ? "Round 1 tee time" : "Tee time"}</FieldLabel><input type="time" value={ed.time} onChange={(e) => setEd((s) => ({ ...s, time: e.target.value }))} className={inputCls} /></label>
+                    <div><FieldLabel>Rounds</FieldLabel><Segmented options={["1", "2", "3", "4"]} value={String(ed.rounds)} onChange={(v) => setEd((s) => ({ ...s, rounds: Number(v) }))} /></div>
+                    <div><FieldLabel>Holes per round</FieldLabel><Segmented options={["9", "18"]} value={String(ed.holes)} onChange={(v) => setEd((s) => ({ ...s, holes: Number(v) }))} /></div>
+                    <label className="block"><FieldLabel>Buy-in ($)</FieldLabel><input inputMode="numeric" value={ed.buyIn} onChange={(e) => setEd((s) => ({ ...s, buyIn: e.target.value }))} placeholder="0" className={inputCls} /></label>
+                    <label className="block"><FieldLabel>Field cap</FieldLabel><input inputMode="numeric" value={ed.cap} onChange={(e) => setEd((s) => ({ ...s, cap: e.target.value }))} placeholder="none" className={inputCls} /></label>
+                  </div>
+                  {ed.rounds > 1 && <p className="mt-3 text-[11px] text-[var(--sage-dim)]">Set the day &amp; time for rounds 2+ on the event page&apos;s schedule card.</p>}
+                  <div className="mt-5 flex items-center gap-3">
+                    <button onClick={saveEvent} disabled={!ed.date || busy} className={btnGold}>{busy ? "Saving…" : "Save event"}</button>
+                    {eventSaved && <span className="text-sm font-bold text-[#5fcf80]">Saved ✓</span>}
+                  </div>
+                </div>
               ) : (
                 <Link href="/leagues/new" className={`${btnGold} inline-block`}>Create the event →</Link>
               )}
-              {upcoming.length > 0 && (
+              {(isLeagueKind ? upcoming.length > 0 : upcoming.length > 1) && (
               <div>
-                <h3 className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--gold)]">Upcoming · {upcoming.length}</h3>
+                <h3 className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--gold)]">{isLeagueKind ? "Upcoming" : "More events"} · {upcoming.length}</h3>
                 <div className="grid gap-2.5">{upcoming.map((ev) => <EventRow key={ev.id} ev={ev} />)}</div>
               </div>
               )}

@@ -692,6 +692,24 @@ function toEvent(id: string, d: any): LeagueEvent {
   };
 }
 
+/** Director event editor: patch the core details of an existing event (name, date, rounds, holes, money…). */
+export async function updateEventDetails(eventId: string, patch: {
+  name?: string; date?: number; roundStarts?: number[] | null; roundCount?: number; holes?: number;
+  buyIn?: number | null; capacity?: number | null; startFormat?: string; courseName?: string;
+}): Promise<void> {
+  const upd: Record<string, unknown> = {};
+  if (patch.name !== undefined) upd.name = patch.name.trim() || "Event";
+  if (patch.date !== undefined) upd.date = patch.date;
+  if (patch.roundStarts !== undefined) upd.roundStarts = patch.roundStarts && patch.roundStarts.length > 1 ? patch.roundStarts : deleteField();
+  if (patch.roundCount !== undefined) upd.roundCount = Math.max(1, Math.min(patch.roundCount, 6));
+  if (patch.holes !== undefined) upd.holes = Math.max(1, Math.min(patch.holes, 36));
+  if (patch.buyIn !== undefined) upd.buyIn = patch.buyIn && patch.buyIn > 0 ? patch.buyIn : deleteField();
+  if (patch.capacity !== undefined) upd.capacity = patch.capacity && patch.capacity > 0 ? Math.floor(patch.capacity) : deleteField();
+  if (patch.startFormat !== undefined) upd.startFormat = patch.startFormat;
+  if (patch.courseName !== undefined) upd.courseName = patch.courseName;
+  if (Object.keys(upd).length) await updateDoc(doc(db, "leagueEvents", eventId), upd);
+}
+
 /** Director event-config tweaks (add a round, set the buy-in). */
 export async function updateEventConfig(eventId: string, patch: { roundCount?: number; buyIn?: number | null }): Promise<void> {
   const upd: Record<string, unknown> = {};
