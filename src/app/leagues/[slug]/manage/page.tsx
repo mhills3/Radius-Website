@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, getEntries, updateEntry, updateEventDetails, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRole, setMemberDivision, addDirectorByUsername, setLeagueLogo, isLeagueAdmin, subscribeLeagueTeams, createLeagueTeam, updateLeagueTeam, deleteLeagueTeam, subscribeLeagueMatches, generateSchedule, setMatchResult, computeMatchStandings, generateBracket, advanceBracket, LEAGUE_FORMATS, TEAM_SIZES, START_FORMATS, isTeamFormat, SUGGESTED_DIVISIONS, type League, type LeagueEvent, type LeagueMember, type EventEntry, type StandingRow, type LeagueTeam, type LeagueMatch } from "@/lib/leagues";
+import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, getEntries, updateEntry, updateEventDetails, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRoles, setMemberDivision, addDirectorByUsername, setLeagueLogo, isLeagueAdmin, subscribeLeagueTeams, createLeagueTeam, updateLeagueTeam, deleteLeagueTeam, subscribeLeagueMatches, generateSchedule, setMatchResult, computeMatchStandings, generateBracket, advanceBracket, LEAGUE_FORMATS, TEAM_SIZES, START_FORMATS, isTeamFormat, SUGGESTED_DIVISIONS, type League, type LeagueEvent, type LeagueMember, type EventEntry, type StandingRow, type LeagueTeam, type LeagueMatch } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { storage } from "@/lib/firebase";
 import { getDownloadURL, ref as storageRef, uploadBytes } from "firebase/storage";
@@ -73,6 +73,7 @@ export default function LeagueManagePage() {
   const [coDir, setCoDir] = useState("");
   const [addingCoDir, setAddingCoDir] = useState(false);
   const [coDirNote, setCoDirNote] = useState("");
+  const [roleMenu, setRoleMenu] = useState<string | null>(null); // which member's role checklist is open
 
   useEffect(() => {
     getLeagueBySlug(slug).then((l) => {
@@ -215,6 +216,17 @@ export default function LeagueManagePage() {
       setCoDir(""); setCoDirNote(`${m.name || "@" + m.username} is now a director.`);
       setTimeout(() => setCoDirNote(""), 3500);
     } finally { setAddingCoDir(false); }
+  };
+
+  // Role checklist (a person can be several at once). Owner is implicit and not editable here.
+  const rolesOf = (m: LeagueMember): string[] => (m.roles && m.roles.length ? m.roles : m.role === "director" ? ["director"] : ["player"]);
+  const toggleRole = async (m: LeagueMember, key: string) => {
+    if (!league) return;
+    const cur = rolesOf(m);
+    const next = cur.includes(key) ? cur.filter((r) => r !== key) : [...cur, key];
+    const role = next.includes("admin") || next.includes("director") ? "director" : "member";
+    setMembers((c) => c.map((x) => (x.id === m.id ? { ...x, roles: next as LeagueMember["roles"], role } : x)));
+    await setMemberRoles(league.id, m.id, next);
   };
 
   const schedule = async () => {
@@ -368,17 +380,36 @@ export default function LeagueManagePage() {
                       {divisions.map((d) => <option key={d} value={d}>{d}</option>)}
                     </select>
                   )}
-                  <span className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide ${m.role !== "member" ? "bg-[var(--gold-dim)] text-[var(--gold)]" : "bg-white/[0.05] text-[var(--sage-dim)]"}`}>{m.role}</span>
-                  {m.role !== "owner" && (
-                    <button
-                      onClick={async () => {
-                        const role = m.role === "director" ? "member" : "director";
-                        await setMemberRole(league.id, m.id, role);
-                        setMembers((cur) => cur.map((x) => (x.id === m.id ? { ...x, role } : x)));
-                      }}
-                      className={btnGhost + " !px-3 !py-1.5 !text-xs"}
-                    >{m.role === "director" ? "Demote" : "Make director"}</button>
-                  )}
+                  {m.role === "owner" ? (
+                    <span className="shrink-0 rounded-full bg-[var(--gold-dim)] px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-[var(--gold)]">Owner</span>
+                  ) : (() => {
+                    const roles = rolesOf(m);
+                    const label = roles.length ? roles.map((r) => r[0].toUpperCase() + r.slice(1)).join(" · ") : "No role";
+                    return (
+                      <div className="relative shrink-0">
+                        <button onClick={() => setRoleMenu(roleMenu === m.id ? null : m.id)} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--hair-strong)] bg-white/[0.03] px-3 py-1.5 text-xs font-semibold text-[var(--cream)] transition-colors hover:border-[var(--cream-38)]">
+                          {label}
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3 w-3 text-[var(--cream-38)]"><path d="M6 9l6 6 6-6" /></svg>
+                        </button>
+                        {roleMenu === m.id && (
+                          <>
+                            <button className="fixed inset-0 z-10 cursor-default" aria-hidden onClick={() => setRoleMenu(null)} />
+                            <div className="absolute right-0 top-full z-20 mt-2 min-w-[170px] rounded-xl border border-[var(--hair)] bg-[var(--card-raised)] p-1.5">
+                              {[{ key: "player", label: "Player", hint: "Plays in the event" }, { key: "admin", label: "Admin", hint: "Can manage" }, { key: "director", label: "Director", hint: "Runs the show" }].map((r) => {
+                                const on = roles.includes(r.key);
+                                return (
+                                  <button key={r.key} onClick={() => toggleRole(m, r.key)} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-white/[0.05]">
+                                    <span className={`grid h-4 w-4 shrink-0 place-items-center rounded border text-[10px] font-black ${on ? "border-[var(--gold)] bg-[var(--gold)] text-[#141B16]" : "border-[var(--hair-strong)] text-transparent"}`}>✓</span>
+                                    <span className="min-w-0"><span className="block text-[13px] font-semibold text-[var(--cream)]">{r.label}</span><span className="block text-[10.5px] text-[var(--cream-38)]">{r.hint}</span></span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               ))}
               {divisions.length > 1 && members.length > 0 && (

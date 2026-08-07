@@ -133,7 +133,8 @@ export interface LeagueMember {
   name: string;
   username?: string;
   photo?: string;
-  role: "owner" | "director" | "member";
+  role: "owner" | "director" | "member"; // legacy single-role (kept in sync); owner is special
+  roles?: ("player" | "admin" | "director")[]; // multi-select: a person can be a player AND admin/director
   tag?: number; // bag-tag number currently held (tag-ladder leagues)
   division?: string; // director-assigned division (league default; also stamped onto the player's event entries)
   partnerRequest?: string; // free-text: who this player asked to be paired with at signup (director-only visible)
@@ -405,6 +406,14 @@ export async function setMemberRole(leagueId: string, memberId: string, role: "d
   await updateDoc(doc(db, "leagues", leagueId), { adminIds: role === "director" ? arrayUnion(memberId) : arrayRemove(memberId), lastUpdated: Date.now() });
 }
 
+/** Set a member's role set (player / admin / director). Any admin|director role grants management (adminIds). */
+export async function setMemberRoles(leagueId: string, memberId: string, roles: string[]): Promise<void> {
+  const clean = [...new Set(roles.filter((r) => r === "player" || r === "admin" || r === "director"))];
+  const manager = clean.includes("admin") || clean.includes("director");
+  await setDoc(doc(db, "leagues", leagueId, "members", memberId), { roles: clean, role: manager ? "director" : "member" }, { merge: true });
+  await updateDoc(doc(db, "leagues", leagueId), { adminIds: manager ? arrayUnion(memberId) : arrayRemove(memberId), lastUpdated: Date.now() });
+}
+
 /** Director sets a player's division — the league default (also stamped onto entries by the caller). */
 export async function setMemberDivision(leagueId: string, memberId: string, division: string): Promise<void> {
   await setDoc(doc(db, "leagues", leagueId, "members", memberId), { division: division || deleteField() }, { merge: true });
@@ -424,10 +433,11 @@ export async function addDirectorByUsername(leagueId: string, username: string):
   const ref = doc(db, "leagues", leagueId, "members", cid);
   const existing = await getDoc(ref);
   const now = Date.now();
-  if (existing.exists()) await setDoc(ref, { role: "director" }, { merge: true });
-  else await setDoc(ref, { name: user.name || clean, username: user.username || clean, photo: user.photo || null, role: "director", joinedAt: now }, { merge: true });
+  const nextRoles = [...new Set([...(Array.isArray(existing.data()?.roles) ? existing.data()!.roles : []), "director"])];
+  if (existing.exists()) await setDoc(ref, { role: "director", roles: nextRoles }, { merge: true });
+  else await setDoc(ref, { name: user.name || clean, username: user.username || clean, photo: user.photo || null, role: "director", roles: ["director"], joinedAt: now }, { merge: true });
   await updateDoc(doc(db, "leagues", leagueId), { adminIds: arrayUnion(cid), lastUpdated: now });
-  return { id: cid, name: user.name || clean, username: user.username || clean, photo: user.photo || undefined, role: "director", joinedAt: Number(existing.data()?.joinedAt) || now };
+  return { id: cid, name: user.name || clean, username: user.username || clean, photo: user.photo || undefined, role: "director", roles: nextRoles as LeagueMember["roles"], joinedAt: Number(existing.data()?.joinedAt) || now };
 }
 
 export async function getLeagueMembers(leagueId: string): Promise<LeagueMember[]> {
@@ -439,6 +449,7 @@ export async function getLeagueMembers(leagueId: string): Promise<LeagueMember[]
         return {
           id: d.id, name: (m.name ?? "Player") as string, username: (m.username as string) || undefined,
           photo: (m.photo as string) || undefined, role: (m.role ?? "member") as LeagueMember["role"],
+          roles: Array.isArray(m.roles) ? m.roles.filter((r: unknown) => r === "player" || r === "admin" || r === "director") as LeagueMember["roles"] : undefined,
           tag: typeof m.tag === "number" ? m.tag : undefined,
           division: (m.division as string) || undefined,
           partnerRequest: (m.partnerRequest as string) || undefined,
