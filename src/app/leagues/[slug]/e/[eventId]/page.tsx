@@ -540,7 +540,7 @@ export default function LeagueEventPage() {
                     me ? (
                       !(liveNow && cid && ranked.some((x) => x.id === cid)) && (
                         <span className="inline-flex items-center gap-2">
-                          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#5fcf80]/25 bg-[rgba(20,27,22,0.5)] px-3.5 py-2 font-mono text-[10.5px] tracking-[0.08em] text-[#5fcf80] backdrop-blur-[6px]">✓ {checkInPhase ? "Checked in" : "You're in"}{me.division ? ` · ${me.division}` : ""}</span>
+                          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#5fcf80]/25 bg-[rgba(20,27,22,0.5)] px-3.5 py-2 font-mono text-[10.5px] tracking-[0.08em] text-[#5fcf80] backdrop-blur-[6px]">✓ {checkInPhase ? "Checked in" : "You're in"}{divisions.length > 1 && me.division ? ` · ${me.division}` : ""}</span>
                           {open && typeof me.score !== "number" && !me.holeScores?.some((h) => h > 0) && (
                             <button onClick={leaveSelf} disabled={busy} className={`rounded-full px-2.5 py-2 font-mono text-[10.5px] uppercase tracking-[0.08em] transition-colors disabled:opacity-50 ${confirmLeave ? "bg-[#f08c8c]/15 font-bold text-[#f08c8c]" : "text-[var(--cream-38)] hover:text-[#f08c8c]"}`}>{confirmLeave ? "Confirm leave" : "Leave"}</button>
                           )}
@@ -828,7 +828,7 @@ export default function LeagueEventPage() {
                 <div className={`${card} p-6`}>
                   <div className="mb-3 flex items-center justify-between">
                     <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">Your position</span>
-                    <span className="inline-flex items-center gap-1 font-mono text-[10.5px] tracking-[0.08em] text-[#5fcf80]">✓{me.division ? ` ${me.division}` : " In"}</span>
+                    <span className="inline-flex items-center gap-1 font-mono text-[10.5px] tracking-[0.08em] text-[#5fcf80]">✓{divisions.length > 1 && me.division ? ` ${me.division}` : " In"}</span>
                   </div>
                   <div className="font-[family-name:var(--font-heading)] text-[15px] font-semibold leading-relaxed text-[var(--cream)]">{line}</div>
                 </div>
