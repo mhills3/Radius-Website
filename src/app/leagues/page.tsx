@@ -426,8 +426,9 @@ export default function LeaguesPage() {
                   const next = upcoming.filter((e) => e.leagueId === l.id).sort((a, b) => a.date - b.date)[0];
                   const art = l.logoUrl ?? (l.courseId ? courseMeta.get(l.courseId)?.cover : undefined);
                   const cNoun = l.kind === "tournament" ? "Tournament" : l.kind && l.kind !== "league" ? "Event" : "League";
+                  const cTarget = l.kind && l.kind !== "league" && next ? `/leagues/${l.slug}/e/${next.id}` : `/leagues/${l.slug}`;
                   return (
-                    <Link key={l.id} href={`/leagues/${l.slug}`} className={`${card} ${cardHover} group block overflow-hidden`}>
+                    <Link key={l.id} href={cTarget} className={`${card} ${cardHover} group block overflow-hidden`}>
                       <div className="grid sm:grid-cols-[220px_1fr]">
                         <CourseStrip url={art} isLogo={!!l.logoUrl} ms={next?.date ?? 0} noDate={!next} />
                         <div className="min-w-0 p-6">

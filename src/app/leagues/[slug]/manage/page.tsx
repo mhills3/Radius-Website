@@ -102,6 +102,9 @@ export default function LeagueManagePage() {
   const isLeagueKind = containerKind === "league";
   const NOUN = isLeagueKind ? "League" : containerKind === "tournament" ? "Tournament" : "Event";
   const nextEvent = upcoming[0] ?? null;
+  const primaryEvent = nextEvent ?? past[0] ?? events[0] ?? null;
+  // A tournament/one-off is really a single event — exit straight to it, skipping the container page.
+  const exitHref = !isLeagueKind && primaryEvent ? `/leagues/${slug}/e/${primaryEvent.id}` : `/leagues/${slug}`;
   const isTeeTimes = (league?.settings.startFormat ?? "") === "Tee times";
   const nav: { key: Section; label: string }[] = [
     { key: "dashboard", label: `${NOUN} dashboard` },
@@ -199,7 +202,7 @@ export default function LeagueManagePage() {
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">Director tools</p>
           <h1 className="mt-0.5 font-[family-name:var(--font-heading)] text-xl font-extrabold text-[var(--cream)]">{league.name}</h1>
         </div>
-        <Link href={`/leagues/${league.slug}`} className="text-xs font-bold text-[var(--sage)] transition-colors hover:text-[var(--gold)]">Exit director tools →</Link>
+        <Link href={exitHref} className="text-xs font-bold text-[var(--sage)] transition-colors hover:text-[var(--gold)]">Exit director tools →</Link>
       </div>
 
       <div className="grid gap-8 pt-8 lg:grid-cols-[220px_1fr]">
