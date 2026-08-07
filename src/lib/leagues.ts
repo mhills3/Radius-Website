@@ -114,6 +114,7 @@ export interface League {
   id: string;
   name: string;
   slug: string;
+  kind?: string;          // container nature (EVENT_KINDS key) — "league" (recurring) vs "tournament"/one-off; drives director-console wording
   courseId?: string;
   courseName?: string;
   adminIds: string[];
@@ -246,14 +247,14 @@ const slugify = (name: string) =>
 
 // ---- Leagues ----
 
-export async function createLeague(uid: string, input: { name: string; courseId?: string; courseName?: string; settings: LeagueSettings }): Promise<League | null> {
+export async function createLeague(uid: string, input: { name: string; courseId?: string; courseName?: string; kind?: string; settings: LeagueSettings }): Promise<League | null> {
   const profile = await getProfileLite(uid);
   if (!profile) return null;
   const id = freshId();
   const slug = `${slugify(input.name)}-${id.slice(0, 6).toLowerCase()}`;
   const now = Date.now();
   const league: League = {
-    id, name: input.name.trim(), slug,
+    id, name: input.name.trim(), slug, kind: input.kind || undefined,
     courseId: input.courseId, courseName: input.courseName,
     adminIds: [profile.canonicalId],
     createdById: profile.canonicalId, createdByName: profile.name,
@@ -271,7 +272,7 @@ export async function createLeague(uid: string, input: { name: string; courseId?
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function toLeague(id: string, d: any): League {
   return {
-    id, name: d.name ?? "League", slug: d.slug ?? id,
+    id, name: d.name ?? "League", slug: d.slug ?? id, kind: (d.kind as string) || undefined,
     courseId: d.courseId || undefined, courseName: d.courseName || undefined,
     adminIds: Array.isArray(d.adminIds) ? d.adminIds : [],
     createdById: d.createdById ?? "", createdByName: d.createdByName ?? "",

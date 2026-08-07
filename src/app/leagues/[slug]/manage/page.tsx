@@ -8,7 +8,7 @@ import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, createEvents, compu
 import { resolveCanonicalId } from "@/lib/account";
 import { storage } from "@/lib/firebase";
 import { getDownloadURL, ref as storageRef, uploadBytes } from "firebase/storage";
-import { inputCls, FieldLabel, Segmented, Avatar, Pos, btnGold, btnGhost, card, cardHover, IconCalendar, IconUsers, IconPlus, IconPin } from "@/components/leagues/ui";
+import { inputCls, FieldLabel, Segmented, Avatar, Pos, btnGold, btnGhost, card, cardHover, IconCalendar, IconUsers, IconPlus, IconPin, IconClock } from "@/components/leagues/ui";
 
 // ─── League tools: the director console (UDisc "League tools" equivalent).
 // Persistent sidebar, dashboard-first, every admin control in one place.
@@ -97,22 +97,27 @@ export default function LeagueManagePage() {
 
   const isMatchPlay = league?.settings.scoring?.model === "matchplay";
   const isTeamLeague = isTeamFormat(league?.settings.format);
+  // Container nature drives the console wording: a tournament shouldn't say "League" everywhere.
+  const containerKind = league?.kind || upcoming[0]?.kind || past[0]?.kind || events[0]?.kind || "league";
+  const isLeagueKind = containerKind === "league";
+  const NOUN = isLeagueKind ? "League" : containerKind === "tournament" ? "Tournament" : "Event";
+  const nextEvent = upcoming[0] ?? null;
+  const isTeeTimes = (league?.settings.startFormat ?? "") === "Tee times";
   const nav: { key: Section; label: string }[] = [
-    { key: "dashboard", label: "League dashboard" },
+    { key: "dashboard", label: `${NOUN} dashboard` },
     { key: "members", label: "Members" },
     ...(isTeamLeague ? [{ key: "teams" as const, label: "Teams" }] : []),
     ...(isMatchPlay ? [{ key: "matchplay" as const, label: "Match play" }] : []),
     { key: "events", label: "Events" },
-    { key: "standings", label: "Standings" },
     { key: "settings", label: "Settings" },
     { key: "quicklink", label: "Quick link" },
   ];
 
   const checklist = league ? [
-    { label: "League settings", done: !!league.settings.description || (league.settings.divisions ?? []).length > 1, hint: "Description, format, and defaults", go: "settings" as Section },
+    { label: `${NOUN} settings`, done: !!league.settings.description || (league.settings.divisions ?? []).length > 1, hint: "Description, format, and defaults", go: "settings" as Section },
     { label: "Divisions", done: (league.settings.divisions ?? []).length > 1, hint: "Add divisions so players self-sort at check-in", go: "settings" as Section },
-    { label: "First event", done: events.length > 0, hint: "Schedule a night or a whole season", go: "events" as Section },
-    { label: "Standings configured", done: !!league.settings.bestN || standings.length > 0, hint: "Best-N counting and season points", go: "settings" as Section },
+    { label: isLeagueKind ? "First event" : "Schedule it", done: events.length > 0, hint: isLeagueKind ? "Schedule a night or a whole season" : "Set the date, rounds, and tee times", go: "events" as Section },
+    { label: "Scoring configured", done: !!league.settings.scoring?.model || !!league.settings.bestN || standings.length > 0, hint: "Model, points-per-place, and best-N", go: "settings" as Section },
   ] : [];
 
   const saveSettings = async () => {
@@ -150,7 +155,7 @@ export default function LeagueManagePage() {
     try {
       const base = new Date(`${startDate}T${startTime || "17:30"}`);
       const dates = Array.from({ length: Math.max(1, Math.min(weeks, 26)) }, (_, i) => base.getTime() + i * 7 * 24 * 3600_000);
-      const created = await createEvents(user.uid, league, { name: evName, dates, roundCount: rounds, holes, buyIn: Number(buyIn) > 0 ? Number(buyIn) : undefined, capacity: Number(cap) > 0 ? Number(cap) : undefined, kind: "league" });
+      const created = await createEvents(user.uid, league, { name: evName, dates, roundCount: rounds, holes, buyIn: Number(buyIn) > 0 ? Number(buyIn) : undefined, capacity: Number(cap) > 0 ? Number(cap) : undefined, kind: containerKind });
       setEvents((prev) => [...prev, ...created].sort((a, b) => a.date - b.date));
       setEvName("");
     } finally { setBusy(false); }
@@ -161,7 +166,7 @@ export default function LeagueManagePage() {
   };
 
   if (league === undefined) return <main className="mx-auto max-w-5xl px-5 pt-16 text-sm text-[var(--sage-dim)]">Loading…</main>;
-  if (league === null) return <main className="mx-auto max-w-5xl px-5 pt-16"><p className="text-sm text-[var(--sage-dim)]">League not found.</p></main>;
+  if (league === null) return <main className="mx-auto max-w-5xl px-5 pt-16"><p className="text-sm text-[var(--sage-dim)]">Not found.</p></main>;
   if (!admin) return (
     <main className="mx-auto max-w-5xl px-5 pt-16">
       <p className="text-sm text-[var(--sage-dim)]">Director tools are for directors of this league. <Link href={`/leagues/${league.slug}`} className="font-bold text-[var(--gold)] hover:underline">Back to {league.name}</Link></p>
@@ -216,7 +221,7 @@ export default function LeagueManagePage() {
               {/* Setup checklist — earns its exit: once every item is done it disappears */}
               {checklist.some((c) => !c.done) && (
               <div className={`${card} p-6`}>
-                <h2 className="font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">League setup · {checklist.filter((c) => c.done).length}/{checklist.length} complete</h2>
+                <h2 className="font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">{NOUN} setup · {checklist.filter((c) => c.done).length}/{checklist.length} complete</h2>
                 <div className="mt-4 grid gap-2">
                   {checklist.map((c, ci) => {
                     const isNext = !c.done && checklist.findIndex((x) => !x.done) === ci;
@@ -502,6 +507,16 @@ export default function LeagueManagePage() {
 
           {section === "settings" && (
             <div className="grid gap-6">
+            {isTeeTimes && nextEvent && (
+              <Link href={`/leagues/${slug}/e/${nextEvent.id}?tab=scores`} className="flex items-center gap-4 rounded-2xl border border-[var(--gold)]/40 bg-[var(--gold-dim)] p-5 transition-colors hover:bg-[var(--gold)]/15">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[10px] bg-[var(--gold)]/20 text-[var(--gold)]"><IconClock className="h-5 w-5" /></span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-[family-name:var(--font-heading)] text-[15px] font-bold text-[var(--cream)]">Generate tee times</span>
+                  <span className="block text-xs text-[var(--cream-60)]">Auto-build the tee sheet for {nextEvent.name} — split by division, staggered starts. Edit times &amp; groups after.</span>
+                </span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-5 w-5 shrink-0 text-[var(--gold)]"><path d="M9 6l6 6-6 6" /></svg>
+              </Link>
+            )}
             <div className={`${card} p-6`}>
               <h3 className="mb-1 font-[family-name:var(--font-heading)] text-[15px] font-bold text-[var(--cream)]">Scoring</h3>
               <p className="mb-5 text-xs text-[var(--sage-dim)]">How events turn into your season standings.</p>
@@ -618,7 +633,7 @@ export default function LeagueManagePage() {
           {section === "quicklink" && (
             <div className="grid gap-4">
               <div className={`${card} p-6`}>
-                <FieldLabel>Public league page</FieldLabel>
+                <FieldLabel>Public {NOUN.toLowerCase()} page</FieldLabel>
                 <div className="mt-1 flex flex-wrap items-center gap-3">
                   <code className="rounded-lg bg-white/[0.04] px-3 py-2 text-sm text-[var(--cream)]">radiusdiscgolf.com/leagues/{league.slug}</code>
                   <button onClick={() => copy(`https://radiusdiscgolf.com/leagues/${league.slug}`)} className={btnGhost + " !py-2 !text-xs"}>{copied ? "Copied ✓" : "Copy"}</button>

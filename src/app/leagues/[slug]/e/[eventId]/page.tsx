@@ -130,6 +130,11 @@ export default function LeagueEventPage() {
   const [addingWalk, setAddingWalk] = useState(false);
   const [hcpNote, setHcpNote] = useState("");
   const [tab, setTab] = useState<"about" | "scores" | "standings" | "players" | "chat">("about");
+  // Deep-link support: /e/{id}?tab=scores opens straight to that tab (e.g. the tee-sheet from Director tools).
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get("tab");
+    if (t === "scores" || t === "standings" || t === "players" || t === "chat") setTab(t);
+  }, []);
   const [nowTs] = useState(() => Date.now());
   const [staff, setStaff] = useState<LeagueMember[]>([]);
   const [season, setSeason] = useState<SeasonStandings | null>(null);
@@ -1374,7 +1379,7 @@ export default function LeagueEventPage() {
               <div className={`${card} grid place-items-center px-6 py-14 text-center`}>
                 <span className="grid h-14 w-14 place-items-center rounded-full bg-[var(--gold-dim)] text-[var(--gold)]"><IconTrophy className="h-6 w-6" /></span>
                 <p className="mt-3 font-[family-name:var(--font-heading)] font-bold text-[var(--cream)]">The podium is empty</p>
-                <p className="mt-1 max-w-xs text-sm text-[var(--cream-38)]">Season points land here once the league&apos;s first event completes.</p>
+                <p className="mt-1 max-w-xs text-sm text-[var(--cream-38)]">Season standings land here once the first event completes.</p>
               </div>
             ) : (
               <>

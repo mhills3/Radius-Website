@@ -158,6 +158,7 @@ export default function EventWizard() {
           name: evName.trim(),
           courseName: placeName || undefined,
           courseId: course?.id,
+          kind,
           settings: { format, startFormat, description: "", teamSize: format === "Teams" ? teamSize : undefined },
         });
         if (!league) throw new Error("Couldn't create the event — are you signed in?");

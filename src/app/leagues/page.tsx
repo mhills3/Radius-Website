@@ -425,6 +425,7 @@ export default function LeaguesPage() {
                 {myLeagues.map((l) => {
                   const next = upcoming.filter((e) => e.leagueId === l.id).sort((a, b) => a.date - b.date)[0];
                   const art = l.logoUrl ?? (l.courseId ? courseMeta.get(l.courseId)?.cover : undefined);
+                  const cNoun = l.kind === "tournament" ? "Tournament" : l.kind && l.kind !== "league" ? "Event" : "League";
                   return (
                     <Link key={l.id} href={`/leagues/${l.slug}`} className={`${card} ${cardHover} group block overflow-hidden`}>
                       <div className="grid sm:grid-cols-[220px_1fr]">
@@ -434,7 +435,7 @@ export default function LeaguesPage() {
                             <div className="min-w-0 truncate font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">{l.name}</div>
                             <span className="flex shrink-0 items-center gap-1.5">
                               {isLeagueAdmin(l, cid) && <span className="rounded-full bg-[var(--gold-dim)] px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--gold)]">Director</span>}
-                              <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--blue-dim)] px-2.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--blue)]"><IconCalendar className="h-3 w-3" />League</span>
+                              <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--blue-dim)] px-2.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--blue)]"><IconCalendar className="h-3 w-3" />{cNoun}</span>
                             </span>
                           </div>
                           <div className="mt-0.5 truncate text-[13px] text-[var(--cream-60)]">
@@ -443,7 +444,7 @@ export default function LeaguesPage() {
                           <div className="mt-5 font-mono text-[10.5px] tracking-[0.06em] text-[var(--cream-38)]">
                             {next ? <>Next: <b className="font-medium text-[var(--cream-60)]">{new Date(next.date).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })} · {new Date(next.date).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</b></> : "No upcoming events"}
                           </div>
-                          <div className="mt-2 text-[13px] font-semibold text-[var(--cream-60)] transition-colors group-hover:text-[var(--cream)]">Open league page →</div>
+                          <div className="mt-2 text-[13px] font-semibold text-[var(--cream-60)] transition-colors group-hover:text-[var(--cream)]">Open {cNoun.toLowerCase()} page →</div>
                         </div>
                       </div>
                     </Link>
