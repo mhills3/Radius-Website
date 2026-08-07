@@ -134,6 +134,7 @@ export interface LeagueMember {
   photo?: string;
   role: "owner" | "director" | "member";
   tag?: number; // bag-tag number currently held (tag-ladder leagues)
+  division?: string; // director-assigned division (league default; also stamped onto the player's event entries)
   partnerRequest?: string; // free-text: who this player asked to be paired with at signup (director-only visible)
   joinedAt: number;
 }
@@ -403,6 +404,11 @@ export async function setMemberRole(leagueId: string, memberId: string, role: "d
   await updateDoc(doc(db, "leagues", leagueId), { adminIds: role === "director" ? arrayUnion(memberId) : arrayRemove(memberId), lastUpdated: Date.now() });
 }
 
+/** Director sets a player's division — the league default (also stamped onto entries by the caller). */
+export async function setMemberDivision(leagueId: string, memberId: string, division: string): Promise<void> {
+  await setDoc(doc(db, "leagues", leagueId, "members", memberId), { division: division || deleteField() }, { merge: true });
+}
+
 export async function getLeagueMembers(leagueId: string): Promise<LeagueMember[]> {
   try {
     const snap = await getDocs(query(collection(db, "leagues", leagueId, "members"), limit(200)));
@@ -413,6 +419,7 @@ export async function getLeagueMembers(leagueId: string): Promise<LeagueMember[]
           id: d.id, name: (m.name ?? "Player") as string, username: (m.username as string) || undefined,
           photo: (m.photo as string) || undefined, role: (m.role ?? "member") as LeagueMember["role"],
           tag: typeof m.tag === "number" ? m.tag : undefined,
+          division: (m.division as string) || undefined,
           partnerRequest: (m.partnerRequest as string) || undefined,
           joinedAt: Number(m.joinedAt) || 0,
         };

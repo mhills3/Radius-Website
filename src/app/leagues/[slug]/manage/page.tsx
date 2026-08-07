@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRole, setLeagueLogo, isLeagueAdmin, subscribeLeagueTeams, createLeagueTeam, updateLeagueTeam, deleteLeagueTeam, subscribeLeagueMatches, generateSchedule, setMatchResult, computeMatchStandings, generateBracket, advanceBracket, LEAGUE_FORMATS, TEAM_SIZES, START_FORMATS, isTeamFormat, SUGGESTED_DIVISIONS, type League, type LeagueEvent, type LeagueMember, type StandingRow, type LeagueTeam, type LeagueMatch } from "@/lib/leagues";
+import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, getEntries, updateEntry, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRole, setMemberDivision, setLeagueLogo, isLeagueAdmin, subscribeLeagueTeams, createLeagueTeam, updateLeagueTeam, deleteLeagueTeam, subscribeLeagueMatches, generateSchedule, setMatchResult, computeMatchStandings, generateBracket, advanceBracket, LEAGUE_FORMATS, TEAM_SIZES, START_FORMATS, isTeamFormat, SUGGESTED_DIVISIONS, type League, type LeagueEvent, type LeagueMember, type EventEntry, type StandingRow, type LeagueTeam, type LeagueMatch } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { storage } from "@/lib/firebase";
 import { getDownloadURL, ref as storageRef, uploadBytes } from "firebase/storage";
@@ -25,6 +25,7 @@ export default function LeagueManagePage() {
   const [brandNote, setBrandNote] = useState("");
   const [events, setEvents] = useState<LeagueEvent[]>([]);
   const [members, setMembers] = useState<LeagueMember[]>([]);
+  const [entries, setEntries] = useState<EventEntry[]>([]); // primary event's entries — powers per-player division control
   const [teams, setTeams] = useState<LeagueTeam[]>([]);
   const [matches, setMatches] = useState<LeagueMatch[]>([]);
   const [standings, setStandings] = useState<StandingRow[]>([]);
@@ -103,12 +104,16 @@ export default function LeagueManagePage() {
   const NOUN = isLeagueKind ? "League" : containerKind === "tournament" ? "Tournament" : "Event";
   const nextEvent = upcoming[0] ?? null;
   const primaryEvent = nextEvent ?? past[0] ?? events[0] ?? null;
+  const primaryEventId = primaryEvent?.id ?? null;
+  const divisions = (league?.settings.divisions ?? []).filter((d) => d && d !== "Open").length ? (league!.settings.divisions ?? []) : [];
+  useEffect(() => { if (!primaryEventId) { setEntries([]); return; } getEntries(primaryEventId).then(setEntries).catch(() => {}); }, [primaryEventId]);
+  const entryOf = useMemo(() => new Map(entries.map((e) => [e.id, e])), [entries]);
   // A tournament/one-off is really a single event — exit straight to it, skipping the container page.
   const exitHref = !isLeagueKind && primaryEvent ? `/leagues/${slug}/e/${primaryEvent.id}` : `/leagues/${slug}`;
   const isTeeTimes = (league?.settings.startFormat ?? "") === "Tee times";
   const nav: { key: Section; label: string }[] = [
     { key: "dashboard", label: `${NOUN} dashboard` },
-    { key: "members", label: "Members" },
+    { key: "members", label: "Players" },
     ...(isTeamLeague ? [{ key: "teams" as const, label: "Teams" }] : []),
     ...(isMatchPlay ? [{ key: "matchplay" as const, label: "Match play" }] : []),
     { key: "events", label: "Events" },
@@ -150,6 +155,18 @@ export default function LeagueManagePage() {
     if (!v) return;
     if (!divisionsList.some((d) => d.toLowerCase() === v.toLowerCase())) setDivisionsList((xs) => [...xs, v]);
     setNewDivision("");
+  };
+
+  const assignDivision = async (memberId: string, division: string) => {
+    if (!league) return;
+    // League default on the member, and — if they're entered in the primary event — stamp the entry
+    // so tee-time grouping and division standings pick it up immediately.
+    await setMemberDivision(league.id, memberId, division);
+    setMembers((cur) => cur.map((m) => (m.id === memberId ? { ...m, division: division || undefined } : m)));
+    if (primaryEventId && entryOf.has(memberId)) {
+      await updateEntry(primaryEventId, memberId, { division });
+      setEntries((cur) => cur.map((e) => (e.id === memberId ? { ...e, division: division || undefined } : e)));
+    }
   };
 
   const schedule = async () => {
@@ -257,8 +274,8 @@ export default function LeagueManagePage() {
                 </button>
                 <button onClick={() => setSection("members")} className={`${card} ${cardHover} group p-6 text-left`}>
                   <span className="grid h-11 w-11 place-items-center rounded-[10px] bg-[var(--gold-dim)] text-[var(--gold)]"><IconUsers /></span>
-                  <div className="mt-3 font-[family-name:var(--font-heading)] font-bold text-[var(--cream)]">Members</div>
-                  <div className="mt-0.5 text-xs text-[var(--cream-60)]">{members.length} member{members.length === 1 ? "" : "s"} · manage roles</div>
+                  <div className="mt-3 font-[family-name:var(--font-heading)] font-bold text-[var(--cream)]">Players</div>
+                  <div className="mt-0.5 text-xs text-[var(--cream-60)]">{members.length} player{members.length === 1 ? "" : "s"} · roles &amp; divisions</div>
                 </button>
               </div>
 
@@ -282,6 +299,17 @@ export default function LeagueManagePage() {
                     </span>
                     {m.username && <span className="block text-xs text-[var(--sage-dim)]">@{m.username}</span>}
                   </span>
+                  {divisions.length > 1 && (
+                    <select
+                      value={entryOf.get(m.id)?.division ?? m.division ?? ""}
+                      onChange={(e) => assignDivision(m.id, e.target.value)}
+                      title="Player division"
+                      className="shrink-0 rounded-lg border border-[var(--hair-strong)] bg-[var(--card)] px-2.5 py-1.5 text-xs font-semibold text-[var(--cream)] outline-none transition-colors focus:border-[var(--gold)]"
+                    >
+                      <option value="">No division</option>
+                      {divisions.map((d) => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                  )}
                   <span className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide ${m.role !== "member" ? "bg-[var(--gold-dim)] text-[var(--gold)]" : "bg-white/[0.05] text-[var(--sage-dim)]"}`}>{m.role}</span>
                   {m.role !== "owner" && (
                     <button
@@ -295,7 +323,10 @@ export default function LeagueManagePage() {
                   )}
                 </div>
               ))}
-              {members.length === 0 && <p className="p-6 text-sm text-[var(--sage-dim)]">No members yet. Share an event check-in link.</p>}
+              {divisions.length > 1 && members.length > 0 && (
+                <p className="px-5 py-3 text-[11px] text-[var(--sage-dim)]">Set each player&apos;s division — it flows into their event entry, tee-time grouping, and division standings.</p>
+              )}
+              {members.length === 0 && <p className="p-6 text-sm text-[var(--sage-dim)]">No players yet. Share an event check-in link.</p>}
             </div>
           )}
 
