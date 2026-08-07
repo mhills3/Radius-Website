@@ -591,38 +591,6 @@ export default function LeagueEventPage() {
       </section>
 
       <div className="relative mx-auto max-w-4xl px-5">
-        {admin && open && (() => {
-          const secondary = !scoringKind ? null : liveNow
-            ? (event.roundCount < 6 ? { label: `Add round ${event.roundCount + 1}`, fn: addRound } : null)
-            : (isTeamFormat ? { label: "Randomize teams", fn: doTeams } : { label: "Apply handicaps", fn: doHandicaps });
-          return (
-            <div className="mt-5 flex h-14 items-center justify-between rounded-xl border border-[var(--hair)] bg-[var(--card)] bg-gradient-to-b from-white/[0.045] to-transparent py-2 pl-4 pr-2.5">
-              <Link href={`/leagues/${slug}/manage`} title="Open Director tools" className="group flex items-center gap-3">
-                <span className="grid h-8 w-8 place-items-center rounded-[10px] bg-[var(--gold-dim)] text-[var(--gold)] transition-colors group-hover:bg-[rgba(232,181,96,0.25)]"><IconSliders className="h-4 w-4" /></span>
-                <span className="font-[family-name:var(--font-heading)] text-[14.5px] font-bold tracking-[-0.01em] text-[var(--cream)]">Director tools</span>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-3.5 w-3.5 text-[var(--cream-38)] transition-all group-hover:translate-x-0.5 group-hover:text-[var(--cream)]"><path d="M9 6l6 6-6 6" /></svg>
-              </Link>
-              <div className="flex items-center gap-1.5">
-                {canComplete && <button onClick={complete} disabled={busy} className="h-9 rounded-[10px] bg-[var(--gold)] px-4 text-[13.5px] font-bold text-[#141B16] transition-colors hover:bg-[var(--gold-bright)] disabled:opacity-50">Complete event</button>}
-                {secondary && <button onClick={secondary.fn} disabled={busy} className="h-9 rounded-[10px] px-4 text-[13.5px] font-semibold text-[var(--cream-60)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)] disabled:opacity-50">{secondary.label}</button>}
-                <div className="relative" ref={menuRef}>
-                  <button onClick={() => { setMenuOpen((o) => !o); setConfirmCancel(false); }} aria-label="More director tools" aria-expanded={menuOpen} className="grid h-9 w-9 place-items-center rounded-[10px] text-[var(--cream-60)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)]">⋯</button>
-                  {menuOpen && (
-                    <div className="absolute right-0 top-full z-20 mt-2 min-w-[210px] rounded-xl border border-[var(--hair)] bg-[var(--card-raised)] p-1.5">
-                      {scoringKind && !isTeamFormat && <button onClick={() => { doHandicaps(); setMenuOpen(false); }} className={menuItem}>Apply handicaps</button>}
-                      {scoringKind && isTeamFormat && <button onClick={() => { doTeams(); setMenuOpen(false); }} className={menuItem}>Randomize teams</button>}
-                      {scoringKind && event.roundCount < 6 && <button onClick={() => { addRound(); setMenuOpen(false); }} className={menuItem}>Add round {event.roundCount + 1}</button>}
-                      <button onClick={() => { if (confirmCancel) { cancel(); setMenuOpen(false); setConfirmCancel(false); } else setConfirmCancel(true); }} className={`${menuItem} text-[#f08c8c] hover:bg-[#f08c8c]/10 hover:text-[#f08c8c] ${confirmCancel ? "font-bold" : ""}`}>{confirmCancel ? "Confirm cancel event" : "Cancel event"}</button>
-                    </div>
-                  )}
-                </div>
-                <button onClick={copyLink} title={copied ? "Link copied" : "Copy check-in link"} aria-label="Copy check-in link" className="ml-1 grid h-9 w-9 place-items-center rounded-[10px] bg-[var(--gold-dim)] text-[var(--gold)] transition-colors hover:bg-[rgba(232,181,96,0.25)]">
-                  {copied ? <span className="text-xs font-bold">✓</span> : <IconShare className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-          );
-        })()}
         {hcpNote && <p className="mt-3 text-xs text-[var(--gold)]">{hcpNote}</p>}
 
         {/* Season partner request — teams/match-play leagues. Player requests; director owns the pairings. */}
@@ -649,9 +617,41 @@ export default function LeagueEventPage() {
             className={`relative px-0.5 py-4 text-[14.5px] font-semibold transition-colors ${tab === k ? "text-[var(--cream)] after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:bg-[var(--gold)]" : "text-[var(--cream-60)] hover:text-[var(--cream)]"}`}
           >{label}{n > 0 && <span className="ml-1.5 font-mono text-[11px] font-normal text-[var(--cream-38)]">{n}</span>}</button>
         ))}
+        {admin && (
+          <Link href={`/leagues/${slug}/manage`} className="ml-auto flex items-center gap-1.5 px-0.5 py-4 text-[14.5px] font-semibold text-[var(--gold)] transition-colors hover:text-[var(--gold-bright)]">
+            <IconSliders className="h-4 w-4" />Director tools
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-3.5 w-3.5"><path d="M9 6l6 6-6 6" /></svg>
+          </Link>
+        )}
       </nav>
 
       {/* About */}
+      {tab === "about" && admin && open && (() => {
+        const secondary = !scoringKind ? null : liveNow
+          ? (event.roundCount < 6 ? { label: `Add round ${event.roundCount + 1}`, fn: addRound } : null)
+          : (isTeamFormat ? { label: "Randomize teams", fn: doTeams } : { label: "Apply handicaps", fn: doHandicaps });
+        return (
+          <div className="mb-8 flex flex-wrap items-center gap-1.5 rounded-xl border border-[var(--hair)] bg-[var(--card)] p-2.5">
+            <span className="mr-auto pl-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--cream-38)]">Director actions</span>
+            {canComplete && <button onClick={complete} disabled={busy} className="h-9 rounded-[10px] bg-[var(--gold)] px-4 text-[13.5px] font-bold text-[#141B16] transition-colors hover:bg-[var(--gold-bright)] disabled:opacity-50">Complete event</button>}
+            {secondary && <button onClick={secondary.fn} disabled={busy} className="h-9 rounded-[10px] px-4 text-[13.5px] font-semibold text-[var(--cream-60)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)] disabled:opacity-50">{secondary.label}</button>}
+            <div className="relative" ref={menuRef}>
+              <button onClick={() => { setMenuOpen((o) => !o); setConfirmCancel(false); }} aria-label="More director actions" aria-expanded={menuOpen} className="grid h-9 w-9 place-items-center rounded-[10px] text-[var(--cream-60)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)]">⋯</button>
+              {menuOpen && (
+                <div className="absolute right-0 top-full z-20 mt-2 min-w-[210px] rounded-xl border border-[var(--hair)] bg-[var(--card-raised)] p-1.5">
+                  {scoringKind && !isTeamFormat && <button onClick={() => { doHandicaps(); setMenuOpen(false); }} className={menuItem}>Apply handicaps</button>}
+                  {scoringKind && isTeamFormat && <button onClick={() => { doTeams(); setMenuOpen(false); }} className={menuItem}>Randomize teams</button>}
+                  {scoringKind && event.roundCount < 6 && <button onClick={() => { addRound(); setMenuOpen(false); }} className={menuItem}>Add round {event.roundCount + 1}</button>}
+                  <button onClick={() => { if (confirmCancel) { cancel(); setMenuOpen(false); setConfirmCancel(false); } else setConfirmCancel(true); }} className={`${menuItem} text-[#f08c8c] hover:bg-[#f08c8c]/10 hover:text-[#f08c8c] ${confirmCancel ? "font-bold" : ""}`}>{confirmCancel ? "Confirm cancel event" : "Cancel event"}</button>
+                </div>
+              )}
+            </div>
+            <button onClick={copyLink} title={copied ? "Link copied" : "Copy check-in link"} aria-label="Copy check-in link" className="grid h-9 w-9 place-items-center rounded-[10px] bg-[var(--gold-dim)] text-[var(--gold)] transition-colors hover:bg-[rgba(232,181,96,0.25)]">
+              {copied ? <span className="text-xs font-bold">✓</span> : <IconShare className="h-4 w-4" />}
+            </button>
+          </div>
+        );
+      })()}
       {tab === "about" && (
         <section className="mb-[44px] grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_350px] lg:gap-11">
           <div className="min-w-0">
