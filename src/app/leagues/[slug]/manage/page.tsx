@@ -358,7 +358,7 @@ export default function LeagueManagePage() {
               </div>
               <p className="mt-2.5 text-[11px] text-[var(--sage-dim)]">Directors can run everything in here — add as many co-directors as you need. Promote existing players below.</p>
             </div>
-            <div className={`${card} overflow-hidden`}>
+            <div className={card}>
               {members.map((m) => (
                 <div key={m.id} className="flex items-center gap-3.5 border-b border-white/[0.05] px-5 py-3.5 last:border-b-0">
                   {m.username ? <Link href={`/u/${m.username}`}><Avatar url={m.photo} name={m.name} size={36} /></Link> : <Avatar url={m.photo} name={m.name} size={36} />}
