@@ -165,6 +165,20 @@ export interface LeagueEvent {
   roundCount: number; // 1 = weekly league night; >1 = multi-round event (cumulative total)
   roundStarts?: number[]; // per-round start times (ms epoch), length === roundCount, [0] === date; set for multi-day/multi-round events
   holes: number;      // holes per round (9 / 18 / custom) — context for every score
+  /**
+   * IANA zone the event is actually played in (e.g. "America/New_York").
+   *
+   * Every instant in this contract is absolute epoch ms, so scoring locks and
+   * countdowns are already correct everywhere without this. It exists purely
+   * so times DISPLAY in course-local time: a player in PT reading an ET
+   * tournament should see the tee sheet in ET, not in their own zone.
+   *
+   * Stamped from the creating director's browser, which is the event's own
+   * zone in all but the travelling-director case — and correctable in the
+   * event editor when it isn't. The apps tag the zone abbreviation whenever it
+   * differs from the reader's, so a wrong stamp shows up rather than hiding.
+   */
+  timeZone?: string;
   teeGroupSize?: number;   // Tee-times events: players per group (default 4)
   teeIntervalMin?: number; // Tee-times events: minutes between groups (default 10)
   teeGenerated?: boolean;  // tee sheet has been built (auto at registration close, or manually)
@@ -656,7 +670,18 @@ export const EVENT_EXTRAS = [
   { key: "charity", label: "Charity event", hint: "Proceeds support a cause" },
 ] as const;
 
-export async function createEvents(uid: string, league: League, input: { name: string; dates: number[]; roundStarts?: number[]; courseId?: string; courseName?: string; format?: string; startFormat?: string; roundCount?: number; holes?: number; capacity?: number; buyIn?: number; kind?: string; isPrivate?: boolean; description?: string; contactEmail?: string; contactPhone?: string; extras?: string[]; focus?: string; skillLevel?: string; durationMin?: number; bring?: string; workList?: string[]; meetingPoint?: string; payoutPlaces?: number; registrationCloseOffsetMin?: number }): Promise<LeagueEvent[]> {
+/** True for a zone identifier this platform actually recognises. */
+export function isValidTimeZone(tz: string): boolean {
+  if (!tz.trim()) return false;
+  try { new Intl.DateTimeFormat("en-US", { timeZone: tz }); return true; } catch { return false; }
+}
+
+/** The creating browser's IANA zone, or undefined where Intl can't say. */
+function localTimeZone(): string | undefined {
+  try { return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined; } catch { return undefined; }
+}
+
+export async function createEvents(uid: string, league: League, input: { name: string; dates: number[]; roundStarts?: number[]; courseId?: string; courseName?: string; format?: string; startFormat?: string; roundCount?: number; holes?: number; capacity?: number; buyIn?: number; kind?: string; isPrivate?: boolean; description?: string; contactEmail?: string; contactPhone?: string; extras?: string[]; focus?: string; skillLevel?: string; durationMin?: number; bring?: string; workList?: string[]; meetingPoint?: string; payoutPlaces?: number; registrationCloseOffsetMin?: number; timeZone?: string }): Promise<LeagueEvent[]> {
   const now = Date.now();
   const out: LeagueEvent[] = [];
   for (const date of input.dates) {
@@ -690,6 +715,7 @@ export async function createEvents(uid: string, league: League, input: { name: s
       meetingPoint: input.meetingPoint?.trim() || undefined,
       payoutPlaces: input.payoutPlaces && input.payoutPlaces > 1 ? Math.min(Math.floor(input.payoutPlaces), 10) : undefined,
       registrationCloseAt: input.registrationCloseOffsetMin ? date - input.registrationCloseOffsetMin * 60_000 : undefined,
+      timeZone: input.timeZone || localTimeZone(),
       entryCount: 0, createdAt: now,
     };
     await setDoc(doc(db, "leagueEvents", id), JSON.parse(JSON.stringify(ev)), { merge: true });
@@ -709,6 +735,7 @@ function toEvent(id: string, d: any): LeagueEvent {
     roundCount: Math.max(1, Number(d.roundCount) || 1),
     roundStarts: Array.isArray(d.roundStarts) && d.roundStarts.length > 1 ? d.roundStarts.map((x: unknown) => Number(x) || 0) : undefined,
     holes: Number(d.holes) > 0 ? Number(d.holes) : 18,
+    timeZone: typeof d.timeZone === "string" && d.timeZone ? d.timeZone : undefined,
     teeGroupSize: Number(d.teeGroupSize) > 0 ? Number(d.teeGroupSize) : undefined,
     teeIntervalMin: Number(d.teeIntervalMin) > 0 ? Number(d.teeIntervalMin) : undefined,
     teeGenerated: d.teeGenerated === true,
@@ -738,6 +765,7 @@ export async function updateEventDetails(eventId: string, patch: {
   name?: string; date?: number; roundStarts?: number[] | null; roundCount?: number; holes?: number;
   buyIn?: number | null; capacity?: number | null; startFormat?: string; courseName?: string;
   registrationCloseAt?: number | null; teeGroupSize?: number; teeIntervalMin?: number;
+  timeZone?: string;
 }): Promise<void> {
   const upd: Record<string, unknown> = {};
   if (patch.name !== undefined) upd.name = patch.name.trim() || "Event";
@@ -752,6 +780,9 @@ export async function updateEventDetails(eventId: string, patch: {
   if (patch.registrationCloseAt !== undefined) upd.registrationCloseAt = patch.registrationCloseAt && patch.registrationCloseAt > 0 ? patch.registrationCloseAt : deleteField();
   if (patch.teeGroupSize !== undefined) upd.teeGroupSize = Math.max(2, Math.min(patch.teeGroupSize, 6));
   if (patch.teeIntervalMin !== undefined) upd.teeIntervalMin = Math.max(1, Math.min(patch.teeIntervalMin, 60));
+  // Validated against the platform's own zone list — a typo'd zone would make
+  // every client silently fall back to the reader's clock.
+  if (patch.timeZone !== undefined && isValidTimeZone(patch.timeZone)) upd.timeZone = patch.timeZone;
   if (Object.keys(upd).length) await updateDoc(doc(db, "leagueEvents", eventId), upd);
 }
 
