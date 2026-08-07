@@ -362,6 +362,9 @@ export default function LeagueEventPage() {
   const paidOut = entries.reduce((a, e) => a + (e.payout ?? 0), 0);
   const isTeamFormat = event.format === "Doubles" || event.format === "Teams";
   const liveNow = event.status === "scheduled" && nowTs >= event.date && nowTs <= event.date + 6 * 3600_000 && entries.length > 0;
+  // You JOIN a scheduled event ahead of time; check-in is the day-of action (opens 2h before start).
+  const checkInPhase = nowTs >= event.date - 2 * 3600_000;
+  const joinVerb = checkInPhase ? "Check in" : "Join";
   // Completion must stay reachable AFTER the 6h live window — multi-round events,
   // next-morning score entry, and backfilled weeks all finish outside it. Without
   // this the event is stuck "scheduled" forever and never enters standings/recap.
@@ -537,7 +540,7 @@ export default function LeagueEventPage() {
                     me ? (
                       !(liveNow && cid && ranked.some((x) => x.id === cid)) && (
                         <span className="inline-flex items-center gap-2">
-                          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#5fcf80]/25 bg-[rgba(20,27,22,0.5)] px-3.5 py-2 font-mono text-[10.5px] tracking-[0.08em] text-[#5fcf80] backdrop-blur-[6px]">✓ Checked in{me.division ? ` · ${me.division}` : ""}</span>
+                          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#5fcf80]/25 bg-[rgba(20,27,22,0.5)] px-3.5 py-2 font-mono text-[10.5px] tracking-[0.08em] text-[#5fcf80] backdrop-blur-[6px]">✓ {checkInPhase ? "Checked in" : "You're in"}{me.division ? ` · ${me.division}` : ""}</span>
                           {open && typeof me.score !== "number" && !me.holeScores?.some((h) => h > 0) && (
                             <button onClick={leaveSelf} disabled={busy} className={`rounded-full px-2.5 py-2 font-mono text-[10.5px] uppercase tracking-[0.08em] transition-colors disabled:opacity-50 ${confirmLeave ? "bg-[#f08c8c]/15 font-bold text-[#f08c8c]" : "text-[var(--cream-38)] hover:text-[#f08c8c]"}`}>{confirmLeave ? "Confirm leave" : "Leave"}</button>
                           )}
@@ -554,11 +557,11 @@ export default function LeagueEventPage() {
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--cream-38)]"><path d="M6 9l6 6 6-6" /></svg>
                           </span>
                         )}
-                        <button onClick={doCheckIn} disabled={busy || (divisions.length > 1 && !division)} className={btnGold}>{busy ? "…" : "Check in"}</button>
+                        <button onClick={doCheckIn} disabled={busy || (divisions.length > 1 && !division)} className={btnGold}>{busy ? "…" : joinVerb}</button>
                       </span>
                     )
                   ) : (
-                    <Link href="/login" className={btnGold}>Sign in to check in</Link>
+                    <Link href="/login" className={btnGold}>Sign in to {joinVerb.toLowerCase()}</Link>
                   )}
                 </span>
               )}
@@ -883,7 +886,7 @@ export default function LeagueEventPage() {
                     </>
                   );
                 })() : (
-                  <div className="font-mono text-[10.5px] tracking-[0.06em] text-[var(--cream-38)]">{entries.length > 0 ? <><b className="font-medium text-[var(--cream-60)]">{entries.length}</b> checked in</> : "Be the first in"}</div>
+                  <div className="font-mono text-[10.5px] tracking-[0.06em] text-[var(--cream-38)]">{entries.length > 0 ? <><b className="font-medium text-[var(--cream-60)]">{entries.length}</b> {checkInPhase ? "checked in" : "joined"}</> : (checkInPhase ? "Be the first in" : "Be the first to join")}</div>
                 )}
               </button>
             )}
