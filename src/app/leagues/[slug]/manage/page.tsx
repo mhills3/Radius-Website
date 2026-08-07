@@ -193,7 +193,7 @@ export default function LeagueManagePage() {
   };
 
   const setRoundTime = (i: number, patch: { date?: string; time?: string }) =>
-    setEd((s) => { const extra = [...s.extra]; while (extra.length <= i) extra.push({ date: s.date, time: s.time }); extra[i] = { ...extra[i], ...patch }; return { ...s, extra }; });
+    setEd((s) => { const extra = [...(s.extra ?? [])]; while (extra.length <= i) extra.push({ date: s.date, time: s.time }); extra[i] = { ...extra[i], ...patch }; return { ...s, extra }; });
 
   const saveEvent = async () => {
     if (!league || !primaryEvent || busy || !ed.date) return;
@@ -202,7 +202,7 @@ export default function LeagueManagePage() {
       const round1 = new Date(`${ed.date}T${ed.time || "17:30"}`).getTime();
       const roundStarts = ed.rounds > 1
         ? [round1, ...Array.from({ length: ed.rounds - 1 }, (_, i) => {
-            const rv = ed.extra[i];
+            const rv = ed.extra?.[i];
             return new Date(`${rv?.date || ed.date}T${rv?.time || ed.time || "17:30"}`).getTime();
           })]
         : null;
@@ -638,8 +638,8 @@ export default function LeagueManagePage() {
                         {Array.from({ length: ed.rounds - 1 }, (_, i) => (
                           <div key={i} className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--hair)] bg-[var(--card)] px-4 py-3">
                             <span className="w-14 shrink-0 font-mono text-xs font-bold uppercase tracking-wide text-[var(--gold)]">Rd {i + 2}</span>
-                            <input type="date" value={ed.extra[i]?.date ?? ed.date} min={ed.date || undefined} onChange={(e) => setRoundTime(i, { date: e.target.value })} className={`${inputCls} min-w-[170px] flex-none`} />
-                            <input type="time" value={ed.extra[i]?.time ?? ed.time} onChange={(e) => setRoundTime(i, { time: e.target.value })} className={`${inputCls} w-[130px] flex-none`} />
+                            <input type="date" value={ed.extra?.[i]?.date ?? ed.date} min={ed.date || undefined} onChange={(e) => setRoundTime(i, { date: e.target.value })} className={`${inputCls} min-w-[170px] flex-none`} />
+                            <input type="time" value={ed.extra?.[i]?.time ?? ed.time} onChange={(e) => setRoundTime(i, { time: e.target.value })} className={`${inputCls} w-[130px] flex-none`} />
                           </div>
                         ))}
                       </div>
