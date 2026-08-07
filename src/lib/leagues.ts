@@ -1031,15 +1031,19 @@ export async function generateCards(eventId: string, entries: EventEntry[], size
 }
 
 /**
- * Tee-time grouping: split entries BY DIVISION, chunk each division into groups of `size`, and
- * assign continuously staggered start times (`intervalMin` apart) from `startMs`. Divisions go off
- * in `divisions` order (unlisted/none last). All groups start on hole 1. Replaces the card set.
+ * Group generator for every start format. Splits entries BY DIVISION, chunks each into groups of
+ * `size` (divisions in `divisions` order, unlisted last), and assigns starts by format:
+ *   • "Tee times" → staggered tee times (`intervalMin` apart from `startMs`), all off hole 1
+ *   • "Shotgun"   → every group tees at once, spread across the course's holes
+ *   • "Flex"      → just groupings, no hole/time
+ * Replaces the whole card set.
  */
-export async function generateTeeTimes(eventId: string, entries: EventEntry[], opts?: { size?: number; intervalMin?: number; startMs?: number; divisions?: string[] }): Promise<EventCard[]> {
-  const size = Math.max(1, opts?.size ?? 4);
-  const interval = Math.max(1, opts?.intervalMin ?? 10) * 60_000;
-  const start = opts?.startMs && opts.startMs > 0 ? opts.startMs : Date.now();
-  const order = opts?.divisions ?? [];
+export async function generateGroups(eventId: string, entries: EventEntry[], opts: { format: string; size?: number; intervalMin?: number; startMs?: number; divisions?: string[]; holeCount?: number }): Promise<EventCard[]> {
+  const size = Math.max(1, opts.size ?? 4);
+  const interval = Math.max(1, opts.intervalMin ?? 10) * 60_000;
+  const start = opts.startMs && opts.startMs > 0 ? opts.startMs : Date.now();
+  const holeCount = Math.max(1, opts.holeCount ?? 18);
+  const order = opts.divisions ?? [];
   const byDiv = new Map<string, EventEntry[]>();
   for (const e of entries) { const d = e.division || ""; if (!byDiv.has(d)) byDiv.set(d, []); byDiv.get(d)!.push(e); }
   const divKeys = [...byDiv.keys()].sort((a, b) => {
@@ -1052,23 +1056,35 @@ export async function generateTeeTimes(eventId: string, entries: EventEntry[], o
   for (const d of divKeys) {
     const group = byDiv.get(d)!;
     for (let i = 0; i < group.length; i += size) {
-      cards.push({ id: freshId(), number: cards.length + 1, startHole: 1, teeTime: start + slot * interval, division: d || undefined, playerIds: group.slice(i, i + size).map((e) => e.id) });
+      const startHole = opts.format === "Shotgun" ? ((slot * 2) % holeCount) + 1 : 1;
+      const teeTime = opts.format === "Tee times" ? start + slot * interval : undefined;
+      cards.push({ id: freshId(), number: cards.length + 1, startHole, teeTime, division: d || undefined, playerIds: group.slice(i, i + size).map((e) => e.id) });
       slot++;
     }
   }
   const old = await getCards(eventId);
   await Promise.all(old.map((c) => setDoc(doc(db, "leagueEvents", eventId, "cards", c.id), { deleted: true }, { merge: true })));
   for (const c of cards) {
-    await setDoc(doc(db, "leagueEvents", eventId, "cards", c.id), { number: c.number, startHole: 1, teeTime: c.teeTime, division: c.division ?? null, playerIds: c.playerIds, deleted: false }, { merge: true });
+    await setDoc(doc(db, "leagueEvents", eventId, "cards", c.id), { number: c.number, startHole: c.startHole, teeTime: c.teeTime ?? null, division: c.division ?? null, playerIds: c.playerIds, deleted: false }, { merge: true });
     await Promise.all(c.playerIds.map((pid) => setDoc(doc(db, "leagueEvents", eventId, "entries", pid), { cardId: c.id }, { merge: true })));
   }
-  await setDoc(doc(db, "leagueEvents", eventId), { teeGenerated: true, teeGroupSize: size, teeIntervalMin: (opts?.intervalMin ?? 10) }, { merge: true });
+  await setDoc(doc(db, "leagueEvents", eventId), { teeGenerated: true, teeGroupSize: size, teeIntervalMin: (opts.intervalMin ?? 10) }, { merge: true });
   return cards;
+}
+
+/** Back-compat wrapper — tee-times generation. */
+export async function generateTeeTimes(eventId: string, entries: EventEntry[], opts?: { size?: number; intervalMin?: number; startMs?: number; divisions?: string[] }): Promise<EventCard[]> {
+  return generateGroups(eventId, entries, { ...opts, format: "Tee times" });
 }
 
 /** Director edit: change a single group's tee time. */
 export async function setCardTeeTime(eventId: string, cardId: string, teeTime: number): Promise<void> {
   await setDoc(doc(db, "leagueEvents", eventId, "cards", cardId), { teeTime }, { merge: true });
+}
+
+/** Director edit: change a single group's shotgun start hole. */
+export async function setCardStartHole(eventId: string, cardId: string, hole: number): Promise<void> {
+  await setDoc(doc(db, "leagueEvents", eventId, "cards", cardId), { startHole: Math.max(1, Math.floor(hole)) }, { merge: true });
 }
 
 /** Director edit: move a player from their current group into another group. */

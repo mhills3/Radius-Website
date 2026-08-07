@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, getEntries, updateEntry, checkInEntry, getCards, generateTeeTimes, setCardTeeTime, moveEntryToCard, updateEventDetails, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRoles, setMemberDivision, setLeagueLogo, isLeagueAdmin, subscribeLeagueTeams, createLeagueTeam, updateLeagueTeam, deleteLeagueTeam, subscribeLeagueMatches, generateSchedule, setMatchResult, computeMatchStandings, generateBracket, advanceBracket, LEAGUE_FORMATS, TEAM_SIZES, START_FORMATS, isTeamFormat, SUGGESTED_DIVISIONS, type League, type LeagueEvent, type LeagueMember, type EventEntry, type EventCard, type StandingRow, type LeagueTeam, type LeagueMatch } from "@/lib/leagues";
+import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, getEntries, updateEntry, checkInEntry, getCards, generateGroups, setCardTeeTime, setCardStartHole, moveEntryToCard, updateEventDetails, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRoles, setMemberDivision, setLeagueLogo, isLeagueAdmin, subscribeLeagueTeams, createLeagueTeam, updateLeagueTeam, deleteLeagueTeam, subscribeLeagueMatches, generateSchedule, setMatchResult, computeMatchStandings, generateBracket, advanceBracket, LEAGUE_FORMATS, TEAM_SIZES, START_FORMATS, isTeamFormat, SUGGESTED_DIVISIONS, type League, type LeagueEvent, type LeagueMember, type EventEntry, type EventCard, type StandingRow, type LeagueTeam, type LeagueMatch } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { storage } from "@/lib/firebase";
 import { getDownloadURL, ref as storageRef, uploadBytes } from "firebase/storage";
@@ -146,7 +146,9 @@ export default function LeagueManagePage() {
   useEffect(() => { if (primaryEvent) setEd(edFromEvent(primaryEvent)); }, [primaryEventId]); // eslint-disable-line react-hooks/exhaustive-deps
   // A tournament/one-off is really a single event — exit straight to it, skipping the container page.
   const exitHref = !isLeagueKind && primaryEvent ? `/leagues/${slug}/e/${primaryEvent.id}` : `/leagues/${slug}`;
-  const isTeeTimes = (primaryEvent?.startFormat ?? league?.settings.startFormat ?? "") === "Tee times";
+  const scoringContainer = containerKind === "league" || containerKind === "tournament";
+  const startsNoun = (f?: string) => (f === "Tee times" ? "Tee times" : f === "Shotgun" ? "Shotgun" : "Groups");
+  const teeFormat = teeEvent?.startFormat ?? "Shotgun";
   // Day-of check-in: enabled per-league, unlocks ~3h before the event start.
   const checkInsOn = league?.settings.checkIns === true;
   const checkInOpen = !!(checkInsOn && primaryEvent && now >= primaryEvent.date - 3 * 3600_000);
@@ -156,7 +158,7 @@ export default function LeagueManagePage() {
     ...(isTeamLeague ? [{ key: "teams" as const, label: "Teams" }] : []),
     ...(isMatchPlay ? [{ key: "matchplay" as const, label: "Match play" }] : []),
     { key: "events", label: isLeagueKind ? "Events" : "Event" },
-    ...(isTeeTimes && primaryEvent ? [{ key: "teetimes" as const, label: "Tee times" }] : []),
+    ...(scoringContainer && primaryEvent ? [{ key: "teetimes" as const, label: startsNoun(primaryEvent.startFormat) }] : []),
     { key: "settings", label: "Settings" },
     { key: "quicklink", label: "Quick link" },
   ];
@@ -219,7 +221,7 @@ export default function LeagueManagePage() {
     if (!teeEvent || busy) return;
     setBusy(true);
     try {
-      await generateTeeTimes(teeEvent.id, teeEntries, { size: teeSize, intervalMin: teeInt, startMs: teeEvent.roundStarts?.[0] ?? teeEvent.date, divisions: league?.settings.divisions });
+      await generateGroups(teeEvent.id, teeEntries, { format: teeEvent.startFormat, size: teeSize, intervalMin: teeInt, startMs: teeEvent.roundStarts?.[0] ?? teeEvent.date, divisions: league?.settings.divisions, holeCount: teeEvent.holes });
       await reloadTee();
       const fresh = await getLeagueEvents(league!.id); setEvents(fresh);
     } finally { setBusy(false); }
@@ -231,6 +233,11 @@ export default function LeagueManagePage() {
     base.setHours(h, m, 0, 0);
     setTeeCards((cur) => cur.map((c) => (c.id === cardId ? { ...c, teeTime: base.getTime() } : c)));
     await setCardTeeTime(teeEvent.id, cardId, base.getTime());
+  };
+  const editHole = async (cardId: string, hole: number) => {
+    if (!teeEvent || !hole) return;
+    setTeeCards((cur) => cur.map((c) => (c.id === cardId ? { ...c, startHole: hole } : c)));
+    await setCardStartHole(teeEvent.id, cardId, hole);
   };
   const moveTee = async (pid: string, toCardId: string) => {
     if (!teeEvent) return;
@@ -716,13 +723,11 @@ export default function LeagueManagePage() {
                     <label className="block"><FieldLabel>Field cap</FieldLabel><input inputMode="numeric" value={ed.cap} onChange={(e) => setEd((s) => ({ ...s, cap: e.target.value }))} placeholder="none" className={inputCls} /></label>
                     <label className="block sm:col-span-2"><FieldLabel>Registration closes</FieldLabel><input type="datetime-local" value={ed.reg} onChange={(e) => setEd((s) => ({ ...s, reg: e.target.value }))} className={`${inputCls} [color-scheme:dark]`} /></label>
                   </div>
-                  {primaryEvent.startFormat === "Tee times" && (
-                    <button type="button" onClick={() => setSection("teetimes")} className="mt-6 flex w-full items-center gap-3 rounded-xl border border-[var(--hair)] bg-[var(--card)] p-4 text-left transition-colors hover:border-[var(--hair-strong)]">
-                      <IconClock className="h-4 w-4 shrink-0 text-[var(--gold)]" />
-                      <span className="min-w-0 flex-1 text-sm text-[var(--cream-60)]"><b className="font-semibold text-[var(--cream)]">Tee times</b> — set group size, interval, and hand-tweak the sheet on the Tee times page.</span>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-4 w-4 shrink-0 text-[var(--gold)]"><path d="M9 6l6 6-6 6" /></svg>
-                    </button>
-                  )}
+                  <button type="button" onClick={() => setSection("teetimes")} className="mt-6 flex w-full items-center gap-3 rounded-xl border border-[var(--hair)] bg-[var(--card)] p-4 text-left transition-colors hover:border-[var(--hair-strong)]">
+                    <IconClock className="h-4 w-4 shrink-0 text-[var(--gold)]" />
+                    <span className="min-w-0 flex-1 text-sm text-[var(--cream-60)]"><b className="font-semibold text-[var(--cream)]">{startsNoun(primaryEvent.startFormat)}</b> — set group size{primaryEvent.startFormat === "Tee times" ? " & interval" : ""} and hand-tweak the sheet on the {startsNoun(primaryEvent.startFormat)} page.</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-4 w-4 shrink-0 text-[var(--gold)]"><path d="M9 6l6 6-6 6" /></svg>
+                  </button>
                   {ed.rounds > 1 && (
                     <div className="mt-6">
                       <FieldLabel>Round schedule</FieldLabel>
@@ -768,8 +773,8 @@ export default function LeagueManagePage() {
             <div className="grid gap-6">
               <div className={`${card} p-6`}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <h2 className="font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">Tee times</h2>
-                  <Link href={`/leagues/${slug}/e/${teeEvent.id}?tab=scores`} className="font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--gold)] transition-opacity hover:opacity-80">Public tee sheet →</Link>
+                  <h2 className="font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">{startsNoun(teeFormat)}<span className="ml-2 font-mono text-[11px] font-semibold uppercase tracking-wide text-[var(--sage-dim)]">{teeFormat} start</span></h2>
+                  <Link href={`/leagues/${slug}/e/${teeEvent.id}?tab=scores`} className="font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--gold)] transition-opacity hover:opacity-80">Public sheet →</Link>
                 </div>
                 {upcoming.length > 1 && (
                   <label className="mt-4 block">
@@ -779,10 +784,10 @@ export default function LeagueManagePage() {
                     </select>
                   </label>
                 )}
-                <p className="mt-3 text-xs text-[var(--sage-dim)]">Groups build automatically when registration closes ({fmtDate(teeEvent.registrationCloseAt || teeEvent.roundStarts?.[0] || teeEvent.date)}). Configure and hand-tweak here anytime.</p>
-                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <p className="mt-3 text-xs text-[var(--sage-dim)]">{teeFormat === "Tee times" ? `Groups build automatically when registration closes (${fmtDate(teeEvent.registrationCloseAt || teeEvent.roundStarts?.[0] || teeEvent.date)}), split by division and staggered.` : teeFormat === "Shotgun" ? "Groups build at registration close, each assigned a start hole across the course." : "Players tee off any time in the window — groups are optional pairings you can share."} Configure and hand-tweak here anytime.</p>
+                <div className={`mt-4 grid gap-4 ${teeFormat === "Tee times" ? "sm:grid-cols-2" : ""}`}>
                   <div><FieldLabel>Players per group</FieldLabel><Segmented options={["2", "3", "4"]} value={String(teeSize)} onChange={(v) => setTeeSize(Number(v))} /></div>
-                  <div><FieldLabel>Minutes between groups</FieldLabel><Segmented options={["8", "10", "12", "15"]} value={String(teeInt)} onChange={(v) => setTeeInt(Number(v))} /></div>
+                  {teeFormat === "Tee times" && <div><FieldLabel>Minutes between groups</FieldLabel><Segmented options={["8", "10", "12", "15"]} value={String(teeInt)} onChange={(v) => setTeeInt(Number(v))} /></div>}
                 </div>
                 <div className="mt-4 flex items-center gap-3">
                   <button onClick={genTee} disabled={busy || teeEntries.length === 0} className={btnGold}>{busy ? "Building…" : teeCards.length ? "Regenerate groups" : "Generate groups"}</button>
@@ -790,7 +795,7 @@ export default function LeagueManagePage() {
                 </div>
               </div>
               {teeCards.length === 0 ? (
-                <p className="text-sm text-[var(--sage-dim)]">No groups yet. Set the size &amp; interval above and generate — or they&apos;ll build automatically when registration closes.</p>
+                <p className="text-sm text-[var(--sage-dim)]">No groups yet. Set it up above and generate{teeFormat === "Flex" ? "." : " — or they build automatically when registration closes."}</p>
               ) : (() => {
                 const groups = new Map<string, EventCard[]>();
                 for (const c of teeCards) { const d = c.division || ""; if (!groups.has(d)) groups.set(d, []); groups.get(d)!.push(c); }
@@ -805,7 +810,11 @@ export default function LeagueManagePage() {
                             <div key={c.id} className={`${card} p-4`}>
                               <div className="mb-3 flex items-center justify-between gap-2">
                                 <span className="font-[family-name:var(--font-heading)] text-sm font-extrabold text-[var(--cream)]">Group {c.number}</span>
-                                <input type="time" value={c.teeTime ? toTimeInput(c.teeTime) : ""} onChange={(e) => editTee(c.id, e.target.value)} className="rounded-lg bg-[var(--gold-dim)] px-2 py-1 font-mono text-[11px] font-bold text-[var(--gold)] outline-none [color-scheme:dark]" />
+                                {teeFormat === "Tee times" ? (
+                                  <input type="time" value={c.teeTime ? toTimeInput(c.teeTime) : ""} onChange={(e) => editTee(c.id, e.target.value)} className="rounded-lg bg-[var(--gold-dim)] px-2 py-1 font-mono text-[11px] font-bold text-[var(--gold)] outline-none [color-scheme:dark]" />
+                                ) : teeFormat === "Shotgun" ? (
+                                  <span className="inline-flex items-center gap-1 rounded-lg bg-[var(--gold-dim)] pl-2 pr-1 py-1 font-mono text-[10px] font-bold text-[var(--gold)]">HOLE <input type="number" min={1} max={teeEvent.holes} value={c.startHole} onChange={(e) => editHole(c.id, Number(e.target.value))} className="w-10 rounded bg-transparent text-center text-[11px] font-bold text-[var(--gold)] outline-none" /></span>
+                                ) : null}
                               </div>
                               <div className="space-y-2">
                                 {c.playerIds.map((pid) => (
@@ -850,15 +859,15 @@ export default function LeagueManagePage() {
 
           {section === "settings" && (
             <div className="grid gap-6">
-            {isTeeTimes && nextEvent && (
-              <Link href={`/leagues/${slug}/e/${nextEvent.id}?tab=scores`} className="flex items-center gap-4 rounded-2xl border border-[var(--gold)]/40 bg-[var(--gold-dim)] p-5 transition-colors hover:bg-[var(--gold)]/15">
+            {scoringContainer && primaryEvent && (
+              <button onClick={() => setSection("teetimes")} className="flex items-center gap-4 rounded-2xl border border-[var(--gold)]/40 bg-[var(--gold-dim)] p-5 text-left transition-colors hover:bg-[var(--gold)]/15">
                 <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[10px] bg-[var(--gold)]/20 text-[var(--gold)]"><IconClock className="h-5 w-5" /></span>
                 <span className="min-w-0 flex-1">
-                  <span className="block font-[family-name:var(--font-heading)] text-[15px] font-bold text-[var(--cream)]">Generate tee times</span>
-                  <span className="block text-xs text-[var(--cream-60)]">Auto-build the tee sheet for {nextEvent.name} — split by division, staggered starts. Edit times &amp; groups after.</span>
+                  <span className="block font-[family-name:var(--font-heading)] text-[15px] font-bold text-[var(--cream)]">{startsNoun(primaryEvent.startFormat)} &amp; groups</span>
+                  <span className="block text-xs text-[var(--cream-60)]">Set group size{primaryEvent.startFormat === "Tee times" ? ", tee interval," : ""} and hand-tweak the {startsNoun(primaryEvent.startFormat).toLowerCase()} sheet — split by division.</span>
                 </span>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-5 w-5 shrink-0 text-[var(--gold)]"><path d="M9 6l6 6-6 6" /></svg>
-              </Link>
+              </button>
             )}
             <div className={`${card} p-6`}>
               <h3 className="mb-1 font-[family-name:var(--font-heading)] text-[15px] font-bold text-[var(--cream)]">Scoring</h3>
