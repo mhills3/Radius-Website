@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
@@ -182,6 +182,23 @@ export default function LeagueManagePage() {
     setLeague({ ...league, settings });
     await updateLeagueSettings(league.id, settings);
   };
+
+  // Setup checklist: celebrate on completion, then gracefully collapse away (instead of cutting).
+  const allDone = checklist.length > 0 && checklist.every((c) => c.done);
+  const [checklistPhase, setChecklistPhase] = useState<"list" | "celebrate" | "collapse" | "gone">("list");
+  const prevAllDone = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (!league) return;
+    const prev = prevAllDone.current;
+    prevAllDone.current = allDone;
+    if (prev === null) { setChecklistPhase(allDone ? "gone" : "list"); return; }
+    if (allDone && !prev) setChecklistPhase("celebrate");
+    else if (!allDone) setChecklistPhase("list");
+  }, [league, allDone]);
+  useEffect(() => {
+    if (checklistPhase === "celebrate") { const t = setTimeout(() => setChecklistPhase("collapse"), 1900); return () => clearTimeout(t); }
+    if (checklistPhase === "collapse") { const t = setTimeout(() => setChecklistPhase("gone"), 650); return () => clearTimeout(t); }
+  }, [checklistPhase]);
 
   const saveSettings = async () => {
     if (!league || busy) return;
@@ -390,27 +407,40 @@ export default function LeagueManagePage() {
         <div className="min-w-0">
           {section === "dashboard" && (
             <div className="grid gap-8">
-              {/* Setup checklist — earns its exit: once every item is done it disappears */}
-              {checklist.some((c) => !c.done) && (
-              <div className={`${card} p-6`}>
-                <h2 className="font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">{NOUN} setup · {checklist.filter((c) => c.done).length}/{checklist.length} complete</h2>
-                <div className="mt-4 grid gap-2">
-                  {checklist.map((c, ci) => {
-                    const isNext = !c.done && checklist.findIndex((x) => !x.done) === ci;
-                    return (
-                    <div key={c.key} className={`group flex items-center gap-3 rounded-xl border border-[var(--hair)] bg-[var(--forest)] px-4 py-3 transition-colors hover:border-[var(--hair-strong)] ${isNext ? "border-l-[3px] border-l-[rgba(232,181,96,0.45)]" : ""}`}>
-                      <button onClick={() => toggleChecklist(c.key)} title={c.done ? "Mark not done" : "Mark done"} className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[10px] font-bold transition-colors ${c.done ? "bg-[var(--gold)] text-[#141B16]" : isNext ? "border border-[var(--gold)]/60 text-transparent hover:border-[var(--gold)]" : "border border-[var(--hair-strong)] text-transparent hover:border-[var(--cream-38)]"}`}>✓</button>
-                      <button onClick={() => setSection(c.go)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
-                        <span className="min-w-0 flex-1">
-                          <span className={`block text-sm font-bold ${c.done ? "text-[var(--cream-38)] line-through decoration-[var(--hair-strong)]" : "text-[var(--cream)]"}`}>{c.label}</span>
-                          <span className="block text-xs text-[var(--cream-38)]">{c.hint}</span>
-                        </span>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-4 w-4 shrink-0 text-[var(--cream-38)] group-hover:text-[var(--gold)]"><path d="M9 6l6 6-6 6" /></svg>
-                      </button>
-                    </div>
-                    );
-                  })}
+              {/* Setup checklist — celebrates completion, then gracefully collapses away */}
+              {checklistPhase !== "gone" && (
+              <div className={`overflow-hidden transition-all duration-[600ms] ease-out ${checklistPhase === "collapse" ? "-mt-8 max-h-0 -translate-y-3 opacity-0" : "max-h-[760px] opacity-100"}`}>
+                {checklistPhase === "list" ? (
+                <div className={`${card} p-6`}>
+                  <h2 className="font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">{NOUN} setup · {checklist.filter((c) => c.done).length}/{checklist.length} complete</h2>
+                  <div className="mt-4 grid gap-2">
+                    {checklist.map((c, ci) => {
+                      const isNext = !c.done && checklist.findIndex((x) => !x.done) === ci;
+                      return (
+                      <div key={c.key} className={`group flex items-center gap-3 rounded-xl border border-[var(--hair)] bg-[var(--forest)] px-4 py-3 transition-colors hover:border-[var(--hair-strong)] ${isNext ? "border-l-[3px] border-l-[rgba(232,181,96,0.45)]" : ""}`}>
+                        <button onClick={() => toggleChecklist(c.key)} title={c.done ? "Mark not done" : "Mark done"} className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[10px] font-bold transition-colors ${c.done ? "bg-[var(--gold)] text-[#141B16]" : isNext ? "border border-[var(--gold)]/60 text-transparent hover:border-[var(--gold)]" : "border border-[var(--hair-strong)] text-transparent hover:border-[var(--cream-38)]"}`}>✓</button>
+                        <button onClick={() => setSection(c.go)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                          <span className="min-w-0 flex-1">
+                            <span className={`block text-sm font-bold ${c.done ? "text-[var(--cream-38)] line-through decoration-[var(--hair-strong)]" : "text-[var(--cream)]"}`}>{c.label}</span>
+                            <span className="block text-xs text-[var(--cream-38)]">{c.hint}</span>
+                          </span>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-4 w-4 shrink-0 text-[var(--cream-38)] group-hover:text-[var(--gold)]"><path d="M9 6l6 6-6 6" /></svg>
+                        </button>
+                      </div>
+                      );
+                    })}
+                  </div>
                 </div>
+                ) : (
+                <div className={`${card} fade-up relative overflow-hidden p-8 text-center`}>
+                  <div className="pointer-events-none absolute inset-x-0 top-0 mx-auto h-40 max-w-md" style={{ background: "radial-gradient(200px 140px at 50% -10%, rgba(232,181,96,0.22), transparent 70%)" }} />
+                  <div className="check-pop mx-auto grid h-16 w-16 place-items-center rounded-full bg-[var(--gold)] text-[#141B16]" style={{ boxShadow: "0 0 0 6px rgba(232,181,96,0.12), 0 0 34px rgba(232,181,96,0.4)" }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8"><path d="M5 13l4 4L19 7" /></svg>
+                  </div>
+                  <h2 className="mt-5 font-[family-name:var(--font-heading)] text-xl font-black text-[var(--cream)]">You&apos;re all set</h2>
+                  <p className="mt-1.5 text-sm text-[var(--cream-60)]">{NOUN} setup complete — you&apos;re ready to run it.</p>
+                </div>
+                )}
               </div>
               )}
 

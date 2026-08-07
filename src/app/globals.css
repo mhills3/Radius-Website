@@ -116,6 +116,12 @@ html { scroll-behavior: smooth; }
 }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes kenburns { from { transform: scale(1.02); } to { transform: scale(1.12); } }
+@keyframes checkPop {
+  0% { transform: scale(0.3); opacity: 0; }
+  55% { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); }
+}
+.check-pop { animation: checkPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.05s both; }
 
 body {
   font-family: var(--font-body);
