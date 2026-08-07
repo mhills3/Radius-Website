@@ -165,6 +165,9 @@ export interface LeagueEvent {
   roundCount: number; // 1 = weekly league night; >1 = multi-round event (cumulative total)
   roundStarts?: number[]; // per-round start times (ms epoch), length === roundCount, [0] === date; set for multi-day/multi-round events
   holes: number;      // holes per round (9 / 18 / custom) — context for every score
+  teeGroupSize?: number;   // Tee-times events: players per group (default 4)
+  teeIntervalMin?: number; // Tee-times events: minutes between groups (default 10)
+  teeGenerated?: boolean;  // tee sheet has been built (auto at registration close, or manually)
   capacity?: number;  // field cap; fill bars and spots-remaining render only when set
   buyIn?: number;     // dollars per player; the paid toggle × buyIn = collected pot
   kind?: string;        // EVENT_KINDS key — discovery category
@@ -706,6 +709,9 @@ function toEvent(id: string, d: any): LeagueEvent {
     roundCount: Math.max(1, Number(d.roundCount) || 1),
     roundStarts: Array.isArray(d.roundStarts) && d.roundStarts.length > 1 ? d.roundStarts.map((x: unknown) => Number(x) || 0) : undefined,
     holes: Number(d.holes) > 0 ? Number(d.holes) : 18,
+    teeGroupSize: Number(d.teeGroupSize) > 0 ? Number(d.teeGroupSize) : undefined,
+    teeIntervalMin: Number(d.teeIntervalMin) > 0 ? Number(d.teeIntervalMin) : undefined,
+    teeGenerated: d.teeGenerated === true,
     capacity: Number(d.capacity) > 0 ? Number(d.capacity) : undefined,
     extras: Array.isArray(d.extras) ? d.extras.filter((x: unknown) => typeof x === "string") : undefined,
     focus: (d.focus as string) || undefined,
@@ -731,6 +737,7 @@ function toEvent(id: string, d: any): LeagueEvent {
 export async function updateEventDetails(eventId: string, patch: {
   name?: string; date?: number; roundStarts?: number[] | null; roundCount?: number; holes?: number;
   buyIn?: number | null; capacity?: number | null; startFormat?: string; courseName?: string;
+  registrationCloseAt?: number | null; teeGroupSize?: number; teeIntervalMin?: number;
 }): Promise<void> {
   const upd: Record<string, unknown> = {};
   if (patch.name !== undefined) upd.name = patch.name.trim() || "Event";
@@ -742,6 +749,9 @@ export async function updateEventDetails(eventId: string, patch: {
   if (patch.capacity !== undefined) upd.capacity = patch.capacity && patch.capacity > 0 ? Math.floor(patch.capacity) : deleteField();
   if (patch.startFormat !== undefined) upd.startFormat = patch.startFormat;
   if (patch.courseName !== undefined) upd.courseName = patch.courseName;
+  if (patch.registrationCloseAt !== undefined) upd.registrationCloseAt = patch.registrationCloseAt && patch.registrationCloseAt > 0 ? patch.registrationCloseAt : deleteField();
+  if (patch.teeGroupSize !== undefined) upd.teeGroupSize = Math.max(2, Math.min(patch.teeGroupSize, 6));
+  if (patch.teeIntervalMin !== undefined) upd.teeIntervalMin = Math.max(1, Math.min(patch.teeIntervalMin, 60));
   if (Object.keys(upd).length) await updateDoc(doc(db, "leagueEvents", eventId), upd);
 }
 
@@ -1052,6 +1062,7 @@ export async function generateTeeTimes(eventId: string, entries: EventEntry[], o
     await setDoc(doc(db, "leagueEvents", eventId, "cards", c.id), { number: c.number, startHole: 1, teeTime: c.teeTime, division: c.division ?? null, playerIds: c.playerIds, deleted: false }, { merge: true });
     await Promise.all(c.playerIds.map((pid) => setDoc(doc(db, "leagueEvents", eventId, "entries", pid), { cardId: c.id }, { merge: true })));
   }
+  await setDoc(doc(db, "leagueEvents", eventId), { teeGenerated: true, teeGroupSize: size, teeIntervalMin: (opts?.intervalMin ?? 10) }, { merge: true });
   return cards;
 }
 

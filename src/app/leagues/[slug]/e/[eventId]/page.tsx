@@ -158,6 +158,24 @@ export default function LeagueEventPage() {
   const [sending, setSending] = useState(false);
 
   const reload = async (evId: string) => setCards(await getCards(evId));
+  const autoGenRef = useRef(false);
+
+  // Seed the manual tee controls from the event's saved config.
+  useEffect(() => { if (event) { setCardSize(event.teeGroupSize ?? 4); setTeeInterval(event.teeIntervalMin ?? 10); } }, [event?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-build the tee sheet once registration has closed (admin view; runs once).
+  useEffect(() => {
+    if (!event || !league || autoGenRef.current) return;
+    if (!isLeagueAdmin(league, cid)) return;
+    if (event.startFormat !== "Tee times" || event.teeGenerated || cards.length > 0 || entries.length === 0) return;
+    const regClose = event.registrationCloseAt || (event.roundStarts?.[0] ?? event.date);
+    if (Date.now() < regClose) return;
+    autoGenRef.current = true;
+    generateTeeTimes(event.id, entries, { size: event.teeGroupSize ?? 4, intervalMin: event.teeIntervalMin ?? 10, startMs: event.roundStarts?.[0] ?? event.date, divisions: league.settings.divisions })
+      .then(() => reload(event.id))
+      .then(() => setEvent((e) => (e ? { ...e, teeGenerated: true } : e)))
+      .catch(() => { autoGenRef.current = false; });
+  }, [event, league, cid, cards.length, entries.length]);
 
   useEffect(() => {
     getLeagueBySlug(slug).then((l) => {
@@ -1505,7 +1523,7 @@ export default function LeagueEventPage() {
           ) : undefined}
         >{isTeeTimes ? "Tee times" : "Cards"}</SectionTitle>
         {cards.length === 0 ? (
-          <p className="text-sm text-[var(--sage-dim)]">{isTeeTimes ? "No tee times yet." : "No cards yet."}{admin ? (isTeeTimes ? " Generate them once players are in — they’ll split by division." : " Generate them once players check in.") : ""}</p>
+          <p className="text-sm text-[var(--sage-dim)]">{isTeeTimes ? "No tee times yet." : "No cards yet."}{admin ? (isTeeTimes ? " They build automatically when registration closes — split by division and staggered. Or generate now to preview." : " Generate them once players check in.") : ""}</p>
         ) : isTeeTimes ? (
           (() => {
             const groups = new Map<string, EventCard[]>();

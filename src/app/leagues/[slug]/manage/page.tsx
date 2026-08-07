@@ -20,6 +20,13 @@ const pad2 = (n: number) => String(n).padStart(2, "0");
 const toDateInput = (ms: number) => { const d = new Date(ms); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; };
 const toTimeInput = (ms: number) => { const d = new Date(ms); return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
 const rowInput = "rounded-xl border border-[var(--hair-strong)] bg-[var(--card)] px-3.5 py-3 text-base text-[var(--cream)] outline-none transition-colors focus:border-[var(--gold)] [color-scheme:dark]";
+function edFromEvent(ev: LeagueEvent) {
+  const rs = ev.roundStarts ?? [];
+  const start = rs[0] ?? ev.date;
+  const extra = Array.from({ length: Math.max(0, ev.roundCount - 1) }, (_, i) => { const ms = rs[i + 1] ?? start; return { date: toDateInput(ms), time: toTimeInput(ms) }; });
+  const regMs = ev.registrationCloseAt || start;
+  return { name: ev.name, date: toDateInput(start), time: toTimeInput(start), rounds: ev.roundCount, holes: ev.holes, buyIn: ev.buyIn ? String(ev.buyIn) : "", cap: ev.capacity ? String(ev.capacity) : "", extra, reg: `${toDateInput(regMs)}T${toTimeInput(regMs)}`, teeSize: ev.teeGroupSize ?? 4, teeInterval: ev.teeIntervalMin ?? 10 };
+}
 const fmtToPar = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`);
 
 export default function LeagueManagePage() {
@@ -68,7 +75,7 @@ export default function LeagueManagePage() {
   const [cap, setCap] = useState("");
 
   // Event editor (single-event / tournament containers). `extra` holds round 2..N day/time.
-  const [ed, setEd] = useState<{ name: string; date: string; time: string; rounds: number; holes: number; buyIn: string; cap: string; extra: { date: string; time: string }[] }>({ name: "", date: "", time: "17:30", rounds: 1, holes: 18, buyIn: "", cap: "", extra: [] });
+  const [ed, setEd] = useState<{ name: string; date: string; time: string; rounds: number; holes: number; buyIn: string; cap: string; extra: { date: string; time: string }[]; reg: string; teeSize: number; teeInterval: number }>({ name: "", date: "", time: "17:30", rounds: 1, holes: 18, buyIn: "", cap: "", extra: [], reg: "", teeSize: 4, teeInterval: 10 });
   const [eventSaved, setEventSaved] = useState(false);
   const [editEvent, setEditEvent] = useState(false); // false = clean summary, true = edit form
 
@@ -123,16 +130,7 @@ export default function LeagueManagePage() {
   const divisions = (league?.settings.divisions ?? []).filter((d) => d && d !== "Open").length ? (league!.settings.divisions ?? []) : [];
   useEffect(() => { if (!primaryEventId) { setEntries([]); return; } getEntries(primaryEventId).then(setEntries).catch(() => {}); }, [primaryEventId]);
   const entryOf = useMemo(() => new Map(entries.map((e) => [e.id, e])), [entries]);
-  useEffect(() => {
-    if (!primaryEvent) return;
-    const rs = primaryEvent.roundStarts ?? [];
-    const start = rs[0] ?? primaryEvent.date;
-    const extra = Array.from({ length: Math.max(0, primaryEvent.roundCount - 1) }, (_, i) => {
-      const ms = rs[i + 1] ?? start;
-      return { date: toDateInput(ms), time: toTimeInput(ms) };
-    });
-    setEd({ name: primaryEvent.name, date: toDateInput(start), time: toTimeInput(start), rounds: primaryEvent.roundCount, holes: primaryEvent.holes, buyIn: primaryEvent.buyIn ? String(primaryEvent.buyIn) : "", cap: primaryEvent.capacity ? String(primaryEvent.capacity) : "", extra });
-  }, [primaryEventId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (primaryEvent) setEd(edFromEvent(primaryEvent)); }, [primaryEventId]); // eslint-disable-line react-hooks/exhaustive-deps
   // A tournament/one-off is really a single event — exit straight to it, skipping the container page.
   const exitHref = !isLeagueKind && primaryEvent ? `/leagues/${slug}/e/${primaryEvent.id}` : `/leagues/${slug}`;
   const isTeeTimes = (league?.settings.startFormat ?? "") === "Tee times";
@@ -198,12 +196,7 @@ export default function LeagueManagePage() {
   };
 
   const startEditEvent = () => {
-    if (primaryEvent) {
-      const rs = primaryEvent.roundStarts ?? [];
-      const start = rs[0] ?? primaryEvent.date;
-      const extra = Array.from({ length: Math.max(0, primaryEvent.roundCount - 1) }, (_, i) => { const ms = rs[i + 1] ?? start; return { date: toDateInput(ms), time: toTimeInput(ms) }; });
-      setEd({ name: primaryEvent.name, date: toDateInput(start), time: toTimeInput(start), rounds: primaryEvent.roundCount, holes: primaryEvent.holes, buyIn: primaryEvent.buyIn ? String(primaryEvent.buyIn) : "", cap: primaryEvent.capacity ? String(primaryEvent.capacity) : "", extra });
-    }
+    if (primaryEvent) setEd(edFromEvent(primaryEvent));
     setEditEvent(true);
   };
 
@@ -221,9 +214,12 @@ export default function LeagueManagePage() {
             return new Date(`${rv?.date || ed.date}T${rv?.time || ed.time || "17:30"}`).getTime();
           })]
         : null;
+      const isTee = primaryEvent.startFormat === "Tee times";
       await updateEventDetails(primaryEvent.id, {
         name: ed.name, date: round1, roundStarts, roundCount: ed.rounds, holes: ed.holes,
         buyIn: ed.buyIn.trim() === "" ? null : Number(ed.buyIn), capacity: ed.cap.trim() === "" ? null : Number(ed.cap),
+        registrationCloseAt: ed.reg ? new Date(ed.reg).getTime() : null,
+        ...(isTee ? { teeGroupSize: ed.teeSize, teeIntervalMin: ed.teeInterval } : {}),
       });
       const fresh = await getLeagueEvents(league.id); setEvents(fresh);
       setEditEvent(false); // collapse back to the clean summary
@@ -650,6 +646,10 @@ export default function LeagueManagePage() {
                         {primaryEvent.buyIn ? <span>${primaryEvent.buyIn} buy-in</span> : <span>Free</span>}
                         {primaryEvent.capacity ? <span>cap {primaryEvent.capacity}</span> : null}
                       </div>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[var(--cream-38)]">
+                        <span>Registration closes {fmtDate(primaryEvent.registrationCloseAt || rs[0])}</span>
+                        {primaryEvent.startFormat === "Tee times" && <span>Tee times · groups of {primaryEvent.teeGroupSize ?? 4} · {primaryEvent.teeIntervalMin ?? 10} min apart</span>}
+                      </div>
                       {primaryEvent.roundCount > 1 && (
                         <div className="mt-4 grid gap-2">
                           {rs.map((ms, i) => (
@@ -678,7 +678,22 @@ export default function LeagueManagePage() {
                     <div><FieldLabel>Holes per round</FieldLabel><Segmented options={["9", "18"]} value={String(ed.holes)} onChange={(v) => setEd((s) => ({ ...s, holes: Number(v) }))} /></div>
                     <label className="block"><FieldLabel>Buy-in ($)</FieldLabel><input inputMode="numeric" value={ed.buyIn} onChange={(e) => setEd((s) => ({ ...s, buyIn: e.target.value }))} placeholder="0" className={inputCls} /></label>
                     <label className="block"><FieldLabel>Field cap</FieldLabel><input inputMode="numeric" value={ed.cap} onChange={(e) => setEd((s) => ({ ...s, cap: e.target.value }))} placeholder="none" className={inputCls} /></label>
+                    <label className="block sm:col-span-2"><FieldLabel>Registration closes</FieldLabel><input type="datetime-local" value={ed.reg} onChange={(e) => setEd((s) => ({ ...s, reg: e.target.value }))} className={`${inputCls} [color-scheme:dark]`} /></label>
                   </div>
+                  {primaryEvent.startFormat === "Tee times" && (
+                    <div className="mt-6 rounded-xl border border-[var(--hair)] bg-[var(--card)] p-4">
+                      <div className="mb-3 flex flex-wrap items-center gap-2">
+                        <IconClock className="h-4 w-4 text-[var(--gold)]" />
+                        <span className="text-sm font-bold text-[var(--cream)]">Tee times</span>
+                        <span className="text-[11px] text-[var(--sage-dim)]">auto-generate when registration closes</span>
+                      </div>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div><FieldLabel>Players per group</FieldLabel><Segmented options={["2", "3", "4"]} value={String(ed.teeSize)} onChange={(v) => setEd((s) => ({ ...s, teeSize: Number(v) }))} /></div>
+                        <div><FieldLabel>Minutes between groups</FieldLabel><Segmented options={["8", "10", "12", "15"]} value={String(ed.teeInterval)} onChange={(v) => setEd((s) => ({ ...s, teeInterval: Number(v) }))} /></div>
+                      </div>
+                      <p className="mt-3 text-[11px] text-[var(--sage-dim)]">When registration closes, groups build automatically — split by division, staggered from round 1&apos;s start. You can still reshuffle or tweak times on the event&apos;s tee sheet.</p>
+                    </div>
+                  )}
                   {ed.rounds > 1 && (
                     <div className="mt-6">
                       <FieldLabel>Round schedule</FieldLabel>
