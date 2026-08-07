@@ -65,8 +65,8 @@ export default function LeagueManagePage() {
   const [holes, setHoles] = useState(18);
   const [cap, setCap] = useState("");
 
-  // Event editor (single-event / tournament containers)
-  const [ed, setEd] = useState({ name: "", date: "", time: "17:30", rounds: 1, holes: 18, buyIn: "", cap: "" });
+  // Event editor (single-event / tournament containers). `extra` holds round 2..N day/time.
+  const [ed, setEd] = useState<{ name: string; date: string; time: string; rounds: number; holes: number; buyIn: string; cap: string; extra: { date: string; time: string }[] }>({ name: "", date: "", time: "17:30", rounds: 1, holes: 18, buyIn: "", cap: "", extra: [] });
   const [eventSaved, setEventSaved] = useState(false);
 
   // Co-director add-by-username
@@ -123,8 +123,13 @@ export default function LeagueManagePage() {
   const entryOf = useMemo(() => new Map(entries.map((e) => [e.id, e])), [entries]);
   useEffect(() => {
     if (!primaryEvent) return;
-    const start = primaryEvent.roundStarts?.[0] ?? primaryEvent.date;
-    setEd({ name: primaryEvent.name, date: toDateInput(start), time: toTimeInput(start), rounds: primaryEvent.roundCount, holes: primaryEvent.holes, buyIn: primaryEvent.buyIn ? String(primaryEvent.buyIn) : "", cap: primaryEvent.capacity ? String(primaryEvent.capacity) : "" });
+    const rs = primaryEvent.roundStarts ?? [];
+    const start = rs[0] ?? primaryEvent.date;
+    const extra = Array.from({ length: Math.max(0, primaryEvent.roundCount - 1) }, (_, i) => {
+      const ms = rs[i + 1] ?? start;
+      return { date: toDateInput(ms), time: toTimeInput(ms) };
+    });
+    setEd({ name: primaryEvent.name, date: toDateInput(start), time: toTimeInput(start), rounds: primaryEvent.roundCount, holes: primaryEvent.holes, buyIn: primaryEvent.buyIn ? String(primaryEvent.buyIn) : "", cap: primaryEvent.capacity ? String(primaryEvent.capacity) : "", extra });
   }, [primaryEventId]); // eslint-disable-line react-hooks/exhaustive-deps
   // A tournament/one-off is really a single event — exit straight to it, skipping the container page.
   const exitHref = !isLeagueKind && primaryEvent ? `/leagues/${slug}/e/${primaryEvent.id}` : `/leagues/${slug}`;
@@ -187,14 +192,19 @@ export default function LeagueManagePage() {
     }
   };
 
+  const setRoundTime = (i: number, patch: { date?: string; time?: string }) =>
+    setEd((s) => { const extra = [...s.extra]; while (extra.length <= i) extra.push({ date: s.date, time: s.time }); extra[i] = { ...extra[i], ...patch }; return { ...s, extra }; });
+
   const saveEvent = async () => {
     if (!league || !primaryEvent || busy || !ed.date) return;
     setBusy(true); setEventSaved(false);
     try {
       const round1 = new Date(`${ed.date}T${ed.time || "17:30"}`).getTime();
-      // Keep round-1 in sync with any per-round schedule; later rounds keep their own times.
-      const roundStarts = primaryEvent.roundStarts && primaryEvent.roundStarts.length > 1
-        ? [round1, ...primaryEvent.roundStarts.slice(1, ed.rounds)]
+      const roundStarts = ed.rounds > 1
+        ? [round1, ...Array.from({ length: ed.rounds - 1 }, (_, i) => {
+            const rv = ed.extra[i];
+            return new Date(`${rv?.date || ed.date}T${rv?.time || ed.time || "17:30"}`).getTime();
+          })]
         : null;
       await updateEventDetails(primaryEvent.id, {
         name: ed.name, date: round1, roundStarts, roundCount: ed.rounds, holes: ed.holes,
@@ -617,7 +627,24 @@ export default function LeagueManagePage() {
                     <label className="block"><FieldLabel>Buy-in ($)</FieldLabel><input inputMode="numeric" value={ed.buyIn} onChange={(e) => setEd((s) => ({ ...s, buyIn: e.target.value }))} placeholder="0" className={inputCls} /></label>
                     <label className="block"><FieldLabel>Field cap</FieldLabel><input inputMode="numeric" value={ed.cap} onChange={(e) => setEd((s) => ({ ...s, cap: e.target.value }))} placeholder="none" className={inputCls} /></label>
                   </div>
-                  {ed.rounds > 1 && <p className="mt-3 text-[11px] text-[var(--sage-dim)]">Set the day &amp; time for rounds 2+ on the event page&apos;s schedule card.</p>}
+                  {ed.rounds > 1 && (
+                    <div className="mt-6">
+                      <FieldLabel>Round schedule</FieldLabel>
+                      <div className="mt-1 grid gap-2.5">
+                        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--gold)]/25 bg-[var(--gold-dim)] px-4 py-3">
+                          <span className="w-14 shrink-0 font-mono text-xs font-bold uppercase tracking-wide text-[var(--gold)]">Rd 1</span>
+                          <span className="text-sm text-[var(--cream)]">{ed.date ? new Date(`${ed.date}T${ed.time || "17:30"}`).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "Set the start date above"}</span>
+                        </div>
+                        {Array.from({ length: ed.rounds - 1 }, (_, i) => (
+                          <div key={i} className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--hair)] bg-[var(--card)] px-4 py-3">
+                            <span className="w-14 shrink-0 font-mono text-xs font-bold uppercase tracking-wide text-[var(--gold)]">Rd {i + 2}</span>
+                            <input type="date" value={ed.extra[i]?.date ?? ed.date} min={ed.date || undefined} onChange={(e) => setRoundTime(i, { date: e.target.value })} className={`${inputCls} min-w-[170px] flex-none`} />
+                            <input type="time" value={ed.extra[i]?.time ?? ed.time} onChange={(e) => setRoundTime(i, { time: e.target.value })} className={`${inputCls} w-[130px] flex-none`} />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <div className="mt-5 flex items-center gap-3">
                     <button onClick={saveEvent} disabled={!ed.date || busy} className={btnGold}>{busy ? "Saving…" : "Save event"}</button>
                     {eventSaved && <span className="text-sm font-bold text-[#5fcf80]">Saved ✓</span>}
