@@ -19,6 +19,7 @@ const fmtDate = (ms: number) => new Date(ms).toLocaleString(undefined, { weekday
 const pad2 = (n: number) => String(n).padStart(2, "0");
 const toDateInput = (ms: number) => { const d = new Date(ms); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; };
 const toTimeInput = (ms: number) => { const d = new Date(ms); return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
+const rowInput = "rounded-xl border border-[var(--hair-strong)] bg-[var(--card)] px-3.5 py-3 text-base text-[var(--cream)] outline-none transition-colors focus:border-[var(--gold)] [color-scheme:dark]";
 const fmtToPar = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`);
 
 export default function LeagueManagePage() {
@@ -68,6 +69,7 @@ export default function LeagueManagePage() {
   // Event editor (single-event / tournament containers). `extra` holds round 2..N day/time.
   const [ed, setEd] = useState<{ name: string; date: string; time: string; rounds: number; holes: number; buyIn: string; cap: string; extra: { date: string; time: string }[] }>({ name: "", date: "", time: "17:30", rounds: 1, holes: 18, buyIn: "", cap: "", extra: [] });
   const [eventSaved, setEventSaved] = useState(false);
+  const [editEvent, setEditEvent] = useState(false); // false = clean summary, true = edit form
 
   // Co-director add-by-username
   const [coDir, setCoDir] = useState("");
@@ -192,6 +194,16 @@ export default function LeagueManagePage() {
     }
   };
 
+  const startEditEvent = () => {
+    if (primaryEvent) {
+      const rs = primaryEvent.roundStarts ?? [];
+      const start = rs[0] ?? primaryEvent.date;
+      const extra = Array.from({ length: Math.max(0, primaryEvent.roundCount - 1) }, (_, i) => { const ms = rs[i + 1] ?? start; return { date: toDateInput(ms), time: toTimeInput(ms) }; });
+      setEd({ name: primaryEvent.name, date: toDateInput(start), time: toTimeInput(start), rounds: primaryEvent.roundCount, holes: primaryEvent.holes, buyIn: primaryEvent.buyIn ? String(primaryEvent.buyIn) : "", cap: primaryEvent.capacity ? String(primaryEvent.capacity) : "", extra });
+    }
+    setEditEvent(true);
+  };
+
   const setRoundTime = (i: number, patch: { date?: string; time?: string }) =>
     setEd((s) => { const extra = [...(s.extra ?? [])]; while (extra.length <= i) extra.push({ date: s.date, time: s.time }); extra[i] = { ...extra[i], ...patch }; return { ...s, extra }; });
 
@@ -211,6 +223,7 @@ export default function LeagueManagePage() {
         buyIn: ed.buyIn.trim() === "" ? null : Number(ed.buyIn), capacity: ed.cap.trim() === "" ? null : Number(ed.cap),
       });
       const fresh = await getLeagueEvents(league.id); setEvents(fresh);
+      setEditEvent(false); // collapse back to the clean summary
       setEventSaved(true); setTimeout(() => setEventSaved(false), 2500);
     } finally { setBusy(false); }
   };
@@ -612,16 +625,49 @@ export default function LeagueManagePage() {
                   </div>
                   <button onClick={schedule} disabled={!startDate || busy} className={`${btnGold} mt-5`}>{busy ? "Scheduling…" : weeks > 1 ? `Create ${weeks} events` : "Create event"}</button>
                 </div>
+              ) : primaryEvent && !editEvent ? (
+                (() => {
+                  const rs = Array.from({ length: primaryEvent.roundCount }, (_, i) => primaryEvent.roundStarts?.[i] ?? primaryEvent.date);
+                  return (
+                    <div className={`${card} p-6`}>
+                      <div className="flex items-center justify-between gap-3">
+                        <h2 className="font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">{NOUN} details</h2>
+                        <div className="flex items-center gap-4">
+                          <Link href={`/leagues/${slug}/e/${primaryEvent.id}`} className="font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--gold)] transition-opacity hover:opacity-80">View event page →</Link>
+                          <button onClick={startEditEvent} className="rounded-full border border-[var(--gold)]/40 bg-[var(--gold-dim)] px-4 py-1.5 text-xs font-bold text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/20">Edit</button>
+                        </div>
+                      </div>
+                      <div className="mt-4 font-[family-name:var(--font-heading)] text-xl font-bold text-[var(--cream)]">{primaryEvent.name}</div>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-[var(--cream-60)]">
+                        <span>{fmtDate(rs[0])}</span>
+                        <span>{primaryEvent.roundCount} {primaryEvent.roundCount === 1 ? "round" : "rounds"} · {primaryEvent.holes} holes</span>
+                        {primaryEvent.buyIn ? <span>${primaryEvent.buyIn} buy-in</span> : <span>Free</span>}
+                        {primaryEvent.capacity ? <span>cap {primaryEvent.capacity}</span> : null}
+                      </div>
+                      {primaryEvent.roundCount > 1 && (
+                        <div className="mt-4 grid gap-2">
+                          {rs.map((ms, i) => (
+                            <div key={i} className="flex items-center gap-3 rounded-xl border border-[var(--hair)] bg-[var(--card)] px-4 py-2.5">
+                              <span className="w-12 shrink-0 font-mono text-xs font-bold uppercase tracking-wide text-[var(--gold)]">Rd {i + 1}</span>
+                              <span className="text-sm text-[var(--cream)]">{fmtDate(ms)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {eventSaved && <p className="mt-4 text-sm font-bold text-[#5fcf80]">Saved ✓</p>}
+                    </div>
+                  );
+                })()
               ) : primaryEvent ? (
                 <div className={`${card} p-6`}>
                   <div className="flex items-center justify-between gap-3">
-                    <h2 className="font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">{NOUN} details</h2>
-                    <Link href={`/leagues/${slug}/e/${primaryEvent.id}`} className="font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--gold)] transition-opacity hover:opacity-80">View event page →</Link>
+                    <h2 className="font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">Edit {NOUN.toLowerCase()}</h2>
+                    <button onClick={() => setEditEvent(false)} className="font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--cream-38)] transition-colors hover:text-[var(--cream)]">Cancel</button>
                   </div>
                   <div className="mt-5 grid gap-4 sm:grid-cols-2">
                     <label className="block sm:col-span-2"><FieldLabel>Name</FieldLabel><input value={ed.name} onChange={(e) => setEd((s) => ({ ...s, name: e.target.value }))} placeholder={league.name} className={inputCls} /></label>
-                    <label className="block"><FieldLabel>Start date</FieldLabel><input type="date" value={ed.date} onChange={(e) => setEd((s) => ({ ...s, date: e.target.value }))} className={inputCls} /></label>
-                    <label className="block"><FieldLabel>{ed.rounds > 1 ? "Round 1 tee time" : "Tee time"}</FieldLabel><input type="time" value={ed.time} onChange={(e) => setEd((s) => ({ ...s, time: e.target.value }))} className={inputCls} /></label>
+                    <label className="block"><FieldLabel>Start date</FieldLabel><input type="date" value={ed.date} onChange={(e) => setEd((s) => ({ ...s, date: e.target.value }))} className={`${inputCls} [color-scheme:dark]`} /></label>
+                    <label className="block"><FieldLabel>{ed.rounds > 1 ? "Round 1 tee time" : "Tee time"}</FieldLabel><input type="time" value={ed.time} onChange={(e) => setEd((s) => ({ ...s, time: e.target.value }))} className={`${inputCls} [color-scheme:dark]`} /></label>
                     <div><FieldLabel>Rounds</FieldLabel><Segmented options={["1", "2", "3", "4"]} value={String(ed.rounds)} onChange={(v) => setEd((s) => ({ ...s, rounds: Number(v) }))} /></div>
                     <div><FieldLabel>Holes per round</FieldLabel><Segmented options={["9", "18"]} value={String(ed.holes)} onChange={(v) => setEd((s) => ({ ...s, holes: Number(v) }))} /></div>
                     <label className="block"><FieldLabel>Buy-in ($)</FieldLabel><input inputMode="numeric" value={ed.buyIn} onChange={(e) => setEd((s) => ({ ...s, buyIn: e.target.value }))} placeholder="0" className={inputCls} /></label>
@@ -631,15 +677,15 @@ export default function LeagueManagePage() {
                     <div className="mt-6">
                       <FieldLabel>Round schedule</FieldLabel>
                       <div className="mt-1 grid gap-2.5">
-                        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--gold)]/25 bg-[var(--gold-dim)] px-4 py-3">
-                          <span className="w-14 shrink-0 font-mono text-xs font-bold uppercase tracking-wide text-[var(--gold)]">Rd 1</span>
+                        <div className="flex items-center gap-3 rounded-xl border border-[var(--gold)]/25 bg-[var(--gold-dim)] px-4 py-3">
+                          <span className="w-12 shrink-0 font-mono text-xs font-bold uppercase tracking-wide text-[var(--gold)]">Rd 1</span>
                           <span className="text-sm text-[var(--cream)]">{ed.date ? new Date(`${ed.date}T${ed.time || "17:30"}`).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "Set the start date above"}</span>
                         </div>
                         {Array.from({ length: ed.rounds - 1 }, (_, i) => (
-                          <div key={i} className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--hair)] bg-[var(--card)] px-4 py-3">
-                            <span className="w-14 shrink-0 font-mono text-xs font-bold uppercase tracking-wide text-[var(--gold)]">Rd {i + 2}</span>
-                            <input type="date" value={ed.extra?.[i]?.date ?? ed.date} min={ed.date || undefined} onChange={(e) => setRoundTime(i, { date: e.target.value })} className={`${inputCls} min-w-[170px] flex-none`} />
-                            <input type="time" value={ed.extra?.[i]?.time ?? ed.time} onChange={(e) => setRoundTime(i, { time: e.target.value })} className={`${inputCls} w-[130px] flex-none`} />
+                          <div key={i} className="flex items-center gap-3 rounded-xl border border-[var(--hair)] bg-[var(--card)] px-4 py-3">
+                            <span className="w-12 shrink-0 font-mono text-xs font-bold uppercase tracking-wide text-[var(--gold)]">Rd {i + 2}</span>
+                            <input type="date" value={ed.extra?.[i]?.date ?? ed.date} min={ed.date || undefined} onChange={(e) => setRoundTime(i, { date: e.target.value })} className={`${rowInput} min-w-0 flex-1`} />
+                            <input type="time" value={ed.extra?.[i]?.time ?? ed.time} onChange={(e) => setRoundTime(i, { time: e.target.value })} className={`${rowInput} w-[128px] shrink-0`} />
                           </div>
                         ))}
                       </div>
@@ -647,7 +693,7 @@ export default function LeagueManagePage() {
                   )}
                   <div className="mt-5 flex items-center gap-3">
                     <button onClick={saveEvent} disabled={!ed.date || busy} className={btnGold}>{busy ? "Saving…" : "Save event"}</button>
-                    {eventSaved && <span className="text-sm font-bold text-[#5fcf80]">Saved ✓</span>}
+                    <button onClick={() => setEditEvent(false)} className={btnGhost}>Cancel</button>
                   </div>
                 </div>
               ) : (
