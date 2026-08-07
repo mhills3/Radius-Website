@@ -388,7 +388,7 @@ export default function LeagueEventPage() {
   const doTeams = async () => {
     if (busy) return;
     setBusy(true);
-    try { await randomizeTeams(event.id, entries, event.format === "Doubles" ? 2 : teamSize); } finally { setBusy(false); }
+    try { await randomizeTeams(event.id, entries, event.format === "Doubles" ? 2 : (league?.settings.teamSize ?? teamSize)); } finally { setBusy(false); }
   };
   const sendChat = async () => {
     if (!user || !chatText.trim() || sending) return;
@@ -1300,6 +1300,8 @@ export default function LeagueEventPage() {
         const SILVER = "#BFC7D4", BRONZE = "#C29461", GOLD_HEX = "#E8B560";
         const photoOf = new Map(entries.filter((e) => e.photo).map((e) => [e.id, e.photo as string]));
         const g = season?.gross ?? [], nt = season?.net ?? [], teamRows = season?.teams ?? [];
+        const sp = season?.strokeplay ?? false; // points hold cumulative STROKES; lower is better
+        const unit = sp ? "str" : "pts";
         const view = league?.settings.scoring?.view; // "gross" | "net" | "both" | undefined
         const showNet = view === "net" || view === "both";
         const showTeam = teamRows.length > 0;
@@ -1324,8 +1326,8 @@ export default function LeagueEventPage() {
               <div className={`mt-0.5 max-w-full truncate px-1 font-[family-name:var(--font-heading)] font-bold ${crowned ? "text-[13px]" : "text-[11px]"} ${you ? "text-[var(--gold)]" : "text-[var(--cream)]"}`}>{row.name}</div>
               <div className={`font-[family-name:var(--font-heading)] font-black tabular-nums ${crowned ? "text-[26px] leading-tight" : "text-lg"}`} style={{ color: tone }}>{row.points}</div>
               {delta != null && delta > 0
-                ? <div className="font-[family-name:var(--font-heading)] text-[8px] font-bold tabular-nums text-[var(--cream-38)]">−{delta} back</div>
-                : <div className="font-[family-name:var(--font-heading)] text-[7px] font-black uppercase tracking-[0.2em] text-[var(--cream-38)]">Pts</div>}
+                ? <div className="font-[family-name:var(--font-heading)] text-[8px] font-bold tabular-nums text-[var(--cream-38)]">{sp ? "+" : "−"}{delta} back</div>
+                : <div className="font-[family-name:var(--font-heading)] text-[7px] font-black uppercase tracking-[0.2em] text-[var(--cream-38)]">{unit}</div>}
               <div className="mt-1.5 flex w-full max-w-[96px] justify-center rounded-t-lg pt-1.5 font-[family-name:var(--font-heading)] text-base font-black" style={{ height: pedestal, background: `linear-gradient(to bottom, ${tone}66, ${tone}0d)`, color: tone }}>{rank}</div>
             </div>
           );
@@ -1349,12 +1351,12 @@ export default function LeagueEventPage() {
               </div>
             ) : (
               <>
-                <p className="mb-4 text-[11px] text-[var(--cream-38)]">{plural(rows.length, "player")} · season points settle after every event</p>
+                <p className="mb-4 text-[11px] text-[var(--cream-38)]">{plural(rows.length, "player")} · season {sp ? "strokes settle" : "points settle"} after every event</p>
                 <div className="relative mb-4 flex items-end justify-center gap-2.5">
                   <div className="pointer-events-none absolute inset-x-0 top-0 mx-auto h-56 max-w-md" style={{ background: "radial-gradient(220px 180px at 50% 20%, rgba(232,181,96,0.14), transparent 70%)" }} />
-                  {rows.length > 1 && col(2, rows[1], SILVER, 54, 52, "Chasing", rows[0].points - rows[1].points, false)}
+                  {rows.length > 1 && col(2, rows[1], SILVER, 54, 52, "Chasing", sp ? rows[1].points - rows[0].points : rows[0].points - rows[1].points, false)}
                   {col(1, rows[0], GOLD_HEX, 86, 70, "Season leader", null, true)}
-                  {rows.length > 2 && col(3, rows[2], BRONZE, 38, 46, "In the hunt", rows[0].points - rows[2].points, false)}
+                  {rows.length > 2 && col(3, rows[2], BRONZE, 38, 46, "In the hunt", sp ? rows[2].points - rows[0].points : rows[0].points - rows[2].points, false)}
                 </div>
                 {myIdx >= 0 && (
                   <div className="mb-4 flex items-center gap-2.5 rounded-2xl border border-[var(--gold)]/35 px-4 py-3" style={{ background: "linear-gradient(to right, rgba(232,181,96,0.14), var(--card))" }}>
@@ -1363,7 +1365,7 @@ export default function LeagueEventPage() {
                     <span className="ml-auto text-[11px] tabular-nums">
                       {myIdx === 0
                         ? <span className="font-semibold text-[var(--gold)]">Leading the season</span>
-                        : <span className="text-[var(--cream-60)]">{rows[0].points - rows[myIdx].points} pts off the lead</span>}
+                        : <span className="text-[var(--cream-60)]">{sp ? rows[myIdx].points - rows[0].points : rows[0].points - rows[myIdx].points} {sp ? "strokes back" : "pts off the lead"}</span>}
                     </span>
                   </div>
                 )}
@@ -1388,7 +1390,7 @@ export default function LeagueEventPage() {
                           </div>
                           <span className="flex items-baseline gap-1">
                             <span className={`font-[family-name:var(--font-heading)] text-[17px] font-black tabular-nums ${you ? "text-[var(--gold)]" : "text-[var(--blue)]"}`}>{row.points}</span>
-                            <span className="text-[9px] text-[var(--cream-38)]">pts</span>
+                            <span className="text-[9px] text-[var(--cream-38)]">{unit}</span>
                           </span>
                         </div>
                       );

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRole, setLeagueLogo, isLeagueAdmin, subscribeLeagueTeams, createLeagueTeam, updateLeagueTeam, deleteLeagueTeam, subscribeLeagueMatches, generateSchedule, setMatchResult, computeMatchStandings, generateBracket, advanceBracket, LEAGUE_FORMATS, START_FORMATS, type League, type LeagueEvent, type LeagueMember, type StandingRow, type LeagueTeam, type LeagueMatch } from "@/lib/leagues";
+import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRole, setLeagueLogo, isLeagueAdmin, subscribeLeagueTeams, createLeagueTeam, updateLeagueTeam, deleteLeagueTeam, subscribeLeagueMatches, generateSchedule, setMatchResult, computeMatchStandings, generateBracket, advanceBracket, LEAGUE_FORMATS, TEAM_SIZES, START_FORMATS, isTeamFormat, SUGGESTED_DIVISIONS, type League, type LeagueEvent, type LeagueMember, type StandingRow, type LeagueTeam, type LeagueMatch } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { storage } from "@/lib/firebase";
 import { getDownloadURL, ref as storageRef, uploadBytes } from "firebase/storage";
@@ -34,9 +34,13 @@ export default function LeagueManagePage() {
   const [copied, setCopied] = useState(false);
 
   // Settings drafts
-  const [divisionsDraft, setDivisionsDraft] = useState("");
+  const [divisionsList, setDivisionsList] = useState<string[]>([]);
+  const [newDivision, setNewDivision] = useState("");
+  const [teamSizeDraft, setTeamSizeDraft] = useState(2);
   const [bestNDraft, setBestNDraft] = useState("");
-  const [modelDraft, setModelDraft] = useState<"placement" | "matchplay">("placement");
+  const [modelDraft, setModelDraft] = useState<"placement" | "strokeplay" | "matchplay">("placement");
+  const [curveDraft, setCurveDraft] = useState<"linear" | "decay" | "table">("linear");
+  const [curveTableDraft, setCurveTableDraft] = useState<number[]>([]);
   const [viewDraft, setViewDraft] = useState<"gross" | "net" | "both">("gross");
   const [descDraft, setDescDraft] = useState("");
   const [hcpPctDraft, setHcpPctDraft] = useState("");
@@ -64,9 +68,12 @@ export default function LeagueManagePage() {
         getLeagueEvents(l.id).then(setEvents).catch(() => {});
         getLeagueMembers(l.id).then(setMembers).catch(() => {});
         computeStandings(l.id, l.settings.bestN).then(setStandings).catch(() => {});
-        setDivisionsDraft((l.settings.divisions ?? []).join(", "));
+        setDivisionsList((l.settings.divisions ?? []).length > 1 ? (l.settings.divisions ?? []) : []);
+        setTeamSizeDraft(l.settings.teamSize && l.settings.teamSize > 0 ? l.settings.teamSize : 2);
         setBestNDraft(l.settings.bestN ? String(l.settings.bestN) : "");
         setModelDraft(l.settings.scoring?.model ?? "placement");
+        setCurveDraft(l.settings.scoring?.curve === "decay" ? "decay" : l.settings.scoring?.curve === "table" ? "table" : "linear");
+        setCurveTableDraft(Array.isArray(l.settings.scoring?.curveTable) && l.settings.scoring!.curveTable!.length ? l.settings.scoring!.curveTable! : []);
         setViewDraft(l.settings.scoring?.view ?? "gross");
         setDescDraft(l.settings.description);
         setHcpPctDraft(l.settings.handicapPercent ? String(l.settings.handicapPercent) : "");
@@ -89,10 +96,11 @@ export default function LeagueManagePage() {
   const photoOf = useMemo(() => new Map(members.map((m) => [m.id, m.photo])), [members]);
 
   const isMatchPlay = league?.settings.scoring?.model === "matchplay";
+  const isTeamLeague = isTeamFormat(league?.settings.format);
   const nav: { key: Section; label: string }[] = [
     { key: "dashboard", label: "League dashboard" },
     { key: "members", label: "Members" },
-    { key: "teams", label: "Teams" },
+    ...(isTeamLeague ? [{ key: "teams" as const, label: "Teams" }] : []),
     ...(isMatchPlay ? [{ key: "matchplay" as const, label: "Match play" }] : []),
     { key: "events", label: "Events" },
     { key: "standings", label: "Standings" },
@@ -111,20 +119,29 @@ export default function LeagueManagePage() {
     if (!league || busy) return;
     setBusy(true); setSaved(false);
     try {
-      const divisions = divisionsDraft.split(",").map((x) => x.trim()).filter(Boolean);
+      const divisions = divisionsList.map((x) => x.trim()).filter(Boolean);
       const bestN = Number(bestNDraft) > 0 ? Math.floor(Number(bestNDraft)) : undefined;
       const handicapPercent = Number(hcpPctDraft) > 0 ? Math.min(150, Math.floor(Number(hcpPctDraft))) : undefined;
       const handicapCap = Number(hcpCapDraft) > 0 ? Math.floor(Number(hcpCapDraft)) : undefined;
-      const scoring = { ...(league.settings.scoring ?? {}), model: modelDraft, view: viewDraft, aggregate: (bestN ? "bestN" : "sum") as "sum" | "bestN" };
-      const settings = { ...league.settings, format: formatDraft, startFormat: startDraft, divisions: divisions.length ? divisions : undefined, bestN, handicapPercent, handicapCap, bagTags: bagTagsDraft, description: descDraft.trim(), scoring };
+      const scoring = { ...(league.settings.scoring ?? {}), model: modelDraft, view: viewDraft, aggregate: (bestN ? "bestN" : "sum") as "sum" | "bestN",
+        curve: modelDraft === "placement" ? curveDraft : undefined,
+        curveTable: modelDraft === "placement" && curveDraft === "table" && curveTableDraft.length ? curveTableDraft.map((n) => Math.max(0, Math.round(n))) : undefined };
+      const settings = { ...league.settings, format: formatDraft, teamSize: isTeamFormat(formatDraft) ? teamSizeDraft : undefined, startFormat: startDraft, divisions: divisions.length > 1 ? divisions : undefined, bestN, handicapPercent, handicapCap, bagTags: bagTagsDraft, description: descDraft.trim(), scoring };
       await updateLeagueSettings(league.id, settings);
       const acePot = acePotDraft.trim() !== "" && Number(acePotDraft) >= 0 ? Number(acePotDraft) : undefined;
       if (acePot != null && acePot !== league.acePotBalance) await setAcePot(league.id, acePot);
-      setLeague({ ...league, acePotBalance: acePot ?? league.acePotBalance, settings: { ...settings, divisions: divisions.length ? divisions : ["Open"] } });
+      setLeague({ ...league, acePotBalance: acePot ?? league.acePotBalance, settings: { ...settings, divisions: divisions.length > 1 ? divisions : ["Open"] } });
       computeStandings(league.id, bestN).then(setStandings).catch(() => {});
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } finally { setBusy(false); }
+  };
+
+  const addDivision = (name?: string) => {
+    const v = (name ?? newDivision).trim();
+    if (!v) return;
+    if (!divisionsList.some((d) => d.toLowerCase() === v.toLowerCase())) setDivisionsList((xs) => [...xs, v]);
+    setNewDivision("");
   };
 
   const schedule = async () => {
@@ -489,9 +506,28 @@ export default function LeagueManagePage() {
               <h3 className="mb-1 font-[family-name:var(--font-heading)] text-[15px] font-bold text-[var(--cream)]">Scoring</h3>
               <p className="mb-5 text-xs text-[var(--sage-dim)]">How events turn into your season standings.</p>
               <div className="grid gap-5 sm:grid-cols-2">
-                <div><FieldLabel>Scoring model</FieldLabel><Segmented options={["Placement", "Match play"]} value={modelDraft === "matchplay" ? "Match play" : "Placement"} onChange={(v) => setModelDraft(v === "Match play" ? "matchplay" : "placement")} /><p className="mt-1.5 text-[11px] text-[var(--sage-dim)]">{modelDraft === "matchplay" ? "Head-to-head: win / tie / loss → points, on a weekly schedule." : "Finish position → points down the field."}</p></div>
+                <div><FieldLabel>Scoring model</FieldLabel><Segmented options={["Points", "Stroke play", "Match play"]} value={modelDraft === "matchplay" ? "Match play" : modelDraft === "strokeplay" ? "Stroke play" : "Points"} onChange={(v) => setModelDraft(v === "Match play" ? "matchplay" : v === "Stroke play" ? "strokeplay" : "placement")} /><p className="mt-1.5 text-[11px] text-[var(--sage-dim)]">{modelDraft === "matchplay" ? "Head-to-head: win / tie / loss → points, on a weekly schedule." : modelDraft === "strokeplay" ? "Cumulative strokes across events — lowest total wins (best-N optional)." : "Finish position → points down the field. Set the points-per-place below."}</p></div>
                 <div><FieldLabel>Standings shown</FieldLabel><Segmented options={["Gross", "Net", "Both"]} value={viewDraft === "net" ? "Net" : viewDraft === "both" ? "Both" : "Gross"} onChange={(v) => setViewDraft(v.toLowerCase() as "gross" | "net" | "both")} /><p className="mt-1.5 text-[11px] text-[var(--sage-dim)]">{viewDraft === "both" ? "Two races — a gross champ and a net (handicap) champ." : viewDraft === "net" ? "Handicap-adjusted (net) decides the season." : "Raw score decides the season."}</p></div>
               </div>
+              {modelDraft === "placement" && (
+                <div className="mt-5 border-t border-[var(--hair)] pt-5">
+                  <FieldLabel>Points per place</FieldLabel>
+                  <Segmented options={["Linear", "UDisc decay", "Custom"]} value={curveDraft === "decay" ? "UDisc decay" : curveDraft === "table" ? "Custom" : "Linear"} onChange={(v) => { const c = v === "UDisc decay" ? "decay" : v === "Custom" ? "table" : "linear"; setCurveDraft(c); if (c === "table" && curveTableDraft.length === 0) setCurveTableDraft([10, 8, 6, 5, 4, 3, 2, 1]); }} />
+                  <p className="mt-1.5 text-[11px] text-[var(--sage-dim)]">{curveDraft === "decay" ? "1st = the field size, tapering to 2 down the field, 1 below that (UDisc-style)." : curveDraft === "table" ? "You set exact points for each finishing place; anyone past the list gets 1." : "1st gets N, 2nd N−1, … where N = players who showed. Ties split evenly."}</p>
+                  {curveDraft === "table" && (
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      {curveTableDraft.map((v, i) => (
+                        <span key={i} className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--hair-strong)] bg-white/[0.03] py-1 pl-2 pr-1">
+                          <span className="font-mono text-[11px] font-bold text-[var(--sage-dim)]">{i + 1}{["st", "nd", "rd"][i] ?? "th"}</span>
+                          <input inputMode="numeric" value={v} onChange={(e) => setCurveTableDraft((xs) => xs.map((x, j) => (j === i ? (Number(e.target.value.replace(/[^0-9]/g, "")) || 0) : x)))} className="w-12 rounded-md bg-[var(--card)] px-1.5 py-1 text-center text-sm font-bold text-[var(--cream)] outline-none" />
+                          <button onClick={() => setCurveTableDraft((xs) => xs.filter((_, j) => j !== i))} aria-label="Remove place" className="grid h-5 w-5 place-items-center rounded text-[var(--sage-dim)] transition-colors hover:text-[#f08c8c]">×</button>
+                        </span>
+                      ))}
+                      <button onClick={() => setCurveTableDraft((xs) => [...xs, Math.max(1, (xs[xs.length - 1] ?? 2) - 1)])} className="rounded-lg border border-[var(--gold)]/40 bg-[var(--gold-dim)] px-3 py-1.5 text-xs font-bold text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/20">+ Place</button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <div className={`${card} p-6`}>
               <h3 className="mb-5 font-[family-name:var(--font-heading)] text-[15px] font-bold text-[var(--cream)]">Brand</h3>
@@ -523,12 +559,42 @@ export default function LeagueManagePage() {
             </div>
             <div className={`${card} p-6`}>
               <div className="grid gap-5 sm:grid-cols-2">
-                <div><FieldLabel>Play format</FieldLabel><Segmented options={[...LEAGUE_FORMATS]} value={formatDraft} onChange={setFormatDraft} /></div>
+                <div>
+                  <FieldLabel>Play format</FieldLabel>
+                  <Segmented options={[...LEAGUE_FORMATS]} value={isTeamFormat(formatDraft) ? "Teams" : "Singles"} onChange={setFormatDraft} />
+                  {isTeamFormat(formatDraft) && (
+                    <div className="mt-3">
+                      <FieldLabel>Team size</FieldLabel>
+                      <Segmented options={["Doubles", "3", "4"]} value={teamSizeDraft === 3 ? "3" : teamSizeDraft === 4 ? "4" : "Doubles"} onChange={(v) => setTeamSizeDraft(v === "3" ? 3 : v === "4" ? 4 : 2)} />
+                      <p className="mt-1.5 text-[11px] text-[var(--sage-dim)]">Doubles = 2 per team. Team standings appear once you build teams.</p>
+                    </div>
+                  )}
+                </div>
                 <div><FieldLabel>Start format</FieldLabel><Segmented options={[...START_FORMATS]} value={startDraft} onChange={setStartDraft} /></div>
-                <label className="block sm:col-span-2">
-                  <FieldLabel>Divisions <span className="normal-case tracking-normal text-[var(--sage-dim)]">— comma-separated; players pick one at check-in</span></FieldLabel>
-                  <input value={divisionsDraft} onChange={(e) => setDivisionsDraft(e.target.value)} placeholder="Open, FPO, Rec" className={inputCls} />
-                </label>
+                <div className="block sm:col-span-2">
+                  <FieldLabel>Divisions <span className="normal-case tracking-normal text-[var(--sage-dim)]">— players self-sort at check-in; add as many as you like</span></FieldLabel>
+                  <div className="mb-2.5 flex flex-wrap gap-2">
+                    {divisionsList.map((d, i) => (
+                      <span key={i} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--hair-strong)] bg-white/[0.04] py-1.5 pl-3.5 pr-2 text-sm font-semibold text-[var(--cream)]">
+                        {d}
+                        <button onClick={() => setDivisionsList((xs) => xs.filter((_, j) => j !== i))} aria-label={`Remove ${d}`} className="grid h-5 w-5 place-items-center rounded-full text-base leading-none text-[var(--sage-dim)] transition-colors hover:bg-white/10 hover:text-[var(--cream)]">×</button>
+                      </span>
+                    ))}
+                    {divisionsList.length === 0 && <span className="py-1.5 text-xs text-[var(--sage-dim)]">No divisions — everyone plays one pool.</span>}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input list="division-suggest" value={newDivision} onChange={(e) => setNewDivision(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addDivision(); } }} placeholder="Add a division…" className={`${inputCls} max-w-[240px]`} />
+                    <datalist id="division-suggest">{SUGGESTED_DIVISIONS.map((d) => <option key={d} value={d} />)}</datalist>
+                    <button onClick={() => addDivision()} disabled={!newDivision.trim()} className="h-11 shrink-0 rounded-xl border border-[var(--gold)]/40 bg-[var(--gold-dim)] px-4 text-sm font-bold text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/20 disabled:opacity-40">+ Add division</button>
+                  </div>
+                  {SUGGESTED_DIVISIONS.filter((d) => !divisionsList.some((x) => x.toLowerCase() === d.toLowerCase())).length > 0 && (
+                    <div className="mt-2.5 flex flex-wrap gap-1.5">
+                      {SUGGESTED_DIVISIONS.filter((d) => !divisionsList.some((x) => x.toLowerCase() === d.toLowerCase())).map((d) => (
+                        <button key={d} onClick={() => addDivision(d)} className="rounded-full border border-white/[0.1] px-3 py-1 text-xs font-semibold text-[var(--sage)] transition-colors hover:border-white/25 hover:text-[var(--cream)]">+ {d}</button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <label className="block"><FieldLabel>Best rounds counted</FieldLabel><input inputMode="numeric" value={bestNDraft} onChange={(e) => setBestNDraft(e.target.value)} placeholder="all" className={inputCls} /></label>
                 <label className="block"><FieldLabel>Ace pot balance ($)</FieldLabel><input inputMode="numeric" value={acePotDraft} onChange={(e) => setAcePotDraft(e.target.value)} placeholder="0" className={inputCls} /></label>
                 <label className="block"><FieldLabel>Handicap %</FieldLabel><input inputMode="numeric" value={hcpPctDraft} onChange={(e) => setHcpPctDraft(e.target.value)} placeholder="90" className={inputCls} /></label>

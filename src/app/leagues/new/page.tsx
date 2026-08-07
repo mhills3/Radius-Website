@@ -53,6 +53,7 @@ export default function EventWizard() {
   const [evName, setEvName] = useState("");
   const [desc, setDesc] = useState("");
   const [format, setFormat] = useState<string>(LEAGUE_FORMATS[0]);
+  const [teamSize, setTeamSize] = useState(2);
   const [startFormat, setStartFormat] = useState<string>(START_FORMATS[0]);
   const [isPrivate, setIsPrivate] = useState(false);
   const [leagueChoice, setLeagueChoice] = useState(""); // "" = auto-create container
@@ -157,7 +158,7 @@ export default function EventWizard() {
           name: evName.trim(),
           courseName: placeName || undefined,
           courseId: course?.id,
-          settings: { format, startFormat, description: "" },
+          settings: { format, startFormat, description: "", teamSize: format === "Teams" ? teamSize : undefined },
         });
         if (!league) throw new Error("Couldn't create the event — are you signed in?");
       }
@@ -318,7 +319,13 @@ export default function EventWizard() {
               {isScoringKind && (
                 <div>
                   <FieldLabel>Play format *</FieldLabel>
-                  <Segmented options={[...LEAGUE_FORMATS]} value={format} onChange={setFormat} />
+                  <Segmented options={[...LEAGUE_FORMATS]} value={format === "Doubles" ? "Teams" : format} onChange={setFormat} />
+                  {format === "Teams" && (
+                    <div className="mt-3">
+                      <FieldLabel>Team size</FieldLabel>
+                      <Segmented options={["Doubles", "3", "4"]} value={teamSize === 3 ? "3" : teamSize === 4 ? "4" : "Doubles"} onChange={(v) => setTeamSize(v === "3" ? 3 : v === "4" ? 4 : 2)} />
+                    </div>
+                  )}
                 </div>
               )}
               {isScoringKind && (

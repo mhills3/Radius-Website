@@ -26,8 +26,13 @@ export function freshId(): string {
     : `${Date.now()}-${Math.random().toString(36).slice(2)}`.toUpperCase();
 }
 
-export const LEAGUE_FORMATS = ["Singles", "Doubles", "Teams"] as const;
+export const LEAGUE_FORMATS = ["Singles", "Teams"] as const;
+export const TEAM_SIZES = [2, 3, 4] as const; // 2 = "Doubles"; teams are a size, not a separate format
 export const START_FORMATS = ["Shotgun", "Tee times", "Flex"] as const;
+/** True for the Teams format (and legacy "Doubles" docs, which are Teams of 2). */
+export const isTeamFormat = (format?: string) => format === "Teams" || format === "Doubles";
+/** Legacy "Doubles" → "Teams" so the format pickers (Singles|Teams) light up correctly. */
+export const normalizeFormat = (format?: string) => (format === "Doubles" ? "Teams" : format || "Singles");
 
 /** Event kinds — discovery categories AND behavior hints (league = weekly repeat, tournament = multi-round). */
 export const EVENT_KINDS = [
@@ -45,6 +50,7 @@ export interface LeagueSettings {
   format: string;      // LEAGUE_FORMATS
   startFormat: string; // START_FORMATS
   description: string;
+  teamSize?: number;    // Teams format: players per team (2 = doubles). Default 2.
   divisions?: string[]; // PDGA-style or custom; players pick one at check-in when >1
   bestN?: number;       // season standings count each player's best N event scores (0/undefined = all)
   handicapPercent?: number; // % of a player's field-relative average applied (default 90)
@@ -55,7 +61,7 @@ export interface LeagueSettings {
 
 // How a league scores. All fields optional; the defaults below reproduce the original
 // behavior (placement + linear curve + gross + sum), so leagues with no scoring config are unchanged.
-export type ScoringModel = "placement" | "matchplay";
+export type ScoringModel = "placement" | "strokeplay" | "matchplay";
 export type PlacementCurve = "linear" | "table" | "proportional" | "decay";
 export type StandingsView = "gross" | "net" | "both";
 export interface LeagueScoring {
@@ -230,6 +236,7 @@ export interface SeasonStandings {
   gross: StandingRow[];
   net: StandingRow[];   // net === gross when the league runs no handicaps
   teams: TeamStandingRow[];
+  strokeplay?: boolean; // true when `points` holds cumulative STROKES (lower is better), not points
 }
 
 const slugify = (name: string) =>
@@ -267,12 +274,14 @@ function toLeague(id: string, d: any): League {
     adminIds: Array.isArray(d.adminIds) ? d.adminIds : [],
     createdById: d.createdById ?? "", createdByName: d.createdByName ?? "",
     settings: {
-      format: d.settings?.format ?? "Singles", startFormat: d.settings?.startFormat ?? "Shotgun", description: d.settings?.description ?? "",
+      format: normalizeFormat(d.settings?.format), startFormat: d.settings?.startFormat ?? "Shotgun", description: d.settings?.description ?? "",
+      teamSize: Number(d.settings?.teamSize) > 0 ? Number(d.settings.teamSize) : undefined,
       divisions: Array.isArray(d.settings?.divisions) && d.settings.divisions.length ? d.settings.divisions : DEFAULT_DIVISIONS,
       bestN: Number(d.settings?.bestN) || undefined,
       handicapPercent: Number(d.settings?.handicapPercent) || undefined,
       handicapCap: Number(d.settings?.handicapCap) || undefined,
       bagTags: d.settings?.bagTags === true,
+      scoring: d.settings?.scoring && typeof d.settings.scoring === "object" ? d.settings.scoring as LeagueScoring : undefined,
     },
     memberCount: Number(d.memberCount) || 0,
     acePotBalance: typeof d.acePotBalance === "number" ? d.acePotBalance : undefined,
@@ -1177,6 +1186,7 @@ export async function computeStandings(leagueId: string, bestN?: number): Promis
 export async function computeSeasonStandings(league: League): Promise<SeasonStandings> {
   const scoring = league.settings.scoring;
   const bestN = league.settings.bestN;
+  const strokeplay = scoring?.model === "strokeplay"; // rank by cumulative STROKES (lowest wins), not points
   const events = (await getLeagueEvents(league.id)).filter((e) => e.status === "complete");
   const teams = await getLeagueTeams(league.id);
   const teamOf = new Map<string, LeagueTeam>();
@@ -1184,9 +1194,9 @@ export async function computeSeasonStandings(league: League): Promise<SeasonStan
 
   type Acc = { name: string; division?: string; eventPts: number[]; bestToPar?: number };
   const grossAcc = new Map<string, Acc>(), netAcc = new Map<string, Acc>(), teamPts = new Map<string, number[]>();
-  const accInto = (map: Map<string, Acc>, e: EventEntry, pts: number) => {
+  const accInto = (map: Map<string, Acc>, e: EventEntry, val: number, counts: boolean) => {
     const a = map.get(e.id) ?? { name: e.name, eventPts: [] };
-    a.eventPts.push(pts);
+    if (counts) a.eventPts.push(val);
     if (e.division) a.division = e.division;
     if (typeof e.scoreToPar === "number") a.bestToPar = a.bestToPar == null ? e.scoreToPar : Math.min(a.bestToPar, e.scoreToPar);
     map.set(e.id, a);
@@ -1194,9 +1204,19 @@ export async function computeSeasonStandings(league: League): Promise<SeasonStan
 
   for (const ev of events) {
     const entries = await getEntries(ev.id);
-    const g = eventPoints(entries, { net: false, scoring });
-    const n = eventPoints(entries, { net: true, scoring });
-    for (const e of entries) { accInto(grossAcc, e, g.get(e.id) ?? 0); accInto(netAcc, e, n.get(e.id) ?? 0); }
+    if (strokeplay) {
+      // Cumulative strokes: gross = score + penalty; net also applies the per-event handicap (startingScore).
+      for (const e of entries) {
+        const scored = typeof e.score === "number" && !e.dnf;
+        const gross = scored ? e.score! + (e.penalty ?? 0) : 0;
+        accInto(grossAcc, e, gross, scored);
+        accInto(netAcc, e, scored ? gross + (e.startingScore ?? 0) : 0, scored);
+      }
+    } else {
+      const g = eventPoints(entries, { net: false, scoring });
+      const n = eventPoints(entries, { net: true, scoring });
+      for (const e of entries) { accInto(grossAcc, e, g.get(e.id) ?? 0, true); accInto(netAcc, e, n.get(e.id) ?? 0, true); }
+    }
     // Team race: only Doubles/Teams events. A team's event score = the (shared/best) score of its members.
     if (ev.format === "Doubles" || ev.format === "Teams") {
       const scoreByTeam = new Map<string, number>();
@@ -1206,29 +1226,37 @@ export async function computeSeasonStandings(league: League): Promise<SeasonStan
         const s = e.score + (e.penalty ?? 0);
         if (!scoreByTeam.has(t.id) || s < scoreByTeam.get(t.id)!) scoreByTeam.set(t.id, s);
       }
-      const ranked = [...scoreByTeam.entries()].sort((a, b) => a[1] - b[1]);
-      const field = ranked.length;
-      let i = 0;
-      while (i < ranked.length) {
-        let j = i; while (j + 1 < ranked.length && ranked[j + 1][1] === ranked[i][1]) j++;
-        let sum = 0; for (let r = i + 1; r <= j + 1; r++) sum += pointsForRank(r, field, scoring);
-        const shared = Math.floor(sum / (j - i + 1));
-        for (let k = i; k <= j; k++) { const arr = teamPts.get(ranked[k][0]) ?? []; arr.push(shared); teamPts.set(ranked[k][0], arr); }
-        i = j + 1;
+      if (strokeplay) {
+        for (const [tid, s] of scoreByTeam) { const arr = teamPts.get(tid) ?? []; arr.push(s); teamPts.set(tid, arr); }
+      } else {
+        const ranked = [...scoreByTeam.entries()].sort((a, b) => a[1] - b[1]);
+        const field = ranked.length;
+        let i = 0;
+        while (i < ranked.length) {
+          let j = i; while (j + 1 < ranked.length && ranked[j + 1][1] === ranked[i][1]) j++;
+          let sum = 0; for (let r = i + 1; r <= j + 1; r++) sum += pointsForRank(r, field, scoring);
+          const shared = Math.floor(sum / (j - i + 1));
+          for (let k = i; k <= j; k++) { const arr = teamPts.get(ranked[k][0]) ?? []; arr.push(shared); teamPts.set(ranked[k][0], arr); }
+          i = j + 1;
+        }
       }
     }
   }
 
+  // Points: keep the best N (highest), total descending. Strokeplay: keep the best N (lowest), total ascending.
+  const total = (vals: number[]) => {
+    const counted = bestN && bestN > 0 ? [...vals].sort((a, b) => (strokeplay ? a - b : b - a)).slice(0, bestN) : vals;
+    return counted.reduce((a, b) => a + b, 0);
+  };
+  const rank = <T extends { points: number }>(rows: T[]) => rows.sort((a, b) => (strokeplay ? a.points - b.points : b.points - a.points));
   const build = (map: Map<string, Acc>): StandingRow[] =>
-    [...map.entries()].map(([id, p]) => {
-      const counted = bestN && bestN > 0 ? [...p.eventPts].sort((a, b) => b - a).slice(0, bestN) : p.eventPts;
-      return { id, name: p.name, division: p.division, played: p.eventPts.length, points: counted.reduce((a, b) => a + b, 0), bestToPar: p.bestToPar };
-    }).sort((a, b) => b.points - a.points);
-  const teamRows: TeamStandingRow[] = teams.map((t) => {
+    rank([...map.entries()]
+      .map(([id, p]) => ({ id, name: p.name, division: p.division, played: p.eventPts.length, points: total(p.eventPts), bestToPar: p.bestToPar }))
+      .filter((r) => r.played > 0));
+  const teamRows: TeamStandingRow[] = rank(teams.map((t) => {
     const pts = teamPts.get(t.id) ?? [];
-    const counted = bestN && bestN > 0 ? [...pts].sort((a, b) => b - a).slice(0, bestN) : pts;
-    return { id: t.id, name: t.name, memberIds: t.memberIds, played: pts.length, points: counted.reduce((a, b) => a + b, 0) };
-  }).filter((t) => t.played > 0).sort((a, b) => b.points - a.points);
+    return { id: t.id, name: t.name, memberIds: t.memberIds, played: pts.length, points: total(pts) };
+  }).filter((t) => t.played > 0));
 
-  return { gross: build(grossAcc), net: build(netAcc), teams: teamRows };
+  return { gross: build(grossAcc), net: build(netAcc), teams: teamRows, strokeplay };
 }
