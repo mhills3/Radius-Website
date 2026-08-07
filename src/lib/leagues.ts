@@ -57,6 +57,7 @@ export interface LeagueSettings {
   handicapPercent?: number; // % of a player's field-relative average applied (default 90)
   handicapCap?: number;     // max |strokes| a handicap may reach (0/undefined = uncapped)
   bagTags?: boolean;        // run a real tag ladder: tags reassign by finish on event completion
+  checkIns?: boolean;       // enable day-of check-in tracking (TD marks who's arrived; unlocks ~3h before start)
   scoring?: LeagueScoring;  // how events turn into season standings (default = placement/linear/gross/sum)
 }
 
@@ -191,7 +192,8 @@ export interface EventEntry {
   username?: string;
   photo?: string;
   division?: string;
-  checkedInAt: number;
+  checkedInAt: number;  // when the player JOINED/registered (historical field name)
+  arrivedAt?: number;   // real day-of CHECK-IN, marked by a TD/admin (only when check-ins are enabled)
   walkup?: boolean;     // director-added paper/walk-up entrant (no app account, no canonical id)
   paid?: boolean;
   cardId?: string;
@@ -287,6 +289,7 @@ function toLeague(id: string, d: any): League {
       handicapPercent: Number(d.settings?.handicapPercent) || undefined,
       handicapCap: Number(d.settings?.handicapCap) || undefined,
       bagTags: d.settings?.bagTags === true,
+      checkIns: d.settings?.checkIns === true,
       scoring: d.settings?.scoring && typeof d.settings.scoring === "object" ? d.settings.scoring as LeagueScoring : undefined,
     },
     memberCount: Number(d.memberCount) || 0,
@@ -857,7 +860,7 @@ function toEntry(id: string, e: any): EventEntry {
   return {
     id, name: (e.name ?? "Player") as string, username: (e.username as string) || undefined,
     photo: (e.photo as string) || undefined, division: (e.division as string) || undefined,
-    checkedInAt: Number(e.checkedInAt) || 0, walkup: e.walkup === true || id.startsWith("walkup_"),
+    checkedInAt: Number(e.checkedInAt) || 0, arrivedAt: Number(e.arrivedAt) > 0 ? Number(e.arrivedAt) : undefined, walkup: e.walkup === true || id.startsWith("walkup_"),
     paid: e.paid === true,
     cardId: (e.cardId as string) || undefined,
     teamId: typeof e.teamId === "number" ? e.teamId : undefined,
@@ -895,6 +898,11 @@ export function liveTotal(e: EventEntry): number | undefined {
   if (!e.holeScores?.length) return undefined;
   const played = e.holeScores.filter((n) => n > 0);
   return played.length ? played.reduce((a, b) => a + b, 0) : undefined;
+}
+
+/** Director marks a player arrived (day-of check-in) or clears it. `at` lets the caller stamp a shared timestamp. */
+export async function checkInEntry(eventId: string, entryId: string, arrived: boolean, at?: number): Promise<void> {
+  await updateDoc(doc(db, "leagueEvents", eventId, "entries", entryId), { arrivedAt: arrived ? (at ?? Date.now()) : deleteField() });
 }
 
 /** Director-side per-entry updates (paid flag, division moves, score entry, penalties, DNF, payouts). */

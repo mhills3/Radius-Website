@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, getEntries, updateEntry, updateEventDetails, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRoles, setMemberDivision, addDirectorByUsername, setLeagueLogo, isLeagueAdmin, subscribeLeagueTeams, createLeagueTeam, updateLeagueTeam, deleteLeagueTeam, subscribeLeagueMatches, generateSchedule, setMatchResult, computeMatchStandings, generateBracket, advanceBracket, LEAGUE_FORMATS, TEAM_SIZES, START_FORMATS, isTeamFormat, SUGGESTED_DIVISIONS, type League, type LeagueEvent, type LeagueMember, type EventEntry, type StandingRow, type LeagueTeam, type LeagueMatch } from "@/lib/leagues";
+import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, getEntries, updateEntry, checkInEntry, updateEventDetails, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRoles, setMemberDivision, addDirectorByUsername, setLeagueLogo, isLeagueAdmin, subscribeLeagueTeams, createLeagueTeam, updateLeagueTeam, deleteLeagueTeam, subscribeLeagueMatches, generateSchedule, setMatchResult, computeMatchStandings, generateBracket, advanceBracket, LEAGUE_FORMATS, TEAM_SIZES, START_FORMATS, isTeamFormat, SUGGESTED_DIVISIONS, type League, type LeagueEvent, type LeagueMember, type EventEntry, type StandingRow, type LeagueTeam, type LeagueMatch } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { storage } from "@/lib/firebase";
 import { getDownloadURL, ref as storageRef, uploadBytes } from "firebase/storage";
@@ -51,6 +51,7 @@ export default function LeagueManagePage() {
   const [hcpPctDraft, setHcpPctDraft] = useState("");
   const [hcpCapDraft, setHcpCapDraft] = useState("");
   const [bagTagsDraft, setBagTagsDraft] = useState(false);
+  const [checkInsDraft, setCheckInsDraft] = useState(false);
   const [acePotDraft, setAcePotDraft] = useState("");
   const [formatDraft, setFormatDraft] = useState<string>(LEAGUE_FORMATS[0]);
   const [startDraft, setStartDraft] = useState<string>(START_FORMATS[0]);
@@ -95,6 +96,7 @@ export default function LeagueManagePage() {
         setHcpPctDraft(l.settings.handicapPercent ? String(l.settings.handicapPercent) : "");
         setHcpCapDraft(l.settings.handicapCap ? String(l.settings.handicapCap) : "");
         setBagTagsDraft(l.settings.bagTags === true);
+        setCheckInsDraft(l.settings.checkIns === true);
         setAcePotDraft(l.acePotBalance != null ? String(l.acePotBalance) : "");
         setFormatDraft(l.settings.format);
         setStartDraft(l.settings.startFormat);
@@ -136,6 +138,9 @@ export default function LeagueManagePage() {
   // A tournament/one-off is really a single event — exit straight to it, skipping the container page.
   const exitHref = !isLeagueKind && primaryEvent ? `/leagues/${slug}/e/${primaryEvent.id}` : `/leagues/${slug}`;
   const isTeeTimes = (league?.settings.startFormat ?? "") === "Tee times";
+  // Day-of check-in: enabled per-league, unlocks ~3h before the event start.
+  const checkInsOn = league?.settings.checkIns === true;
+  const checkInOpen = !!(checkInsOn && primaryEvent && now >= primaryEvent.date - 3 * 3600_000);
   const nav: { key: Section; label: string }[] = [
     { key: "dashboard", label: `${NOUN} dashboard` },
     { key: "members", label: "Players" },
@@ -164,7 +169,7 @@ export default function LeagueManagePage() {
       const scoring = { ...(league.settings.scoring ?? {}), model: modelDraft, view: viewDraft, aggregate: (bestN ? "bestN" : "sum") as "sum" | "bestN",
         curve: modelDraft === "placement" ? curveDraft : undefined,
         curveTable: modelDraft === "placement" && curveDraft === "table" && curveTableDraft.length ? curveTableDraft.map((n) => Math.max(0, Math.round(n))) : undefined };
-      const settings = { ...league.settings, format: formatDraft, teamSize: isTeamFormat(formatDraft) ? teamSizeDraft : undefined, startFormat: startDraft, divisions: divisions.length > 1 ? divisions : undefined, bestN, handicapPercent, handicapCap, bagTags: bagTagsDraft, description: descDraft.trim(), scoring };
+      const settings = { ...league.settings, format: formatDraft, teamSize: isTeamFormat(formatDraft) ? teamSizeDraft : undefined, startFormat: startDraft, divisions: divisions.length > 1 ? divisions : undefined, bestN, handicapPercent, handicapCap, bagTags: bagTagsDraft, checkIns: checkInsDraft, description: descDraft.trim(), scoring };
       await updateLeagueSettings(league.id, settings);
       const acePot = acePotDraft.trim() !== "" && Number(acePotDraft) >= 0 ? Number(acePotDraft) : undefined;
       if (acePot != null && acePot !== league.acePotBalance) await setAcePot(league.id, acePot);
@@ -239,6 +244,14 @@ export default function LeagueManagePage() {
       setCoDir(""); setCoDirNote(`${m.name || "@" + m.username} is now a director.`);
       setTimeout(() => setCoDirNote(""), 3500);
     } finally { setAddingCoDir(false); }
+  };
+
+  const toggleCheckIn = async (memberId: string) => {
+    if (!primaryEventId) return;
+    const arrived = !entryOf.get(memberId)?.arrivedAt;
+    const at = Date.now();
+    setEntries((cur) => cur.map((e) => (e.id === memberId ? { ...e, arrivedAt: arrived ? at : undefined } : e)));
+    await checkInEntry(primaryEventId, memberId, arrived, at);
   };
 
   // Role checklist (a person can be several at once). Owner is implicit and not editable here.
@@ -380,6 +393,9 @@ export default function LeagueManagePage() {
                 {coDirNote && <span className="text-xs font-semibold text-[var(--cream-60)]">{coDirNote}</span>}
               </div>
               <p className="mt-2.5 text-[11px] text-[var(--sage-dim)]">Directors can run everything in here — add as many co-directors as you need. Promote existing players below.</p>
+              {checkInsOn && (
+                <p className="mt-2 text-[11px] font-semibold text-[var(--gold)]">{checkInOpen ? "Check-in is open — mark players in as they arrive." : primaryEvent ? `Check-in unlocks ~3h before start (${fmtDate(primaryEvent.date)}).` : "Check-in is on; it unlocks ~3h before the event."}</p>
+              )}
             </div>
             <div className={card}>
               {members.map((m) => (
@@ -392,6 +408,15 @@ export default function LeagueManagePage() {
                     </span>
                     {m.username && <span className="block text-xs text-[var(--sage-dim)]">@{m.username}</span>}
                   </span>
+                  {checkInsOn && entryOf.has(m.id) && (
+                    checkInOpen ? (
+                      <button onClick={() => toggleCheckIn(m.id)} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${entryOf.get(m.id)?.arrivedAt ? "bg-[#5fcf80]/15 text-[#5fcf80] hover:bg-[#5fcf80]/25" : "border border-[var(--hair-strong)] text-[var(--cream-60)] hover:text-[var(--cream)]"}`}>{entryOf.get(m.id)?.arrivedAt ? "✓ Checked in" : "Check in"}</button>
+                    ) : entryOf.get(m.id)?.arrivedAt ? (
+                      <span className="shrink-0 rounded-full bg-[#5fcf80]/15 px-3 py-1.5 text-xs font-bold text-[#5fcf80]">✓ Checked in</span>
+                    ) : (
+                      <span className="shrink-0 rounded-full border border-[var(--hair)] px-3 py-1.5 text-xs font-semibold text-[var(--cream-38)]">Check-in locked</span>
+                    )
+                  )}
                   {divisions.length > 1 && (
                     <select
                       value={entryOf.get(m.id)?.division ?? m.division ?? ""}
@@ -842,6 +867,11 @@ export default function LeagueManagePage() {
                   <input type="checkbox" checked={bagTagsDraft} onChange={(e) => setBagTagsDraft(e.target.checked)} className="h-4 w-4 accent-[var(--gold)]" />
                   <span className="text-sm font-semibold text-[var(--cream)]">Bag tags</span>
                   <span className="text-xs text-[var(--sage-dim)]">tags reassign by finish when an event completes</span>
+                </label>
+                <label className="flex items-center gap-3 sm:col-span-2">
+                  <input type="checkbox" checked={checkInsDraft} onChange={(e) => setCheckInsDraft(e.target.checked)} className="h-4 w-4 accent-[var(--gold)]" />
+                  <span className="text-sm font-semibold text-[var(--cream)]">Manage check-ins</span>
+                  <span className="text-xs text-[var(--sage-dim)]">directors mark who&apos;s arrived on the Players tab, from ~3h before start</span>
                 </label>
                 <label className="block sm:col-span-2"><FieldLabel>Description</FieldLabel><textarea value={descDraft} onChange={(e) => setDescDraft(e.target.value)} rows={2} className={inputCls} /></label>
               </div>

@@ -410,9 +410,8 @@ export default function LeagueEventPage() {
   const paidOut = entries.reduce((a, e) => a + (e.payout ?? 0), 0);
   const isTeamFormat = event.format === "Doubles" || event.format === "Teams";
   const liveNow = event.status === "scheduled" && nowTs >= event.date && nowTs <= event.date + 6 * 3600_000 && entries.length > 0;
-  // You JOIN a scheduled event ahead of time; check-in is the day-of action (opens 2h before start).
-  const checkInPhase = nowTs >= event.date - 2 * 3600_000;
-  const joinVerb = checkInPhase ? "Check in" : "Join";
+  // Players only JOIN. Day-of check-in is a TD/admin action in Director tools — never self-serve.
+  const joinVerb = "Join";
   // Completion must stay reachable AFTER the 6h live window — multi-round events,
   // next-morning score entry, and backfilled weeks all finish outside it. Without
   // this the event is stuck "scheduled" forever and never enters standings/recap.
@@ -588,7 +587,7 @@ export default function LeagueEventPage() {
                     me ? (
                       !(liveNow && cid && ranked.some((x) => x.id === cid)) && (
                         <span className="inline-flex items-center gap-2">
-                          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#5fcf80]/25 bg-[rgba(20,27,22,0.5)] px-3.5 py-2 font-mono text-[10.5px] tracking-[0.08em] text-[#5fcf80] backdrop-blur-[6px]">✓ {checkInPhase ? "Checked in" : "You're in"}{divisions.length > 1 && me.division ? ` · ${me.division}` : ""}</span>
+                          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#5fcf80]/25 bg-[rgba(20,27,22,0.5)] px-3.5 py-2 font-mono text-[10.5px] tracking-[0.08em] text-[#5fcf80] backdrop-blur-[6px]">✓ You're in{divisions.length > 1 && me.division ? ` · ${me.division}` : ""}</span>
                           {open && typeof me.score !== "number" && !me.holeScores?.some((h) => h > 0) && (
                             <button onClick={leaveSelf} disabled={busy} className={`rounded-full px-2.5 py-2 font-mono text-[10.5px] uppercase tracking-[0.08em] transition-colors disabled:opacity-50 ${confirmLeave ? "bg-[#f08c8c]/15 font-bold text-[#f08c8c]" : "text-[var(--cream-38)] hover:text-[#f08c8c]"}`}>{confirmLeave ? "Confirm leave" : "Leave"}</button>
                           )}
@@ -908,7 +907,7 @@ export default function LeagueEventPage() {
                     </>
                   );
                 })() : (
-                  <div className="font-mono text-[10.5px] tracking-[0.06em] text-[var(--cream-38)]">{entries.length > 0 ? <><b className="font-medium text-[var(--cream-60)]">{entries.length}</b> {checkInPhase ? "checked in" : "joined"}</> : (checkInPhase ? "Be the first in" : "Be the first to join")}</div>
+                  <div className="font-mono text-[10.5px] tracking-[0.06em] text-[var(--cream-38)]">{entries.length > 0 ? <><b className="font-medium text-[var(--cream-60)]">{entries.length}</b> joined</> : "Be the first to join"}</div>
                 )}
               </button>
             )}
@@ -981,8 +980,9 @@ export default function LeagueEventPage() {
                   {e.username ? <Link href={`/u/${e.username}`}><Avatar url={e.photo} name={nameOf(e)} size={32} /></Link> : <Avatar url={e.photo} name={nameOf(e)} size={32} />}
                   <span className="min-w-0 flex-1">
                     <span className="truncate font-bold text-[var(--cream)]">{e.username ? <Link href={`/u/${e.username}`} className="hover:underline">{nameOf(e)}</Link> : nameOf(e)}</span>
-                    <span className="block text-xs text-[var(--sage-dim)]">Checked in {new Date(e.checkedInAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</span>
+                    <span className="block text-xs text-[var(--sage-dim)]">Joined {new Date(e.checkedInAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
                   </span>
+                  {league?.settings.checkIns && e.arrivedAt && <span className="inline-flex items-center gap-1 rounded-full bg-[#5fcf80]/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#5fcf80]">✓ Checked in</span>}
                   {typeof e.tag === "number" && <span className="rounded-full bg-white/[0.08] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[var(--cream)]">#{e.tag}</span>}
                   {divisions.length > 1 && e.division && <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[9px] font-bold uppercase text-[var(--sage-dim)]">{e.division}</span>}
                   {typeof e.teamId === "number" && <span className="rounded-full bg-white/[0.06] px-2 py-0.5 font-mono text-[10px] font-bold text-[var(--text-body)]">T{e.teamId}</span>}
