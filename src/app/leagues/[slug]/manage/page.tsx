@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, getEntries, updateEntry, checkInEntry, updateEventDetails, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRoles, setMemberDivision, setLeagueLogo, isLeagueAdmin, subscribeLeagueTeams, createLeagueTeam, updateLeagueTeam, deleteLeagueTeam, subscribeLeagueMatches, generateSchedule, setMatchResult, computeMatchStandings, generateBracket, advanceBracket, LEAGUE_FORMATS, TEAM_SIZES, START_FORMATS, isTeamFormat, SUGGESTED_DIVISIONS, type League, type LeagueEvent, type LeagueMember, type EventEntry, type StandingRow, type LeagueTeam, type LeagueMatch } from "@/lib/leagues";
+import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, getEntries, updateEntry, checkInEntry, getCards, generateTeeTimes, setCardTeeTime, moveEntryToCard, updateEventDetails, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRoles, setMemberDivision, setLeagueLogo, isLeagueAdmin, subscribeLeagueTeams, createLeagueTeam, updateLeagueTeam, deleteLeagueTeam, subscribeLeagueMatches, generateSchedule, setMatchResult, computeMatchStandings, generateBracket, advanceBracket, LEAGUE_FORMATS, TEAM_SIZES, START_FORMATS, isTeamFormat, SUGGESTED_DIVISIONS, type League, type LeagueEvent, type LeagueMember, type EventEntry, type EventCard, type StandingRow, type LeagueTeam, type LeagueMatch } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { storage } from "@/lib/firebase";
 import { getDownloadURL, ref as storageRef, uploadBytes } from "firebase/storage";
@@ -13,7 +13,8 @@ import { inputCls, FieldLabel, Segmented, Avatar, Pos, btnGold, btnGhost, card, 
 // ─── League tools: the director console (UDisc "League tools" equivalent).
 // Persistent sidebar, dashboard-first, every admin control in one place.
 
-type Section = "dashboard" | "members" | "teams" | "matchplay" | "events" | "standings" | "settings" | "quicklink";
+type Section = "dashboard" | "members" | "teams" | "matchplay" | "events" | "teetimes" | "standings" | "settings" | "quicklink";
+const fmtHM = (ms: number) => new Date(ms).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 
 const fmtDate = (ms: number) => new Date(ms).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 const pad2 = (n: number) => String(n).padStart(2, "0");
@@ -37,6 +38,11 @@ export default function LeagueManagePage() {
   const [events, setEvents] = useState<LeagueEvent[]>([]);
   const [members, setMembers] = useState<LeagueMember[]>([]);
   const [entries, setEntries] = useState<EventEntry[]>([]); // primary event's entries — powers per-player division control
+  const [teeCards, setTeeCards] = useState<EventCard[]>([]); // selected event's tee-time groups
+  const [teeEntries, setTeeEntries] = useState<EventEntry[]>([]); // selected event's entries (names/photos)
+  const [teeEventId, setTeeEventId] = useState<string | null>(null); // which event's tee sheet (leagues have many)
+  const [teeSize, setTeeSize] = useState(4);
+  const [teeInt, setTeeInt] = useState(10);
   const [teams, setTeams] = useState<LeagueTeam[]>([]);
   const [matches, setMatches] = useState<LeagueMatch[]>([]);
   const [standings, setStandings] = useState<StandingRow[]>([]);
@@ -130,10 +136,17 @@ export default function LeagueManagePage() {
   const divisions = (league?.settings.divisions ?? []).filter((d) => d && d !== "Open").length ? (league!.settings.divisions ?? []) : [];
   useEffect(() => { if (!primaryEventId) { setEntries([]); return; } getEntries(primaryEventId).then(setEntries).catch(() => {}); }, [primaryEventId]);
   const entryOf = useMemo(() => new Map(entries.map((e) => [e.id, e])), [entries]);
+  // Tee sheet targets a selectable event (leagues have many); defaults to the next/primary event.
+  const teeEvent = events.find((e) => e.id === teeEventId) ?? primaryEvent;
+  const teeEid = teeEvent?.id ?? null;
+  useEffect(() => { setTeeEventId(primaryEventId); }, [primaryEventId]);
+  useEffect(() => { if (!teeEid) { setTeeCards([]); setTeeEntries([]); return; } getCards(teeEid).then(setTeeCards).catch(() => {}); getEntries(teeEid).then(setTeeEntries).catch(() => {}); }, [teeEid]);
+  useEffect(() => { if (teeEvent) { setTeeSize(teeEvent.teeGroupSize ?? 4); setTeeInt(teeEvent.teeIntervalMin ?? 10); } }, [teeEid]); // eslint-disable-line react-hooks/exhaustive-deps
+  const teeEntryOf = useMemo(() => new Map(teeEntries.map((e) => [e.id, e])), [teeEntries]);
   useEffect(() => { if (primaryEvent) setEd(edFromEvent(primaryEvent)); }, [primaryEventId]); // eslint-disable-line react-hooks/exhaustive-deps
   // A tournament/one-off is really a single event — exit straight to it, skipping the container page.
   const exitHref = !isLeagueKind && primaryEvent ? `/leagues/${slug}/e/${primaryEvent.id}` : `/leagues/${slug}`;
-  const isTeeTimes = (league?.settings.startFormat ?? "") === "Tee times";
+  const isTeeTimes = (primaryEvent?.startFormat ?? league?.settings.startFormat ?? "") === "Tee times";
   // Day-of check-in: enabled per-league, unlocks ~3h before the event start.
   const checkInsOn = league?.settings.checkIns === true;
   const checkInOpen = !!(checkInsOn && primaryEvent && now >= primaryEvent.date - 3 * 3600_000);
@@ -143,6 +156,7 @@ export default function LeagueManagePage() {
     ...(isTeamLeague ? [{ key: "teams" as const, label: "Teams" }] : []),
     ...(isMatchPlay ? [{ key: "matchplay" as const, label: "Match play" }] : []),
     { key: "events", label: isLeagueKind ? "Events" : "Event" },
+    ...(isTeeTimes && primaryEvent ? [{ key: "teetimes" as const, label: "Tee times" }] : []),
     { key: "settings", label: "Settings" },
     { key: "quicklink", label: "Quick link" },
   ];
@@ -200,6 +214,30 @@ export default function LeagueManagePage() {
     setEditEvent(true);
   };
 
+  const reloadTee = async () => { if (teeEid) setTeeCards(await getCards(teeEid)); };
+  const genTee = async () => {
+    if (!teeEvent || busy) return;
+    setBusy(true);
+    try {
+      await generateTeeTimes(teeEvent.id, teeEntries, { size: teeSize, intervalMin: teeInt, startMs: teeEvent.roundStarts?.[0] ?? teeEvent.date, divisions: league?.settings.divisions });
+      await reloadTee();
+      const fresh = await getLeagueEvents(league!.id); setEvents(fresh);
+    } finally { setBusy(false); }
+  };
+  const editTee = async (cardId: string, hhmm: string) => {
+    if (!teeEvent || !hhmm) return;
+    const base = new Date(teeEvent.roundStarts?.[0] ?? teeEvent.date);
+    const [h, m] = hhmm.split(":").map(Number);
+    base.setHours(h, m, 0, 0);
+    setTeeCards((cur) => cur.map((c) => (c.id === cardId ? { ...c, teeTime: base.getTime() } : c)));
+    await setCardTeeTime(teeEvent.id, cardId, base.getTime());
+  };
+  const moveTee = async (pid: string, toCardId: string) => {
+    if (!teeEvent) return;
+    await moveEntryToCard(teeEvent.id, pid, toCardId);
+    await reloadTee();
+  };
+
   const setRoundTime = (i: number, patch: { date?: string; time?: string }) =>
     setEd((s) => { const extra = [...(s.extra ?? [])]; while (extra.length <= i) extra.push({ date: s.date, time: s.time }); extra[i] = { ...extra[i], ...patch }; return { ...s, extra }; });
 
@@ -214,12 +252,10 @@ export default function LeagueManagePage() {
             return new Date(`${rv?.date || ed.date}T${rv?.time || ed.time || "17:30"}`).getTime();
           })]
         : null;
-      const isTee = primaryEvent.startFormat === "Tee times";
       await updateEventDetails(primaryEvent.id, {
         name: ed.name, date: round1, roundStarts, roundCount: ed.rounds, holes: ed.holes,
         buyIn: ed.buyIn.trim() === "" ? null : Number(ed.buyIn), capacity: ed.cap.trim() === "" ? null : Number(ed.cap),
         registrationCloseAt: ed.reg ? new Date(ed.reg).getTime() : null,
-        ...(isTee ? { teeGroupSize: ed.teeSize, teeIntervalMin: ed.teeInterval } : {}),
       });
       const fresh = await getLeagueEvents(league.id); setEvents(fresh);
       setEditEvent(false); // collapse back to the clean summary
@@ -681,18 +717,11 @@ export default function LeagueManagePage() {
                     <label className="block sm:col-span-2"><FieldLabel>Registration closes</FieldLabel><input type="datetime-local" value={ed.reg} onChange={(e) => setEd((s) => ({ ...s, reg: e.target.value }))} className={`${inputCls} [color-scheme:dark]`} /></label>
                   </div>
                   {primaryEvent.startFormat === "Tee times" && (
-                    <div className="mt-6 rounded-xl border border-[var(--hair)] bg-[var(--card)] p-4">
-                      <div className="mb-3 flex flex-wrap items-center gap-2">
-                        <IconClock className="h-4 w-4 text-[var(--gold)]" />
-                        <span className="text-sm font-bold text-[var(--cream)]">Tee times</span>
-                        <span className="text-[11px] text-[var(--sage-dim)]">auto-generate when registration closes</span>
-                      </div>
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <div><FieldLabel>Players per group</FieldLabel><Segmented options={["2", "3", "4"]} value={String(ed.teeSize)} onChange={(v) => setEd((s) => ({ ...s, teeSize: Number(v) }))} /></div>
-                        <div><FieldLabel>Minutes between groups</FieldLabel><Segmented options={["8", "10", "12", "15"]} value={String(ed.teeInterval)} onChange={(v) => setEd((s) => ({ ...s, teeInterval: Number(v) }))} /></div>
-                      </div>
-                      <p className="mt-3 text-[11px] text-[var(--sage-dim)]">When registration closes, groups build automatically — split by division, staggered from round 1&apos;s start. You can still reshuffle or tweak times on the event&apos;s tee sheet.</p>
-                    </div>
+                    <button type="button" onClick={() => setSection("teetimes")} className="mt-6 flex w-full items-center gap-3 rounded-xl border border-[var(--hair)] bg-[var(--card)] p-4 text-left transition-colors hover:border-[var(--hair-strong)]">
+                      <IconClock className="h-4 w-4 shrink-0 text-[var(--gold)]" />
+                      <span className="min-w-0 flex-1 text-sm text-[var(--cream-60)]"><b className="font-semibold text-[var(--cream)]">Tee times</b> — set group size, interval, and hand-tweak the sheet on the Tee times page.</span>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-4 w-4 shrink-0 text-[var(--gold)]"><path d="M9 6l6 6-6 6" /></svg>
+                    </button>
                   )}
                   {ed.rounds > 1 && (
                     <div className="mt-6">
@@ -732,6 +761,75 @@ export default function LeagueManagePage() {
                   <div className="grid gap-2.5">{past.map((ev) => <EventRow key={ev.id} ev={ev} />)}</div>
                 </div>
               )}
+            </div>
+          )}
+
+          {section === "teetimes" && teeEvent && (
+            <div className="grid gap-6">
+              <div className={`${card} p-6`}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h2 className="font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">Tee times</h2>
+                  <Link href={`/leagues/${slug}/e/${teeEvent.id}?tab=scores`} className="font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--gold)] transition-opacity hover:opacity-80">Public tee sheet →</Link>
+                </div>
+                {upcoming.length > 1 && (
+                  <label className="mt-4 block">
+                    <FieldLabel>Which event</FieldLabel>
+                    <select value={teeEid ?? ""} onChange={(e) => setTeeEventId(e.target.value)} className={inputCls}>
+                      {upcoming.map((ev) => <option key={ev.id} value={ev.id}>{ev.name} · {fmtDate(ev.date)}</option>)}
+                    </select>
+                  </label>
+                )}
+                <p className="mt-3 text-xs text-[var(--sage-dim)]">Groups build automatically when registration closes ({fmtDate(teeEvent.registrationCloseAt || teeEvent.roundStarts?.[0] || teeEvent.date)}). Configure and hand-tweak here anytime.</p>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <div><FieldLabel>Players per group</FieldLabel><Segmented options={["2", "3", "4"]} value={String(teeSize)} onChange={(v) => setTeeSize(Number(v))} /></div>
+                  <div><FieldLabel>Minutes between groups</FieldLabel><Segmented options={["8", "10", "12", "15"]} value={String(teeInt)} onChange={(v) => setTeeInt(Number(v))} /></div>
+                </div>
+                <div className="mt-4 flex items-center gap-3">
+                  <button onClick={genTee} disabled={busy || teeEntries.length === 0} className={btnGold}>{busy ? "Building…" : teeCards.length ? "Regenerate groups" : "Generate groups"}</button>
+                  {teeEntries.length === 0 && <span className="text-xs text-[var(--sage-dim)]">No players in yet.</span>}
+                </div>
+              </div>
+              {teeCards.length === 0 ? (
+                <p className="text-sm text-[var(--sage-dim)]">No groups yet. Set the size &amp; interval above and generate — or they&apos;ll build automatically when registration closes.</p>
+              ) : (() => {
+                const groups = new Map<string, EventCard[]>();
+                for (const c of teeCards) { const d = c.division || ""; if (!groups.has(d)) groups.set(d, []); groups.get(d)!.push(c); }
+                const multiDiv = groups.size > 1;
+                return (
+                  <div className="grid gap-6">
+                    {[...groups.entries()].map(([div, gcards]) => (
+                      <div key={div || "open"}>
+                        {multiDiv && <div className="mb-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--gold)]">{div || "Open"}</div>}
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                          {gcards.map((c) => (
+                            <div key={c.id} className={`${card} p-4`}>
+                              <div className="mb-3 flex items-center justify-between gap-2">
+                                <span className="font-[family-name:var(--font-heading)] text-sm font-extrabold text-[var(--cream)]">Group {c.number}</span>
+                                <input type="time" value={c.teeTime ? toTimeInput(c.teeTime) : ""} onChange={(e) => editTee(c.id, e.target.value)} className="rounded-lg bg-[var(--gold-dim)] px-2 py-1 font-mono text-[11px] font-bold text-[var(--gold)] outline-none [color-scheme:dark]" />
+                              </div>
+                              <div className="space-y-2">
+                                {c.playerIds.map((pid) => (
+                                  <div key={pid} className="flex items-center gap-2 text-sm text-[var(--text-body)]">
+                                    <Avatar url={teeEntryOf.get(pid)?.photo} name={teeEntryOf.get(pid)?.name ?? "?"} size={22} ring={false} />
+                                    <span className="min-w-0 flex-1 truncate text-[var(--cream)]">{teeEntryOf.get(pid)?.name ?? "Player"}</span>
+                                    {teeCards.length > 1 && (
+                                      <select value="" onChange={(e) => { if (e.target.value) moveTee(pid, e.target.value); }} title="Move to another group" className="shrink-0 rounded-md bg-white/[0.05] px-1.5 py-1 text-[10px] text-[var(--sage)] outline-none">
+                                        <option value="">move…</option>
+                                        {teeCards.filter((o) => o.id !== c.id).map((o) => <option key={o.id} value={o.id}>Group {o.number}{o.teeTime ? ` · ${fmtHM(o.teeTime)}` : ""}</option>)}
+                                      </select>
+                                    )}
+                                  </div>
+                                ))}
+                                {c.playerIds.length === 0 && <p className="text-xs text-[var(--cream-38)]">Empty group</p>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           )}
 
