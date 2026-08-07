@@ -4,11 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, getEntries, updateEntry, checkInEntry, updateEventDetails, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRoles, setMemberDivision, addDirectorByUsername, setLeagueLogo, isLeagueAdmin, subscribeLeagueTeams, createLeagueTeam, updateLeagueTeam, deleteLeagueTeam, subscribeLeagueMatches, generateSchedule, setMatchResult, computeMatchStandings, generateBracket, advanceBracket, LEAGUE_FORMATS, TEAM_SIZES, START_FORMATS, isTeamFormat, SUGGESTED_DIVISIONS, type League, type LeagueEvent, type LeagueMember, type EventEntry, type StandingRow, type LeagueTeam, type LeagueMatch } from "@/lib/leagues";
+import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, getEntries, updateEntry, checkInEntry, updateEventDetails, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRoles, setMemberDivision, setLeagueLogo, isLeagueAdmin, subscribeLeagueTeams, createLeagueTeam, updateLeagueTeam, deleteLeagueTeam, subscribeLeagueMatches, generateSchedule, setMatchResult, computeMatchStandings, generateBracket, advanceBracket, LEAGUE_FORMATS, TEAM_SIZES, START_FORMATS, isTeamFormat, SUGGESTED_DIVISIONS, type League, type LeagueEvent, type LeagueMember, type EventEntry, type StandingRow, type LeagueTeam, type LeagueMatch } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { storage } from "@/lib/firebase";
 import { getDownloadURL, ref as storageRef, uploadBytes } from "firebase/storage";
-import { inputCls, FieldLabel, Segmented, Avatar, Pos, btnGold, btnGhost, card, cardHover, IconCalendar, IconUsers, IconPlus, IconPin, IconClock } from "@/components/leagues/ui";
+import { inputCls, FieldLabel, Segmented, Avatar, Pos, btnGold, btnGhost, card, cardHover, IconCalendar, IconUsers, IconPlus, IconPin, IconClock, IconShare } from "@/components/leagues/ui";
 
 // ─── League tools: the director console (UDisc "League tools" equivalent).
 // Persistent sidebar, dashboard-first, every admin control in one place.
@@ -72,10 +72,6 @@ export default function LeagueManagePage() {
   const [eventSaved, setEventSaved] = useState(false);
   const [editEvent, setEditEvent] = useState(false); // false = clean summary, true = edit form
 
-  // Co-director add-by-username
-  const [coDir, setCoDir] = useState("");
-  const [addingCoDir, setAddingCoDir] = useState(false);
-  const [coDirNote, setCoDirNote] = useState("");
   const [roleMenu, setRoleMenu] = useState<string | null>(null); // which member's role checklist is open
 
   useEffect(() => {
@@ -109,7 +105,9 @@ export default function LeagueManagePage() {
 
   const admin = useMemo(() => !!league && isLeagueAdmin(league, cid), [league, cid]);
   const [now] = useState(() => Date.now());
-  const upcoming = events.filter((e) => e.status !== "complete" && e.status !== "cancelled" && e.date > now - 12 * 3600_000);
+  // Multi-day events stay "upcoming/live" until their LAST round (+ buffer), not just round 1.
+  const eventEnd = (e: LeagueEvent) => (e.roundStarts && e.roundStarts.length ? e.roundStarts[e.roundStarts.length - 1] : e.date);
+  const upcoming = events.filter((e) => e.status !== "complete" && e.status !== "cancelled" && eventEnd(e) > now - 12 * 3600_000);
   const past = events.filter((e) => !upcoming.includes(e)).reverse();
   const photoOf = useMemo(() => new Map(members.map((m) => [m.id, m.photo])), [members]);
 
@@ -142,7 +140,7 @@ export default function LeagueManagePage() {
   const checkInsOn = league?.settings.checkIns === true;
   const checkInOpen = !!(checkInsOn && primaryEvent && now >= primaryEvent.date - 3 * 3600_000);
   const nav: { key: Section; label: string }[] = [
-    { key: "dashboard", label: `${NOUN} dashboard` },
+    { key: "dashboard", label: "Dashboard" },
     { key: "members", label: "Players" },
     ...(isTeamLeague ? [{ key: "teams" as const, label: "Teams" }] : []),
     ...(isMatchPlay ? [{ key: "matchplay" as const, label: "Match play" }] : []),
@@ -233,19 +231,6 @@ export default function LeagueManagePage() {
     } finally { setBusy(false); }
   };
 
-  const addCoDirector = async () => {
-    if (!league || !coDir.trim() || addingCoDir) return;
-    setAddingCoDir(true); setCoDirNote("");
-    try {
-      const m = await addDirectorByUsername(league.id, coDir);
-      if (!m) { setCoDirNote("No player found with that username."); return; }
-      setMembers((cur) => (cur.some((x) => x.id === m.id) ? cur.map((x) => (x.id === m.id ? { ...x, role: "director" } : x)) : [...cur, m]));
-      setLeague((l) => (l ? { ...l, adminIds: l.adminIds.includes(m.id) ? l.adminIds : [...l.adminIds, m.id] } : l));
-      setCoDir(""); setCoDirNote(`${m.name || "@" + m.username} is now a director.`);
-      setTimeout(() => setCoDirNote(""), 3500);
-    } finally { setAddingCoDir(false); }
-  };
-
   const toggleCheckIn = async (memberId: string) => {
     if (!primaryEventId) return;
     const arrived = !entryOf.get(memberId)?.arrivedAt;
@@ -297,7 +282,12 @@ export default function LeagueManagePage() {
       </div>
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-bold text-[var(--cream)]">{ev.name}</div>
-        <div className="truncate text-xs text-[var(--cream-38)]">{fmtDate(ev.date)}{ev.entryCount > 0 ? <> · <span className="font-mono">{ev.entryCount}</span> in</> : ""}</div>
+        <div className="truncate text-xs text-[var(--cream-38)]">
+          {ev.roundStarts && ev.roundStarts.length > 1
+            ? ev.roundStarts.map((ms, i) => `R${i + 1} ${new Date(ms).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`).join(" · ")
+            : fmtDate(ev.date)}
+          {ev.entryCount > 0 ? <> · <span className="font-mono">{ev.entryCount}</span> in</> : ""}
+        </div>
       </div>
       {ev.status === "scheduled" && Date.now() >= ev.date && Date.now() <= ev.date + 6 * 3600_000 && ev.entryCount > 0 ? (
         <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--blue-dim)] px-2 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.1em] text-[var(--blue)]"><span className="live-dot h-1 w-1 rounded-full bg-[var(--blue)]" />Live</span>
@@ -358,11 +348,11 @@ export default function LeagueManagePage() {
 
               {/* Quick navigation */}
               <div className="grid gap-3 sm:grid-cols-3">
-                <Link href="/leagues/new" className={`${card} ${cardHover} group p-5`}>
-                  <span className="grid h-11 w-11 place-items-center rounded-[10px] bg-[var(--gold-dim)] text-[var(--gold)]"><IconPlus /></span>
-                  <div className="mt-3 font-[family-name:var(--font-heading)] font-bold text-[var(--cream)]">Create event</div>
-                  <div className="mt-0.5 text-xs text-[var(--cream-60)]">List a night, a season, or a tournament.</div>
-                </Link>
+                <button onClick={() => setSection("quicklink")} className={`${card} ${cardHover} group p-6 text-left`}>
+                  <span className="grid h-11 w-11 place-items-center rounded-[10px] bg-[var(--gold-dim)] text-[var(--gold)]"><IconShare /></span>
+                  <div className="mt-3 font-[family-name:var(--font-heading)] font-bold text-[var(--cream)]">Share</div>
+                  <div className="mt-0.5 text-xs text-[var(--cream-60)]">Public page &amp; check-in links.</div>
+                </button>
                 <button onClick={() => setSection("events")} className={`${card} ${cardHover} group p-6 text-left`}>
                   <span className="grid h-11 w-11 place-items-center rounded-[10px] bg-[var(--gold-dim)] text-[var(--gold)]"><IconCalendar /></span>
                   <div className="mt-3 font-[family-name:var(--font-heading)] font-bold text-[var(--cream)]">All events</div>
@@ -385,18 +375,9 @@ export default function LeagueManagePage() {
 
           {section === "members" && (
             <div className="grid gap-4">
-            <div className={`${card} p-5`}>
-              <FieldLabel>Add a director <span className="normal-case tracking-normal text-[var(--sage-dim)]">— by @username, even if they haven&apos;t joined</span></FieldLabel>
-              <div className="mt-1 flex flex-wrap items-center gap-2">
-                <input value={coDir} onChange={(e) => setCoDir(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCoDirector(); } }} placeholder="@username" className={`${inputCls} max-w-[240px]`} />
-                <button onClick={addCoDirector} disabled={!coDir.trim() || addingCoDir} className="h-11 shrink-0 rounded-xl border border-[var(--gold)]/40 bg-[var(--gold-dim)] px-4 text-sm font-bold text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/20 disabled:opacity-40">{addingCoDir ? "Adding…" : "+ Add director"}</button>
-                {coDirNote && <span className="text-xs font-semibold text-[var(--cream-60)]">{coDirNote}</span>}
-              </div>
-              <p className="mt-2.5 text-[11px] text-[var(--sage-dim)]">Directors can run everything in here — add as many co-directors as you need. Promote existing players below.</p>
-              {checkInsOn && (
-                <p className="mt-2 text-[11px] font-semibold text-[var(--gold)]">{checkInOpen ? "Check-in is open — mark players in as they arrive." : primaryEvent ? `Check-in unlocks ~3h before start (${fmtDate(primaryEvent.date)}).` : "Check-in is on; it unlocks ~3h before the event."}</p>
-              )}
-            </div>
+            {checkInsOn && (
+              <p className="px-1 text-[11px] font-semibold text-[var(--gold)]">{checkInOpen ? "Check-in is open — mark players in as they arrive." : primaryEvent ? `Check-in unlocks ~3h before start (${fmtDate(primaryEvent.date)}).` : "Check-in is on; it unlocks ~3h before the event."}</p>
+            )}
             <div className={card}>
               {members.map((m) => (
                 <div key={m.id} className="flex items-center gap-3.5 border-b border-white/[0.05] px-5 py-3.5 last:border-b-0">
@@ -834,7 +815,7 @@ export default function LeagueManagePage() {
                     </div>
                   )}
                 </div>
-                <div><FieldLabel>Start format</FieldLabel><Segmented options={[...START_FORMATS]} value={startDraft} onChange={setStartDraft} /></div>
+                <div><FieldLabel>Start format</FieldLabel><Segmented options={[...START_FORMATS]} value={startDraft} onChange={setStartDraft} /><p className="mt-1.5 text-[11px] text-[var(--sage-dim)]">{startDraft === "Tee times" ? "Groups start in staggered time slots, all off hole 1." : startDraft === "Flex" ? "Players tee off any time in a window and report their score." : "Everyone tees off at once, each group on a different hole."}</p></div>
                 <div className="block sm:col-span-2">
                   <FieldLabel>Divisions <span className="normal-case tracking-normal text-[var(--sage-dim)]">— players self-sort at check-in; add as many as you like</span></FieldLabel>
                   <div className="mb-2.5 flex flex-wrap gap-2">

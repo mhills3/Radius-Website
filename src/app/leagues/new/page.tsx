@@ -333,6 +333,7 @@ export default function EventWizard() {
                 <div>
                   <FieldLabel>Start format</FieldLabel>
                   <Segmented options={[...START_FORMATS]} value={startFormat} onChange={setStartFormat} />
+                  <p className="mt-2 text-xs text-[var(--sage-dim)]">{startFormat === "Tee times" ? "Groups start in staggered time slots, all off hole 1." : startFormat === "Flex" ? "Players tee off any time in a window and report their score." : "Everyone tees off at once, each group on a different hole."}</p>
                 </div>
               )}
               {kind === "clinic" && (
