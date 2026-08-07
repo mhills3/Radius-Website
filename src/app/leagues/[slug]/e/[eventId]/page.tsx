@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { EVENT_EXTRAS, registrationOpen, getLeagueBySlug, getLeagueMembers, setPartnerRequest, getEvent, getCards, checkIn, updateEntry, removeEntry, addWalkupEntry, generateCards, generateTeeTimes, generateGroups, setCardTeeTime, moveEntryToCard, setEventStatus, setRoundScore, updateEventConfig, updateEventSchedule, reassignBagTags, computeStandings, computeSeasonStandings, computeHandicaps, applyHandicaps, subscribeEntries, subscribeLeagueMatches, computeMatchStandings, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCourseHoles, setTeamName, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember, type StandingRow, type SeasonStandings, type LeagueMatch } from "@/lib/leagues";
+import { EVENT_EXTRAS, registrationOpen, getLeagueBySlug, getLeagueMembers, setPartnerRequest, getEvent, getCards, checkIn, updateEntry, removeEntry, addWalkupEntry, generateCards, generateTeeTimes, generateGroups, setCardTeeTime, moveEntryToCard, setEventStatus, setRoundScore, updateEventConfig, updateEventSchedule, reassignBagTags, computeStandings, computeSeasonStandings, computeHandicaps, applyHandicaps, subscribeEntries, subscribeLeagueMatches, computeMatchStandings, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCourseHoles, getCourseHoleCount, setTeamName, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember, type StandingRow, type SeasonStandings, type LeagueMatch } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { SectionTitle, Avatar, Pos, btnGold, card, plural, BackLink, IconSliders, IconShare, IconClock, IconSparkles, IconMoon, IconHeart, IconTag, IconVenus, IconDollar, IconPin, IconDisc, IconEyeOff, IconUsers, IconCalendar, IconTrophy, IconTarget, IconLeaf } from "@/components/leagues/ui";
 
@@ -172,10 +172,12 @@ export default function LeagueEventPage() {
     const regClose = event.registrationCloseAt || (event.roundStarts?.[0] ?? event.date);
     if (Date.now() < regClose) return;
     autoGenRef.current = true;
-    generateGroups(event.id, entries, { format: event.startFormat, size: event.teeGroupSize ?? 4, intervalMin: event.teeIntervalMin ?? 10, startMs: event.roundStarts?.[0] ?? event.date, divisions: league.settings.divisions, holeCount: event.holes })
-      .then(() => reload(event.id))
-      .then(() => setEvent((e) => (e ? { ...e, teeGenerated: true } : e)))
-      .catch(() => { autoGenRef.current = false; });
+    (async () => {
+      const hc = event.courseId ? await getCourseHoleCount(event.courseId).catch(() => null) : null;
+      await generateGroups(event.id, entries, { format: event.startFormat, size: event.teeGroupSize ?? 4, intervalMin: event.teeIntervalMin ?? 10, startMs: event.roundStarts?.[0] ?? event.date, divisions: league.settings.divisions, holeCount: hc ?? event.holes });
+      await reload(event.id);
+      setEvent((e) => (e ? { ...e, teeGenerated: true } : e));
+    })().catch(() => { autoGenRef.current = false; });
   }, [event, league, cid, cards.length, entries.length]);
 
   useEffect(() => {

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, getEntries, updateEntry, checkInEntry, getCards, generateGroups, setCardTeeTime, setCardStartHole, moveEntryToCard, updateEventDetails, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRoles, setMemberDivision, setLeagueLogo, isLeagueAdmin, subscribeLeagueTeams, createLeagueTeam, updateLeagueTeam, deleteLeagueTeam, subscribeLeagueMatches, generateSchedule, setMatchResult, computeMatchStandings, generateBracket, advanceBracket, LEAGUE_FORMATS, TEAM_SIZES, START_FORMATS, isTeamFormat, SUGGESTED_DIVISIONS, type League, type LeagueEvent, type LeagueMember, type EventEntry, type EventCard, type StandingRow, type LeagueTeam, type LeagueMatch } from "@/lib/leagues";
+import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, getEntries, updateEntry, checkInEntry, getCards, generateGroups, setCardTeeTime, setCardStartHole, moveEntryToCard, getCourseHoleCount, updateEventDetails, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRoles, setMemberDivision, setLeagueLogo, isLeagueAdmin, subscribeLeagueTeams, createLeagueTeam, updateLeagueTeam, deleteLeagueTeam, subscribeLeagueMatches, generateSchedule, setMatchResult, computeMatchStandings, generateBracket, advanceBracket, LEAGUE_FORMATS, TEAM_SIZES, START_FORMATS, isTeamFormat, SUGGESTED_DIVISIONS, type League, type LeagueEvent, type LeagueMember, type EventEntry, type EventCard, type StandingRow, type LeagueTeam, type LeagueMatch } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { storage } from "@/lib/firebase";
 import { getDownloadURL, ref as storageRef, uploadBytes } from "firebase/storage";
@@ -44,6 +44,7 @@ export default function LeagueManagePage() {
   const [teeSize, setTeeSize] = useState(4);
   const [teeInt, setTeeInt] = useState(10);
   const [flexEnd, setFlexEnd] = useState(""); // Flex play-window end (datetime-local)
+  const [courseHoleCount, setCourseHoleCount] = useState<number | null>(null); // real hole count of the event's course
   const [teams, setTeams] = useState<LeagueTeam[]>([]);
   const [matches, setMatches] = useState<LeagueMatch[]>([]);
   const [standings, setStandings] = useState<StandingRow[]>([]);
@@ -144,6 +145,8 @@ export default function LeagueManagePage() {
   useEffect(() => { if (!teeEid) { setTeeCards([]); setTeeEntries([]); return; } getCards(teeEid).then(setTeeCards).catch(() => {}); getEntries(teeEid).then(setTeeEntries).catch(() => {}); }, [teeEid]);
   useEffect(() => { if (teeEvent) { setTeeSize(teeEvent.teeGroupSize ?? 4); setTeeInt(teeEvent.teeIntervalMin ?? 10); setFlexEnd(teeEvent.windowEndsAt ? `${toDateInput(teeEvent.windowEndsAt)}T${toTimeInput(teeEvent.windowEndsAt)}` : ""); } }, [teeEid]); // eslint-disable-line react-hooks/exhaustive-deps
   const teeEntryOf = useMemo(() => new Map(teeEntries.map((e) => [e.id, e])), [teeEntries]);
+  useEffect(() => { const cid2 = teeEvent?.courseId; if (!cid2) { setCourseHoleCount(null); return; } getCourseHoleCount(cid2).then(setCourseHoleCount).catch(() => setCourseHoleCount(null)); }, [teeEvent?.courseId]);
+  const holeCount = courseHoleCount ?? teeEvent?.holes ?? 18;
   useEffect(() => { if (primaryEvent) setEd(edFromEvent(primaryEvent)); }, [primaryEventId]); // eslint-disable-line react-hooks/exhaustive-deps
   // A tournament/one-off is really a single event — exit straight to it, skipping the container page.
   const exitHref = !isLeagueKind && primaryEvent ? `/leagues/${slug}/e/${primaryEvent.id}` : `/leagues/${slug}`;
@@ -228,7 +231,7 @@ export default function LeagueManagePage() {
     if (!teeEvent || busy) return;
     setBusy(true);
     try {
-      await generateGroups(teeEvent.id, teeEntries, { format: teeEvent.startFormat, size: teeSize, intervalMin: teeInt, startMs: teeEvent.roundStarts?.[0] ?? teeEvent.date, divisions: league?.settings.divisions, holeCount: teeEvent.holes });
+      await generateGroups(teeEvent.id, teeEntries, { format: teeEvent.startFormat, size: teeSize, intervalMin: teeInt, startMs: teeEvent.roundStarts?.[0] ?? teeEvent.date, divisions: league?.settings.divisions, holeCount });
       await reloadTee();
       const fresh = await getLeagueEvents(league!.id); setEvents(fresh);
     } finally { setBusy(false); }
@@ -799,7 +802,7 @@ export default function LeagueManagePage() {
                     </select>
                   </label>
                 )}
-                <p className="mt-3 text-xs text-[var(--sage-dim)]">{teeFormat === "Tee times" ? `Groups build automatically when registration closes (${fmtDate(teeEvent.registrationCloseAt || teeEvent.roundStarts?.[0] || teeEvent.date)}), split by division and staggered.` : teeFormat === "Shotgun" ? "Groups build at registration close, each assigned a start hole across the course." : "Players tee off any time in the window — groups are optional pairings you can share."} Configure and hand-tweak here anytime.</p>
+                <p className="mt-3 text-xs text-[var(--sage-dim)]">{teeFormat === "Tee times" ? `Groups build automatically when registration closes (${fmtDate(teeEvent.registrationCloseAt || teeEvent.roundStarts?.[0] || teeEvent.date)}), split by division and staggered.` : teeFormat === "Shotgun" ? `Groups build at registration close, one per hole across ${teeEvent.courseName || "the course"}'s ${holeCount} holes — extras wrap into A/B waves.` : "Players tee off any time in the window — groups are optional pairings you can share."} Configure and hand-tweak here anytime.</p>
                 <div className={`mt-4 grid gap-4 ${teeFormat === "Tee times" ? "sm:grid-cols-2" : ""}`}>
                   <div><FieldLabel>Players per group</FieldLabel><Segmented options={["2", "3", "4"]} value={String(teeSize)} onChange={(v) => setTeeSize(Number(v))} /></div>
                   {teeFormat === "Tee times" && <div><FieldLabel>Minutes between groups</FieldLabel><Segmented options={["8", "10", "12", "15"]} value={String(teeInt)} onChange={(v) => setTeeInt(Number(v))} /></div>}
@@ -843,7 +846,7 @@ export default function LeagueManagePage() {
                                 {teeFormat === "Tee times" ? (
                                   <input type="time" value={c.teeTime ? toTimeInput(c.teeTime) : ""} onChange={(e) => editTee(c.id, e.target.value)} className="rounded-lg bg-[var(--gold-dim)] px-2 py-1 font-mono text-[11px] font-bold text-[var(--gold)] outline-none [color-scheme:dark]" />
                                 ) : teeFormat === "Shotgun" ? (
-                                  <span className="inline-flex items-center gap-1 rounded-lg bg-[var(--gold-dim)] pl-2 pr-1 py-1 font-mono text-[10px] font-bold text-[var(--gold)]">HOLE <input type="number" min={1} max={teeEvent.holes} value={c.startHole} onChange={(e) => editHole(c.id, Number(e.target.value))} className="w-10 rounded bg-transparent text-center text-[11px] font-bold text-[var(--gold)] outline-none" />{waveOf(c) && <span className="ml-0.5 rounded bg-[var(--gold)]/25 px-1">{waveOf(c)}</span>}</span>
+                                  <span className="inline-flex items-center gap-1 rounded-lg bg-[var(--gold-dim)] pl-2 pr-1 py-1 font-mono text-[10px] font-bold text-[var(--gold)]">HOLE <input type="number" min={1} max={holeCount} value={c.startHole} onChange={(e) => editHole(c.id, Number(e.target.value))} className="w-10 rounded bg-transparent text-center text-[11px] font-bold text-[var(--gold)] outline-none" />{waveOf(c) && <span className="ml-0.5 rounded bg-[var(--gold)]/25 px-1">{waveOf(c)}</span>}</span>
                                 ) : null}
                               </div>
                               <div className="space-y-2">

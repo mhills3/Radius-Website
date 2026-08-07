@@ -1228,6 +1228,12 @@ export async function getCourseHoles(courseId: string): Promise<HoleInfo[] | nul
     return out;
   } catch { holeInfoCache.set(courseId, null); return null; }
 }
+/** Number of holes on a course (from its hole/layout data), or null if unknown. Powers shotgun spread. */
+export async function getCourseHoleCount(courseId: string): Promise<number | null> {
+  const holes = await getCourseHoles(courseId);
+  return holes && holes.length ? holes.length : null;
+}
+
 export async function getCoursePars(courseId: string): Promise<number[] | null> {
   if (parCache.has(courseId)) return parCache.get(courseId)!;
   const holes = await getCourseHoles(courseId);
