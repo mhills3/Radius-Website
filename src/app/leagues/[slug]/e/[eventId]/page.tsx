@@ -626,32 +626,6 @@ export default function LeagueEventPage() {
       </nav>
 
       {/* About */}
-      {tab === "about" && admin && open && (() => {
-        const secondary = !scoringKind ? null : liveNow
-          ? (event.roundCount < 6 ? { label: `Add round ${event.roundCount + 1}`, fn: addRound } : null)
-          : (isTeamFormat ? { label: "Randomize teams", fn: doTeams } : { label: "Apply handicaps", fn: doHandicaps });
-        return (
-          <div className="mb-8 flex flex-wrap items-center gap-1.5 rounded-xl border border-[var(--hair)] bg-[var(--card)] p-2.5">
-            <span className="mr-auto pl-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--cream-38)]">Director actions</span>
-            {canComplete && <button onClick={complete} disabled={busy} className="h-9 rounded-[10px] bg-[var(--gold)] px-4 text-[13.5px] font-bold text-[#141B16] transition-colors hover:bg-[var(--gold-bright)] disabled:opacity-50">Complete event</button>}
-            {secondary && <button onClick={secondary.fn} disabled={busy} className="h-9 rounded-[10px] px-4 text-[13.5px] font-semibold text-[var(--cream-60)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)] disabled:opacity-50">{secondary.label}</button>}
-            <div className="relative" ref={menuRef}>
-              <button onClick={() => { setMenuOpen((o) => !o); setConfirmCancel(false); }} aria-label="More director actions" aria-expanded={menuOpen} className="grid h-9 w-9 place-items-center rounded-[10px] text-[var(--cream-60)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)]">⋯</button>
-              {menuOpen && (
-                <div className="absolute right-0 top-full z-20 mt-2 min-w-[210px] rounded-xl border border-[var(--hair)] bg-[var(--card-raised)] p-1.5">
-                  {scoringKind && !isTeamFormat && <button onClick={() => { doHandicaps(); setMenuOpen(false); }} className={menuItem}>Apply handicaps</button>}
-                  {scoringKind && isTeamFormat && <button onClick={() => { doTeams(); setMenuOpen(false); }} className={menuItem}>Randomize teams</button>}
-                  {scoringKind && event.roundCount < 6 && <button onClick={() => { addRound(); setMenuOpen(false); }} className={menuItem}>Add round {event.roundCount + 1}</button>}
-                  <button onClick={() => { if (confirmCancel) { cancel(); setMenuOpen(false); setConfirmCancel(false); } else setConfirmCancel(true); }} className={`${menuItem} text-[#f08c8c] hover:bg-[#f08c8c]/10 hover:text-[#f08c8c] ${confirmCancel ? "font-bold" : ""}`}>{confirmCancel ? "Confirm cancel event" : "Cancel event"}</button>
-                </div>
-              )}
-            </div>
-            <button onClick={copyLink} title={copied ? "Link copied" : "Copy check-in link"} aria-label="Copy check-in link" className="grid h-9 w-9 place-items-center rounded-[10px] bg-[var(--gold-dim)] text-[var(--gold)] transition-colors hover:bg-[rgba(232,181,96,0.25)]">
-              {copied ? <span className="text-xs font-bold">✓</span> : <IconShare className="h-4 w-4" />}
-            </button>
-          </div>
-        );
-      })()}
       {tab === "about" && (
         <section className="mb-[44px] grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_350px] lg:gap-11">
           <div className="min-w-0">
@@ -994,6 +968,21 @@ export default function LeagueEventPage() {
               )}
               {admin && open && (
                 <button onClick={() => setEditScores((v) => !v)} className={`ml-1 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wide transition-colors ${editScores ? "bg-[var(--gold)] text-[#141B16]" : "border border-[var(--hair-strong)] text-[var(--cream-60)] hover:text-[var(--cream)]"}`}>{editScores ? "Done" : "Enter scores"}</button>
+              )}
+              {admin && open && canComplete && <button onClick={complete} disabled={busy} className="rounded-full bg-[var(--gold)] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[#141B16] transition-colors hover:bg-[var(--gold-bright)] disabled:opacity-50">Complete</button>}
+              {admin && open && (
+                <div className="relative" ref={menuRef}>
+                  <button onClick={() => { setMenuOpen((o) => !o); setConfirmCancel(false); }} aria-label="More director actions" className="grid h-7 w-7 place-items-center rounded-full text-[var(--cream-60)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)]">⋯</button>
+                  {menuOpen && (
+                    <div className="absolute right-0 top-full z-20 mt-2 min-w-[200px] rounded-xl border border-[var(--hair)] bg-[var(--card-raised)] p-1.5">
+                      {!isTeamFormat && <button onClick={() => { doHandicaps(); setMenuOpen(false); }} className={menuItem}>Apply handicaps</button>}
+                      {isTeamFormat && <button onClick={() => { doTeams(); setMenuOpen(false); }} className={menuItem}>Randomize teams</button>}
+                      {event.roundCount < 6 && <button onClick={() => { addRound(); setMenuOpen(false); }} className={menuItem}>Add round {event.roundCount + 1}</button>}
+                      <button onClick={() => { copyLink(); }} className={menuItem}>{copied ? "Link copied ✓" : "Copy event link"}</button>
+                      <button onClick={() => { if (confirmCancel) { cancel(); setMenuOpen(false); setConfirmCancel(false); } else setConfirmCancel(true); }} className={`${menuItem} text-[#f08c8c] hover:bg-[#f08c8c]/10 hover:text-[#f08c8c] ${confirmCancel ? "font-bold" : ""}`}>{confirmCancel ? "Confirm cancel event" : "Cancel event"}</button>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           ) : undefined}
