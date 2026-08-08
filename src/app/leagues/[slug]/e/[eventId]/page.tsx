@@ -283,7 +283,18 @@ export default function LeagueEventPage() {
     if (pars) updateEntry(event.id, e.id, { scoreToPar });
   };
   const publishScores = () => {
-    entries.filter((e) => !e.dnf && typeof e.score !== "number" && e.holeScores?.some((h) => h > 0)).forEach(finalizeEntry);
+    // Publish is per ROUND, not per player. Gating on "has no score yet" meant
+    // anyone already carrying a round-1 total could never have round 2
+    // published — Nick sat on 52 for a completed two-round event and every
+    // press of this button skipped him. Publish the round whose slot is still
+    // empty; already-posted rounds are left alone, so this stays idempotent.
+    entries
+      .filter((e) => !e.dnf && e.holeScores?.some((h) => h > 0))
+      .filter((e) => {
+        const idx = Math.min(roundsDone(e), (event?.roundCount ?? 1) - 1);
+        return !((e.roundScores?.[idx] ?? 0) > 0);
+      })
+      .forEach(finalizeEntry);
     setScorecardOpen(false); setScorecardEdit(false);
   };
   const toggleDnf = (e: EventEntry) => {
