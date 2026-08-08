@@ -455,7 +455,14 @@ export default function LeagueEventPage() {
     return strokes + (e.penalty ?? 0) + (e.startingScore ?? 0) - par;
   };
   const isLiveBoard = event.status === "scheduled" && entries.some((e) => typeof e.score !== "number" && e.holeScores?.some((h) => h > 0));
-  const ranked = [...shown].filter((e) => scoreOf(e) != null && !e.dnf).sort((a, b) => (isLiveBoard ? deltaOf(a) - deltaOf(b) : adjOf(a) - adjOf(b)));
+  const roundsDone = (e: EventEntry) => e.roundScores?.filter((r) => r > 0).length ?? (typeof e.score === "number" ? event.roundCount : 0);
+  const finishedAll = (e: EventEntry) => roundsDone(e) >= event.roundCount;
+  const ranked = [...shown].filter((e) => scoreOf(e) != null && !e.dnf).sort((a, b) => {
+    // On a COMPLETED multi-round board, a player short a round can't out-rank a player who finished
+    // (their partial total isn't comparable). Otherwise rank by to-par (raw strokes if pars unknown).
+    if (event.status === "complete" && event.roundCount > 1) { const fa = finishedAll(a), fb = finishedAll(b); if (fa !== fb) return fa ? -1 : 1; }
+    return parTotal != null ? deltaOf(a) - deltaOf(b) : adjOf(a) - adjOf(b);
+  });
   // Multi-day: a champion is only crowned once EVERY round is in. Until then, top of the board is the LEADER.
   const finalized = event.roundCount === 1 || ranked.length === 0 || ranked.every((e) => (e.roundScores?.filter((r) => r > 0).length ?? 0) >= event.roundCount);
   const unscored = shown.filter((e) => !ranked.includes(e));
