@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { EVENT_EXTRAS, registrationOpen, getLeagueBySlug, getLeagueMembers, setPartnerRequest, getEvent, getCards, checkIn, updateEntry, removeEntry, addWalkupEntry, generateCards, generateTeeTimes, generateGroups, setCardTeeTime, moveEntryToCard, setEventStatus, setRoundScore, updateEventConfig, updateEventSchedule, reassignBagTags, computeStandings, computeSeasonStandings, computeHandicaps, applyHandicaps, subscribeEntries, subscribeLeagueMatches, computeMatchStandings, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCourseHoles, getCourseHoleCount, setTeamName, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember, type StandingRow, type SeasonStandings, type LeagueMatch } from "@/lib/leagues";
+import { EVENT_EXTRAS, registrationOpen, getLeagueBySlug, getLeagueMembers, setPartnerRequest, getEvent, getCards, checkIn, updateEntry, removeEntry, addWalkupEntry, generateCards, generateTeeTimes, generateGroups, setCardTeeTime, moveEntryToCard, setEventStatus, setRoundScore, updateEventConfig, updateEventSchedule, reassignBagTags, computeStandings, computeSeasonStandings, computeHandicaps, applyHandicaps, subscribeEntries, subscribeLeagueMatches, computeMatchStandings, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCourseHoles, getCourseHoleCount, setTeamName, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember, type StandingRow, type SeasonStandings, type LeagueMatch, type HoleInfo } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { SectionTitle, Avatar, Pos, btnGold, card, plural, BackLink, IconSliders, IconShare, IconClock, IconSparkles, IconMoon, IconHeart, IconTag, IconVenus, IconDollar, IconPin, IconDisc, IconEyeOff, IconUsers, IconCalendar, IconTrophy, IconTarget, IconLeaf } from "@/components/leagues/ui";
 
@@ -145,6 +145,8 @@ export default function LeagueEventPage() {
   const [partnerLoaded, setPartnerLoaded] = useState(false);
   const [matches, setMatches] = useState<LeagueMatch[]>([]);
   const [pars, setPars] = useState<number[] | null>(null);
+  const [holeInfo, setHoleInfo] = useState<HoleInfo[] | null>(null);
+  const [scorecardOpen, setScorecardOpen] = useState(false);
   const [teamSize] = useState(2);
   const [messages, setMessages] = useState<EventMessage[]>([]);
   const [courseMeta, setCourseMeta] = useState<CourseMeta | null>(null);
@@ -190,6 +192,7 @@ export default function LeagueEventPage() {
       if (ev) {
         reload(ev.id);
         if (ev.courseId) getCourseHoles(ev.courseId).then((hs) => {
+          setHoleInfo(hs);
           setPars(hs ? hs.map((h) => h.par) : null);
           if (!hs) console.warn(`[events] course ${ev.courseId} has no par data — scores render raw strokes; backfill pars to enable to-par`);
         }).catch(() => {});
@@ -767,7 +770,7 @@ export default function LeagueEventPage() {
                       );
                     });
                   })()}
-                  <button onClick={() => setTab("scores")} className="block w-full border-t border-[var(--hair)] px-5 py-3 text-left text-[13px] font-semibold text-[var(--cream-60)] transition-colors hover:text-[var(--cream)]">View live scores →</button>
+                  <button onClick={() => setScorecardOpen(true)} className="block w-full border-t border-[var(--hair)] px-5 py-3 text-left text-[13px] font-semibold text-[var(--gold)] transition-colors hover:text-[var(--gold-bright)]">View live scorecard →</button>
                 </div>
               </div>
             )}
@@ -1050,8 +1053,11 @@ export default function LeagueEventPage() {
       {tab === "scores" && scoringKind && (
       <section className="mb-[44px]">
         <SectionTitle
-          right={(divisions.length > 1 && entries.some((e) => e.division)) || (admin && open) ? (
+          right={(divisions.length > 1 && entries.some((e) => e.division)) || (admin && open) || entries.some((e) => e.holeScores?.some((h) => h > 0)) || event.status === "complete" ? (
             <div className="flex flex-wrap items-center gap-1.5">
+              {(entries.some((e) => e.holeScores?.some((h) => h > 0)) || event.status === "complete") && (
+                <button onClick={() => setScorecardOpen(true)} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--gold)]/40 bg-[var(--gold-dim)] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/20"><IconTarget className="h-3 w-3" />{event.status === "complete" ? "Results" : "Scorecard"}</button>
+              )}
               {divisions.length > 1 && entries.some((e) => e.division) && (
                 <>
                   <button onClick={() => setDivFilter("")} className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide transition-colors ${!divFilter ? "bg-[var(--gold)] text-[#141B16]" : "bg-[var(--card)] text-[var(--cream-38)] hover:text-[var(--cream)]"}`}>All</button>
@@ -1598,6 +1604,109 @@ export default function LeagueEventPage() {
       );
       })()}
       </div>
+
+      {/* Full scorecard overlay — branded, hole-by-hole, with field averages */}
+      {scorecardOpen && (() => {
+        const N = event.holes;
+        const holeNums = Array.from({ length: N }, (_, i) => i + 1);
+        const parOf = (i: number) => holeInfo?.[i]?.par ?? pars?.[i] ?? 3;
+        const distOf = (i: number) => holeInfo?.[i]?.distFt ?? null;
+        const players = (ranked.length ? ranked : entries).filter((p) => !p.walkup || p.holeScores?.some((h) => h > 0) || typeof p.score === "number");
+        const totalPar = holeNums.reduce((a, i) => a + parOf(i - 1), 0);
+        const sp = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`);
+        const avgOf = (i: number) => { const vals = players.map((p) => p.holeScores?.[i]).filter((v): v is number => typeof v === "number" && v > 0); return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length) : null; };
+        const complete = event.status === "complete";
+        const Cell = (s: number | undefined, par: number) => {
+          if (!s || s <= 0) return <span className="text-[var(--cream-38)]">–</span>;
+          const d = s - par, base = "mx-auto grid h-7 w-7 place-items-center text-[13px] font-bold tabular-nums";
+          if (d <= -2) return <span className={`${base} rounded-full text-[#E8B560] ring-2 ring-[#E8B560]`}>{s}</span>;
+          if (d === -1) return <span className={`${base} rounded-full text-[#8FBDE3] ring-[1.5px] ring-[#8FBDE3]`}>{s}</span>;
+          if (d === 0) return <span className={`${base} text-[var(--cream)]`}>{s}</span>;
+          if (d === 1) return <span className={`${base} rounded-[7px] text-[#f0a58c] ring-[1.5px] ring-[#f0a58c]/60`}>{s}</span>;
+          return <span className={`${base} rounded-[7px] bg-[#f08c8c]/15 text-[#f08c8c]`}>{s}</span>;
+        };
+        const stick = "sticky left-0 z-10 bg-[#111813]";
+        return (
+          <div className="fixed inset-0 z-[60] grid place-items-center bg-black/75 p-3 backdrop-blur-sm sm:p-6" onClick={() => setScorecardOpen(false)}>
+            <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-[var(--hair-strong)] bg-[#111813] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+              {/* Branded header */}
+              <div className="relative shrink-0 overflow-hidden px-6 pb-5 pt-6">
+                {courseMeta?.cover && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={courseMeta.cover} alt="" className="absolute inset-0 h-full w-full object-cover opacity-25" />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-[#111813] via-[#111813]/85 to-[#111813]/60" />
+                <div className="relative flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--gold)]"><IconTarget className="h-3.5 w-3.5" />Scorecard{complete ? " · Final" : liveNow ? " · Live" : ""}</div>
+                    <h2 className="mt-1 truncate font-[family-name:var(--font-heading)] text-2xl font-black text-[var(--cream)]">{event.name}</h2>
+                    <div className="mt-0.5 truncate font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--cream-38)]">{[event.courseName, `Par ${totalPar}`, `${N} holes`].filter(Boolean).join(" · ")}</div>
+                  </div>
+                  <button onClick={() => setScorecardOpen(false)} aria-label="Close" className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[var(--hair-strong)] bg-black/30 text-lg text-[var(--cream-60)] transition-colors hover:text-[var(--cream)]">×</button>
+                </div>
+              </div>
+              {/* Scrolling scorecard */}
+              <div className="min-h-0 flex-1 overflow-auto">
+                <table className="w-full min-w-max border-collapse text-center">
+                  <thead>
+                    <tr className="bg-[rgba(0,0,0,0.25)]">
+                      <th className={`${stick} px-4 py-2.5 text-left font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--cream-38)] bg-[rgba(10,14,11,1)]`}>Hole</th>
+                      {holeNums.map((i) => <th key={i} className="min-w-[36px] px-1.5 py-2.5 font-mono text-[12px] font-bold text-[var(--cream-60)]">{i}</th>)}
+                      <th className="min-w-[54px] px-3 py-2.5 font-mono text-[10px] font-bold uppercase tracking-wide text-[var(--gold)]">Tot</th>
+                    </tr>
+                    <tr className="border-b border-[var(--hair)]">
+                      <th className={`${stick} px-4 py-1.5 text-left font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]`}>Par</th>
+                      {holeNums.map((i) => <th key={i} className="px-1.5 py-1.5 font-mono text-[12px] text-[var(--cream-38)]">{parOf(i - 1)}</th>)}
+                      <th className="px-3 py-1.5 font-mono text-[12px] text-[var(--cream-38)]">{totalPar}</th>
+                    </tr>
+                    {holeInfo && holeInfo.some((h) => h.distFt) && (
+                      <tr className="border-b border-[var(--hair)]">
+                        <th className={`${stick} px-4 py-1.5 text-left font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]`}>Dist</th>
+                        {holeNums.map((i) => <th key={i} className="px-1.5 py-1.5 font-mono text-[10px] font-normal text-[var(--sage-dim)]">{distOf(i - 1) ? `${distOf(i - 1)}′` : "–"}</th>)}
+                        <th />
+                      </tr>
+                    )}
+                  </thead>
+                  <tbody>
+                    {players.map((p) => {
+                      const you = cid != null && p.id === cid;
+                      const strokes = holeNums.reduce((a, i) => a + ((p.holeScores?.[i - 1] ?? 0) > 0 ? p.holeScores![i - 1] : 0), 0);
+                      const playedPar = holeNums.reduce((a, i) => a + ((p.holeScores?.[i - 1] ?? 0) > 0 ? parOf(i - 1) : 0), 0);
+                      const toPar = strokes - playedPar;
+                      return (
+                        <tr key={p.id} className={`border-t border-[var(--hair)] ${you ? "bg-[var(--gold)]/[0.06]" : ""}`}>
+                          <td className={`${stick} px-4 py-2.5 text-left ${you ? "bg-[#1a1c12]" : ""}`}>
+                            <div className="flex items-center gap-2.5">
+                              <Avatar url={p.photo} name={nameOf(p)} size={30} ring={false} gold={you} />
+                              <div className="min-w-0">
+                                <div className="truncate text-[13px] font-bold text-[var(--cream)]">{nameOf(p)}</div>
+                                {usernameById(p.id) && <div className="truncate font-mono text-[10px] text-[var(--sage-dim)]">@{usernameById(p.id)}</div>}
+                              </div>
+                            </div>
+                          </td>
+                          {holeNums.map((i) => <td key={i} className="px-1 py-2">{Cell(p.holeScores?.[i - 1], parOf(i - 1))}</td>)}
+                          <td className="px-3 py-2 text-right">
+                            <span className="font-[family-name:var(--font-heading)] text-[15px] font-black text-[var(--cream)]">{strokes || "–"}</span>
+                            {strokes > 0 && parTotal != null && <span className="ml-1 font-mono text-[11px] text-[var(--blue)]">{sp(toPar)}</span>}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {players.some((p) => p.holeScores?.some((h) => h > 0)) && (
+                      <tr className="border-t-2 border-[var(--hair-strong)] bg-[rgba(0,0,0,0.28)]">
+                        <td className={`${stick} px-4 py-2.5 text-left font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--gold)] bg-[rgba(10,14,11,1)]`}>Field avg</td>
+                        {holeNums.map((i) => { const a = avgOf(i - 1); return <td key={i} className="px-1 py-2.5 font-mono text-[12px] font-semibold text-[var(--cream-60)]">{a != null ? a.toFixed(1) : "–"}</td>; })}
+                        <td />
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              {event.roundCount > 1 && <div className="shrink-0 border-t border-[var(--hair)] px-6 py-2.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--cream-38)]">Hole-by-hole for the round in progress</div>}
+            </div>
+          </div>
+        );
+      })()}
     </main>
   );
 }
