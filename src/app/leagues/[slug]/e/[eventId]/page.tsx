@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { EVENT_EXTRAS, registrationOpen, getLeagueBySlug, getLeagueMembers, setPartnerRequest, getEvent, subscribeEvent, getCards, checkIn, updateEntry, removeEntry, addWalkupEntry, generateCards, generateTeeTimes, generateGroups, setCardTeeTime, moveEntryToCard, setEventStatus, setRoundScore, setEntryHoles, updateEventConfig, updateEventSchedule, reassignBagTags, computeStandings, computeSeasonStandings, computeHandicaps, applyHandicaps, subscribeEntries, subscribeLeagueMatches, computeMatchStandings, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCourseHoles, getCourseHoleCount, setTeamName, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember, type StandingRow, type SeasonStandings, type LeagueMatch, type HoleInfo } from "@/lib/leagues";
+import { EVENT_EXTRAS, registrationOpen, getLeagueBySlug, getLeagueMembers, setPartnerRequest, getEvent, subscribeEvent, getCards, checkIn, updateEntry, removeEntry, addWalkupEntry, generateCards, generateTeeTimes, generateGroups, setCardTeeTime, moveEntryToCard, setEventStatus, setRoundScore, setEntryHoles, setRoundCard, updateEventConfig, updateEventSchedule, reassignBagTags, computeStandings, computeSeasonStandings, computeHandicaps, applyHandicaps, subscribeEntries, subscribeLeagueMatches, computeMatchStandings, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCourseHoles, getCourseHoleCount, setTeamName, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember, type StandingRow, type SeasonStandings, type LeagueMatch, type HoleInfo } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { SectionTitle, Avatar, Pos, btnGold, card, plural, BackLink, IconSliders, IconShare, IconClock, IconSparkles, IconMoon, IconHeart, IconTag, IconVenus, IconDollar, IconPin, IconDisc, IconEyeOff, IconUsers, IconCalendar, IconTrophy, IconTarget, IconLeaf } from "@/components/leagues/ui";
 
@@ -38,9 +38,11 @@ const fmtDate = (ms: number) => { const d = new Date(ms); return `${d.toLocaleDa
 const toLocalInput = (ms: number) => { const d = new Date(ms); const p = (n: number) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
 const fmtHM = (ms: number) => new Date(ms).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 const toLocalHM = (ms: number) => { const d = new Date(ms); const p = (n: number) => String(n).padStart(2, "0"); return `${p(d.getHours())}:${p(d.getMinutes())}`; };
-// Per-round hole card (app-archived). Round 0 falls back to the legacy live holeScores/thruHole.
-const roundHoles = (e: EventEntry, r: number): number[] | undefined => e.holeScoresByRound?.[String(r)] ?? (r === 0 ? e.holeScores : undefined);
-const roundThru = (e: EventEntry, r: number): number | undefined => e.thruByRound?.[String(r)] ?? (r === 0 ? e.thruHole : undefined);
+// Which round the live holeScores/thruHole belong to = however many rounds are already archived.
+const liveRoundIdx = (e: EventEntry): number => (e.holeScoresByRound ? Object.keys(e.holeScoresByRound).length : 0);
+// Per-round hole card: archived rounds from the map; the current round falls back to the live holeScores.
+const roundHoles = (e: EventEntry, r: number): number[] | undefined => e.holeScoresByRound?.[String(r)] ?? (r === liveRoundIdx(e) ? e.holeScores : undefined);
+const roundThru = (e: EventEntry, r: number): number | undefined => e.thruByRound?.[String(r)] ?? (r === liveRoundIdx(e) ? e.thruHole : undefined);
 const adminInput = "rounded-lg border border-white/10 bg-white/[0.05] px-2 py-1.5 text-right font-mono text-sm text-[var(--cream)] outline-none transition-colors focus:border-[var(--gold)]";
 
 // Renders the wizard's markdown-lite description: **bold**, _italic_, "- " bullets.
@@ -154,6 +156,13 @@ export default function LeagueEventPage() {
   const [scorecardOpen, setScorecardOpen] = useState(false);
   const [scorecardEdit, setScorecardEdit] = useState(false); // admin: hole-by-hole edit mode in the scorecard modal
   const [scRound, setScRound] = useState(0); // read scorecard: which round's card is shown (0-based)
+  // Opening the scorecard on a multi-round event lands on the latest round that has any scores.
+  useEffect(() => {
+    if (!scorecardOpen || !event || event.roundCount <= 1) return;
+    let latest = 0;
+    for (let r = event.roundCount - 1; r >= 0; r--) { if (entries.some((e) => (roundHoles(e, r) ?? []).some((h) => h > 0))) { latest = r; break; } }
+    setScRound(latest);
+  }, [scorecardOpen]); // eslint-disable-line react-hooks/exhaustive-deps
   const [teamSize] = useState(2);
   const [messages, setMessages] = useState<EventMessage[]>([]);
   const [courseMeta, setCourseMeta] = useState<CourseMeta | null>(null);
@@ -246,55 +255,47 @@ export default function LeagueEventPage() {
   const points = useMemo(() => eventPoints(entries), [entries]);
 
   const thruOf = (holes: number[]) => holes.reduce((m, h, i) => (h > 0 ? i + 1 : m), 0);
-  // Editable scorecard: write a single hole for a player (optimistic + persisted).
-  const editHoleScore = (e: EventEntry, i: number, v: number | undefined) => {
+  // Round-scoped editable scorecard: edit ONE round's card. Its total banks into roundScores[r] and the
+  // overall score is re-summed, so fixing a round-2 hole never mangles round 1.
+  const editHoleScore = (e: EventEntry, r: number, i: number, v: number | undefined) => {
     if (!event) return;
-    const holes = Array.from({ length: event.holes }, (_, k) => e.holeScores?.[k] ?? 0);
-    holes[i] = v && v > 0 ? Math.floor(v) : 0;
-    // Recompute the total when the player is already final (fix their card) or single-round; a live
-    // multi-round player stays live until the director Publishes.
-    const recompute = event.roundCount === 1 || typeof e.score === "number";
-    const total = holes.filter((h) => h > 0).reduce((a, b) => a + b, 0);
-    const thru = thruOf(holes);
-    setEntries((cur) => cur.map((x) => (x.id === e.id ? { ...x, holeScores: holes, thruHole: thru || undefined, ...(recompute ? { score: total > 0 ? total : undefined } : {}) } : x)));
-    setEntryHoles(event.id, e.id, holes, { recomputeTotal: recompute, pars });
+    const card = Array.from({ length: event.holes }, (_, k) => roundHoles(e, r)?.[k] ?? 0);
+    card[i] = v && v > 0 ? Math.floor(v) : 0;
+    const total = card.filter((h) => h > 0).reduce((a, b) => a + b, 0);
+    const thru = thruOf(card);
+    const rounds = [...(e.roundScores ?? [])]; while (rounds.length < event.roundCount) rounds.push(0); rounds[r] = total;
+    const overall = rounds.filter((n) => n > 0).reduce((a, b) => a + b, 0);
+    const live = r === liveRoundIdx(e);
+    setEntries((cur) => cur.map((x) => {
+      if (x.id !== e.id) return x;
+      const next: EventEntry = { ...x, roundScores: rounds, score: overall > 0 ? overall : undefined };
+      if (live) { next.holeScores = card; next.thruHole = thru || undefined; }
+      else { next.holeScoresByRound = { ...(x.holeScoresByRound ?? {}), [String(r)]: card }; next.thruByRound = { ...(x.thruByRound ?? {}), [String(r)]: thru }; }
+      return next;
+    }));
+    setRoundCard(event.id, e, r, card, event.roundCount, { pars });
   };
-  const editTotal = (e: EventEntry, v: number | undefined) => {
+  const editRoundTotal = (e: EventEntry, r: number, v: number | undefined) => {
     if (!event) return;
-    setEntries((cur) => cur.map((x) => (x.id === e.id ? { ...x, score: v && v > 0 ? v : undefined } : x)));
-    updateEntry(event.id, e.id, { score: v && v > 0 ? v : undefined });
+    const rounds = [...(e.roundScores ?? [])]; while (rounds.length < event.roundCount) rounds.push(0); rounds[r] = v && v > 0 ? v : 0;
+    const overall = rounds.filter((n) => n > 0).reduce((a, b) => a + b, 0);
+    setEntries((cur) => cur.map((x) => (x.id === e.id ? { ...x, roundScores: rounds, score: overall > 0 ? overall : undefined } : x)));
+    setRoundScore(event.id, e, r, v && v > 0 ? v : undefined, event.roundCount);
   };
-  // Publish/finalize a player from their hole card — posts the ROUND total (and re-sums the overall
-  // score) so both the app and the leaderboard see the round as played. Also stamps thruHole.
-  const finalizeEntry = (e: EventEntry) => {
+  // Bank a player's live round from its card (so a still-live round enters roundScores/score).
+  const bankRound = (e: EventEntry) => {
     if (!event) return;
-    const holes = Array.from({ length: event.holes }, (_, k) => e.holeScores?.[k] ?? 0);
-    const total = holes.filter((h) => h > 0).reduce((a, b) => a + b, 0);
-    if (!total) return;
-    const roundIdx = Math.min(roundsDone(e), event.roundCount - 1);
-    const rounds = [...(e.roundScores ?? [])]; while (rounds.length < event.roundCount) rounds.push(0); rounds[roundIdx] = total;
-    const overall = rounds.filter((r) => r > 0).reduce((a, b) => a + b, 0);
-    const roundsPlayed = rounds.filter((r) => r > 0).length;
-    const parTot = pars ? pars.reduce((a, b) => a + b, 0) : 0;
-    const scoreToPar = pars ? overall - parTot * roundsPlayed : undefined;
-    setEntries((cur) => cur.map((x) => (x.id === e.id ? { ...x, holeScores: holes, thruHole: thruOf(holes) || undefined, roundScores: rounds, score: overall, scoreToPar } : x)));
-    setRoundScore(event.id, e, roundIdx, total, event.roundCount); // roundScores[idx] + overall score
-    setEntryHoles(event.id, e.id, holes); // persist card + thruHole
-    if (pars) updateEntry(event.id, e.id, { scoreToPar });
+    const r = Math.min(liveRoundIdx(e), event.roundCount - 1);
+    const card = Array.from({ length: event.holes }, (_, k) => roundHoles(e, r)?.[k] ?? 0);
+    if (!card.some((h) => h > 0)) return;
+    const total = card.filter((h) => h > 0).reduce((a, b) => a + b, 0);
+    const rounds = [...(e.roundScores ?? [])]; while (rounds.length < event.roundCount) rounds.push(0); rounds[r] = total;
+    const overall = rounds.filter((n) => n > 0).reduce((a, b) => a + b, 0);
+    setEntries((cur) => cur.map((x) => (x.id === e.id ? { ...x, roundScores: rounds, score: overall > 0 ? overall : undefined } : x)));
+    setRoundCard(event.id, e, r, card, event.roundCount, { pars });
   };
   const publishScores = () => {
-    // Publish is per ROUND, not per player. Gating on "has no score yet" meant
-    // anyone already carrying a round-1 total could never have round 2
-    // published — Nick sat on 52 for a completed two-round event and every
-    // press of this button skipped him. Publish the round whose slot is still
-    // empty; already-posted rounds are left alone, so this stays idempotent.
-    entries
-      .filter((e) => !e.dnf && e.holeScores?.some((h) => h > 0))
-      .filter((e) => {
-        const idx = Math.min(roundsDone(e), (event?.roundCount ?? 1) - 1);
-        return !((e.roundScores?.[idx] ?? 0) > 0);
-      })
-      .forEach(finalizeEntry);
+    entries.filter((e) => !e.dnf).filter((e) => { const r = Math.min(liveRoundIdx(e), (event?.roundCount ?? 1) - 1); return (roundHoles(e, r)?.some((h) => h > 0)) && !((e.roundScores?.[r] ?? 0) > 0); }).forEach(bankRound);
     setScorecardOpen(false); setScorecardEdit(false);
   };
   const toggleDnf = (e: EventEntry) => {
@@ -1718,10 +1719,10 @@ export default function LeagueEventPage() {
         const players = editing ? entries : (ranked.length ? ranked : entries).filter((p) => !p.walkup || typeof p.score === "number" || p.holeScores?.some((h) => h > 0) || (p.holeScoresByRound && Object.values(p.holeScoresByRound).some((a) => a.some((h) => h > 0))));
         const totalPar = holeNums.reduce((a, i) => a + parOf(i - 1), 0);
         const sp = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`);
-        // Multi-round read view lets you flip between each day's archived card; edit stays on the live card.
-        const multiRoundCard = !editing && event.roundCount > 1;
+        // Multi-round: flip between each round's card (read AND edit) so a round-2 fix never touches round 1.
+        const multiRoundCard = event.roundCount > 1;
         const rnd = multiRoundCard ? Math.min(scRound, event.roundCount - 1) : 0;
-        const cardOf = (p: EventEntry) => (editing ? (p.holeScores ?? []) : (roundHoles(p, rnd) ?? []));
+        const cardOf = (p: EventEntry) => roundHoles(p, rnd) ?? [];
         const roundHasData = (r: number) => players.some((p) => (roundHoles(p, r) ?? []).some((h) => h > 0));
         const avgOf = (i: number) => { const vals = players.map((p) => cardOf(p)[i]).filter((v): v is number => typeof v === "number" && v > 0); return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length) : null; };
         const complete = tournamentOver;
@@ -1749,7 +1750,7 @@ export default function LeagueEventPage() {
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--gold)]"><IconTarget className="h-3.5 w-3.5" />{editing ? "Edit scorecard" : "Scorecard"}{!editing && (complete ? " · Final" : liveNow ? " · Live" : "")}</div>
                     <h2 className="mt-1 truncate font-[family-name:var(--font-heading)] text-2xl font-black text-[var(--cream)]">{event.name}</h2>
-                    <div className="mt-0.5 truncate font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--cream-38)]">{editing ? "Fix any hole, then Publish to submit the player" : [event.courseName, `Par ${totalPar}`, `${N} holes`].filter(Boolean).join(" · ")}</div>
+                    <div className="mt-0.5 truncate font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--cream-38)]">{editing ? (multiRoundCard ? `Editing Round ${rnd + 1} — each round has its own total` : "Fix any hole; the total updates automatically") : [event.courseName, `Par ${totalPar}`, `${N} holes`].filter(Boolean).join(" · ")}</div>
                   </div>
                   <button onClick={() => { setScorecardOpen(false); setScorecardEdit(false); }} aria-label="Close" className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[var(--hair-strong)] bg-black/30 text-lg text-[var(--cream-60)] transition-colors hover:text-[var(--cream)]">×</button>
                 </div>
@@ -1799,10 +1800,10 @@ export default function LeagueEventPage() {
                             <div className="flex items-center gap-2.5">
                               <Avatar url={p.photo} name={nameOf(p)} size={30} ring={false} gold={you} />
                               <div className="min-w-0">
-                                <div className="flex items-center gap-1.5"><span className="truncate text-[13px] font-bold text-[var(--cream)]">{nameOf(p)}</span>{p.dnf && <span className="rounded bg-[#f08c8c]/15 px-1 text-[9px] font-bold text-[#f08c8c]">DNF</span>}{editing && typeof p.score === "number" && !p.dnf && <span className="rounded bg-[#5fcf80]/15 px-1 text-[9px] font-bold text-[#5fcf80]">✓</span>}</div>
+                                <div className="flex items-center gap-1.5"><span className="truncate text-[13px] font-bold text-[var(--cream)]">{nameOf(p)}</span>{p.dnf && <span className="rounded bg-[#f08c8c]/15 px-1 text-[9px] font-bold text-[#f08c8c]">DNF</span>}{editing && (p.roundScores?.[rnd] ?? 0) > 0 && !p.dnf && <span className="rounded bg-[#5fcf80]/15 px-1 text-[9px] font-bold text-[#5fcf80]">✓</span>}</div>
                                 {editing ? (
                                   <div className="mt-0.5 flex items-center gap-2">
-                                    {!p.dnf && typeof p.score !== "number" && p.holeScores?.some((h) => h > 0) && <button onClick={() => finalizeEntry(p)} className="font-mono text-[9.5px] font-bold uppercase tracking-wide text-[var(--gold)] transition-opacity hover:opacity-80">Submit</button>}
+                                    {!p.dnf && cardOf(p).some((h) => h > 0) && !((p.roundScores?.[rnd] ?? 0) > 0) && <button onClick={() => bankRound(p)} className="font-mono text-[9.5px] font-bold uppercase tracking-wide text-[var(--gold)] transition-opacity hover:opacity-80">Submit</button>}
                                     <button onClick={() => toggleDnf(p)} className="font-mono text-[9.5px] font-bold uppercase tracking-wide text-[var(--sage-dim)] transition-colors hover:text-[#f08c8c]">{p.dnf ? "Undo DNF" : "DNF"}</button>
                                   </div>
                                 ) : usernameById(p.id) ? <div className="truncate font-mono text-[10px] text-[var(--sage-dim)]">@{usernameById(p.id)}</div> : null}
@@ -1810,11 +1811,11 @@ export default function LeagueEventPage() {
                             </div>
                           </td>
                           {holeNums.map((i) => <td key={i} className="px-1 py-2">{editing
-                            ? <input type="number" min={1} inputMode="numeric" value={p.holeScores?.[i - 1] || ""} onChange={(e) => editHoleScore(p, i - 1, e.target.value === "" ? undefined : Number(e.target.value))} className="mx-auto h-8 w-9 rounded-md border border-[var(--hair-strong)] bg-[var(--card)] text-center text-[13px] font-bold text-[var(--cream)] outline-none transition-colors focus:border-[var(--gold)] [color-scheme:dark]" />
+                            ? <input type="number" min={1} inputMode="numeric" value={cardOf(p)[i - 1] || ""} onChange={(e) => editHoleScore(p, rnd, i - 1, e.target.value === "" ? undefined : Number(e.target.value))} className="mx-auto h-8 w-9 rounded-md border border-[var(--hair-strong)] bg-[var(--card)] text-center text-[13px] font-bold text-[var(--cream)] outline-none transition-colors focus:border-[var(--gold)] [color-scheme:dark]" />
                             : Cell(hc[i - 1], parOf(i - 1))}</td>)}
                           <td className="px-3 py-2 text-right">
                             {editing ? (
-                              <input type="number" inputMode="numeric" value={p.score ?? (strokes || "")} onChange={(e) => editTotal(p, e.target.value === "" ? undefined : Number(e.target.value))} className="h-8 w-14 rounded-md border border-[var(--gold)]/40 bg-[var(--card)] text-center text-[14px] font-bold text-[var(--cream)] outline-none focus:border-[var(--gold)] [color-scheme:dark]" />
+                              <input type="number" inputMode="numeric" value={(p.roundScores?.[rnd] ?? 0) > 0 ? p.roundScores![rnd] : (strokes || "")} onChange={(e) => editRoundTotal(p, rnd, e.target.value === "" ? undefined : Number(e.target.value))} className="h-8 w-14 rounded-md border border-[var(--gold)]/40 bg-[var(--card)] text-center text-[14px] font-bold text-[var(--cream)] outline-none focus:border-[var(--gold)] [color-scheme:dark]" />
                             ) : (
                               <>
                                 <span className="font-[family-name:var(--font-heading)] text-[15px] font-black text-[var(--cream)]">{strokes || "–"}</span>

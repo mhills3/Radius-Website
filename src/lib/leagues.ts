@@ -998,6 +998,25 @@ export async function setRoundScore(eventId: string, entry: EventEntry, roundIdx
  * recomputes the total (score) and to-par so the leaderboard stays consistent; for multi-round it
  * updates the card only (overall totals are edited via the total/round inputs).
  */
+/**
+ * Round-scoped director edit: write ONE round's hole card and keep totals honest. The card lands on
+ * holeScores/thruHole if it's the live round, else holeScoresByRound/thruByRound[roundIdx]. roundScores[roundIdx]
+ * becomes the card total and score is re-summed across all rounds, so a round-2 fix never touches round 1.
+ */
+export async function setRoundCard(eventId: string, entry: EventEntry, roundIdx: number, card: number[], roundCount: number, opts?: { pars?: number[] | null }): Promise<void> {
+  const liveIdx = entry.holeScoresByRound ? Object.keys(entry.holeScoresByRound).length : 0;
+  const total = card.filter((h) => h > 0).reduce((a, b) => a + b, 0);
+  const thru = card.reduce((m, h, i) => (h > 0 ? i + 1 : m), 0);
+  const rounds = [...(entry.roundScores ?? [])]; while (rounds.length < roundCount) rounds.push(0); rounds[roundIdx] = total;
+  const overall = rounds.filter((r) => r > 0).reduce((a, b) => a + b, 0);
+  const roundsPlayed = rounds.filter((r) => r > 0).length;
+  const upd: Record<string, unknown> = { roundScores: rounds, score: overall > 0 ? overall : deleteField() };
+  if (roundIdx === liveIdx) { upd.holeScores = card; upd.thruHole = thru > 0 ? thru : deleteField(); }
+  else { upd[`holeScoresByRound.${roundIdx}`] = card; upd[`thruByRound.${roundIdx}`] = thru; }
+  if (opts?.pars && opts.pars.length) { const parRound = opts.pars.reduce((a, b) => a + b, 0); upd.scoreToPar = overall > 0 ? overall - parRound * roundsPlayed : deleteField(); }
+  await updateDoc(doc(db, "leagueEvents", eventId, "entries", entry.id), upd);
+}
+
 export async function setEntryHoles(eventId: string, entryId: string, holeScores: number[], opts?: { recomputeTotal?: boolean; pars?: number[] | null }): Promise<void> {
   // Keep thruHole in step with the card — the highest hole that has a score (handles skipped holes).
   const thru = holeScores.reduce((m, h, i) => (h > 0 ? i + 1 : m), 0);
