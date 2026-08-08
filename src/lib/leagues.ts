@@ -1120,6 +1120,18 @@ export async function setCardTeeTime(eventId: string, cardId: string, teeTime: n
   await setDoc(doc(db, "leagueEvents", eventId, "cards", cardId), { teeTime }, { merge: true });
 }
 
+/**
+ * Shift every tee-time group by `deltaMs` — used when an event's start date/time moves so the
+ * existing sheet follows it (preserving the director's grouping and relative stagger) instead of
+ * going stale on the old date. Returns how many groups were shifted.
+ */
+export async function shiftEventTeeTimes(eventId: string, deltaMs: number): Promise<number> {
+  if (!deltaMs) return 0;
+  const cards = (await getCards(eventId)).filter((c) => c.teeTime && c.teeTime > 0);
+  await Promise.all(cards.map((c) => setDoc(doc(db, "leagueEvents", eventId, "cards", c.id), { teeTime: c.teeTime! + deltaMs }, { merge: true })));
+  return cards.length;
+}
+
 /** Director edit: change a single group's shotgun start hole. */
 export async function setCardStartHole(eventId: string, cardId: string, hole: number): Promise<void> {
   await setDoc(doc(db, "leagueEvents", eventId, "cards", cardId), { startHole: Math.max(1, Math.floor(hole)) }, { merge: true });

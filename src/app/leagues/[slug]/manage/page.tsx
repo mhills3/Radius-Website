@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, getEntries, updateEntry, checkInEntry, getCards, generateGroups, setCardTeeTime, setCardStartHole, moveEntryToCard, getCourseHoleCount, updateEventDetails, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRoles, setMemberDivision, setLeagueLogo, isLeagueAdmin, subscribeLeagueTeams, createLeagueTeam, updateLeagueTeam, deleteLeagueTeam, subscribeLeagueMatches, generateSchedule, setMatchResult, computeMatchStandings, generateBracket, advanceBracket, LEAGUE_FORMATS, TEAM_SIZES, START_FORMATS, isTeamFormat, SUGGESTED_DIVISIONS, type League, type LeagueEvent, type LeagueMember, type EventEntry, type EventCard, type StandingRow, type LeagueTeam, type LeagueMatch } from "@/lib/leagues";
+import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, getEntries, updateEntry, checkInEntry, getCards, generateGroups, setCardTeeTime, setCardStartHole, shiftEventTeeTimes, moveEntryToCard, getCourseHoleCount, updateEventDetails, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRoles, setMemberDivision, setLeagueLogo, isLeagueAdmin, subscribeLeagueTeams, createLeagueTeam, updateLeagueTeam, deleteLeagueTeam, subscribeLeagueMatches, generateSchedule, setMatchResult, computeMatchStandings, generateBracket, advanceBracket, LEAGUE_FORMATS, TEAM_SIZES, START_FORMATS, isTeamFormat, SUGGESTED_DIVISIONS, type League, type LeagueEvent, type LeagueMember, type EventEntry, type EventCard, type StandingRow, type LeagueTeam, type LeagueMatch } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { storage } from "@/lib/firebase";
 import { getDownloadURL, ref as storageRef, uploadBytes } from "firebase/storage";
@@ -303,11 +303,19 @@ export default function LeagueManagePage() {
             return new Date(`${rv?.date || ed.date}T${rv?.time || ed.time || "17:30"}`).getTime();
           })]
         : null;
+      // If round-1's start moved, shift any generated tee sheet by the same delta so it follows the
+      // new date instead of going stale (keeps the director's grouping + relative stagger).
+      const oldStart = primaryEvent.roundStarts?.[0] ?? primaryEvent.date;
+      const delta = round1 - oldStart;
       await updateEventDetails(primaryEvent.id, {
         name: ed.name, date: round1, roundStarts, roundCount: ed.rounds, holes: ed.holes,
         buyIn: ed.buyIn.trim() === "" ? null : Number(ed.buyIn), capacity: ed.cap.trim() === "" ? null : Number(ed.cap),
         registrationCloseAt: ed.reg ? new Date(ed.reg).getTime() : null,
       });
+      if (delta !== 0 && primaryEvent.startFormat === "Tee times") {
+        await shiftEventTeeTimes(primaryEvent.id, delta);
+        if (teeEid === primaryEvent.id) setTeeCards(await getCards(primaryEvent.id));
+      }
       const fresh = await getLeagueEvents(league.id); setEvents(fresh);
       setEditEvent(false); // collapse back to the clean summary
       setEventSaved(true); setTimeout(() => setEventSaved(false), 2500);
@@ -782,6 +790,9 @@ export default function LeagueManagePage() {
                     <label className="block"><FieldLabel>Field cap</FieldLabel><input inputMode="numeric" value={ed.cap} onChange={(e) => setEd((s) => ({ ...s, cap: e.target.value }))} placeholder="none" className={inputCls} /></label>
                     <label className="block sm:col-span-2"><FieldLabel>Registration closes</FieldLabel><input type="datetime-local" value={ed.reg} onChange={(e) => setEd((s) => ({ ...s, reg: e.target.value }))} className={`${inputCls} [color-scheme:dark]`} /></label>
                   </div>
+                  {primaryEvent.startFormat === "Tee times" && primaryEvent.teeGenerated && (
+                    <p className="mt-2 text-[11px] text-[var(--sage-dim)]">Changing the date shifts the existing tee sheet with it — groups and stagger are kept.</p>
+                  )}
                   <button type="button" onClick={() => setSection("teetimes")} className="mt-6 flex w-full items-center gap-3 rounded-xl border border-[var(--hair)] bg-[var(--card)] p-4 text-left transition-colors hover:border-[var(--hair-strong)]">
                     <IconClock className="h-4 w-4 shrink-0 text-[var(--gold)]" />
                     <span className="min-w-0 flex-1 text-sm text-[var(--cream-60)]"><b className="font-semibold text-[var(--cream)]">{startsNoun(primaryEvent.startFormat)}</b> — set group size{primaryEvent.startFormat === "Tee times" ? " & interval" : ""} and hand-tweak the sheet on the {startsNoun(primaryEvent.startFormat)} page.</span>
