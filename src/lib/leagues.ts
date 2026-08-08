@@ -236,6 +236,12 @@ export interface EventEntry {
   // round publishes. Directors never edit these fields.
   holeScores?: number[];
   thruHole?: number;
+  // PER-ROUND ARCHIVE (app-written, web read-only): as each round finishes, the app snapshots that
+  // round's card here so multi-day events keep every day's hole-by-hole (holeScores only ever holds
+  // the LIVE round). Keys are 0-based round indices as strings, matching roundScores. For round "0"
+  // with no key, fall back to holeScores/thruHole (entries written before this contract).
+  holeScoresByRound?: Record<string, number[]>;
+  thruByRound?: Record<string, number>;
 }
 export interface EventCard {
   id: string;
@@ -929,6 +935,12 @@ function toEntry(id: string, e: any): EventEntry {
     dnf: e.dnf === true, publishedRoundId: (e.publishedRoundId as string) || undefined,
     holeScores: Array.isArray(e.holeScores) ? (e.holeScores as number[]) : undefined,
     thruHole: typeof e.thruHole === "number" ? e.thruHole : undefined,
+    holeScoresByRound: e.holeScoresByRound && typeof e.holeScoresByRound === "object"
+      ? Object.fromEntries(Object.entries(e.holeScoresByRound).filter(([, v]) => Array.isArray(v)).map(([k, v]) => [k, (v as number[]).map((n) => Number(n) || 0)])) as Record<string, number[]>
+      : undefined,
+    thruByRound: e.thruByRound && typeof e.thruByRound === "object"
+      ? Object.fromEntries(Object.entries(e.thruByRound).filter(([, v]) => typeof v === "number").map(([k, v]) => [k, v as number])) as Record<string, number>
+      : undefined,
   };
 }
 

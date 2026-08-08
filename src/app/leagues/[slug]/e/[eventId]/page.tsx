@@ -38,6 +38,9 @@ const fmtDate = (ms: number) => { const d = new Date(ms); return `${d.toLocaleDa
 const toLocalInput = (ms: number) => { const d = new Date(ms); const p = (n: number) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
 const fmtHM = (ms: number) => new Date(ms).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 const toLocalHM = (ms: number) => { const d = new Date(ms); const p = (n: number) => String(n).padStart(2, "0"); return `${p(d.getHours())}:${p(d.getMinutes())}`; };
+// Per-round hole card (app-archived). Round 0 falls back to the legacy live holeScores/thruHole.
+const roundHoles = (e: EventEntry, r: number): number[] | undefined => e.holeScoresByRound?.[String(r)] ?? (r === 0 ? e.holeScores : undefined);
+const roundThru = (e: EventEntry, r: number): number | undefined => e.thruByRound?.[String(r)] ?? (r === 0 ? e.thruHole : undefined);
 const adminInput = "rounded-lg border border-white/10 bg-white/[0.05] px-2 py-1.5 text-right font-mono text-sm text-[var(--cream)] outline-none transition-colors focus:border-[var(--gold)]";
 
 // Renders the wizard's markdown-lite description: **bold**, _italic_, "- " bullets.
@@ -150,6 +153,7 @@ export default function LeagueEventPage() {
   const [holeInfo, setHoleInfo] = useState<HoleInfo[] | null>(null);
   const [scorecardOpen, setScorecardOpen] = useState(false);
   const [scorecardEdit, setScorecardEdit] = useState(false); // admin: hole-by-hole edit mode in the scorecard modal
+  const [scRound, setScRound] = useState(0); // read scorecard: which round's card is shown (0-based)
   const [teamSize] = useState(2);
   const [messages, setMessages] = useState<EventMessage[]>([]);
   const [courseMeta, setCourseMeta] = useState<CourseMeta | null>(null);
@@ -481,6 +485,7 @@ export default function LeagueEventPage() {
   });
   // Multi-day: a champion is only crowned once EVERY round is in. Until then, top of the board is the LEADER.
   const finalized = event.roundCount === 1 || ranked.length === 0 || ranked.every((e) => (e.roundScores?.filter((r) => r > 0).length ?? 0) >= event.roundCount);
+  const roundsComplete = ranked[0] ? Math.min(roundsDone(ranked[0]), event.roundCount) : 0; // rounds the leader has in
   const unscored = shown.filter((e) => !ranked.includes(e));
   // Signed to-par strings when real pars are loaded; raw strokes otherwise.
   const signed = (d: number) => (d === 0 ? "E" : d > 0 ? `+${d}` : String(d));
@@ -899,7 +904,7 @@ export default function LeagueEventPage() {
                 <IconTrophy className="pointer-events-none absolute -right-5 -top-5 h-32 w-32 rotate-12 text-[var(--gold)] opacity-[0.08]" />
                 <div className="relative">
                   <div className="flex items-center gap-2.5 font-mono text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--gold)]">
-                    <span aria-hidden className="h-px w-5 bg-[rgba(232,181,96,0.5)]" />{finalized ? "Winner" : "Leader"}<span aria-hidden className="h-px flex-1 bg-[rgba(232,181,96,0.22)]" />
+                    <span aria-hidden className="h-px w-5 bg-[rgba(232,181,96,0.5)]" />{finalized ? "Winner" : `Leader after round ${roundsComplete}`}<span aria-hidden className="h-px flex-1 bg-[rgba(232,181,96,0.22)]" />
                   </div>
                   <div className="mt-5 flex items-center gap-4">
                     <span className="relative shrink-0">
@@ -912,7 +917,7 @@ export default function LeagueEventPage() {
                     </div>
                     <div className="shrink-0 text-right">
                       <div className="font-mono text-[42px] font-bold leading-none tracking-[-0.02em] text-[var(--gold)]">{fmtTotal(ranked[0])}</div>
-                      <div className="mt-1.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.18em] text-[var(--cream-38)]">{finalized ? "Final" : "Leading"}</div>
+                      <div className="mt-1.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.18em] text-[var(--cream-38)]">{finalized ? "Final" : `Through ${roundsComplete} of ${event.roundCount}`}</div>
                     </div>
                   </div>
                   {(() => {
@@ -1679,10 +1684,15 @@ export default function LeagueEventPage() {
         const parOf = (i: number) => holeInfo?.[i]?.par ?? pars?.[i] ?? 3;
         const distOf = (i: number) => holeInfo?.[i]?.distFt ?? null;
         const editing = scorecardEdit && admin;
-        const players = editing ? entries : (ranked.length ? ranked : entries).filter((p) => !p.walkup || p.holeScores?.some((h) => h > 0) || typeof p.score === "number");
+        const players = editing ? entries : (ranked.length ? ranked : entries).filter((p) => !p.walkup || typeof p.score === "number" || p.holeScores?.some((h) => h > 0) || (p.holeScoresByRound && Object.values(p.holeScoresByRound).some((a) => a.some((h) => h > 0))));
         const totalPar = holeNums.reduce((a, i) => a + parOf(i - 1), 0);
         const sp = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`);
-        const avgOf = (i: number) => { const vals = players.map((p) => p.holeScores?.[i]).filter((v): v is number => typeof v === "number" && v > 0); return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length) : null; };
+        // Multi-round read view lets you flip between each day's archived card; edit stays on the live card.
+        const multiRoundCard = !editing && event.roundCount > 1;
+        const rnd = multiRoundCard ? Math.min(scRound, event.roundCount - 1) : 0;
+        const cardOf = (p: EventEntry) => (editing ? (p.holeScores ?? []) : (roundHoles(p, rnd) ?? []));
+        const roundHasData = (r: number) => players.some((p) => (roundHoles(p, r) ?? []).some((h) => h > 0));
+        const avgOf = (i: number) => { const vals = players.map((p) => cardOf(p)[i]).filter((v): v is number => typeof v === "number" && v > 0); return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length) : null; };
         const complete = event.status === "complete";
         const Cell = (s: number | undefined, par: number) => {
           if (!s || s <= 0) return <span className="text-[var(--cream-38)]">–</span>;
@@ -1712,6 +1722,16 @@ export default function LeagueEventPage() {
                   </div>
                   <button onClick={() => { setScorecardOpen(false); setScorecardEdit(false); }} aria-label="Close" className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[var(--hair-strong)] bg-black/30 text-lg text-[var(--cream-60)] transition-colors hover:text-[var(--cream)]">×</button>
                 </div>
+                {multiRoundCard && (
+                  <div className="relative mt-4 flex flex-wrap gap-1.5">
+                    {Array.from({ length: event.roundCount }, (_, r) => {
+                      const has = roundHasData(r);
+                      return (
+                        <button key={r} onClick={() => setScRound(r)} disabled={!has} className={`rounded-full px-3.5 py-1.5 font-mono text-[11px] font-bold uppercase tracking-wide transition-colors ${rnd === r ? "bg-[var(--gold)] text-[#141B16]" : has ? "border border-[var(--hair-strong)] text-[var(--cream-60)] hover:text-[var(--cream)]" : "border border-[var(--hair)] text-[var(--cream-38)] opacity-50"}`}>Rd {r + 1}</button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
               {/* Scrolling scorecard */}
               <div className="min-h-0 flex-1 overflow-auto">
@@ -1738,8 +1758,9 @@ export default function LeagueEventPage() {
                   <tbody>
                     {players.map((p) => {
                       const you = cid != null && p.id === cid;
-                      const strokes = holeNums.reduce((a, i) => a + ((p.holeScores?.[i - 1] ?? 0) > 0 ? p.holeScores![i - 1] : 0), 0);
-                      const playedPar = holeNums.reduce((a, i) => a + ((p.holeScores?.[i - 1] ?? 0) > 0 ? parOf(i - 1) : 0), 0);
+                      const hc = cardOf(p);
+                      const strokes = holeNums.reduce((a, i) => a + ((hc[i - 1] ?? 0) > 0 ? hc[i - 1] : 0), 0);
+                      const playedPar = holeNums.reduce((a, i) => a + ((hc[i - 1] ?? 0) > 0 ? parOf(i - 1) : 0), 0);
                       const toPar = strokes - playedPar;
                       return (
                         <tr key={p.id} className={`border-t border-[var(--hair)] ${you ? "bg-[var(--gold)]/[0.06]" : ""}`}>
@@ -1759,7 +1780,7 @@ export default function LeagueEventPage() {
                           </td>
                           {holeNums.map((i) => <td key={i} className="px-1 py-2">{editing
                             ? <input type="number" min={1} inputMode="numeric" value={p.holeScores?.[i - 1] || ""} onChange={(e) => editHoleScore(p, i - 1, e.target.value === "" ? undefined : Number(e.target.value))} className="mx-auto h-8 w-9 rounded-md border border-[var(--hair-strong)] bg-[var(--card)] text-center text-[13px] font-bold text-[var(--cream)] outline-none transition-colors focus:border-[var(--gold)] [color-scheme:dark]" />
-                            : Cell(p.holeScores?.[i - 1], parOf(i - 1))}</td>)}
+                            : Cell(hc[i - 1], parOf(i - 1))}</td>)}
                           <td className="px-3 py-2 text-right">
                             {editing ? (
                               <input type="number" inputMode="numeric" value={p.score ?? (strokes || "")} onChange={(e) => editTotal(p, e.target.value === "" ? undefined : Number(e.target.value))} className="h-8 w-14 rounded-md border border-[var(--gold)]/40 bg-[var(--card)] text-center text-[14px] font-bold text-[var(--cream)] outline-none focus:border-[var(--gold)] [color-scheme:dark]" />
@@ -1773,7 +1794,7 @@ export default function LeagueEventPage() {
                         </tr>
                       );
                     })}
-                    {players.some((p) => p.holeScores?.some((h) => h > 0)) && (
+                    {players.some((p) => cardOf(p).some((h) => h > 0)) && (
                       <tr className="border-t-2 border-[var(--hair-strong)] bg-[rgba(0,0,0,0.28)]">
                         <td className={`${stick} px-4 py-2.5 text-left font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--gold)] bg-[rgba(10,14,11,1)]`}>Field avg</td>
                         {holeNums.map((i) => { const a = avgOf(i - 1); return <td key={i} className="px-1 py-2.5 font-mono text-[12px] font-semibold text-[var(--cream-60)]">{a != null ? a.toFixed(1) : "–"}</td>; })}
@@ -1792,7 +1813,7 @@ export default function LeagueEventPage() {
                   </div>
                 </div>
               )}
-              {!editing && event.roundCount > 1 && <div className="shrink-0 border-t border-[var(--hair)] px-6 py-2.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--cream-38)]">Hole-by-hole for the round in progress</div>}
+              {!editing && event.roundCount > 1 && <div className="shrink-0 border-t border-[var(--hair)] px-6 py-2.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--cream-38)]">Round {rnd + 1} of {event.roundCount}{event.roundStarts?.[rnd] ? ` · ${fmtDate(event.roundStarts[rnd])}` : ""}</div>}
             </div>
           </div>
         );
