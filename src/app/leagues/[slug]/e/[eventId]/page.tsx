@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { EVENT_EXTRAS, registrationOpen, getLeagueBySlug, getLeagueMembers, setPartnerRequest, getEvent, getCards, checkIn, updateEntry, removeEntry, addWalkupEntry, generateCards, generateTeeTimes, generateGroups, setCardTeeTime, moveEntryToCard, setEventStatus, setRoundScore, updateEventConfig, updateEventSchedule, reassignBagTags, computeStandings, computeSeasonStandings, computeHandicaps, applyHandicaps, subscribeEntries, subscribeLeagueMatches, computeMatchStandings, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCourseHoles, getCourseHoleCount, setTeamName, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember, type StandingRow, type SeasonStandings, type LeagueMatch, type HoleInfo } from "@/lib/leagues";
+import { EVENT_EXTRAS, registrationOpen, getLeagueBySlug, getLeagueMembers, setPartnerRequest, getEvent, subscribeEvent, getCards, checkIn, updateEntry, removeEntry, addWalkupEntry, generateCards, generateTeeTimes, generateGroups, setCardTeeTime, moveEntryToCard, setEventStatus, setRoundScore, setEntryHoles, updateEventConfig, updateEventSchedule, reassignBagTags, computeStandings, computeSeasonStandings, computeHandicaps, applyHandicaps, subscribeEntries, subscribeLeagueMatches, computeMatchStandings, liveTotal, isLeagueAdmin, eventPoints, EVENT_KINDS, getCourseHoles, getCourseHoleCount, setTeamName, getCourseMeta, type CourseMeta, randomizeTeams, setEntryTeam, setTeamScore, sendEventMessage, subscribeEventMessages, type EventMessage, type League, type LeagueEvent, type EventEntry, type EventCard, type LeagueMember, type StandingRow, type SeasonStandings, type LeagueMatch, type HoleInfo } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { SectionTitle, Avatar, Pos, btnGold, card, plural, BackLink, IconSliders, IconShare, IconClock, IconSparkles, IconMoon, IconHeart, IconTag, IconVenus, IconDollar, IconPin, IconDisc, IconEyeOff, IconUsers, IconCalendar, IconTrophy, IconTarget, IconLeaf } from "@/components/leagues/ui";
 
@@ -135,6 +135,8 @@ export default function LeagueEventPage() {
     const t = new URLSearchParams(window.location.search).get("tab");
     if (t === "scores" || t === "standings" || t === "players" || t === "chat") setTab(t);
   }, []);
+  // Tournaments have no Standings tab — never sit on it.
+  useEffect(() => { if ((league?.kind ?? event?.kind) === "tournament" && tab === "standings") setTab("scores"); }, [league, event, tab]);
   const [nowTs] = useState(() => Date.now());
   const [staff, setStaff] = useState<LeagueMember[]>([]);
   const [season, setSeason] = useState<SeasonStandings | null>(null);
@@ -147,6 +149,7 @@ export default function LeagueEventPage() {
   const [pars, setPars] = useState<number[] | null>(null);
   const [holeInfo, setHoleInfo] = useState<HoleInfo[] | null>(null);
   const [scorecardOpen, setScorecardOpen] = useState(false);
+  const [scorecardEdit, setScorecardEdit] = useState(false); // admin: hole-by-hole edit mode in the scorecard modal
   const [teamSize] = useState(2);
   const [messages, setMessages] = useState<EventMessage[]>([]);
   const [courseMeta, setCourseMeta] = useState<CourseMeta | null>(null);
@@ -187,9 +190,12 @@ export default function LeagueEventPage() {
       setLeague(l);
       if (l) getLeagueMembers(l.id).then((ms) => setStaff(ms.filter((m) => m.role !== "member"))).catch(() => {});
     }).catch(() => {});
-    getEvent(eventId).then((ev) => {
+    // Live event doc so status (e.g. completion) propagates to every viewer in real time.
+    let inited = false;
+    const unsubEvent = subscribeEvent(eventId, (ev) => {
       setEvent(ev ?? null);
-      if (ev) {
+      if (ev && !inited) {
+        inited = true;
         reload(ev.id);
         if (ev.courseId) getCourseHoles(ev.courseId).then((hs) => {
           setHoleInfo(hs);
@@ -197,10 +203,10 @@ export default function LeagueEventPage() {
           if (!hs) console.warn(`[events] course ${ev.courseId} has no par data — scores render raw strokes; backfill pars to enable to-par`);
         }).catch(() => {});
       }
-    }).catch(() => setEvent(null));
+    });
     const unsubEntries = subscribeEntries(eventId, setEntries);
     const unsubChat = subscribeEventMessages(eventId, setMessages);
-    return () => { unsubEntries(); unsubChat(); };
+    return () => { unsubEvent(); unsubEntries(); unsubChat(); };
   }, [slug, eventId]);
   useEffect(() => { if (user) resolveCanonicalId(user.uid).then(setCid).catch(() => {}); }, [user]);
   // Prefill the player's existing season partner request (teams/match-play leagues).
@@ -234,6 +240,28 @@ export default function LeagueEventPage() {
   const admin = useMemo(() => !!league && isLeagueAdmin(league, cid), [league, cid]);
   const me = entries.find((e) => e.id === cid);
   const points = useMemo(() => eventPoints(entries), [entries]);
+
+  // Editable scorecard: write a single hole for a player (optimistic + persisted).
+  const editHoleScore = (e: EventEntry, i: number, v: number | undefined) => {
+    if (!event) return;
+    const holes = Array.from({ length: event.holes }, (_, k) => e.holeScores?.[k] ?? 0);
+    holes[i] = v && v > 0 ? Math.floor(v) : 0;
+    const single = event.roundCount === 1;
+    const total = holes.filter((h) => h > 0).reduce((a, b) => a + b, 0);
+    setEntries((cur) => cur.map((x) => (x.id === e.id ? { ...x, holeScores: holes, ...(single ? { score: total > 0 ? total : undefined } : {}) } : x)));
+    setEntryHoles(event.id, e.id, holes, { recomputeTotal: single, pars });
+  };
+  const editTotal = (e: EventEntry, v: number | undefined) => {
+    if (!event) return;
+    setEntries((cur) => cur.map((x) => (x.id === e.id ? { ...x, score: v && v > 0 ? v : undefined } : x)));
+    updateEntry(event.id, e.id, { score: v && v > 0 ? v : undefined });
+  };
+  const toggleDnf = (e: EventEntry) => {
+    if (!event) return;
+    const dnf = !e.dnf;
+    setEntries((cur) => cur.map((x) => (x.id === e.id ? { ...x, dnf } : x)));
+    updateEntry(event.id, e.id, { dnf: dnf || undefined });
+  };
 
   const doCheckIn = async () => {
     if (!user || !event || busy) return;
@@ -300,6 +328,16 @@ export default function LeagueEventPage() {
       await computeStandings(league.id, league.settings.bestN);
     } finally { setBusy(false); }
   };
+
+  // Auto-complete once every player has a final score or is marked DNF (the "everyone's submitted" trigger).
+  const autoCompleteRef = useRef(false);
+  useEffect(() => {
+    if (!event || !league || autoCompleteRef.current || !isLeagueAdmin(league, cid)) return;
+    const scoring = event.kind !== "clinic" && event.kind !== "cleanup" && event.kind !== "social";
+    const canComp = scoring && event.status === "scheduled" && Date.now() >= event.date && entries.length > 0;
+    const allSubmitted = entries.length > 0 && entries.every((e) => typeof e.score === "number" || e.dnf);
+    if (canComp && allSubmitted) { autoCompleteRef.current = true; complete(); }
+  }, [event, league, cid, entries]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const addRound = async () => {
     if (!event || busy) return;
@@ -430,6 +468,8 @@ export default function LeagueEventPage() {
   const open = event.status !== "complete" && event.status !== "cancelled";
   // Clinics, cleanups, and socials have no scoring surface at all.
   const scoringKind = event.kind !== "clinic" && event.kind !== "cleanup" && event.kind !== "social";
+  // A one-off tournament IS its own leaderboard — no separate season standings tab (that's a league thing).
+  const isTournament = (league?.kind ?? event.kind) === "tournament";
   const paidCount = entries.filter((e) => e.paid).length;
   const paidOut = entries.reduce((a, e) => a + (e.payout ?? 0), 0);
   const isTeamFormat = event.format === "Doubles" || event.format === "Teams";
@@ -680,8 +720,8 @@ export default function LeagueEventPage() {
       <nav className="mb-9 mt-1.5 flex gap-[34px] border-b border-[var(--hair)]">
         {([
           { k: "about" as const, label: event.status === "complete" ? "Recap" : "About", n: 0 },
-          ...(scoringKind ? [{ k: "scores" as const, label: "Scores", n: 0 }] : []),
-          ...(scoringKind ? [{ k: "standings" as const, label: "Standings", n: 0 }] : []),
+          ...(scoringKind ? [{ k: "scores" as const, label: isTournament ? "Leaderboard" : "Scores", n: 0 }] : []),
+          ...(scoringKind && !isTournament ? [{ k: "standings" as const, label: "Standings", n: 0 }] : []),
           { k: "players" as const, label: "Players", n: entries.length },
           { k: "chat" as const, label: "Chat", n: messages.length },
         ]).map(({ k, label, n }) => (
@@ -770,7 +810,7 @@ export default function LeagueEventPage() {
                       );
                     });
                   })()}
-                  <button onClick={() => setScorecardOpen(true)} className="block w-full border-t border-[var(--hair)] px-5 py-3 text-left text-[13px] font-semibold text-[var(--gold)] transition-colors hover:text-[var(--gold-bright)]">View live scorecard →</button>
+                  <button onClick={() => { setScorecardEdit(false); setScorecardOpen(true); }} className="block w-full border-t border-[var(--hair)] px-5 py-3 text-left text-[13px] font-semibold text-[var(--gold)] transition-colors hover:text-[var(--gold-bright)]">View live scorecard →</button>
                 </div>
               </div>
             )}
@@ -1056,7 +1096,7 @@ export default function LeagueEventPage() {
           right={(divisions.length > 1 && entries.some((e) => e.division)) || (admin && open) || entries.some((e) => e.holeScores?.some((h) => h > 0)) || event.status === "complete" ? (
             <div className="flex flex-wrap items-center gap-1.5">
               {(entries.some((e) => e.holeScores?.some((h) => h > 0)) || event.status === "complete") && (
-                <button onClick={() => setScorecardOpen(true)} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--gold)]/40 bg-[var(--gold-dim)] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/20"><IconTarget className="h-3 w-3" />{event.status === "complete" ? "Results" : "Scorecard"}</button>
+                <button onClick={() => { setScorecardEdit(false); setScorecardOpen(true); }} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--gold)]/40 bg-[var(--gold-dim)] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/20"><IconTarget className="h-3 w-3" />{event.status === "complete" ? "Results" : "Scorecard"}</button>
               )}
               {divisions.length > 1 && entries.some((e) => e.division) && (
                 <>
@@ -1067,7 +1107,7 @@ export default function LeagueEventPage() {
                 </>
               )}
               {admin && (
-                <button onClick={() => setEditScores((v) => !v)} className={`ml-1 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wide transition-colors ${editScores ? "bg-[var(--gold)] text-[#141B16]" : "border border-[var(--hair-strong)] text-[var(--cream-60)] hover:text-[var(--cream)]"}`}>{editScores ? "Done" : event.status === "complete" ? "Edit scores" : "Enter scores"}</button>
+                <button onClick={() => { setScorecardEdit(true); setScorecardOpen(true); }} className="ml-1 rounded-full border border-[var(--gold)]/50 bg-[var(--gold-dim)] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/20">Edit scores</button>
               )}
               {admin && open && canComplete && <button onClick={complete} disabled={busy} className="rounded-full bg-[var(--gold)] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[#141B16] transition-colors hover:bg-[var(--gold-bright)] disabled:opacity-50">Complete</button>}
               {admin && open && (
@@ -1118,23 +1158,6 @@ export default function LeagueEventPage() {
           renderTeamBoard()
         ) : (
           <>
-          {(() => {
-            const myIdx = cid ? ranked.findIndex((e) => e.id === cid) : -1;
-            if (myIdx <= 0) return null;
-            const meRow = ranked[myIdx];
-            const back = adjOf(meRow) - adjOf(ranked[0]);
-            const played = meRow.holeScores?.filter((h) => h > 0).length ?? 0;
-            const toPlay = typeof meRow.score !== "number" && played > 0 ? event.holes - (meRow.thruHole ?? played) : 0;
-            const tied = ranked.filter((e) => adjOf(e) === adjOf(meRow)).length > 1;
-            return (
-              <div className="mb-4 rounded-2xl border border-[var(--gold)]/40 bg-[var(--gold-dim)] px-5 py-4">
-                <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--gold)]">Your position</div>
-                <div className="mt-1 font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">
-                  {tied ? "T" : ""}{myIdx + 1} · {back} back{toPlay > 0 ? ` with ${toPlay} to play` : ""}
-                </div>
-              </div>
-            );
-          })()}
           <div className={`${card} overflow-hidden`}>
             <div className="flex items-center gap-3.5 bg-[var(--forest)] px-4 py-2 font-mono text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[var(--cream-38)]">
               <span className="w-8">Pos</span><span className="flex-1">Player</span><span className="hidden w-[184px] text-right sm:block">Last 9</span><span className="w-8 text-right">Thru</span>{event.roundCount > 1 && <span className="hidden w-10 text-right sm:block">Rd</span>}<span className="w-20 text-right">Total</span>
@@ -1611,7 +1634,8 @@ export default function LeagueEventPage() {
         const holeNums = Array.from({ length: N }, (_, i) => i + 1);
         const parOf = (i: number) => holeInfo?.[i]?.par ?? pars?.[i] ?? 3;
         const distOf = (i: number) => holeInfo?.[i]?.distFt ?? null;
-        const players = (ranked.length ? ranked : entries).filter((p) => !p.walkup || p.holeScores?.some((h) => h > 0) || typeof p.score === "number");
+        const editing = scorecardEdit && admin;
+        const players = editing ? entries : (ranked.length ? ranked : entries).filter((p) => !p.walkup || p.holeScores?.some((h) => h > 0) || typeof p.score === "number");
         const totalPar = holeNums.reduce((a, i) => a + parOf(i - 1), 0);
         const sp = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`);
         const avgOf = (i: number) => { const vals = players.map((p) => p.holeScores?.[i]).filter((v): v is number => typeof v === "number" && v > 0); return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length) : null; };
@@ -1627,7 +1651,7 @@ export default function LeagueEventPage() {
         };
         const stick = "sticky left-0 z-10 bg-[#111813]";
         return (
-          <div className="fixed inset-0 z-[60] grid place-items-center bg-black/75 p-3 backdrop-blur-sm sm:p-6" onClick={() => setScorecardOpen(false)}>
+          <div className="fixed inset-0 z-[60] grid place-items-center bg-black/75 p-3 backdrop-blur-sm sm:p-6" onClick={() => { setScorecardOpen(false); setScorecardEdit(false); }}>
             <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-[var(--hair-strong)] bg-[#111813] shadow-2xl" onClick={(e) => e.stopPropagation()}>
               {/* Branded header */}
               <div className="relative shrink-0 overflow-hidden px-6 pb-5 pt-6">
@@ -1638,11 +1662,11 @@ export default function LeagueEventPage() {
                 <div className="absolute inset-0 bg-gradient-to-t from-[#111813] via-[#111813]/85 to-[#111813]/60" />
                 <div className="relative flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--gold)]"><IconTarget className="h-3.5 w-3.5" />Scorecard{complete ? " · Final" : liveNow ? " · Live" : ""}</div>
+                    <div className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--gold)]"><IconTarget className="h-3.5 w-3.5" />{editing ? "Edit scorecard" : "Scorecard"}{!editing && (complete ? " · Final" : liveNow ? " · Live" : "")}</div>
                     <h2 className="mt-1 truncate font-[family-name:var(--font-heading)] text-2xl font-black text-[var(--cream)]">{event.name}</h2>
-                    <div className="mt-0.5 truncate font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--cream-38)]">{[event.courseName, `Par ${totalPar}`, `${N} holes`].filter(Boolean).join(" · ")}</div>
+                    <div className="mt-0.5 truncate font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--cream-38)]">{editing ? "Fix any hole for any player — edits save instantly" : [event.courseName, `Par ${totalPar}`, `${N} holes`].filter(Boolean).join(" · ")}</div>
                   </div>
-                  <button onClick={() => setScorecardOpen(false)} aria-label="Close" className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[var(--hair-strong)] bg-black/30 text-lg text-[var(--cream-60)] transition-colors hover:text-[var(--cream)]">×</button>
+                  <button onClick={() => { setScorecardOpen(false); setScorecardEdit(false); }} aria-label="Close" className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[var(--hair-strong)] bg-black/30 text-lg text-[var(--cream-60)] transition-colors hover:text-[var(--cream)]">×</button>
                 </div>
               </div>
               {/* Scrolling scorecard */}
@@ -1675,19 +1699,29 @@ export default function LeagueEventPage() {
                       const toPar = strokes - playedPar;
                       return (
                         <tr key={p.id} className={`border-t border-[var(--hair)] ${you ? "bg-[var(--gold)]/[0.06]" : ""}`}>
-                          <td className={`${stick} px-4 py-2.5 text-left ${you ? "bg-[#1a1c12]" : ""}`}>
+                          <td className={`${stick} px-4 py-2.5 text-left ${you ? "bg-[#1a1c12]" : "bg-[#111813]"} ${p.dnf ? "opacity-60" : ""}`}>
                             <div className="flex items-center gap-2.5">
                               <Avatar url={p.photo} name={nameOf(p)} size={30} ring={false} gold={you} />
                               <div className="min-w-0">
-                                <div className="truncate text-[13px] font-bold text-[var(--cream)]">{nameOf(p)}</div>
-                                {usernameById(p.id) && <div className="truncate font-mono text-[10px] text-[var(--sage-dim)]">@{usernameById(p.id)}</div>}
+                                <div className="flex items-center gap-1.5"><span className="truncate text-[13px] font-bold text-[var(--cream)]">{nameOf(p)}</span>{p.dnf && <span className="rounded bg-[#f08c8c]/15 px-1 text-[9px] font-bold text-[#f08c8c]">DNF</span>}</div>
+                                {editing ? (
+                                  <button onClick={() => toggleDnf(p)} className="mt-0.5 font-mono text-[9.5px] font-bold uppercase tracking-wide text-[var(--sage-dim)] transition-colors hover:text-[#f08c8c]">{p.dnf ? "Undo DNF" : "Mark DNF"}</button>
+                                ) : usernameById(p.id) ? <div className="truncate font-mono text-[10px] text-[var(--sage-dim)]">@{usernameById(p.id)}</div> : null}
                               </div>
                             </div>
                           </td>
-                          {holeNums.map((i) => <td key={i} className="px-1 py-2">{Cell(p.holeScores?.[i - 1], parOf(i - 1))}</td>)}
+                          {holeNums.map((i) => <td key={i} className="px-1 py-2">{editing
+                            ? <input type="number" min={1} inputMode="numeric" value={p.holeScores?.[i - 1] || ""} onChange={(e) => editHoleScore(p, i - 1, e.target.value === "" ? undefined : Number(e.target.value))} className="mx-auto h-8 w-9 rounded-md border border-[var(--hair-strong)] bg-[var(--card)] text-center text-[13px] font-bold text-[var(--cream)] outline-none transition-colors focus:border-[var(--gold)] [color-scheme:dark]" />
+                            : Cell(p.holeScores?.[i - 1], parOf(i - 1))}</td>)}
                           <td className="px-3 py-2 text-right">
-                            <span className="font-[family-name:var(--font-heading)] text-[15px] font-black text-[var(--cream)]">{strokes || "–"}</span>
-                            {strokes > 0 && parTotal != null && <span className="ml-1 font-mono text-[11px] text-[var(--blue)]">{sp(toPar)}</span>}
+                            {editing ? (
+                              <input type="number" inputMode="numeric" value={p.score ?? (strokes || "")} onChange={(e) => editTotal(p, e.target.value === "" ? undefined : Number(e.target.value))} className="h-8 w-14 rounded-md border border-[var(--gold)]/40 bg-[var(--card)] text-center text-[14px] font-bold text-[var(--cream)] outline-none focus:border-[var(--gold)] [color-scheme:dark]" />
+                            ) : (
+                              <>
+                                <span className="font-[family-name:var(--font-heading)] text-[15px] font-black text-[var(--cream)]">{strokes || "–"}</span>
+                                {strokes > 0 && parTotal != null && <span className="ml-1 font-mono text-[11px] text-[var(--blue)]">{sp(toPar)}</span>}
+                              </>
+                            )}
                           </td>
                         </tr>
                       );

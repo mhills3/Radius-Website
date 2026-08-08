@@ -844,6 +844,11 @@ export async function getEvent(eventId: string): Promise<LeagueEvent | null> {
   } catch { return null; }
 }
 
+/** Live event doc — status, schedule, and config changes propagate to every viewer in real time. */
+export function subscribeEvent(eventId: string, cb: (ev: LeagueEvent | null) => void): () => void {
+  return onSnapshot(doc(db, "leagueEvents", eventId), (snap) => cb(snap.exists() ? toEvent(snap.id, snap.data()) : null), () => {});
+}
+
 export async function setEventStatus(eventId: string, status: LeagueEvent["status"]): Promise<void> {
   await setDoc(doc(db, "leagueEvents", eventId), { status }, { merge: true });
 }
@@ -973,6 +978,24 @@ export async function setRoundScore(eventId: string, entry: EventEntry, roundIdx
     roundScores: rounds,
     score: total ?? deleteField(),
   });
+}
+
+/**
+ * Director hole-by-hole edit: write an entry's full per-hole card. For single-round events it also
+ * recomputes the total (score) and to-par so the leaderboard stays consistent; for multi-round it
+ * updates the card only (overall totals are edited via the total/round inputs).
+ */
+export async function setEntryHoles(eventId: string, entryId: string, holeScores: number[], opts?: { recomputeTotal?: boolean; pars?: number[] | null }): Promise<void> {
+  const upd: Record<string, unknown> = { holeScores };
+  if (opts?.recomputeTotal) {
+    const total = holeScores.filter((h) => h > 0).reduce((a, b) => a + b, 0);
+    upd.score = total > 0 ? total : deleteField();
+    if (opts.pars && opts.pars.length) {
+      let par = 0; holeScores.forEach((h, i) => { if (h > 0) par += opts.pars![i] ?? 3; });
+      upd.scoreToPar = total > 0 ? total - par : deleteField();
+    }
+  }
+  await updateDoc(doc(db, "leagueEvents", eventId, "entries", entryId), upd);
 }
 
 // ---- Teams (Doubles / Teams formats) ----
