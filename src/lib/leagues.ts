@@ -999,7 +999,9 @@ export async function setRoundScore(eventId: string, entry: EventEntry, roundIdx
  * updates the card only (overall totals are edited via the total/round inputs).
  */
 export async function setEntryHoles(eventId: string, entryId: string, holeScores: number[], opts?: { recomputeTotal?: boolean; pars?: number[] | null }): Promise<void> {
-  const upd: Record<string, unknown> = { holeScores };
+  // Keep thruHole in step with the card — the highest hole that has a score (handles skipped holes).
+  const thru = holeScores.reduce((m, h, i) => (h > 0 ? i + 1 : m), 0);
+  const upd: Record<string, unknown> = { holeScores, thruHole: thru > 0 ? thru : deleteField() };
   if (opts?.recomputeTotal) {
     const total = holeScores.filter((h) => h > 0).reduce((a, b) => a + b, 0);
     upd.score = total > 0 ? total : deleteField();

@@ -245,6 +245,7 @@ export default function LeagueEventPage() {
   const me = entries.find((e) => e.id === cid);
   const points = useMemo(() => eventPoints(entries), [entries]);
 
+  const thruOf = (holes: number[]) => holes.reduce((m, h, i) => (h > 0 ? i + 1 : m), 0);
   // Editable scorecard: write a single hole for a player (optimistic + persisted).
   const editHoleScore = (e: EventEntry, i: number, v: number | undefined) => {
     if (!event) return;
@@ -254,7 +255,8 @@ export default function LeagueEventPage() {
     // multi-round player stays live until the director Publishes.
     const recompute = event.roundCount === 1 || typeof e.score === "number";
     const total = holes.filter((h) => h > 0).reduce((a, b) => a + b, 0);
-    setEntries((cur) => cur.map((x) => (x.id === e.id ? { ...x, holeScores: holes, ...(recompute ? { score: total > 0 ? total : undefined } : {}) } : x)));
+    const thru = thruOf(holes);
+    setEntries((cur) => cur.map((x) => (x.id === e.id ? { ...x, holeScores: holes, thruHole: thru || undefined, ...(recompute ? { score: total > 0 ? total : undefined } : {}) } : x)));
     setEntryHoles(event.id, e.id, holes, { recomputeTotal: recompute, pars });
   };
   const editTotal = (e: EventEntry, v: number | undefined) => {
@@ -262,15 +264,23 @@ export default function LeagueEventPage() {
     setEntries((cur) => cur.map((x) => (x.id === e.id ? { ...x, score: v && v > 0 ? v : undefined } : x)));
     updateEntry(event.id, e.id, { score: v && v > 0 ? v : undefined });
   };
-  // Publish/finalize a player from their hole card — sets a real total so they stop showing "live/thru".
+  // Publish/finalize a player from their hole card — posts the ROUND total (and re-sums the overall
+  // score) so both the app and the leaderboard see the round as played. Also stamps thruHole.
   const finalizeEntry = (e: EventEntry) => {
     if (!event) return;
     const holes = Array.from({ length: event.holes }, (_, k) => e.holeScores?.[k] ?? 0);
     const total = holes.filter((h) => h > 0).reduce((a, b) => a + b, 0);
     if (!total) return;
-    const par = pars ? holes.reduce((a, h, i) => a + (h > 0 ? (pars[i] ?? 3) : 0), 0) : 0;
-    setEntries((cur) => cur.map((x) => (x.id === e.id ? { ...x, score: total, scoreToPar: pars ? total - par : undefined, thruHole: undefined } : x)));
-    setEntryHoles(event.id, e.id, holes, { recomputeTotal: true, pars });
+    const roundIdx = Math.min(roundsDone(e), event.roundCount - 1);
+    const rounds = [...(e.roundScores ?? [])]; while (rounds.length < event.roundCount) rounds.push(0); rounds[roundIdx] = total;
+    const overall = rounds.filter((r) => r > 0).reduce((a, b) => a + b, 0);
+    const roundsPlayed = rounds.filter((r) => r > 0).length;
+    const parTot = pars ? pars.reduce((a, b) => a + b, 0) : 0;
+    const scoreToPar = pars ? overall - parTot * roundsPlayed : undefined;
+    setEntries((cur) => cur.map((x) => (x.id === e.id ? { ...x, holeScores: holes, thruHole: thruOf(holes) || undefined, roundScores: rounds, score: overall, scoreToPar } : x)));
+    setRoundScore(event.id, e, roundIdx, total, event.roundCount); // roundScores[idx] + overall score
+    setEntryHoles(event.id, e.id, holes); // persist card + thruHole
+    if (pars) updateEntry(event.id, e.id, { scoreToPar });
   };
   const publishScores = () => {
     entries.filter((e) => !e.dnf && typeof e.score !== "number" && e.holeScores?.some((h) => h > 0)).forEach(finalizeEntry);
