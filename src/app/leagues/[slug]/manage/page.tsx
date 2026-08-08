@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, getEntries, updateEntry, checkInEntry, getCards, generateGroups, setCardTeeTime, setCardStartHole, shiftEventTeeTimes, moveEntryToCard, getCourseHoleCount, updateEventDetails, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRoles, setMemberDivision, setLeagueLogo, isLeagueAdmin, subscribeLeagueTeams, createLeagueTeam, updateLeagueTeam, deleteLeagueTeam, subscribeLeagueMatches, generateSchedule, setMatchResult, computeMatchStandings, generateBracket, advanceBracket, LEAGUE_FORMATS, TEAM_SIZES, START_FORMATS, isTeamFormat, SUGGESTED_DIVISIONS, type League, type LeagueEvent, type LeagueMember, type EventEntry, type EventCard, type StandingRow, type LeagueTeam, type LeagueMatch } from "@/lib/leagues";
+import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, getEntries, updateEntry, checkInEntry, getCards, generateGroups, setCardTeeTime, setCardStartHole, shiftEventTeeTimesByRound, moveEntryToCard, getCourseHoleCount, updateEventDetails, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRoles, setMemberDivision, setLeagueLogo, isLeagueAdmin, subscribeLeagueTeams, createLeagueTeam, updateLeagueTeam, deleteLeagueTeam, subscribeLeagueMatches, generateSchedule, setMatchResult, computeMatchStandings, generateBracket, advanceBracket, LEAGUE_FORMATS, TEAM_SIZES, START_FORMATS, isTeamFormat, SUGGESTED_DIVISIONS, type League, type LeagueEvent, type LeagueMember, type EventEntry, type EventCard, type StandingRow, type LeagueTeam, type LeagueMatch } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { storage } from "@/lib/firebase";
 import { getDownloadURL, ref as storageRef, uploadBytes } from "firebase/storage";
@@ -259,14 +259,15 @@ export default function LeagueManagePage() {
     if (!teeEvent || busy) return;
     setBusy(true);
     try {
-      await generateGroups(teeEvent.id, teeEntries, { format: teeEvent.startFormat, size: teeSize, intervalMin: teeInt, startMs: teeEvent.roundStarts?.[0] ?? teeEvent.date, divisions: league?.settings.divisions, holeCount });
+      await generateGroups(teeEvent.id, teeEntries, { format: teeEvent.startFormat, size: teeSize, intervalMin: teeInt, roundStarts: teeEvent.roundStarts ?? [teeEvent.date], roundCount: teeEvent.roundCount, divisions: league?.settings.divisions, holeCount });
       await reloadTee();
       const fresh = await getLeagueEvents(league!.id); setEvents(fresh);
     } finally { setBusy(false); }
   };
   const editTee = async (cardId: string, hhmm: string) => {
     if (!teeEvent || !hhmm) return;
-    const base = new Date(teeEvent.roundStarts?.[0] ?? teeEvent.date);
+    const rnd = teeCards.find((c) => c.id === cardId)?.round ?? 1;
+    const base = new Date(teeEvent.roundStarts?.[rnd - 1] ?? teeEvent.date);
     const [h, m] = hhmm.split(":").map(Number);
     base.setHours(h, m, 0, 0);
     setTeeCards((cur) => cur.map((c) => (c.id === cardId ? { ...c, teeTime: base.getTime() } : c)));
@@ -305,17 +306,18 @@ export default function LeagueManagePage() {
             return new Date(`${rv?.date || ed.date}T${rv?.time || ed.time || "17:30"}`).getTime();
           })]
         : null;
-      // If round-1's start moved, shift any generated tee sheet by the same delta so it follows the
-      // new date instead of going stale (keeps the director's grouping + relative stagger).
-      const oldStart = primaryEvent.roundStarts?.[0] ?? primaryEvent.date;
-      const delta = round1 - oldStart;
+      // If any round's start moved, shift that round's tee groups by its own delta so the sheet
+      // follows the new dates (keeps the director's grouping + relative stagger).
+      const oldStarts = primaryEvent.roundStarts && primaryEvent.roundStarts.length > 1 ? primaryEvent.roundStarts : [primaryEvent.date];
+      const newStarts = roundStarts ?? [round1];
+      const deltas = newStarts.map((s, i) => s - (oldStarts[i] ?? oldStarts[oldStarts.length - 1] ?? primaryEvent.date));
       await updateEventDetails(primaryEvent.id, {
         name: ed.name, date: round1, roundStarts, roundCount: ed.rounds, holes: ed.holes,
         buyIn: ed.buyIn.trim() === "" ? null : Number(ed.buyIn), capacity: ed.cap.trim() === "" ? null : Number(ed.cap),
         registrationCloseAt: ed.reg ? new Date(ed.reg).getTime() : null,
       });
-      if (delta !== 0 && primaryEvent.startFormat === "Tee times") {
-        await shiftEventTeeTimes(primaryEvent.id, delta);
+      if (primaryEvent.startFormat === "Tee times" && deltas.some((d) => d !== 0)) {
+        await shiftEventTeeTimesByRound(primaryEvent.id, deltas);
         if (teeEid === primaryEvent.id) setTeeCards(await getCards(primaryEvent.id));
       }
       const fresh = await getLeagueEvents(league.id); setEvents(fresh);
@@ -880,49 +882,64 @@ export default function LeagueManagePage() {
               {teeCards.length === 0 ? (
                 <p className="text-sm text-[var(--sage-dim)]">No groups yet. Set it up above and generate{teeFormat === "Flex" ? "." : " — or they build automatically when registration closes."}</p>
               ) : (() => {
-                const groups = new Map<string, EventCard[]>();
-                for (const c of teeCards) { const d = c.division || ""; if (!groups.has(d)) groups.set(d, []); groups.get(d)!.push(c); }
-                const multiDiv = groups.size > 1;
-                // Shotgun A/B waves: when two+ groups share a hole, letter them by order.
-                const byHole = new Map<number, EventCard[]>();
-                if (teeFormat === "Shotgun") for (const c of teeCards) { if (!byHole.has(c.startHole)) byHole.set(c.startHole, []); byHole.get(c.startHole)!.push(c); }
-                const waveOf = (c: EventCard) => { const arr = byHole.get(c.startHole); return arr && arr.length > 1 ? String.fromCharCode(65 + arr.indexOf(c)) : ""; };
+                const byRound = new Map<number, EventCard[]>();
+                for (const c of teeCards) { const r = c.round ?? 1; if (!byRound.has(r)) byRound.set(r, []); byRound.get(r)!.push(c); }
+                const rounds = [...byRound.keys()].sort((a, b) => a - b);
+                const multiRound = rounds.length > 1;
+                // Shotgun A/B waves per round+hole.
+                const byHole = new Map<string, EventCard[]>();
+                if (teeFormat === "Shotgun") for (const c of teeCards) { const k = `${c.round ?? 1}:${c.startHole}`; if (!byHole.has(k)) byHole.set(k, []); byHole.get(k)!.push(c); }
+                const waveOf = (c: EventCard) => { const arr = byHole.get(`${c.round ?? 1}:${c.startHole}`); return arr && arr.length > 1 ? String.fromCharCode(65 + arr.indexOf(c)) : ""; };
                 return (
-                  <div className="grid gap-6">
-                    {[...groups.entries()].map(([div, gcards]) => (
-                      <div key={div || "open"}>
-                        {multiDiv && <div className="mb-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--gold)]">{div || "Open"}</div>}
-                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                          {gcards.map((c) => (
-                            <div key={c.id} className={`${card} p-4`}>
-                              <div className="mb-3 flex items-center justify-between gap-2">
-                                <span className="font-[family-name:var(--font-heading)] text-sm font-extrabold text-[var(--cream)]">Group {c.number}</span>
-                                {teeFormat === "Tee times" ? (
-                                  <input type="time" value={c.teeTime ? toTimeInput(c.teeTime) : ""} onChange={(e) => editTee(c.id, e.target.value)} className="rounded-lg bg-[var(--gold-dim)] px-2 py-1 font-mono text-[11px] font-bold text-[var(--gold)] outline-none [color-scheme:dark]" />
-                                ) : teeFormat === "Shotgun" ? (
-                                  <span className="inline-flex items-center gap-1 rounded-lg bg-[var(--gold-dim)] pl-2 pr-1 py-1 font-mono text-[10px] font-bold text-[var(--gold)]">HOLE <input type="number" min={1} max={holeCount} value={c.startHole} onChange={(e) => editHole(c.id, Number(e.target.value))} className="w-10 rounded bg-transparent text-center text-[11px] font-bold text-[var(--gold)] outline-none" />{waveOf(c) && <span className="ml-0.5 rounded bg-[var(--gold)]/25 px-1">{waveOf(c)}</span>}</span>
-                                ) : null}
+                  <div className="grid gap-8">
+                    {rounds.map((rnd) => {
+                      const rcards = byRound.get(rnd)!;
+                      const groups = new Map<string, EventCard[]>();
+                      for (const c of rcards) { const d = c.division || ""; if (!groups.has(d)) groups.set(d, []); groups.get(d)!.push(c); }
+                      const multiDiv = groups.size > 1;
+                      const roundStart = teeEvent.roundStarts?.[rnd - 1] ?? teeEvent.date;
+                      return (
+                        <div key={rnd}>
+                          {multiRound && <div className="mb-3 flex flex-wrap items-center gap-3 border-b border-[var(--hair)] pb-2"><span className="font-[family-name:var(--font-heading)] text-base font-bold text-[var(--cream)]">Round {rnd}</span><span className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--sage-dim)]">{fmtDate(roundStart)}</span></div>}
+                          <div className="grid gap-6">
+                            {[...groups.entries()].map(([div, gcards]) => (
+                              <div key={div || "open"}>
+                                {multiDiv && <div className="mb-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--gold)]">{div || "Open"}</div>}
+                                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                  {gcards.map((c) => (
+                                    <div key={c.id} className={`${card} p-4`}>
+                                      <div className="mb-3 flex items-center justify-between gap-2">
+                                        <span className="font-[family-name:var(--font-heading)] text-sm font-extrabold text-[var(--cream)]">Group {c.number}</span>
+                                        {teeFormat === "Tee times" ? (
+                                          <input type="time" value={c.teeTime ? toTimeInput(c.teeTime) : ""} onChange={(e) => editTee(c.id, e.target.value)} className="rounded-lg bg-[var(--gold-dim)] px-2 py-1 font-mono text-[11px] font-bold text-[var(--gold)] outline-none [color-scheme:dark]" />
+                                        ) : teeFormat === "Shotgun" ? (
+                                          <span className="inline-flex items-center gap-1 rounded-lg bg-[var(--gold-dim)] pl-2 pr-1 py-1 font-mono text-[10px] font-bold text-[var(--gold)]">HOLE <input type="number" min={1} max={holeCount} value={c.startHole} onChange={(e) => editHole(c.id, Number(e.target.value))} className="w-10 rounded bg-transparent text-center text-[11px] font-bold text-[var(--gold)] outline-none" />{waveOf(c) && <span className="ml-0.5 rounded bg-[var(--gold)]/25 px-1">{waveOf(c)}</span>}</span>
+                                        ) : null}
+                                      </div>
+                                      <div className="space-y-2">
+                                        {c.playerIds.map((pid) => (
+                                          <div key={pid} className="flex items-center gap-2 text-sm text-[var(--text-body)]">
+                                            <Avatar url={teeEntryOf.get(pid)?.photo} name={teeEntryOf.get(pid)?.name ?? "?"} size={22} ring={false} />
+                                            <span className="min-w-0 flex-1 truncate text-[var(--cream)]">{teeEntryOf.get(pid)?.name ?? "Player"}</span>
+                                            {rcards.length > 1 && (
+                                              <select value="" onChange={(e) => { if (e.target.value) moveTee(pid, e.target.value); }} title="Move to another group" className="shrink-0 rounded-md bg-white/[0.05] px-1.5 py-1 text-[10px] text-[var(--sage)] outline-none">
+                                                <option value="">move…</option>
+                                                {rcards.filter((o) => o.id !== c.id).map((o) => <option key={o.id} value={o.id}>Group {o.number}{o.teeTime ? ` · ${fmtHM(o.teeTime)}` : ""}</option>)}
+                                              </select>
+                                            )}
+                                          </div>
+                                        ))}
+                                        {c.playerIds.length === 0 && <p className="text-xs text-[var(--cream-38)]">Empty group</p>}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
-                              <div className="space-y-2">
-                                {c.playerIds.map((pid) => (
-                                  <div key={pid} className="flex items-center gap-2 text-sm text-[var(--text-body)]">
-                                    <Avatar url={teeEntryOf.get(pid)?.photo} name={teeEntryOf.get(pid)?.name ?? "?"} size={22} ring={false} />
-                                    <span className="min-w-0 flex-1 truncate text-[var(--cream)]">{teeEntryOf.get(pid)?.name ?? "Player"}</span>
-                                    {teeCards.length > 1 && (
-                                      <select value="" onChange={(e) => { if (e.target.value) moveTee(pid, e.target.value); }} title="Move to another group" className="shrink-0 rounded-md bg-white/[0.05] px-1.5 py-1 text-[10px] text-[var(--sage)] outline-none">
-                                        <option value="">move…</option>
-                                        {teeCards.filter((o) => o.id !== c.id).map((o) => <option key={o.id} value={o.id}>Group {o.number}{o.teeTime ? ` · ${fmtHM(o.teeTime)}` : ""}</option>)}
-                                      </select>
-                                    )}
-                                  </div>
-                                ))}
-                                {c.playerIds.length === 0 && <p className="text-xs text-[var(--cream-38)]">Empty group</p>}
-                              </div>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 );
               })()}

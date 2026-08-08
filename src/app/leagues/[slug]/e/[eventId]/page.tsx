@@ -179,7 +179,7 @@ export default function LeagueEventPage() {
     autoGenRef.current = true;
     (async () => {
       const hc = event.courseId ? await getCourseHoleCount(event.courseId).catch(() => null) : null;
-      await generateGroups(event.id, entries, { format: event.startFormat, size: event.teeGroupSize ?? 4, intervalMin: event.teeIntervalMin ?? 10, startMs: event.roundStarts?.[0] ?? event.date, divisions: league.settings.divisions, holeCount: hc ?? event.holes });
+      await generateGroups(event.id, entries, { format: event.startFormat, size: event.teeGroupSize ?? 4, intervalMin: event.teeIntervalMin ?? 10, roundStarts: event.roundStarts ?? [event.date], roundCount: event.roundCount, divisions: league.settings.divisions, holeCount: hc ?? event.holes });
       await reload(event.id);
       setEvent((e) => (e ? { ...e, teeGenerated: true } : e));
     })().catch(() => { autoGenRef.current = false; });
@@ -281,14 +281,15 @@ export default function LeagueEventPage() {
     if (!event || busy) return;
     setBusy(true);
     try {
-      await generateTeeTimes(event.id, entries, { size: cardSize, intervalMin: teeInterval, startMs: event.roundStarts?.[0] ?? event.date, divisions: league?.settings.divisions });
+      await generateGroups(event.id, entries, { format: event.startFormat, size: cardSize, intervalMin: teeInterval, roundStarts: event.roundStarts ?? [event.date], roundCount: event.roundCount, divisions: league?.settings.divisions, holeCount: event.holes });
       await reload(event.id);
     } finally { setBusy(false); }
   };
 
   const editTeeTime = async (cardId: string, hhmm: string) => {
     if (!event || !hhmm) return;
-    const base = new Date(event.roundStarts?.[0] ?? event.date);
+    const rnd = cards.find((c) => c.id === cardId)?.round ?? 1;
+    const base = new Date(event.roundStarts?.[rnd - 1] ?? event.date);
     const [h, m] = hhmm.split(":").map(Number);
     base.setHours(h, m, 0, 0);
     await setCardTeeTime(event.id, cardId, base.getTime());
@@ -335,7 +336,8 @@ export default function LeagueEventPage() {
     if (!event || !league || autoCompleteRef.current || !isLeagueAdmin(league, cid)) return;
     const scoring = event.kind !== "clinic" && event.kind !== "cleanup" && event.kind !== "social";
     const canComp = scoring && event.status === "scheduled" && Date.now() >= event.date && entries.length > 0;
-    const allSubmitted = entries.length > 0 && entries.every((e) => typeof e.score === "number" || e.dnf);
+    // Multi-round: only when EVERY round is in for everyone (a partial round-1 total isn't "submitted").
+    const allSubmitted = entries.length > 0 && entries.every((e) => e.dnf || (event.roundCount > 1 ? (e.roundScores?.filter((r) => r > 0).length ?? 0) >= event.roundCount : typeof e.score === "number"));
     if (canComp && allSubmitted) { autoCompleteRef.current = true; complete(); }
   }, [event, league, cid, entries]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -454,6 +456,8 @@ export default function LeagueEventPage() {
   };
   const isLiveBoard = event.status === "scheduled" && entries.some((e) => typeof e.score !== "number" && e.holeScores?.some((h) => h > 0));
   const ranked = [...shown].filter((e) => scoreOf(e) != null && !e.dnf).sort((a, b) => (isLiveBoard ? deltaOf(a) - deltaOf(b) : adjOf(a) - adjOf(b)));
+  // Multi-day: a champion is only crowned once EVERY round is in. Until then, top of the board is the LEADER.
+  const finalized = event.roundCount === 1 || ranked.length === 0 || ranked.every((e) => (e.roundScores?.filter((r) => r > 0).length ?? 0) >= event.roundCount);
   const unscored = shown.filter((e) => !ranked.includes(e));
   // Signed to-par strings when real pars are loaded; raw strokes otherwise.
   const signed = (d: number) => (d === 0 ? "E" : d > 0 ? `+${d}` : String(d));
@@ -745,7 +749,7 @@ export default function LeagueEventPage() {
           <div className="min-w-0">
             {scoringKind && event.status === "complete" && ranked.length > 0 && (
               <div className="mb-10">
-                <div className="mb-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">Final results</div>
+                <div className="mb-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">{finalized ? "Final results" : "Leaderboard"}</div>
                 <div className={`${card} overflow-hidden`}>
                   <div className="grid h-[42px] grid-cols-[56px_1fr_90px_90px] items-center bg-[rgba(0,0,0,0.16)] px-[22px] font-mono text-[10.5px] uppercase tracking-[0.16em] text-[var(--cream-38)]">
                     <span>Pos</span><span>Player</span><span className="text-right">Rds</span><span className="text-right">Total</span>
@@ -872,7 +876,7 @@ export default function LeagueEventPage() {
                 <IconTrophy className="pointer-events-none absolute -right-5 -top-5 h-32 w-32 rotate-12 text-[var(--gold)] opacity-[0.08]" />
                 <div className="relative">
                   <div className="flex items-center gap-2.5 font-mono text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--gold)]">
-                    <span aria-hidden className="h-px w-5 bg-[rgba(232,181,96,0.5)]" />Winner<span aria-hidden className="h-px flex-1 bg-[rgba(232,181,96,0.22)]" />
+                    <span aria-hidden className="h-px w-5 bg-[rgba(232,181,96,0.5)]" />{finalized ? "Winner" : "Leader"}<span aria-hidden className="h-px flex-1 bg-[rgba(232,181,96,0.22)]" />
                   </div>
                   <div className="mt-5 flex items-center gap-4">
                     <span className="relative shrink-0">
@@ -885,7 +889,7 @@ export default function LeagueEventPage() {
                     </div>
                     <div className="shrink-0 text-right">
                       <div className="font-mono text-[42px] font-bold leading-none tracking-[-0.02em] text-[var(--gold)]">{fmtTotal(ranked[0])}</div>
-                      <div className="mt-1.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.18em] text-[var(--cream-38)]">Final</div>
+                      <div className="mt-1.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.18em] text-[var(--cream-38)]">{finalized ? "Final" : "Leading"}</div>
                     </div>
                   </div>
                   {(() => {
@@ -1160,7 +1164,7 @@ export default function LeagueEventPage() {
           <>
           <div className={`${card} overflow-hidden`}>
             <div className="flex items-center gap-3.5 bg-[var(--forest)] px-4 py-2 font-mono text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[var(--cream-38)]">
-              <span className="w-8">Pos</span><span className="flex-1">Player</span><span className="hidden w-[184px] text-right sm:block">Last 9</span><span className="w-8 text-right">Thru</span>{event.roundCount > 1 && <span className="hidden w-10 text-right sm:block">Rd</span>}<span className="w-20 text-right">Total</span>
+              <span className="w-8">Pos</span><span className="flex-1">Player</span><span className="hidden w-[184px] text-right sm:block">{event.status === "complete" ? "F · B" : "Last 9"}</span><span className="w-8 text-right">{event.status === "complete" ? "" : "Thru"}</span>{event.roundCount > 1 && <span className="hidden w-10 text-right sm:block">Rd</span>}<span className="w-20 text-right">Total</span>
             </div>
             {[...ranked, ...unscored].map((e, i) => {
               const isRanked = ranked.includes(e);
@@ -1190,7 +1194,7 @@ export default function LeagueEventPage() {
                         </span>
                       )}
                     </span>
-                    {event.status === "complete" && typeof e.score === "number" && (
+                    {event.status === "complete" && typeof e.score === "number" && (league?.settings.scoring?.model ?? "placement") === "placement" && !isTournament && (
                       <span className="mt-0.5 block text-[10px] font-bold text-[var(--sage-dim)]">{points.get(e.id) ?? ""} pts</span>
                     )}
                   </span>
@@ -1198,7 +1202,7 @@ export default function LeagueEventPage() {
 
                   {admin && editScores ? (
                     <span className="flex items-center gap-1.5">
-                      <button onClick={() => patchEntry(e.id, { paid: !e.paid })} title={e.paid ? "Mark unpaid" : "Mark paid"} className={`rounded-full px-2 py-1.5 font-mono text-xs font-bold transition-colors ${e.paid ? "bg-[#5fcf80]/15 text-[#5fcf80]" : "bg-white/[0.05] text-[var(--sage-dim)] hover:text-[var(--cream)]"}`}>$</button>
+                      {!!event.buyIn && <button onClick={() => patchEntry(e.id, { paid: !e.paid })} title={e.paid ? "Mark unpaid" : "Mark paid"} className={`rounded-full px-2 py-1.5 font-mono text-xs font-bold transition-colors ${e.paid ? "bg-[#5fcf80]/15 text-[#5fcf80]" : "bg-white/[0.05] text-[var(--sage-dim)] hover:text-[var(--cream)]"}`}>$</button>}
                       <button onClick={() => patchEntry(e.id, { penalty: (e.penalty ?? 0) > 0 ? undefined : 2 })} title={(e.penalty ?? 0) > 0 ? `Penalty +${e.penalty} — click to clear` : "Add +2 penalty"} className={`rounded-full px-2 py-1.5 font-mono text-xs font-bold transition-colors ${(e.penalty ?? 0) > 0 ? "bg-[#f08c8c]/15 text-[#f08c8c]" : "bg-white/[0.05] text-[var(--sage-dim)] hover:text-[var(--cream)]"}`}>{(e.penalty ?? 0) > 0 ? `+${e.penalty}` : "P"}</button>
                       <button onClick={() => patchEntry(e.id, { dnf: !e.dnf })} title={e.dnf ? "Clear DNF" : "Mark DNF"} className={`rounded-full px-2 py-1.5 font-mono text-[10px] font-bold transition-colors ${e.dnf ? "bg-white/[0.1] text-[var(--cream)]" : "bg-white/[0.05] text-[var(--sage-dim)] hover:text-[var(--cream)]"}`}>DNF</button>
                       <input
@@ -1248,7 +1252,9 @@ export default function LeagueEventPage() {
                   ) : (
                     <span className="flex items-center gap-3.5">
                       <span className="hidden w-[184px] items-center justify-end gap-[5px] sm:flex">
-                        {last9.length > 0 && (
+                        {typeof e.score === "number" ? (
+                          (() => { const hs = e.holeScores ?? []; const f = hs.slice(0, 9).filter((h) => h > 0).reduce((a, b) => a + b, 0); const b = hs.slice(9, 18).filter((h) => h > 0).reduce((a, b) => a + b, 0); return (f || b) ? <span className="font-mono text-xs text-[var(--cream-60)]">F {f || "–"} · B {b || "–"}</span> : null; })()
+                        ) : last9.length > 0 && (
                           <>
                           {last9.map((h, hi) => {
                             const holeIdx = playedHoles.length - last9.length + hi;
@@ -1265,13 +1271,13 @@ export default function LeagueEventPage() {
                       </span>
                       <span className="w-8 text-right font-mono text-xs text-[var(--cream-38)]">{thruN != null ? thruN : ""}</span>
                       {event.roundCount > 1 && (
-                        <span className="hidden w-10 text-right font-mono text-xs text-[var(--cream-60)] sm:block">{(() => { const rs = e.roundScores?.filter((r) => r > 0); return rs?.length ? rs[rs.length - 1] : ""; })()}</span>
+                        <span className="hidden w-10 text-right font-mono text-[10px] font-bold uppercase text-[var(--cream-60)] sm:block">{typeof e.score === "number" && !e.dnf ? "Final" : (() => { const rs = e.roundScores?.filter((r) => r > 0); return rs?.length ? rs[rs.length - 1] : ""; })()}</span>
                       )}
                       <span className={`w-20 text-right font-mono text-lg font-extrabold ${scoreOf(e) == null || e.dnf ? "text-[var(--cream-38)]" : scoreTone(fmtLive(e), you)}`}>
                         {scoreOf(e) == null ? "" : e.dnf ? scoreOf(e) : fmtLive(e)}
                         {scoreOf(e) != null && !e.dnf && parTotal != null && <span className="ml-1 align-middle text-[10px] font-normal text-[var(--cream-38)]">({anyHcp ? adjOf(e) : scoreOf(e)})</span>}
                       </span>
-                      {admin && event.status === "complete" && (
+                      {admin && event.status === "complete" && !!event.buyIn && (
                         <input
                           key={`${e.id}-pay-${e.payout ?? ""}`}
                           inputMode="numeric"
@@ -1561,45 +1567,60 @@ export default function LeagueEventPage() {
           <p className="text-sm text-[var(--sage-dim)]">{isTeeTimes ? "No tee times yet." : "No cards yet."}{admin ? (isTeeTimes ? " They build automatically when registration closes — split by division and staggered. Or generate now to preview." : " Generate them once players check in.") : ""}</p>
         ) : isTeeTimes ? (
           (() => {
-            const groups = new Map<string, EventCard[]>();
-            for (const c of cards) { const d = c.division || ""; if (!groups.has(d)) groups.set(d, []); groups.get(d)!.push(c); }
-            const multiDiv = groups.size > 1;
+            const byRound = new Map<number, EventCard[]>();
+            for (const c of cards) { const r = c.round ?? 1; if (!byRound.has(r)) byRound.set(r, []); byRound.get(r)!.push(c); }
+            const roundKeys = [...byRound.keys()].sort((a, b) => a - b);
+            const multiRound = roundKeys.length > 1;
             return (
-              <div className="grid gap-6">
-                {[...groups.entries()].map(([div, gcards]) => (
-                  <div key={div || "open"}>
-                    {multiDiv && <div className="mb-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--gold)]">{div || "Open"}</div>}
-                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                      {gcards.map((c) => (
-                        <div key={c.id} className={`${card} p-4`}>
-                          <div className="mb-3 flex items-center justify-between gap-2">
-                            <span className="font-[family-name:var(--font-heading)] text-sm font-extrabold text-[var(--cream)]">Group {c.number}</span>
-                            {admin && open ? (
-                              <input type="time" value={c.teeTime ? toLocalHM(c.teeTime) : ""} onChange={(e) => editTeeTime(c.id, e.target.value)} className="rounded-lg bg-[var(--gold-dim)] px-2 py-1 font-mono text-[11px] font-bold text-[var(--gold)] outline-none [color-scheme:dark]" />
-                            ) : (
-                              <span className="rounded-lg bg-[var(--gold-dim)] px-2 py-1 font-mono text-[10px] font-bold text-[var(--gold)]">{c.teeTime ? fmtHM(c.teeTime) : "—"}</span>
-                            )}
+              <div className="grid gap-8">
+                {roundKeys.map((rnd) => {
+                  const rcards = byRound.get(rnd)!;
+                  const groups = new Map<string, EventCard[]>();
+                  for (const c of rcards) { const d = c.division || ""; if (!groups.has(d)) groups.set(d, []); groups.get(d)!.push(c); }
+                  const multiDiv = groups.size > 1;
+                  const roundStart = event.roundStarts?.[rnd - 1] ?? event.date;
+                  return (
+                    <div key={rnd}>
+                      {multiRound && <div className="mb-3 flex flex-wrap items-center gap-3 border-b border-[var(--hair)] pb-2"><span className="font-[family-name:var(--font-heading)] text-base font-bold text-[var(--cream)]">Round {rnd}</span><span className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--cream-38)]">{fmtDate(roundStart)}</span></div>}
+                      <div className="grid gap-6">
+                        {[...groups.entries()].map(([div, gcards]) => (
+                          <div key={div || "open"}>
+                            {multiDiv && <div className="mb-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--gold)]">{div || "Open"}</div>}
+                            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                              {gcards.map((c) => (
+                                <div key={c.id} className={`${card} p-4`}>
+                                  <div className="mb-3 flex items-center justify-between gap-2">
+                                    <span className="font-[family-name:var(--font-heading)] text-sm font-extrabold text-[var(--cream)]">Group {c.number}</span>
+                                    {admin && open ? (
+                                      <input type="time" value={c.teeTime ? toLocalHM(c.teeTime) : ""} onChange={(e) => editTeeTime(c.id, e.target.value)} className="rounded-lg bg-[var(--gold-dim)] px-2 py-1 font-mono text-[11px] font-bold text-[var(--gold)] outline-none [color-scheme:dark]" />
+                                    ) : (
+                                      <span className="rounded-lg bg-[var(--gold-dim)] px-2 py-1 font-mono text-[10px] font-bold text-[var(--gold)]">{c.teeTime ? fmtHM(c.teeTime) : "—"}</span>
+                                    )}
+                                  </div>
+                                  <div className="space-y-2">
+                                    {c.playerIds.map((pid) => (
+                                      <div key={pid} className="flex items-center gap-2 text-sm text-[var(--text-body)]">
+                                        <UserLink username={usernameById(pid)}><Avatar url={entryOf(pid)?.photo} name={nameById(pid)} size={22} ring={false} /></UserLink>
+                                        <UserLink username={usernameById(pid)} className="min-w-0 flex-1 truncate">{nameById(pid)}</UserLink>
+                                        {admin && open && rcards.length > 1 && (
+                                          <select value="" onChange={(e) => { if (e.target.value) moveEntry(pid, e.target.value); }} title="Move to another group" className="shrink-0 rounded-md bg-white/[0.05] px-1.5 py-1 text-[10px] text-[var(--sage)] outline-none">
+                                            <option value="">move…</option>
+                                            {rcards.filter((o) => o.id !== c.id).map((o) => <option key={o.id} value={o.id}>Group {o.number}{o.teeTime ? ` · ${fmtHM(o.teeTime)}` : ""}</option>)}
+                                          </select>
+                                        )}
+                                      </div>
+                                    ))}
+                                    {c.playerIds.length === 0 && <p className="text-xs text-[var(--cream-38)]">Empty group</p>}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                          <div className="space-y-2">
-                            {c.playerIds.map((pid) => (
-                              <div key={pid} className="flex items-center gap-2 text-sm text-[var(--text-body)]">
-                                <UserLink username={usernameById(pid)}><Avatar url={entryOf(pid)?.photo} name={nameById(pid)} size={22} ring={false} /></UserLink>
-                                <UserLink username={usernameById(pid)} className="min-w-0 flex-1 truncate">{nameById(pid)}</UserLink>
-                                {admin && open && cards.length > 1 && (
-                                  <select value="" onChange={(e) => { if (e.target.value) moveEntry(pid, e.target.value); }} title="Move to another group" className="shrink-0 rounded-md bg-white/[0.05] px-1.5 py-1 text-[10px] text-[var(--sage)] outline-none">
-                                    <option value="">move…</option>
-                                    {cards.filter((o) => o.id !== c.id).map((o) => <option key={o.id} value={o.id}>Group {o.number}{o.teeTime ? ` · ${fmtHM(o.teeTime)}` : ""}</option>)}
-                                  </select>
-                                )}
-                              </div>
-                            ))}
-                            {c.playerIds.length === 0 && <p className="text-xs text-[var(--cream-38)]">Empty group</p>}
-                          </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             );
           })()

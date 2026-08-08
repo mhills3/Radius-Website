@@ -240,6 +240,7 @@ export interface EventEntry {
 export interface EventCard {
   id: string;
   number: number;
+  round?: number;      // 1-based round the group belongs to (multi-day events have a sheet per round)
   startHole: number;
   teeTime?: number;    // ms epoch — tee-time-start events stagger groups; absent for shotgun cards
   division?: string;   // tee-time groups are built per division
@@ -1100,11 +1101,15 @@ export async function generateCards(eventId: string, entries: EventEntry[], size
  *   • "Flex"      → just groupings, no hole/time
  * Replaces the whole card set.
  */
-export async function generateGroups(eventId: string, entries: EventEntry[], opts: { format: string; size?: number; intervalMin?: number; startMs?: number; divisions?: string[]; holeCount?: number }): Promise<EventCard[]> {
+export async function generateGroups(eventId: string, entries: EventEntry[], opts: { format: string; size?: number; intervalMin?: number; startMs?: number; roundStarts?: number[]; roundCount?: number; divisions?: string[]; holeCount?: number }): Promise<EventCard[]> {
   const size = Math.max(1, opts.size ?? 4);
   const interval = Math.max(1, opts.intervalMin ?? 10) * 60_000;
-  const start = opts.startMs && opts.startMs > 0 ? opts.startMs : Date.now();
   const holeCount = Math.max(1, opts.holeCount ?? 18);
+  const roundCount = Math.max(1, opts.roundCount ?? 1);
+  // One start per round; fall back to a single start (startMs) for single-round events.
+  const roundStarts = opts.roundStarts && opts.roundStarts.length
+    ? opts.roundStarts
+    : [opts.startMs && opts.startMs > 0 ? opts.startMs : Date.now()];
   const order = opts.divisions ?? [];
   const byDiv = new Map<string, EventEntry[]>();
   for (const e of entries) { const d = e.division || ""; if (!byDiv.has(d)) byDiv.set(d, []); byDiv.get(d)!.push(e); }
@@ -1114,22 +1119,26 @@ export async function generateGroups(eventId: string, entries: EventEntry[], opt
     return ia !== ib ? ia - ib : a.localeCompare(b);
   });
   const cards: EventCard[] = [];
-  let slot = 0;
-  for (const d of divKeys) {
-    const group = byDiv.get(d)!;
-    for (let i = 0; i < group.length; i += size) {
-      // Shotgun: one group per hole; when groups exceed holes, wrap into A/B/C waves on the same holes.
-      const startHole = opts.format === "Shotgun" ? (slot % holeCount) + 1 : 1;
-      const teeTime = opts.format === "Tee times" ? start + slot * interval : undefined;
-      cards.push({ id: freshId(), number: cards.length + 1, startHole, teeTime, division: d || undefined, playerIds: group.slice(i, i + size).map((e) => e.id) });
-      slot++;
+  // Build the same grouping for every round, each staggered off that round's own start.
+  for (let r = 0; r < roundCount; r++) {
+    const start = roundStarts[r] ?? roundStarts[roundStarts.length - 1];
+    let slot = 0;
+    for (const d of divKeys) {
+      const group = byDiv.get(d)!;
+      for (let i = 0; i < group.length; i += size) {
+        const startHole = opts.format === "Shotgun" ? (slot % holeCount) + 1 : 1;
+        const teeTime = opts.format === "Tee times" ? start + slot * interval : undefined;
+        cards.push({ id: freshId(), number: slot + 1, round: r + 1, startHole, teeTime, division: d || undefined, playerIds: group.slice(i, i + size).map((e) => e.id) });
+        slot++;
+      }
     }
   }
   const old = await getCards(eventId);
   await Promise.all(old.map((c) => setDoc(doc(db, "leagueEvents", eventId, "cards", c.id), { deleted: true }, { merge: true })));
   for (const c of cards) {
-    await setDoc(doc(db, "leagueEvents", eventId, "cards", c.id), { number: c.number, startHole: c.startHole, teeTime: c.teeTime ?? null, division: c.division ?? null, playerIds: c.playerIds, deleted: false }, { merge: true });
-    await Promise.all(c.playerIds.map((pid) => setDoc(doc(db, "leagueEvents", eventId, "entries", pid), { cardId: c.id }, { merge: true })));
+    await setDoc(doc(db, "leagueEvents", eventId, "cards", c.id), { number: c.number, round: c.round ?? 1, startHole: c.startHole, teeTime: c.teeTime ?? null, division: c.division ?? null, playerIds: c.playerIds, deleted: false }, { merge: true });
+    // Entry.cardId points at the player's ROUND 1 group (day-of card); later rounds share the same grouping.
+    if ((c.round ?? 1) === 1) await Promise.all(c.playerIds.map((pid) => setDoc(doc(db, "leagueEvents", eventId, "entries", pid), { cardId: c.id }, { merge: true })));
   }
   await setDoc(doc(db, "leagueEvents", eventId), { teeGenerated: true, teeGroupSize: size, teeIntervalMin: (opts.intervalMin ?? 10) }, { merge: true });
   return cards;
@@ -1150,6 +1159,13 @@ export async function setCardTeeTime(eventId: string, cardId: string, teeTime: n
  * existing sheet follows it (preserving the director's grouping and relative stagger) instead of
  * going stale on the old date. Returns how many groups were shifted.
  */
+/** Shift each round's tee-time groups by that round's delta (deltas[r-1] ms) when a schedule moves. */
+export async function shiftEventTeeTimesByRound(eventId: string, deltas: number[]): Promise<void> {
+  if (!deltas.some((d) => d)) return;
+  const cards = (await getCards(eventId)).filter((c) => c.teeTime && c.teeTime > 0);
+  await Promise.all(cards.map((c) => { const d = deltas[(c.round ?? 1) - 1] ?? 0; return d ? setDoc(doc(db, "leagueEvents", eventId, "cards", c.id), { teeTime: c.teeTime! + d }, { merge: true }) : Promise.resolve(); }));
+}
+
 export async function shiftEventTeeTimes(eventId: string, deltaMs: number): Promise<number> {
   if (!deltaMs) return 0;
   const cards = (await getCards(eventId)).filter((c) => c.teeTime && c.teeTime > 0);
@@ -1166,11 +1182,13 @@ export async function setCardStartHole(eventId: string, cardId: string, hole: nu
 export async function moveEntryToCard(eventId: string, entryId: string, toCardId: string): Promise<void> {
   const cards = await getCards(eventId);
   const to = cards.find((c) => c.id === toCardId);
-  const from = cards.find((c) => c.playerIds.includes(entryId));
-  if (!to || from?.id === toCardId) return;
+  if (!to) return;
+  // Multi-day: a player is in one group PER ROUND — only move within the target's round.
+  const from = cards.find((c) => (c.round ?? 1) === (to.round ?? 1) && c.playerIds.includes(entryId));
+  if (from?.id === toCardId) return;
   if (from) await setDoc(doc(db, "leagueEvents", eventId, "cards", from.id), { playerIds: from.playerIds.filter((p) => p !== entryId) }, { merge: true });
   await setDoc(doc(db, "leagueEvents", eventId, "cards", toCardId), { playerIds: [...to.playerIds, entryId] }, { merge: true });
-  await setDoc(doc(db, "leagueEvents", eventId, "entries", entryId), { cardId: toCardId }, { merge: true });
+  if ((to.round ?? 1) === 1) await setDoc(doc(db, "leagueEvents", eventId, "entries", entryId), { cardId: toCardId }, { merge: true });
 }
 
 export async function getCards(eventId: string): Promise<EventCard[]> {
@@ -1179,7 +1197,7 @@ export async function getCards(eventId: string): Promise<EventCard[]> {
     return snap.docs
       .map((d) => {
         const c = d.data();
-        return c.deleted === true ? null : { id: d.id, number: Number(c.number) || 0, startHole: Number(c.startHole) || 1, teeTime: Number(c.teeTime) > 0 ? Number(c.teeTime) : undefined, division: (c.division as string) || undefined, playerIds: Array.isArray(c.playerIds) ? c.playerIds : [] } as EventCard;
+        return c.deleted === true ? null : { id: d.id, number: Number(c.number) || 0, round: Number(c.round) > 0 ? Number(c.round) : 1, startHole: Number(c.startHole) || 1, teeTime: Number(c.teeTime) > 0 ? Number(c.teeTime) : undefined, division: (c.division as string) || undefined, playerIds: Array.isArray(c.playerIds) ? c.playerIds : [] } as EventCard;
       })
       .filter((x): x is EventCard => x !== null)
       .sort((a, b) => a.number - b.number);
