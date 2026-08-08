@@ -67,6 +67,7 @@ export default function LeagueManagePage() {
   const [hcpCapDraft, setHcpCapDraft] = useState("");
   const [bagTagsDraft, setBagTagsDraft] = useState(false);
   const [checkInsDraft, setCheckInsDraft] = useState(false);
+  const [caddyDraft, setCaddyDraft] = useState(true);
   const [acePotDraft, setAcePotDraft] = useState("");
   const [formatDraft, setFormatDraft] = useState<string>(LEAGUE_FORMATS[0]);
   const [startDraft, setStartDraft] = useState<string>(START_FORMATS[0]);
@@ -108,6 +109,7 @@ export default function LeagueManagePage() {
         setHcpCapDraft(l.settings.handicapCap ? String(l.settings.handicapCap) : "");
         setBagTagsDraft(l.settings.bagTags === true);
         setCheckInsDraft(l.settings.checkIns === true);
+        setCaddyDraft(l.settings.caddyAllowed !== false);
         setAcePotDraft(l.acePotBalance != null ? String(l.acePotBalance) : "");
         setFormatDraft(l.settings.format);
         setStartDraft(l.settings.startFormat);
@@ -211,7 +213,7 @@ export default function LeagueManagePage() {
       const scoring = { ...(league.settings.scoring ?? {}), model: modelDraft, view: viewDraft, aggregate: (bestN ? "bestN" : "sum") as "sum" | "bestN",
         curve: modelDraft === "placement" ? curveDraft : undefined,
         curveTable: modelDraft === "placement" && curveDraft === "table" && curveTableDraft.length ? curveTableDraft.map((n) => Math.max(0, Math.round(n))) : undefined };
-      const settings = { ...league.settings, format: formatDraft, teamSize: isTeamFormat(formatDraft) ? teamSizeDraft : undefined, startFormat: startDraft, divisions: divisions.length > 1 ? divisions : undefined, bestN, handicapPercent, handicapCap, bagTags: bagTagsDraft, checkIns: checkInsDraft, description: descDraft.trim(), scoring };
+      const settings = { ...league.settings, format: formatDraft, teamSize: isTeamFormat(formatDraft) ? teamSizeDraft : undefined, startFormat: startDraft, divisions: divisions.length > 1 ? divisions : undefined, bestN, handicapPercent, handicapCap, bagTags: bagTagsDraft, checkIns: checkInsDraft, caddyAllowed: caddyDraft, description: descDraft.trim(), scoring };
       await updateLeagueSettings(league.id, settings);
       const acePot = acePotDraft.trim() !== "" && Number(acePotDraft) >= 0 ? Number(acePotDraft) : undefined;
       if (acePot != null && acePot !== league.acePotBalance) await setAcePot(league.id, acePot);
@@ -1050,6 +1052,11 @@ export default function LeagueManagePage() {
                   <input type="checkbox" checked={checkInsDraft} onChange={(e) => setCheckInsDraft(e.target.checked)} className="h-4 w-4 accent-[var(--gold)]" />
                   <span className="text-sm font-semibold text-[var(--cream)]">Manage check-ins</span>
                   <span className="text-xs text-[var(--sage-dim)]">directors mark who&apos;s arrived on the Players tab, from ~3h before start</span>
+                </label>
+                <label className="flex items-center gap-3 sm:col-span-2">
+                  <input type="checkbox" checked={caddyDraft} onChange={(e) => setCaddyDraft(e.target.checked)} className="h-4 w-4 accent-[var(--gold)]" />
+                  <span className="text-sm font-semibold text-[var(--cream)]">Allow Caddy during the event</span>
+                  <span className="text-xs text-[var(--sage-dim)]">players can use the in-app Caddy while playing — turn off for a no-assistance tournament</span>
                 </label>
                 <label className="block sm:col-span-2"><FieldLabel>Description</FieldLabel><textarea value={descDraft} onChange={(e) => setDescDraft(e.target.value)} rows={2} className={inputCls} /></label>
               </div>
