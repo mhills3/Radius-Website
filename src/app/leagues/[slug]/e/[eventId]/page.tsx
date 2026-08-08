@@ -484,7 +484,6 @@ export default function LeagueEventPage() {
     (e.holeScores ?? []).forEach((h, i) => { if (h > 0) { strokes += h; par += pars![i] ?? 3; } });
     return strokes + (e.penalty ?? 0) + (e.startingScore ?? 0) - par;
   };
-  const isLiveBoard = event.status === "scheduled" && entries.some((e) => typeof e.score !== "number" && e.holeScores?.some((h) => h > 0));
   const roundsDone = (e: EventEntry) => e.roundScores?.filter((r) => r > 0).length ?? (typeof e.score === "number" ? event.roundCount : 0);
   const finishedAll = (e: EventEntry) => roundsDone(e) >= event.roundCount;
   const ranked = [...shown].filter((e) => scoreOf(e) != null && !e.dnf).sort((a, b) => {
@@ -495,6 +494,10 @@ export default function LeagueEventPage() {
   });
   // Multi-day: a champion is only crowned once EVERY round is in. Until then, top of the board is the LEADER.
   const finalized = event.roundCount === 1 || ranked.length === 0 || ranked.every((e) => (e.roundScores?.filter((r) => r > 0).length ?? 0) >= event.roundCount);
+  // "Over" = marked complete AND every round is actually in. A multi-round event stuck complete after
+  // round 1 is NOT over — round 2 still gets full live coverage (live board, group cards, About tab).
+  const tournamentOver = event.status === "complete" && finalized;
+  const isLiveBoard = !tournamentOver && entries.some((e) => typeof e.score !== "number" && e.holeScores?.some((h) => h > 0));
   const roundsComplete = ranked[0] ? Math.min(roundsDone(ranked[0]), event.roundCount) : 0; // rounds the leader has in
   const unscored = shown.filter((e) => !ranked.includes(e));
   // Signed to-par strings when real pars are loaded; raw strokes otherwise.
@@ -515,13 +518,16 @@ export default function LeagueEventPage() {
   const paidCount = entries.filter((e) => e.paid).length;
   const paidOut = entries.reduce((a, e) => a + (e.payout ?? 0), 0);
   const isTeamFormat = event.format === "Doubles" || event.format === "Teams";
-  const liveNow = event.status === "scheduled" && nowTs >= event.date && nowTs <= event.date + 6 * 3600_000 && entries.length > 0;
+  // Live through EVERY round's window (multi-day) or whenever a round is actively being scored.
+  const lastRoundStart = event.roundStarts?.[event.roundCount - 1] ?? event.date;
+  const liveNow = !tournamentOver && entries.length > 0 && (isLiveBoard || (nowTs >= event.date && nowTs <= lastRoundStart + 6 * 3600_000));
   // Players only JOIN. Day-of check-in is a TD/admin action in Director tools — never self-serve.
   const joinVerb = "Join";
   // Completion must stay reachable AFTER the 6h live window — multi-round events,
   // next-morning score entry, and backfilled weeks all finish outside it. Without
   // this the event is stuck "scheduled" forever and never enters standings/recap.
-  const canComplete = scoringKind && event.status === "scheduled" && nowTs >= event.date && entries.length > 0;
+  // Multi-round events can't be completed until every round is in (no premature "winner" after round 1).
+  const canComplete = scoringKind && event.status === "scheduled" && nowTs >= event.date && entries.length > 0 && finalized;
   const doTeams = async () => {
     if (busy) return;
     setBusy(true);
@@ -684,7 +690,7 @@ export default function LeagueEventPage() {
             )}
             <div className="mt-2.5 flex flex-wrap items-center gap-4">
               <h1 className="font-[family-name:var(--font-heading)] text-[clamp(30px,3.6vw,44px)] font-extrabold leading-[1.05] tracking-[-0.015em] text-[var(--cream)]">{event.name}</h1>
-              <StatusChip status={event.status} liveNow={liveNow} />
+              <StatusChip status={tournamentOver ? "complete" : event.status === "complete" ? "scheduled" : event.status} liveNow={liveNow} />
               {open && (
                 <span className="ml-auto flex flex-wrap items-center gap-2.5">
                   {!me && !registrationOpen(event, nowTs) ? (
@@ -761,7 +767,7 @@ export default function LeagueEventPage() {
       {/* Tabs — same tab, same route; first label reads Recap once the event completes */}
       <nav className="mb-9 mt-1.5 flex gap-[34px] border-b border-[var(--hair)]">
         {([
-          { k: "about" as const, label: event.status === "complete" ? "Recap" : "About", n: 0 },
+          { k: "about" as const, label: tournamentOver ? "Recap" : "About", n: 0 },
           ...(scoringKind ? [{ k: "scores" as const, label: isTournament ? "Leaderboard" : "Scores", n: 0 }] : []),
           ...(scoringKind && !isTournament ? [{ k: "standings" as const, label: "Standings", n: 0 }] : []),
           { k: "players" as const, label: "Players", n: entries.length },
@@ -785,7 +791,7 @@ export default function LeagueEventPage() {
       {tab === "about" && (
         <section className="mb-[44px] grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_350px] lg:gap-11">
           <div className="min-w-0">
-            {scoringKind && event.status === "complete" && ranked.length > 0 && (
+            {scoringKind && tournamentOver && ranked.length > 0 && (
               <div className="mb-10">
                 <div className="mb-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">{finalized ? "Final results" : "Leaderboard"}</div>
                 <div className={`${card} overflow-hidden`}>
@@ -908,7 +914,7 @@ export default function LeagueEventPage() {
             )}
           </div>
           <div className="grid content-start gap-4 lg:sticky lg:top-6">
-            {scoringKind && event.status === "complete" && ranked.length > 0 && (
+            {scoringKind && tournamentOver && ranked.length > 0 && (
               <div className="relative overflow-hidden rounded-2xl border border-[rgba(232,181,96,0.35)] bg-[var(--card)] p-6">
                 <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(340px 200px at 85% -20%, rgba(232,181,96,.20), transparent 65%), radial-gradient(280px 180px at -10% 110%, rgba(232,181,96,.09), transparent 60%), linear-gradient(180deg, rgba(232,181,96,.05), transparent 55%)" }} />
                 <IconTrophy className="pointer-events-none absolute -right-5 -top-5 h-32 w-32 rotate-12 text-[var(--gold)] opacity-[0.08]" />
@@ -1135,10 +1141,10 @@ export default function LeagueEventPage() {
       {tab === "scores" && scoringKind && (
       <section className="mb-[44px]">
         <SectionTitle
-          right={(divisions.length > 1 && entries.some((e) => e.division)) || (admin && open) || entries.some((e) => e.holeScores?.some((h) => h > 0)) || event.status === "complete" ? (
+          right={(divisions.length > 1 && entries.some((e) => e.division)) || (admin && open) || entries.some((e) => e.holeScores?.some((h) => h > 0)) || tournamentOver ? (
             <div className="flex flex-wrap items-center gap-1.5">
-              {(entries.some((e) => e.holeScores?.some((h) => h > 0)) || event.status === "complete") && (
-                <button onClick={() => { setScorecardEdit(false); setScorecardOpen(true); }} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--gold)]/40 bg-[var(--gold-dim)] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/20"><IconTarget className="h-3 w-3" />{event.status === "complete" ? "Results" : "Scorecard"}</button>
+              {(entries.some((e) => e.holeScores?.some((h) => h > 0)) || tournamentOver) && (
+                <button onClick={() => { setScorecardEdit(false); setScorecardOpen(true); }} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--gold)]/40 bg-[var(--gold-dim)] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/20"><IconTarget className="h-3 w-3" />{tournamentOver ? "Results" : "Scorecard"}</button>
               )}
               {divisions.length > 1 && entries.some((e) => e.division) && (
                 <>
@@ -1202,7 +1208,7 @@ export default function LeagueEventPage() {
           <>
           <div className={`${card} overflow-hidden`}>
             <div className="flex items-center gap-3.5 bg-[var(--forest)] px-4 py-2 font-mono text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[var(--cream-38)]">
-              <span className="w-8">Pos</span><span className="flex-1">Player</span><span className="hidden w-[184px] text-right sm:block">{event.status === "complete" ? "F · B" : "Last 9"}</span><span className="w-14 text-right">Thru</span><span className="w-20 text-right">Total</span>
+              <span className="w-8">Pos</span><span className="flex-1">Player</span><span className="hidden w-[184px] text-right sm:block">{tournamentOver ? "F · B" : "Last 9"}</span><span className="w-14 text-right">Thru</span><span className="w-20 text-right">Total</span>
             </div>
             {[...ranked, ...unscored].map((e, i) => {
               const isRanked = ranked.includes(e);
@@ -1210,7 +1216,9 @@ export default function LeagueEventPage() {
               const you = cid != null && e.id === cid;
               const playedHoles = e.holeScores?.filter((h) => h > 0) ?? [];
               const last9 = playedHoles.slice(-9);
-              const thruN = typeof e.score !== "number" && playedHoles.length > 0 ? (e.thruHole ?? playedHoles.length) : null;
+              // A round is in progress if there's a live card and not every round is banked yet (covers round 2+).
+              const liveRound = playedHoles.length > 0 && roundsDone(e) < event.roundCount;
+              const thruN = liveRound ? (e.thruHole ?? playedHoles.length) : null;
               return (
                 <div key={e.id} className={`flex min-h-[58px] items-center gap-3.5 border-b border-[var(--hair)] px-4 py-2.5 text-sm transition-colors last:border-b-0 ${you ? "border-l-[3px] border-l-[var(--gold)] bg-gradient-to-r from-[var(--gold-dim)] via-transparent to-transparent" : ""}`}>
                   <Pos n={pos} />
@@ -1232,7 +1240,7 @@ export default function LeagueEventPage() {
                         </span>
                       )}
                     </span>
-                    {event.status === "complete" && typeof e.score === "number" && (league?.settings.scoring?.model ?? "placement") === "placement" && !isTournament && (
+                    {tournamentOver && typeof e.score === "number" && (league?.settings.scoring?.model ?? "placement") === "placement" && !isTournament && (
                       <span className="mt-0.5 block text-[10px] font-bold text-[var(--sage-dim)]">{points.get(e.id) ?? ""} pts</span>
                     )}
                   </span>
@@ -1290,7 +1298,7 @@ export default function LeagueEventPage() {
                   ) : (
                     <span className="flex items-center gap-3.5">
                       <span className="hidden w-[184px] items-center justify-end gap-[5px] sm:flex">
-                        {typeof e.score === "number" ? (
+                        {!liveRound && typeof e.score === "number" ? (
                           (() => { const hs = e.holeScores ?? []; const f = hs.slice(0, 9).filter((h) => h > 0).reduce((a, b) => a + b, 0); const b = hs.slice(9, 18).filter((h) => h > 0).reduce((a, b) => a + b, 0); return (f || b) ? <span className="font-mono text-xs text-[var(--cream-60)]">F {f || "–"} · B {b || "–"}</span> : null; })()
                         ) : last9.length > 0 && (
                           <>
@@ -1317,7 +1325,7 @@ export default function LeagueEventPage() {
                         {scoreOf(e) == null ? "" : e.dnf ? scoreOf(e) : fmtLive(e)}
                         {scoreOf(e) != null && !e.dnf && parTotal != null && <span className="ml-1 align-middle text-[10px] font-normal text-[var(--cream-38)]">({anyHcp ? adjOf(e) : scoreOf(e)})</span>}
                       </span>
-                      {admin && event.status === "complete" && !!event.buyIn && (
+                      {admin && tournamentOver && !!event.buyIn && (
                         <input
                           key={`${e.id}-pay-${e.payout ?? ""}`}
                           inputMode="numeric"
@@ -1705,7 +1713,7 @@ export default function LeagueEventPage() {
         const cardOf = (p: EventEntry) => (editing ? (p.holeScores ?? []) : (roundHoles(p, rnd) ?? []));
         const roundHasData = (r: number) => players.some((p) => (roundHoles(p, r) ?? []).some((h) => h > 0));
         const avgOf = (i: number) => { const vals = players.map((p) => cardOf(p)[i]).filter((v): v is number => typeof v === "number" && v > 0); return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length) : null; };
-        const complete = event.status === "complete";
+        const complete = tournamentOver;
         const Cell = (s: number | undefined, par: number) => {
           if (!s || s <= 0) return <span className="text-[var(--cream-38)]">–</span>;
           const d = s - par, base = "mx-auto grid h-7 w-7 place-items-center text-[13px] font-bold tabular-nums";
