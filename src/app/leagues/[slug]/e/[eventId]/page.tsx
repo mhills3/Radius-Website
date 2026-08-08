@@ -246,15 +246,31 @@ export default function LeagueEventPage() {
     if (!event) return;
     const holes = Array.from({ length: event.holes }, (_, k) => e.holeScores?.[k] ?? 0);
     holes[i] = v && v > 0 ? Math.floor(v) : 0;
-    const single = event.roundCount === 1;
+    // Recompute the total when the player is already final (fix their card) or single-round; a live
+    // multi-round player stays live until the director Publishes.
+    const recompute = event.roundCount === 1 || typeof e.score === "number";
     const total = holes.filter((h) => h > 0).reduce((a, b) => a + b, 0);
-    setEntries((cur) => cur.map((x) => (x.id === e.id ? { ...x, holeScores: holes, ...(single ? { score: total > 0 ? total : undefined } : {}) } : x)));
-    setEntryHoles(event.id, e.id, holes, { recomputeTotal: single, pars });
+    setEntries((cur) => cur.map((x) => (x.id === e.id ? { ...x, holeScores: holes, ...(recompute ? { score: total > 0 ? total : undefined } : {}) } : x)));
+    setEntryHoles(event.id, e.id, holes, { recomputeTotal: recompute, pars });
   };
   const editTotal = (e: EventEntry, v: number | undefined) => {
     if (!event) return;
     setEntries((cur) => cur.map((x) => (x.id === e.id ? { ...x, score: v && v > 0 ? v : undefined } : x)));
     updateEntry(event.id, e.id, { score: v && v > 0 ? v : undefined });
+  };
+  // Publish/finalize a player from their hole card — sets a real total so they stop showing "live/thru".
+  const finalizeEntry = (e: EventEntry) => {
+    if (!event) return;
+    const holes = Array.from({ length: event.holes }, (_, k) => e.holeScores?.[k] ?? 0);
+    const total = holes.filter((h) => h > 0).reduce((a, b) => a + b, 0);
+    if (!total) return;
+    const par = pars ? holes.reduce((a, h, i) => a + (h > 0 ? (pars[i] ?? 3) : 0), 0) : 0;
+    setEntries((cur) => cur.map((x) => (x.id === e.id ? { ...x, score: total, scoreToPar: pars ? total - par : undefined, thruHole: undefined } : x)));
+    setEntryHoles(event.id, e.id, holes, { recomputeTotal: true, pars });
+  };
+  const publishScores = () => {
+    entries.filter((e) => !e.dnf && typeof e.score !== "number" && e.holeScores?.some((h) => h > 0)).forEach(finalizeEntry);
+    setScorecardOpen(false); setScorecardEdit(false);
   };
   const toggleDnf = (e: EventEntry) => {
     if (!event) return;
@@ -1692,7 +1708,7 @@ export default function LeagueEventPage() {
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--gold)]"><IconTarget className="h-3.5 w-3.5" />{editing ? "Edit scorecard" : "Scorecard"}{!editing && (complete ? " · Final" : liveNow ? " · Live" : "")}</div>
                     <h2 className="mt-1 truncate font-[family-name:var(--font-heading)] text-2xl font-black text-[var(--cream)]">{event.name}</h2>
-                    <div className="mt-0.5 truncate font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--cream-38)]">{editing ? "Fix any hole for any player — edits save instantly" : [event.courseName, `Par ${totalPar}`, `${N} holes`].filter(Boolean).join(" · ")}</div>
+                    <div className="mt-0.5 truncate font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--cream-38)]">{editing ? "Fix any hole, then Publish to submit the player" : [event.courseName, `Par ${totalPar}`, `${N} holes`].filter(Boolean).join(" · ")}</div>
                   </div>
                   <button onClick={() => { setScorecardOpen(false); setScorecardEdit(false); }} aria-label="Close" className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[var(--hair-strong)] bg-black/30 text-lg text-[var(--cream-60)] transition-colors hover:text-[var(--cream)]">×</button>
                 </div>
@@ -1731,9 +1747,12 @@ export default function LeagueEventPage() {
                             <div className="flex items-center gap-2.5">
                               <Avatar url={p.photo} name={nameOf(p)} size={30} ring={false} gold={you} />
                               <div className="min-w-0">
-                                <div className="flex items-center gap-1.5"><span className="truncate text-[13px] font-bold text-[var(--cream)]">{nameOf(p)}</span>{p.dnf && <span className="rounded bg-[#f08c8c]/15 px-1 text-[9px] font-bold text-[#f08c8c]">DNF</span>}</div>
+                                <div className="flex items-center gap-1.5"><span className="truncate text-[13px] font-bold text-[var(--cream)]">{nameOf(p)}</span>{p.dnf && <span className="rounded bg-[#f08c8c]/15 px-1 text-[9px] font-bold text-[#f08c8c]">DNF</span>}{editing && typeof p.score === "number" && !p.dnf && <span className="rounded bg-[#5fcf80]/15 px-1 text-[9px] font-bold text-[#5fcf80]">✓</span>}</div>
                                 {editing ? (
-                                  <button onClick={() => toggleDnf(p)} className="mt-0.5 font-mono text-[9.5px] font-bold uppercase tracking-wide text-[var(--sage-dim)] transition-colors hover:text-[#f08c8c]">{p.dnf ? "Undo DNF" : "Mark DNF"}</button>
+                                  <div className="mt-0.5 flex items-center gap-2">
+                                    {!p.dnf && typeof p.score !== "number" && p.holeScores?.some((h) => h > 0) && <button onClick={() => finalizeEntry(p)} className="font-mono text-[9.5px] font-bold uppercase tracking-wide text-[var(--gold)] transition-opacity hover:opacity-80">Submit</button>}
+                                    <button onClick={() => toggleDnf(p)} className="font-mono text-[9.5px] font-bold uppercase tracking-wide text-[var(--sage-dim)] transition-colors hover:text-[#f08c8c]">{p.dnf ? "Undo DNF" : "DNF"}</button>
+                                  </div>
                                 ) : usernameById(p.id) ? <div className="truncate font-mono text-[10px] text-[var(--sage-dim)]">@{usernameById(p.id)}</div> : null}
                               </div>
                             </div>
@@ -1764,7 +1783,16 @@ export default function LeagueEventPage() {
                   </tbody>
                 </table>
               </div>
-              {event.roundCount > 1 && <div className="shrink-0 border-t border-[var(--hair)] px-6 py-2.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--cream-38)]">Hole-by-hole for the round in progress</div>}
+              {editing && (
+                <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--hair)] px-6 py-3.5">
+                  <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--cream-38)]">Fix holes, then Publish to submit &amp; lock in totals</span>
+                  <div className="flex items-center gap-2.5">
+                    <button onClick={() => { setScorecardOpen(false); setScorecardEdit(false); }} className="rounded-full border border-[var(--hair-strong)] px-4 py-2 text-xs font-bold text-[var(--cream-60)] transition-colors hover:text-[var(--cream)]">Done</button>
+                    <button onClick={publishScores} className={btnGold + " !px-5 !py-2 !text-xs"}>Publish scores</button>
+                  </div>
+                </div>
+              )}
+              {!editing && event.roundCount > 1 && <div className="shrink-0 border-t border-[var(--hair)] px-6 py-2.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--cream-38)]">Hole-by-hole for the round in progress</div>}
             </div>
           </div>
         );
