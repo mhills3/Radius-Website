@@ -607,10 +607,13 @@ export default function LeagueEventPage() {
                   ) : user ? (
                     me ? (
                       !(liveNow && cid && ranked.some((x) => x.id === cid)) && (
-                        <span className="inline-flex items-center gap-2">
-                          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#5fcf80]/25 bg-[rgba(20,27,22,0.5)] px-3.5 py-2 font-mono text-[10.5px] tracking-[0.08em] text-[#5fcf80] backdrop-blur-[6px]">✓ You're in{divisions.length > 1 && me.division ? ` · ${me.division}` : ""}</span>
+                        <span className="inline-flex items-center gap-2.5">
+                          <span className="inline-flex items-center gap-2 rounded-full border border-[#5fcf80]/35 bg-[#5fcf80]/[0.12] py-2.5 pl-2.5 pr-5 text-[15px] font-bold text-[#5fcf80] backdrop-blur-[6px]" style={{ boxShadow: "0 0 0 1px rgba(95,207,128,0.06), 0 6px 26px rgba(95,207,128,0.14)" }}>
+                            <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[#5fcf80] text-[#0f1a12]"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M5 13l4 4L19 7" /></svg></span>
+                            You&apos;re in{divisions.length > 1 && me.division ? ` · ${me.division}` : ""}
+                          </span>
                           {open && typeof me.score !== "number" && !me.holeScores?.some((h) => h > 0) && (
-                            <button onClick={leaveSelf} disabled={busy} className={`rounded-full px-2.5 py-2 font-mono text-[10.5px] uppercase tracking-[0.08em] transition-colors disabled:opacity-50 ${confirmLeave ? "bg-[#f08c8c]/15 font-bold text-[#f08c8c]" : "text-[var(--cream-38)] hover:text-[#f08c8c]"}`}>{confirmLeave ? "Confirm leave" : "Leave"}</button>
+                            <button onClick={leaveSelf} disabled={busy} className={`rounded-full border px-5 py-2.5 text-[15px] font-bold backdrop-blur-[6px] transition-colors disabled:opacity-50 ${confirmLeave ? "border-[#f08c8c]/50 bg-[#f08c8c]/15 text-[#f08c8c]" : "border-[var(--hair-strong)] bg-[rgba(20,27,22,0.55)] text-[var(--cream-60)] hover:border-[#f08c8c]/50 hover:text-[#f08c8c]"}`}>{confirmLeave ? "Confirm leave" : "Leave"}</button>
                           )}
                         </span>
                       )
