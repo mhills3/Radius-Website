@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { getAllCourses, getTotalCourseCount, getTopBuilders, slugify, isUSState, canonicalState, stateAbbr, countryOf, STATE_NAMES, type Course, type Builder } from "@/lib/courses";
@@ -44,6 +44,8 @@ export default function CoursesPage() {
   const [mapBounds, setMapBounds] = useState<{ west: number; south: number; east: number; north: number } | null>(null);
   const [builders, setBuilders] = useState<Builder[]>([]);
   const [builderRanks, setBuilderRanks] = useState<Map<string, RankInfo>>(new Map());
+  // List ↔ map link: refs to result rows so a highlighted pin scrolls its row into view.
+  const rowRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
 
   useEffect(() => {
     getTopBuilders(10).then((b) => { setBuilders(b); getRanksFor(b.map((x) => x.id).filter(Boolean)).then(setBuilderRanks).catch(() => {}); }).catch(() => {});
@@ -67,6 +69,12 @@ export default function CoursesPage() {
     else setPlayed(new Map());
     return () => { live = false; };
   }, [user]);
+
+  // When a map pin becomes the highlight, scroll its row into view in the floating panel.
+  useEffect(() => {
+    if (!highlightId) return;
+    rowRefs.current[highlightId]?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [highlightId]);
 
   const playedOf = (c: Course) => played.get(c.name.trim().toLowerCase());
   const yourCourses = useMemo(() => courses.filter((c) => played.has(c.name.trim().toLowerCase())).sort((a, b) => (played.get(b.name.trim().toLowerCase())?.lastDate ?? 0) - (played.get(a.name.trim().toLowerCase())?.lastDate ?? 0)).slice(0, 6), [courses, played]);
@@ -184,122 +192,146 @@ export default function CoursesPage() {
     );
   };
 
+  // Title + stats, grouped on one baseline so the numbers relate to the headline.
+  const heroHead = (
+    <div className="flex flex-wrap items-end justify-between gap-x-10 gap-y-4">
+      <div>
+        <div className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">Find your next round</div>
+        <h1 className="font-[family-name:var(--font-heading)] text-4xl font-extrabold tracking-[-0.03em] text-[var(--cream)] md:text-5xl">Courses</h1>
+      </div>
+      <div className="flex items-end gap-6 pb-1.5">
+        {[["courses", (totalCount || courses.length).toLocaleString()], ["US states", usStateCount], ["countries", countryCount]].map(([label, val]) => (
+          <div key={label as string}>
+            <div className="font-[family-name:var(--font-heading)] text-2xl font-extrabold leading-none text-[var(--cream)]">{val}</div>
+            <div className="mt-1 text-[11px] uppercase tracking-wide text-[rgba(245,237,225,0.55)]">{label}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  // One unified bar of dark-translucent controls, used on both the hero (list) and floating over the map.
+  const controlBar = (
+    <div className="flex flex-wrap items-center gap-2">
+      <div className="flex min-w-[210px] flex-1 items-center gap-2.5 rounded-full border border-[var(--ctl-line)] bg-[var(--ctl)] px-4 py-2.5 backdrop-blur-md transition-colors focus-within:border-[var(--gold)] sm:max-w-xs">
+        <svg className="h-4 w-4 shrink-0 text-[var(--c-muted)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search courses, cities…" className="w-full bg-transparent text-sm text-[var(--c-ink)] placeholder-[var(--c-muted)] outline-none" />
+      </div>
+      <button onClick={nearMe} className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-2.5 text-xs font-bold backdrop-blur-md transition-colors ${userLoc ? "border-[var(--gold)] bg-[var(--gold-dim)] text-[var(--gold)]" : "border-[var(--ctl-line)] bg-[var(--ctl)] text-[var(--c-body)] hover:text-[var(--c-ink)]"}`}>
+        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 21s-7-5.2-7-11a7 7 0 0 1 14 0c0 5.8-7 11-7 11z" /><circle cx="12" cy="10" r="2.5" /></svg>
+        {locating ? "Locating…" : userLoc ? "Near you" : "Near me"}
+      </button>
+      <select value={stateFilter} onChange={(e) => setStateFilter(e.target.value)} className="rounded-full border border-[var(--ctl-line)] bg-[var(--ctl)] px-4 py-2.5 text-sm font-medium text-[var(--c-ink)] backdrop-blur-md outline-none [color-scheme:dark] focus:border-[var(--gold)]">
+        <option value="">All states</option>
+        {states.map((s) => <option key={s} value={s}>{s}</option>)}
+      </select>
+      <div className="inline-flex rounded-full border border-[var(--ctl-line)] bg-[var(--ctl)] p-1 backdrop-blur-md">
+        {(["all", "9", "18+"] as const).map((h) => (
+          <button key={h} onClick={() => setHoles(h)} className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${holes === h ? "bg-[var(--gold)] text-[#141b16]" : "text-[var(--c-body)] hover:text-[var(--c-ink)]"}`}>{h === "all" ? "Any" : h === "9" ? "9" : "18+"}</button>
+        ))}
+      </div>
+      <button onClick={() => setFreeOnly((v) => !v)} className={`rounded-full border px-4 py-2.5 text-xs font-semibold backdrop-blur-md transition-colors ${freeOnly ? "border-[var(--gold)] bg-[var(--gold)] text-[#141b16]" : "border-[var(--ctl-line)] bg-[var(--ctl)] text-[var(--c-body)] hover:text-[var(--c-ink)]"}`}>Free</button>
+      <div className="ml-auto inline-flex rounded-full border border-[var(--ctl-line)] bg-[var(--ctl)] p-1 backdrop-blur-md">
+        {(["list", "map"] as const).map((v) => (
+          <button key={v} onClick={() => setView(v)} aria-label={v} className={`grid h-8 w-9 place-items-center rounded-full transition-colors ${view === v ? "bg-[var(--gold)] text-[#141b16]" : "text-[var(--c-body)] hover:text-[var(--c-ink)]"}`}>
+            {v === "list" ? <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg> : <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 3 3 6v15l6-3 6 3 6-3V3l-6 3-6-3zM9 3v15M15 6v15" /></svg>}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     <div className="courses-scope min-h-screen bg-[var(--c-bg)] text-[var(--c-ink)]">
-      {/* hero — photo backed (DSC_8535 basket) */}
-      <div className="relative isolate z-10 overflow-hidden bg-[var(--bg-deep)] text-[var(--cream)]">
-        <Image src="/course/courses-hero.jpg" alt="" fill sizes="100vw" quality={88} className="-z-10 object-cover object-center" />
-        <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_bottom,rgba(15,24,19,0.8),rgba(15,24,19,0.72))]" />
-        <div className="relative mx-auto max-w-7xl px-6 pb-7 pt-16">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">Find your next round</div>
-              <h1 className="font-[family-name:var(--font-heading)] text-4xl font-extrabold tracking-[-0.03em] md:text-5xl">Courses</h1>
-            </div>
-            <div className="flex gap-7">
-              <div><div className="font-[family-name:var(--font-heading)] text-2xl font-extrabold leading-none">{(totalCount || courses.length).toLocaleString()}</div><div className="mt-1 text-xs text-[rgba(245,237,225,0.6)]">courses</div></div>
-              <div><div className="font-[family-name:var(--font-heading)] text-2xl font-extrabold leading-none">{usStateCount}</div><div className="mt-1 text-xs text-[rgba(245,237,225,0.6)]">US states</div></div>
-              <div><div className="font-[family-name:var(--font-heading)] text-2xl font-extrabold leading-none">{countryCount}</div><div className="mt-1 text-xs text-[rgba(245,237,225,0.6)]">countries</div></div>
-            </div>
-          </div>
-
-          <div className="mt-6 flex flex-wrap items-center gap-2.5">
-            <div className="flex min-w-[220px] flex-1 items-center gap-2.5 rounded-full border border-black/10 bg-white px-4 py-2.5 shadow-sm focus-within:border-[var(--gold)] sm:max-w-xs">
-              <svg className="h-4 w-4 shrink-0 text-[#8a968d]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search courses, cities…" className="w-full bg-transparent text-sm text-[#16221b] placeholder-[#8a968d] outline-none" />
-            </div>
-            <button onClick={nearMe} className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-2.5 text-xs font-bold shadow-sm transition-colors ${userLoc ? "border-[#4d94fa] bg-[#4d94fa]/10 text-[#2b6fd6]" : "border-black/10 bg-white text-[#46554c] hover:text-[#16221b]"}`}>
-              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 21s-7-5.2-7-11a7 7 0 0 1 14 0c0 5.8-7 11-7 11z" /><circle cx="12" cy="10" r="2.5" /></svg>
-              {locating ? "Locating…" : userLoc ? "Near you" : "Near me"}
-            </button>
-            <select value={stateFilter} onChange={(e) => setStateFilter(e.target.value)} className="rounded-full border border-black/10 bg-white px-4 py-2.5 text-sm font-medium text-[#16221b] shadow-sm outline-none focus:border-[var(--gold)]">
-              <option value="">All states</option>
-              {states.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-            <div className="inline-flex rounded-full border border-black/10 bg-white p-1 shadow-sm">
-              {(["all", "9", "18+"] as const).map((h) => (
-                <button key={h} onClick={() => setHoles(h)} className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${holes === h ? "bg-[#16221b] text-white" : "text-[#46554c] hover:text-[#16221b]"}`}>{h === "all" ? "Any" : h === "9" ? "9" : "18+"}</button>
-              ))}
-            </div>
-            <button onClick={() => setFreeOnly((v) => !v)} className={`rounded-full border px-4 py-2.5 text-xs font-semibold shadow-sm transition-colors ${freeOnly ? "border-[var(--gold)] bg-[var(--gold)] text-[#16221b]" : "border-black/10 bg-white text-[#46554c] hover:text-[#16221b]"}`}>Free</button>
-            <div className="ml-auto inline-flex rounded-full border border-black/10 bg-white p-1 shadow-sm">
-              {(["list", "map"] as const).map((v) => (
-                <button key={v} onClick={() => setView(v)} aria-label={v} className={`grid h-8 w-9 place-items-center rounded-full transition-colors ${view === v ? "bg-[var(--gold)] text-[#16221b]" : "text-[#46554c] hover:text-[#16221b]"}`}>
-                  {v === "list" ? <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg> : <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 3 3 6v15l6-3 6 3 6-3V3l-6 3-6-3zM9 3v15M15 6v15" /></svg>}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
       {view === "map" ? (
-        /* ===== Split discovery (AllTrails/Zillow style) ===== */
-        <div className="mx-auto grid max-w-[1600px] grid-cols-1 lg:h-[calc(100vh-205px)] lg:grid-cols-[400px_1fr]">
-          <div className="order-2 flex min-h-0 flex-col border-r border-[var(--c-line)] bg-[var(--c-bg)] lg:order-1">
-            <div className="border-b border-[var(--c-line)] px-4 py-3">
-              <div className="flex items-baseline gap-1.5">
-                <span className="font-[family-name:var(--font-heading)] text-base font-extrabold text-[var(--c-ink)]">{(viewportFiltering ? visibleCourses.length : (anyFilter ? filtered.length : (totalCount || filtered.length))).toLocaleString()}</span>
-                <span className="text-sm text-[var(--c-muted)]">{(viewportFiltering ? visibleCourses.length : (anyFilter ? filtered.length : (totalCount || filtered.length))) === 1 ? "course" : "courses"}{viewportFiltering ? " in view" : stateFilter ? ` in ${stateFilter}` : userLoc ? " near you" : ""}</span>
-              </div>
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto">
-            {loading ? (
-              <div className="space-y-2 p-3">{[0, 1, 2, 3, 4].map((i) => <div key={i} className="h-20 animate-pulse rounded-xl bg-[var(--c-raise)]" />)}</div>
-            ) : (
-              <div className="divide-y divide-[var(--c-line)]">
-                {visibleCourses.map((c) => {
-                  const d = distOf(c);
-                  const active = highlightId === c.id;
-                  return (
-                    <Link key={c.id} href={`/courses/${slugify(c.name, c.id)}`} onMouseEnter={() => setHighlightId(c.id)} onMouseLeave={() => setHighlightId(null)} className={`group flex items-center gap-3.5 px-4 py-3 transition-colors ${active ? "bg-[var(--gold)]/[0.1]" : "hover:bg-[var(--c-raise)]"}`}>
-                      <div className="relative h-[68px] w-[68px] shrink-0 overflow-hidden rounded-xl bg-[var(--bg-deep)] ring-1 ring-[var(--c-line)]">
-                        {c.coverPhotoUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={c.coverPhotoUrl} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.06]" />
-                        ) : (
-                          <span className="grid h-full w-full place-items-center bg-[radial-gradient(circle_at_30%_25%,rgba(246,193,101,0.3),var(--bg-deep))] font-[family-name:var(--font-heading)] text-xl font-bold text-[var(--cream)]/50">{c.name.charAt(0)}</span>
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <h3 className="truncate font-[family-name:var(--font-heading)] text-[15px] font-bold leading-tight text-[var(--c-ink)] group-hover:text-[var(--gold)]">{c.name}</h3>
-                          {c.rating ? <span className="shrink-0 text-xs font-bold text-[var(--gold)]">★ {c.rating.toFixed(1)}</span> : null}
-                        </div>
-                        <div className="mt-1 flex items-center gap-1 truncate text-xs text-[var(--c-muted)]">
-                          <svg className="h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 21s-7-5.2-7-11a7 7 0 0 1 14 0c0 5.8-7 11-7 11z" /><circle cx="12" cy="10" r="2.5" /></svg>
-                          <span className="truncate">{[c.city, c.state].filter(Boolean).join(", ")}</span>
-                        </div>
-                        <div className="mt-1.5 flex items-center gap-2 text-xs">
-                          <span className="font-semibold text-[var(--c-body)]">{c.holeCount} holes · Par {c.par}</span>
-                          {playedOf(c) && <span className="rounded-md bg-[#5fcf80]/15 px-1.5 py-0.5 text-[10px] font-bold text-[#5fcf80]">✓ PLAYED</span>}
-                          {d != null && <span className="ml-auto rounded-full bg-[#8FBDE3]/12 px-2 py-0.5 text-[11px] font-bold text-[#8FBDE3]">{d < 10 ? d.toFixed(1) : Math.round(d)} mi</span>}
-                        </div>
-                      </div>
-                      <svg className="h-4 w-4 shrink-0 text-white/15 transition-colors group-hover:text-[var(--gold)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>
-                    </Link>
-                  );
-                })}
-                {visibleCourses.length === 0 && <p className="p-8 text-center text-sm text-[var(--c-muted)]">{viewportFiltering ? "No courses in this area — zoom out to see more." : "No courses match."}</p>}
-              </div>
-            )}
-            </div>
-          </div>
-          <div className="relative order-1 h-[60vh] lg:order-2 lg:h-full">
+        /* ===== Map-first: the map is the foundation; header, controls & results float on it ===== */
+        <div className="relative h-[100svh] w-full overflow-hidden">
+          <div className="absolute inset-0">
             {mapMode === "coverage" ? (
               <CoverageMap stateCounts={stateCounts} countryCounts={countryCounts} />
             ) : (
               <CourseMap courses={filtered} filterActive={anyFilter} highlightId={highlightId} flyTo={flyTo} userLoc={userLoc} onSelect={setHighlightId} onLocate={setUserLoc} onBoundsChange={setMapBounds} mode={mapMode} className="h-full w-full" />
             )}
-            <div className="absolute left-4 top-4 z-10 inline-flex rounded-full bg-[var(--c-card)]/95 p-1 shadow-[0_10px_30px_-8px_rgba(0,0,0,0.6)] ring-1 ring-[var(--c-line)] backdrop-blur">
-              {(["pins", "heat", "coverage"] as const).map((m) => (
-                <button key={m} onClick={() => setMapMode(m)} className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors ${mapMode === m ? "bg-[var(--gold)] text-[#141b16]" : "text-[var(--c-body)] hover:text-[var(--c-ink)]"}`}>{m === "pins" ? "📍 Pins" : m === "heat" ? "🔥 Heatmap" : "🗺️ Coverage"}</button>
-              ))}
+          </div>
+          {/* top scrim so the nav + floating header read cleanly over the map */}
+          <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 z-10 h-72 bg-[linear-gradient(to_bottom,rgba(12,18,15,0.92),rgba(12,18,15,0.45)_55%,transparent)]" />
+          {/* floating header: title + stats + unified controls */}
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-20 px-4 pt-[86px] sm:px-5">
+            <div className="mx-auto max-w-[1600px]">
+              <div className="pointer-events-auto">{heroHead}</div>
+              <div className="pointer-events-auto mt-4">{controlBar}</div>
             </div>
+          </div>
+          {/* floating results panel */}
+          <div className="absolute bottom-4 left-4 top-[224px] z-20 flex w-[360px] max-w-[calc(100%-2rem)] flex-col overflow-hidden rounded-[var(--r-panel)] border border-[var(--ctl-line)] bg-[var(--panel)] shadow-[var(--e-2)] backdrop-blur-xl sm:left-5">
+            <div className="shrink-0 border-b border-[var(--ctl-line)] px-4 py-3">
+              <div className="flex items-baseline gap-1.5">
+                <span className="font-[family-name:var(--font-heading)] text-base font-extrabold text-[var(--c-ink)]">{(viewportFiltering ? visibleCourses.length : (anyFilter ? filtered.length : (totalCount || filtered.length))).toLocaleString()}</span>
+                <span className="text-sm text-[var(--c-muted)]">{(viewportFiltering ? visibleCourses.length : (anyFilter ? filtered.length : (totalCount || filtered.length))) === 1 ? "course" : "courses"}{viewportFiltering ? " in view" : stateFilter ? ` in ${stateFilter}` : userLoc ? " near you" : ""}</span>
+              </div>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-2">
+              {loading ? (
+                <div className="space-y-1.5">{[0, 1, 2, 3, 4].map((i) => <div key={i} className="h-[78px] animate-pulse rounded-[var(--r-inset)] bg-[var(--c-raise)]" />)}</div>
+              ) : (
+                <div className="space-y-0.5">
+                  {visibleCourses.map((c) => {
+                    const d = distOf(c);
+                    const active = highlightId === c.id;
+                    return (
+                      <Link key={c.id} ref={(el) => { rowRefs.current[c.id] = el; }} href={`/courses/${slugify(c.name, c.id)}`} onMouseEnter={() => setHighlightId(c.id)} onMouseLeave={() => setHighlightId(null)} className={`group flex items-center gap-3 rounded-[var(--r-inset)] px-2.5 py-2.5 transition-all ${active ? "bg-[var(--gold)]/[0.14] ring-1 ring-inset ring-[var(--gold)]/35" : "hover:bg-white/[0.05]"}`}>
+                        <div className="relative h-[60px] w-[60px] shrink-0 overflow-hidden rounded-[var(--r-inset)] bg-[var(--bg-deep)] ring-1 ring-[var(--c-line)]">
+                          {c.coverPhotoUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={c.coverPhotoUrl} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.06]" />
+                          ) : (
+                            <span className="grid h-full w-full place-items-center bg-[radial-gradient(circle_at_30%_25%,rgba(246,193,101,0.3),var(--bg-deep))] font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]/50">{c.name.charAt(0)}</span>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <h3 className="truncate font-[family-name:var(--font-heading)] text-[14px] font-bold leading-tight text-[var(--c-ink)] group-hover:text-[var(--gold)]">{c.name}</h3>
+                            {c.rating ? <span className="shrink-0 text-xs font-bold text-[var(--gold)]">★ {c.rating.toFixed(1)}</span> : null}
+                          </div>
+                          <div className="mt-1 flex items-center gap-1 truncate text-xs text-[var(--c-muted)]">
+                            <svg className="h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 21s-7-5.2-7-11a7 7 0 0 1 14 0c0 5.8-7 11-7 11z" /><circle cx="12" cy="10" r="2.5" /></svg>
+                            <span className="truncate">{[c.city, c.state].filter(Boolean).join(", ")}</span>
+                          </div>
+                          <div className="mt-1.5 flex items-center gap-2 text-xs">
+                            <span className="font-semibold text-[var(--c-body)]">{c.holeCount} holes · Par {c.par}</span>
+                            {playedOf(c) && <span className="rounded-md bg-[#5fcf80]/15 px-1.5 py-0.5 text-[10px] font-bold text-[#5fcf80]">✓ PLAYED</span>}
+                            {d != null && <span className="ml-auto rounded-full bg-[#8FBDE3]/12 px-2 py-0.5 text-[11px] font-bold text-[#8FBDE3]">{d < 10 ? d.toFixed(1) : Math.round(d)} mi</span>}
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                  {visibleCourses.length === 0 && <p className="p-8 text-center text-sm text-[var(--c-muted)]">{viewportFiltering ? "No courses in this area — zoom out to see more." : "No courses match."}</p>}
+                </div>
+              )}
+            </div>
+          </div>
+          {/* Pins / Heatmap / Coverage — bottom-right, clear of the results panel */}
+          <div className="absolute bottom-4 right-4 z-20 inline-flex rounded-full bg-[var(--panel)] p-1 shadow-[var(--e-2)] ring-1 ring-[var(--ctl-line)] backdrop-blur-xl">
+            {(["pins", "heat", "coverage"] as const).map((m) => (
+              <button key={m} onClick={() => setMapMode(m)} className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors ${mapMode === m ? "bg-[var(--gold)] text-[#141b16]" : "text-[var(--c-body)] hover:text-[var(--c-ink)]"}`}>{m === "pins" ? "📍 Pins" : m === "heat" ? "🔥 Heatmap" : "🗺️ Coverage"}</button>
+            ))}
           </div>
         </div>
       ) : (
-        <div className="mx-auto max-w-7xl px-6 py-8">
+        <>
+          {/* ===== dissolving photo hero ===== */}
+          <div className="relative isolate overflow-hidden">
+            <Image src="/course/courses-hero.jpg" alt="" fill sizes="100vw" quality={88} className="-z-10 object-cover object-center" />
+            <div className="absolute inset-0 -z-10 bg-[rgba(12,18,15,0.62)]" />
+            <div className="absolute inset-x-0 bottom-0 -z-10 h-[280px] bg-[linear-gradient(to_top,var(--c-bg),rgba(12,18,15,0.55)_42%,transparent)]" />
+            <div className="relative mx-auto max-w-7xl px-6 pb-32 pt-[124px]">{heroHead}</div>
+          </div>
+          {/* unified controls — sticky; detaches from the hero and pins under the nav on scroll */}
+          <div className="sticky top-[58px] z-30 -mt-20 border-y border-[var(--ctl-line)] bg-[var(--c-bg)]/85 backdrop-blur-xl">
+            <div className="mx-auto max-w-7xl px-6 py-3">{controlBar}</div>
+          </div>
+          <div className="mx-auto max-w-7xl px-6 py-8">
           <div className="lg:grid lg:grid-cols-[1fr_290px] lg:gap-8 lg:items-start">
             <div className="min-w-0">
               {!loading && !anyFilter && (
@@ -468,6 +500,7 @@ export default function CoursesPage() {
             </aside>
           </div>
         </div>
+        </>
       )}
     </div>
   );

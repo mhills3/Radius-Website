@@ -54,17 +54,22 @@ export default function Nav() {
   // settles into the cream frosted bar. Transparent-at-top is truly transparent (no white tint), so
   // there's no first-paint "whiteout" — that earlier bug came from a translucent-white at-top bg.
   const darkHeroPage = isHome || pathname === "/features" || pathname === "/story" || pathname === "/creators" || pathname === "/subscription";
+  // Courses index + individual course pages are dark with a photo hero: the nav overlays the hero and
+  // settles into a DARK frosted bar on scroll (unlike marketing pages, which settle into the cream bar).
+  // The state/city/mine/new course sub-pages are still light, so they keep the default nav.
+  const coursesHero = pathname === "/courses" || (pathname.startsWith("/courses/") && !/^\/courses\/(state|city|mine|new)(\/|$)/.test(pathname));
   const darkPage = pathname === "/dashboard" || pathname === "/bag" || pathname === "/community" || pathname === "/notifications" || pathname.startsWith("/u/") || pathname.startsWith("/leagues"); // app surfaces are dark
-  const atHeroTop = darkHeroPage && !scrolled;
-  const onDark = darkPage || atHeroTop; // cream text/logo when over the dark hero photo or on dark app surfaces
+  const atHeroTop = (darkHeroPage || coursesHero) && !scrolled;
+  const onDark = darkPage || coursesHero || atHeroTop; // cream text/logo when over the dark hero photo or on dark app surfaces
+  const onDarkSettle = darkPage || (coursesHero && scrolled); // dark frosted bar
 
-  const wrap = darkHeroPage ? "fixed" : "sticky"; // dark-hero pages overlay the nav so it sits ON the hero
-  const shell = darkPage
+  const wrap = darkHeroPage || coursesHero ? "fixed" : "sticky"; // dark-hero pages overlay the nav so it sits ON the hero
+  const shell = onDarkSettle
     ? "border-b border-[rgba(244,241,232,0.08)] bg-[rgba(20,27,22,0.88)] backdrop-blur-[14px]"
     : atHeroTop
     ? "bg-transparent"
     : "border-b border-black/[0.06] bg-[#faf8f3]/80 backdrop-blur-xl supports-[backdrop-filter]:bg-[#faf8f3]/70";
-  const shadow = scrolled ? (darkPage ? "shadow-[0_8px_30px_-12px_rgba(0,0,0,0.6)]" : "shadow-[0_8px_30px_-14px_rgba(0,0,0,0.18)]") : "";
+  const shadow = scrolled ? (onDarkSettle ? "shadow-[0_8px_30px_-12px_rgba(0,0,0,0.6)]" : "shadow-[0_8px_30px_-14px_rgba(0,0,0,0.18)]") : "";
 
   const logoColor = onDark ? "text-[var(--cream)]" : "text-[#16221b]";
 

@@ -79,6 +79,16 @@ html { scroll-behavior: smooth; }
   --c-ink: #f1ede2;                   /* primary text (was #16221b) */
   --c-body: rgba(241,237,226,0.72);   /* secondary text (was #46554c) */
   --c-muted: rgba(241,237,226,0.46);  /* tertiary text (was #8a968d/#6b7a70) */
+  /* One radius + elevation + floating-surface system for the courses index restructure. */
+  --r-pill: 9999px;
+  --r-panel: 20px;
+  --r-inset: 12px;
+  --e-1: 0 1px 2px rgba(0,0,0,0.3);
+  --e-2: 0 18px 44px -16px rgba(0,0,0,0.7);
+  --e-3: 0 26px 64px -14px rgba(0,0,0,0.78);
+  --ctl: rgba(255,255,255,0.07);        /* control fill */
+  --ctl-line: rgba(244,241,232,0.16);   /* control / panel hairline */
+  --panel: rgba(18,25,21,0.78);         /* floating panel ground (translucent) */
 }
 /* Dark Mapbox course popups so the map tooltip matches the dark theme. */
 .courses-scope .mapboxgl-popup-content {
