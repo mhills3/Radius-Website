@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
 import { getMyLeagues, getAllLeagues, getLeaguesByIds, getUpcomingEvents, getLeagueEvents, getEntries, getCourseMeta, isLeagueAdmin, registrationOpen, type CourseMeta, type League, type LeagueEvent, type EventEntry } from "@/lib/leagues";
@@ -211,6 +211,14 @@ export default function LeaguesPage() {
   const [locErr, setLocErr] = useState(false);
   const [radiusMi, setRadiusMi] = useState(50);
   const [kindFilter, setKindFilter] = useState("all");
+  const [typeMenuOpen, setTypeMenuOpen] = useState(false);
+  const typeMenuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!typeMenuOpen) return;
+    const h = (e: MouseEvent) => { if (typeMenuRef.current && !typeMenuRef.current.contains(e.target as Node)) setTypeMenuOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [typeMenuOpen]);
   const requestLocation = () => {
     if (userLoc) { setUserLoc(null); return; }
     if (!navigator.geolocation) { setLocErr(true); return; }
@@ -385,13 +393,43 @@ export default function LeaguesPage() {
         )}
         {locErr && <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-[var(--cream-38)]">Location unavailable</span>}
         <span aria-hidden className="mx-1.5 h-6 w-px bg-[var(--hair)]" />
-        {[{ key: "all", label: "All types", icon: null as React.ComponentType<{ className?: string }> | null }, ...Object.entries(KIND_CHIP).map(([key, v]) => ({ key, label: v.label.charAt(0) + v.label.slice(1).toLowerCase(), icon: v.icon as React.ComponentType<{ className?: string }> | null }))].map(({ key, label, icon: Ic }) => (
-          <button
-            key={key}
-            onClick={() => setKindFilter(key)}
-            className={`inline-flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-semibold transition-colors ${kindFilter === key ? "border-[rgba(232,181,96,.4)] bg-[var(--gold-dim)] text-[var(--gold)]" : "border-[var(--hair-strong)] text-[var(--cream-60)] hover:text-[var(--cream)]"}`}
-          >{Ic && <Ic className="h-3.5 w-3.5" />}{label}</button>
-        ))}
+        {(() => {
+          const opts = [{ key: "all", label: "All types", Ic: null as React.ComponentType<{ className?: string }> | null }, ...Object.entries(KIND_CHIP).map(([key, v]) => ({ key, label: v.label.charAt(0) + v.label.slice(1).toLowerCase(), Ic: v.icon as React.ComponentType<{ className?: string }> | null }))];
+          const active = opts.find((o) => o.key === kindFilter) ?? opts[0];
+          const ActiveIc = active.Ic;
+          const on = kindFilter !== "all";
+          return (
+            <div className="relative" ref={typeMenuRef}>
+              <button
+                onClick={() => setTypeMenuOpen((o) => !o)}
+                aria-haspopup="listbox"
+                aria-expanded={typeMenuOpen}
+                className={`inline-flex h-9 items-center gap-2 rounded-full border px-3.5 text-[13px] font-semibold transition-colors ${on || typeMenuOpen ? "border-[rgba(232,181,96,.4)] bg-[var(--gold-dim)] text-[var(--gold)]" : "border-[var(--hair-strong)] text-[var(--cream-60)] hover:text-[var(--cream)]"}`}
+              >
+                {ActiveIc && <ActiveIc className="h-3.5 w-3.5" />}
+                {active.label}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`h-3 w-3 transition-transform ${typeMenuOpen ? "rotate-180" : ""}`}><path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </button>
+              {typeMenuOpen && (
+                <div role="listbox" className="absolute left-0 top-[calc(100%+6px)] z-30 min-w-[190px] overflow-hidden rounded-2xl border border-[var(--hair-strong)] bg-[var(--card)] p-1.5 shadow-2xl">
+                  {opts.map(({ key, label, Ic }) => (
+                    <button
+                      key={key}
+                      role="option"
+                      aria-selected={kindFilter === key}
+                      onClick={() => { setKindFilter(key); setTypeMenuOpen(false); }}
+                      className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[13px] font-semibold transition-colors ${kindFilter === key ? "bg-[var(--gold-dim)] text-[var(--gold)]" : "text-[var(--cream-60)] hover:bg-white/[0.04] hover:text-[var(--cream)]"}`}
+                    >
+                      {Ic ? <Ic className="h-4 w-4 shrink-0" /> : <span className="grid h-4 w-4 shrink-0 place-items-center text-[var(--cream-38)]">•</span>}
+                      <span className="flex-1">{label}</span>
+                      {kindFilter === key && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-4 w-4 text-[var(--gold)]"><path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </section>}
 
       {tab === "Live now" ? (
