@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getThreadByIdSEO, getThreadRepliesSEO } from "@/lib/postsServer";
-import ThreadReplyBox from "./ThreadReplyBox";
+import ThreadDiscussion from "./ThreadDiscussion";
 
 type Props = { params: Promise<{ id: string }> };
 const SITE = "https://radiusdiscgolf.com";
@@ -70,30 +70,9 @@ export default async function ThreadPage({ params }: Props) {
               <img src={t.imageUrl} alt="" className="max-h-[560px] w-full object-cover" />
             </div>
           )}
-          <div className="mt-4 flex items-center gap-5 border-t border-white/[0.06] pt-3 text-sm text-[var(--sage)]">
-            <span>▲ {t.score}</span><span>💬 {t.replyCount} {t.replyCount === 1 ? "reply" : "replies"}</span><span>👁 {t.viewCount}</span>
-          </div>
         </article>
 
-        <section className="mt-6">
-          <h2 className="mb-3 font-[family-name:var(--font-heading)] text-lg font-bold">{replies.length} {replies.length === 1 ? "reply" : "replies"}</h2>
-          <div className="space-y-4">
-            {replies.map((r) => (
-              <div key={r.id} className="flex gap-3">
-                <Avatar name={r.authorName} size={32} />
-                <div className="min-w-0 flex-1">
-                  <div className="rounded-2xl bg-white/[0.05] px-3.5 py-2.5">
-                    <div className="text-sm font-bold">{r.authorName}{r.authorHandle ? <span className="ml-1.5 text-xs font-normal text-[var(--sage-dim)]">@{r.authorHandle}</span> : null}</div>
-                    <div className="whitespace-pre-wrap text-[14px] leading-relaxed text-[var(--text-body)]">{r.text}</div>
-                  </div>
-                  <div className="mt-1 pl-1 text-xs text-[var(--sage-dim)]">{fmtDate(r.createdAt)}</div>
-                </div>
-              </div>
-            ))}
-            {replies.length === 0 && <p className="text-sm text-[var(--sage-dim)]">No replies yet — start the discussion.</p>}
-          </div>
-          <ThreadReplyBox threadId={id} />
-        </section>
+        <ThreadDiscussion threadId={id} initialScore={t.score} initialReplyCount={t.replyCount} viewCount={t.viewCount} opId={t.authorId} />
       </div>
     </div>
   );

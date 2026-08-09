@@ -18,7 +18,7 @@ export interface PostSEO {
   linkedCourseName?: string; scoreToPar?: number | null; taggedDiscName?: string;
 }
 export interface ThreadSEO {
-  id: string; title: string; body: string; category: string; authorName: string; authorHandle?: string; authorPhotoUrl?: string;
+  id: string; title: string; body: string; category: string; authorName: string; authorHandle?: string; authorPhotoUrl?: string; authorId?: string;
   createdAt: number; score: number; replyCount: number; viewCount: number; imageUrl?: string;
 }
 
@@ -75,6 +75,7 @@ export const getThreadByIdSEO = cache(async (id: string): Promise<ThreadSEO | nu
     authorName: (t.authorName as string) ?? "Radius player",
     authorHandle: handle(t.authorHandle),
     authorPhotoUrl: http(t.authorPhotoUrl),
+    authorId: (t.createdById as string) ?? (t.authorId as string) ?? undefined,
     createdAt: ms(t.createdAt ?? t.date),
     score: (Number(t.upvotes) || 0) - (Number(t.downvotes) || 0),
     replyCount: Number(t.replyCount) || 0,

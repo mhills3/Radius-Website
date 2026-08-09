@@ -112,20 +112,20 @@ export async function createThread(uid: string, input: { title: string; body: st
   };
 }
 
-/** Reply to a thread (replyToMap shape) + bump replyCount. */
-export async function addReply(uid: string, threadId: string, text: string): Promise<Reply | null> {
+/** Reply to a thread (replyToMap shape) + bump replyCount. `parentReplyId` nests it under a reply. */
+export async function addReply(uid: string, threadId: string, text: string, parentReplyId: string | null = null): Promise<Reply | null> {
   const profile = await getProfileLite(uid);
   if (!profile) return null;
   const id = uuid();
   const now = Date.now();
   await setDoc(doc(db, "threads", threadId, "replies", id), {
-    id, threadId, parentReplyId: null,
+    id, threadId, parentReplyId,
     authorName: profile.name, authorHandle: profile.username,
     authorId: profile.canonicalId, authorPhotoUrl: profile.profileImageUrl ?? null,
-    createdById: profile.canonicalId, text, upvotes: 0, createdAt: now,
+    createdById: profile.canonicalId, text, upvotes: 0, downvotes: 0, createdAt: now,
   });
   await updateDoc(doc(db, "threads", threadId), { replyCount: increment(1) });
-  return { id, authorName: profile.name, authorHandle: profile.username, authorPhotoUrl: profile.profileImageUrl, text, createdAt: now };
+  return { id, authorName: profile.name, authorHandle: profile.username, authorPhotoUrl: profile.profileImageUrl, authorId: profile.canonicalId, text, createdAt: now, parentReplyId, score: 0, upvotes: 0, downvotes: 0 };
 }
 
 export interface Reply {
@@ -136,13 +136,18 @@ export interface Reply {
   authorId?: string;
   text: string;
   createdAt: number;
+  parentReplyId?: string | null;
+  score: number;
+  upvotes: number;
+  downvotes: number;
 }
 export async function getThreadReplies(threadId: string): Promise<Reply[]> {
   try {
-    const snap = await getDocs(query(collection(db, "threads", threadId, "replies"), limit(100)));
+    const snap = await getDocs(query(collection(db, "threads", threadId, "replies"), limit(300)));
     return snap.docs
       .map((d) => {
         const r = d.data();
+        const upvotes = Number(r.upvotes) || 0, downvotes = Number(r.downvotes) || 0;
         return {
           id: (r.id ?? d.id) as string,
           authorName: (r.authorName ?? "Radius player") as string,
@@ -151,12 +156,63 @@ export async function getThreadReplies(threadId: string): Promise<Reply[]> {
           authorId: (r.createdById ?? r.authorId) as string | undefined,
           text: (r.text ?? r.body ?? "") as string,
           createdAt: ms(r.createdAt ?? r.date),
+          parentReplyId: (r.parentReplyId as string | null) ?? null,
+          upvotes, downvotes, score: upvotes - downvotes,
         };
       })
       .filter((r) => r.text.trim())
       .sort((a, b) => a.createdAt - b.createdAt);
   } catch {
     return [];
+  }
+}
+
+// ---- Voting (threads + replies), Reddit-style toggle ----
+function voteDeltas(current: number, next: number) {
+  return { up: (next === 1 ? 1 : 0) - (current === 1 ? 1 : 0), down: (next === -1 ? 1 : 0) - (current === -1 ? 1 : 0) };
+}
+/** Up/down vote a thread. Clicking the same direction again clears the vote. Returns the new dir. */
+export async function voteThread(uid: string, threadId: string, dir: 1 | -1): Promise<number> {
+  const voteRef = doc(db, "threads", threadId, "votes", uid);
+  const snap = await getDoc(voteRef);
+  const current = snap.exists() ? Number(snap.data().dir) || 0 : 0;
+  const next = current === dir ? 0 : dir;
+  const { up, down } = voteDeltas(current, next);
+  const upd: Record<string, unknown> = {};
+  if (up) upd.upvotes = increment(up);
+  if (down) upd.downvotes = increment(down);
+  if (Object.keys(upd).length) await updateDoc(doc(db, "threads", threadId), upd);
+  await setDoc(voteRef, { dir: next, at: Date.now() });
+  return next;
+}
+/** Up/down vote a reply. A single per-user doc holds all of this thread's reply votes. */
+export async function voteReply(uid: string, threadId: string, replyId: string, dir: 1 | -1): Promise<number> {
+  const mapRef = doc(db, "threads", threadId, "replyVotes", uid);
+  const snap = await getDoc(mapRef);
+  const map = snap.exists() ? (snap.data() as Record<string, number>) : {};
+  const current = Number(map[replyId]) || 0;
+  const next = current === dir ? 0 : dir;
+  const { up, down } = voteDeltas(current, next);
+  const upd: Record<string, unknown> = {};
+  if (up) upd.upvotes = increment(up);
+  if (down) upd.downvotes = increment(down);
+  if (Object.keys(upd).length) await updateDoc(doc(db, "threads", threadId, "replies", replyId), upd);
+  await setDoc(mapRef, { [replyId]: next }, { merge: true });
+  return next;
+}
+/** The signed-in user's current vote on a thread + each of its replies (for highlighting arrows). */
+export async function getThreadUserVotes(uid: string, threadId: string): Promise<{ thread: number; replies: Record<string, number> }> {
+  try {
+    const [tv, rv] = await Promise.all([
+      getDoc(doc(db, "threads", threadId, "votes", uid)),
+      getDoc(doc(db, "threads", threadId, "replyVotes", uid)),
+    ]);
+    return {
+      thread: tv.exists() ? Number(tv.data().dir) || 0 : 0,
+      replies: rv.exists() ? (rv.data() as Record<string, number>) : {},
+    };
+  } catch {
+    return { thread: 0, replies: {} };
   }
 }
 
