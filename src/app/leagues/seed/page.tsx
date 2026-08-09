@@ -276,7 +276,7 @@ export default function SeedPage() {
 
   return (
     <main className="mx-auto max-w-xl px-5 pb-24 pt-16">
-      <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--gold)]">Dev tool</p>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--gold)]">Dev tool</p>
       <h1 className="mt-2 font-[family-name:var(--font-heading)] text-3xl font-extrabold text-[var(--cream)]">Demo data</h1>
       <p className="mt-2 text-sm text-[var(--cream-60)]">Seeds one clean league with a curated handful of events — two completed (a tournament with payouts and a league night, both with results), one live right now, and three upcoming (league, A-tier, clinic). All on real courses with photos. Idempotent: re-loading replaces the demo data, never duplicates it.</p>
       {!user ? (
@@ -289,7 +289,7 @@ export default function SeedPage() {
         </div>
       )}
       {log.length > 0 && (
-        <div className={`${card} mt-6 p-4 font-mono text-xs leading-relaxed text-[var(--cream-60)]`}>
+        <div className={`${card} mt-6 p-4 text-xs leading-relaxed text-[var(--cream-60)]`}>
           {log.map((l, i) => <div key={i}>{l}</div>)}
           {slug && <div className="mt-2"><Link href={`/leagues/${slug}`} className="font-bold text-[var(--gold)] hover:underline">Open demo league</Link></div>}
         </div>

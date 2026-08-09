@@ -32,7 +32,7 @@ function Fact({ icon: Ic, label, sub }: { icon: React.ComponentType<{ className?
 }
 const menuItem = "block w-full rounded-lg px-3 py-2 text-left text-[13.5px] font-semibold text-[var(--cream-60)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)]";
 const pillWord = "inline-flex h-8 items-center rounded-full border border-[var(--hair-strong)] bg-[rgba(20,27,22,0.45)] px-3.5 text-xs text-[var(--cream-60)] backdrop-blur-[6px]";
-const pillMono = "inline-flex h-8 items-center rounded-full border border-[var(--hair-strong)] bg-[rgba(20,27,22,0.45)] px-3.5 font-mono text-[11.5px] tracking-[0.06em] text-[var(--cream-60)] backdrop-blur-[6px]";
+const pillMono = "inline-flex h-8 items-center rounded-full border border-[var(--hair-strong)] bg-[rgba(20,27,22,0.45)] px-3.5 text-[11.5px] tracking-[0.06em] text-[var(--cream-60)] backdrop-blur-[6px]";
 const fmtDate = (ms: number) => { const d = new Date(ms); return `${d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })} · ${d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`; };
 // ms epoch → local "YYYY-MM-DDTHH:mm" for <input type="datetime-local"> (toISOString would shift to UTC).
 const toLocalInput = (ms: number) => { const d = new Date(ms); const p = (n: number) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
@@ -43,7 +43,7 @@ const liveRoundIdx = (e: EventEntry): number => (e.holeScoresByRound ? Object.ke
 // Per-round hole card: archived rounds from the map; the current round falls back to the live holeScores.
 const roundHoles = (e: EventEntry, r: number): number[] | undefined => e.holeScoresByRound?.[String(r)] ?? (r === liveRoundIdx(e) ? e.holeScores : undefined);
 const roundThru = (e: EventEntry, r: number): number | undefined => e.thruByRound?.[String(r)] ?? (r === liveRoundIdx(e) ? e.thruHole : undefined);
-const adminInput = "rounded-lg border border-white/10 bg-white/[0.05] px-2 py-1.5 text-right font-mono text-sm text-[var(--cream)] outline-none transition-colors focus:border-[var(--gold)]";
+const adminInput = "rounded-lg border border-white/10 bg-white/[0.05] px-2 py-1.5 text-right text-sm text-[var(--cream)] outline-none transition-colors focus:border-[var(--gold)]";
 
 // Renders the wizard's markdown-lite description: **bold**, _italic_, "- " bullets.
 function Desc({ text }: { text: string }) {
@@ -77,7 +77,7 @@ function Desc({ text }: { text: string }) {
 }
 
 function StatusChip({ status, liveNow }: { status: LeagueEvent["status"]; liveNow?: boolean }) {
-  const frost = "rounded-full border bg-[rgba(20,27,22,0.5)] px-[13px] py-1.5 font-mono text-[10.5px] font-semibold uppercase tracking-[0.16em] backdrop-blur-[6px]";
+  const frost = "rounded-full border bg-[rgba(20,27,22,0.5)] px-[13px] py-1.5 text-[10.5px] font-semibold uppercase tracking-[0.16em] backdrop-blur-[6px]";
   if (liveNow || status === "active") {
     return (
       <span className={`inline-flex items-center gap-1.5 border-[rgba(143,189,227,.4)] text-[var(--blue)] ${frost}`}>
@@ -635,11 +635,11 @@ export default function LeagueEventPage() {
                         : h === par - 1 ? "border-[var(--blue)] bg-[var(--blue-dim)] text-[var(--blue)]"
                         : h === par ? "border-[var(--hair-strong)] text-[var(--cream-38)]"
                         : "border-[rgba(244,241,232,.24)] text-[var(--cream-60)]";
-                      return <span key={hi} className={`grid h-4 w-4 place-items-center rounded-full border font-mono text-[8.5px] ${cls}`}>{h}</span>;
+                      return <span key={hi} className={`grid h-4 w-4 place-items-center rounded-full border text-[8.5px] ${cls}`}>{h}</span>;
                     })}
                   </span>
-                  <span className="font-mono text-xs text-[var(--cream-38)]">THRU {t.live!.thruHole ?? t.live!.holeScores!.filter((h) => h > 0).length}</span>
-                  <span className={`font-mono text-base font-extrabold ${scoreTone(fmtLive(t.live!), t.members.some((m) => m.id === cid))}`}>{fmtLive(t.live!)}</span>
+                  <span className="text-xs text-[var(--cream-38)]">THRU {t.live!.thruHole ?? t.live!.holeScores!.filter((h) => h > 0).length}</span>
+                  <span className={`text-base font-extrabold ${scoreTone(fmtLive(t.live!), t.members.some((m) => m.id === cid))}`}>{fmtLive(t.live!)}</span>
                 </span>
               );
             })()}
@@ -660,7 +660,7 @@ export default function LeagueEventPage() {
                 className={`${adminInput} w-16`}
               />
             ) : (
-              <span className="w-14 text-right font-mono text-lg font-extrabold text-[var(--cream)]">{t.score ?? ""}</span>
+              <span className="w-14 text-right text-lg font-extrabold text-[var(--cream)]">{t.score ?? ""}</span>
             )}
           </div>
         ))}
@@ -709,7 +709,7 @@ export default function LeagueEventPage() {
           </div>
           <div>
             {event.courseName && (
-              <div className="flex items-center gap-2 font-mono text-[11px] tracking-[0.12em] text-[var(--cream-60)]">
+              <div className="flex items-center gap-2 text-[11px] tracking-[0.12em] text-[var(--cream-60)]">
                 <IconPin className="h-3.5 w-3.5 shrink-0" />
                 <span className="font-medium text-[var(--cream)]">{event.courseName}</span>
                 {(courseMeta?.city || courseMeta?.state) && <span className="uppercase">· {[courseMeta?.city, courseMeta?.state].filter(Boolean).join(", ")}</span>}
@@ -721,7 +721,7 @@ export default function LeagueEventPage() {
               {open && (
                 <span className="ml-auto flex flex-wrap items-center gap-2.5">
                   {!me && !registrationOpen(event, nowTs) ? (
-                    <span className="inline-flex items-center rounded-full border border-[var(--hair-strong)] bg-[rgba(20,27,22,0.5)] px-3.5 py-2 font-mono text-[10.5px] uppercase tracking-[0.12em] text-[var(--cream-38)] backdrop-blur-[6px]">Registration is closed</span>
+                    <span className="inline-flex items-center rounded-full border border-[var(--hair-strong)] bg-[rgba(20,27,22,0.5)] px-3.5 py-2 text-[10.5px] uppercase tracking-[0.12em] text-[var(--cream-38)] backdrop-blur-[6px]">Registration is closed</span>
                   ) : user ? (
                     me ? (
                       !(liveNow && cid && ranked.some((x) => x.id === cid)) && (
@@ -804,7 +804,7 @@ export default function LeagueEventPage() {
             key={k}
             onClick={() => setTab(k)}
             className={`relative px-0.5 py-4 text-[14.5px] font-semibold transition-colors ${tab === k ? "text-[var(--cream)] after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:bg-[var(--gold)]" : "text-[var(--cream-60)] hover:text-[var(--cream)]"}`}
-          >{label}{n > 0 && <span className="ml-1.5 font-mono text-[11px] font-normal text-[var(--cream-38)]">{n}</span>}</button>
+          >{label}{n > 0 && <span className="ml-1.5 text-[11px] font-normal text-[var(--cream-38)]">{n}</span>}</button>
         ))}
         {admin && (
           <Link href={`/leagues/${slug}/manage`} className="ml-auto flex items-center gap-1.5 px-0.5 py-4 text-[14.5px] font-semibold text-[var(--gold)] transition-colors hover:text-[var(--gold-bright)]">
@@ -820,9 +820,9 @@ export default function LeagueEventPage() {
           <div className="min-w-0">
             {scoringKind && tournamentOver && ranked.length > 0 && (
               <div className="mb-10">
-                <div className="mb-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">{finalized ? "Final results" : "Leaderboard"}</div>
+                <div className="mb-3.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">{finalized ? "Final results" : "Leaderboard"}</div>
                 <div className={`${card} overflow-hidden`}>
-                  <div className="grid h-[42px] items-center bg-[rgba(0,0,0,0.16)] px-[22px] font-mono text-[10.5px] uppercase tracking-[0.16em] text-[var(--cream-38)]" style={{ gridTemplateColumns: event.roundCount > 1 ? `56px 1fr repeat(${event.roundCount}, 72px) 90px` : "56px 1fr 90px 90px" }}>
+                  <div className="grid h-[42px] items-center bg-[rgba(0,0,0,0.16)] px-[22px] text-[10.5px] uppercase tracking-[0.16em] text-[var(--cream-38)]" style={{ gridTemplateColumns: event.roundCount > 1 ? `56px 1fr repeat(${event.roundCount}, 72px) 90px` : "56px 1fr 90px 90px" }}>
                     <span>Pos</span><span>Player</span>{event.roundCount > 1 ? Array.from({ length: event.roundCount }, (_, r) => <span key={r} className="text-right">Round {r + 1}</span>) : <span className="text-right">Rds</span>}<span className="text-right">Total</span>
                   </div>
                   {(() => {
@@ -839,24 +839,24 @@ export default function LeagueEventPage() {
                           className={`grid h-14 items-center border-b border-[var(--hair)] px-[22px] text-sm last:border-b-0 ${you ? "border-l-[3px] border-l-[var(--gold)] pl-[19px]" : ""} ${appended && ri === rows.length - 1 ? "border-t border-t-[var(--hair-strong)]" : ""}`}
                           style={{ ...(you ? { background: "linear-gradient(90deg, rgba(232,181,96,.13), rgba(232,181,96,.04))" } : {}), gridTemplateColumns: event.roundCount > 1 ? `56px 1fr repeat(${event.roundCount}, 72px) 90px` : "56px 1fr 90px 90px" }}
                         >
-                          <span className={`font-mono ${you ? "text-[var(--gold)]" : i === 0 ? "text-[var(--cream)]" : "text-[var(--cream-38)]"}`}>{i + 1}</span>
+                          <span className={`${you ? "text-[var(--gold)]" : i === 0 ? "text-[var(--cream)]" : "text-[var(--cream-38)]"}`}>{i + 1}</span>
                           <span className="flex min-w-0 items-center gap-[11px] font-semibold text-[var(--cream)]">
                             <UserLink username={usernameById(e.id)}><Avatar url={e.photo} name={nameOf(e)} size={30} ring={false} gold={you} /></UserLink>
                             <UserLink username={usernameById(e.id)} className="truncate">{nameOf(e)}</UserLink>
-                            {you && <span className="rounded border border-[rgba(232,181,96,.4)] px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.14em] text-[var(--gold)]">You</span>}
-                            {(e.payout ?? 0) > 0 && <span className="font-mono text-xs font-bold text-[#5fcf80]">${e.payout}</span>}
+                            {you && <span className="rounded border border-[rgba(232,181,96,.4)] px-1.5 py-0.5 text-[9.5px] tracking-[0.14em] text-[var(--gold)]">You</span>}
+                            {(e.payout ?? 0) > 0 && <span className="text-xs font-bold text-[#5fcf80]">${e.payout}</span>}
                           </span>
                           {event.roundCount > 1
-                            ? Array.from({ length: event.roundCount }, (_, r) => { const rs = e.roundScores?.[r]; return <span key={r} className="text-right font-mono text-[var(--cream-60)]">{rs || <span className="text-[var(--cream-38)]">–</span>}</span>; })
-                            : <span className="text-right font-mono text-[var(--cream-60)]">{e.roundScores?.filter((r) => r > 0).join(" · ") ?? ""}</span>}
-                          <span className={`text-right font-mono text-[15px] font-bold ${scoreTone(fmtTotal(e), you)}`}>{fmtTotal(e)}</span>
+                            ? Array.from({ length: event.roundCount }, (_, r) => { const rs = e.roundScores?.[r]; return <span key={r} className="text-right text-[var(--cream-60)]">{rs || <span className="text-[var(--cream-38)]">–</span>}</span>; })
+                            : <span className="text-right text-[var(--cream-60)]">{e.roundScores?.filter((r) => r > 0).join(" · ") ?? ""}</span>}
+                          <span className={`text-right text-[15px] font-bold ${scoreTone(fmtTotal(e), you)}`}>{fmtTotal(e)}</span>
                         </div>
                       );
                     });
                   })()}
                   <div className="flex items-center justify-between bg-[rgba(0,0,0,0.12)] px-[22px] py-[13px]">
                     <button onClick={() => setTab("scores")} className="text-[13px] font-semibold text-[var(--cream-60)] transition-colors hover:text-[var(--cream)]">View full leaderboard →</button>
-                    <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-[var(--cream-38)]">{plural(ranked.length, "player")} · {plural(event.roundCount, "round")}</span>
+                    <span className="text-[10.5px] uppercase tracking-[0.08em] text-[var(--cream-38)]">{plural(ranked.length, "player")} · {plural(event.roundCount, "round")}</span>
                   </div>
                 </div>
               </div>
@@ -866,8 +866,8 @@ export default function LeagueEventPage() {
               <div className="mb-10">
                 <div className={`${card} overflow-hidden`}>
                   <div className="flex items-center justify-between px-5 pb-3 pt-4">
-                    <span className="inline-flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--blue)]"><span className="live-dot h-1.5 w-1.5 rounded-full bg-[var(--blue)]" /> Live</span>
-                    <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-[var(--cream-38)]">{plural(ranked.length, "player")} scoring</span>
+                    <span className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--blue)]"><span className="live-dot h-1.5 w-1.5 rounded-full bg-[var(--blue)]" /> Live</span>
+                    <span className="text-[10.5px] uppercase tracking-[0.08em] text-[var(--cream-38)]">{plural(ranked.length, "player")} scoring</span>
                   </div>
                   {(() => {
                     const myIdx = cid ? ranked.findIndex((x) => x.id === cid) : -1;
@@ -879,10 +879,10 @@ export default function LeagueEventPage() {
                       const thru = e.thruHole ?? e.holeScores?.filter((h) => h > 0).length;
                       return (
                         <div key={e.id} className={`grid grid-cols-[34px_1fr_62px_62px] items-center border-t border-[var(--hair)] px-5 py-[11px] text-[13.5px] ${you ? "bg-[var(--gold-dim)]" : ""}`}>
-                          <span className={`font-mono ${you ? "text-[var(--gold)]" : "text-[var(--cream-38)]"}`}>{i + 1}</span>
-                          <span className="flex min-w-0 items-center gap-2 font-semibold text-[var(--cream)]"><UserLink username={usernameById(e.id)} className="truncate">{nameOf(e)}</UserLink>{you && <span className="rounded border border-[rgba(232,181,96,.4)] px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.14em] text-[var(--gold)]">You</span>}</span>
-                          <span className="text-right font-mono text-xs text-[var(--cream-38)]">{typeof e.score !== "number" && thru ? `THRU ${thru}` : ""}</span>
-                          <span className={`text-right font-mono font-bold ${scoreTone(fmtLive(e), you)}`}>{fmtLive(e)}</span>
+                          <span className={`${you ? "text-[var(--gold)]" : "text-[var(--cream-38)]"}`}>{i + 1}</span>
+                          <span className="flex min-w-0 items-center gap-2 font-semibold text-[var(--cream)]"><UserLink username={usernameById(e.id)} className="truncate">{nameOf(e)}</UserLink>{you && <span className="rounded border border-[rgba(232,181,96,.4)] px-1.5 py-0.5 text-[9.5px] tracking-[0.14em] text-[var(--gold)]">You</span>}</span>
+                          <span className="text-right text-xs text-[var(--cream-38)]">{typeof e.score !== "number" && thru ? `THRU ${thru}` : ""}</span>
+                          <span className={`text-right font-bold ${scoreTone(fmtLive(e), you)}`}>{fmtLive(e)}</span>
                         </div>
                       );
                     });
@@ -894,13 +894,13 @@ export default function LeagueEventPage() {
 
             {event.description ? (
               <div className="mb-10">
-                <div className="mb-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--blue)]">About this {event.kind === "tournament" ? "tournament" : event.kind === "league" ? "league" : "event"}</div>
+                <div className="mb-3.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--blue)]">About this {event.kind === "tournament" ? "tournament" : event.kind === "league" ? "league" : "event"}</div>
                 <Desc text={event.description} />
               </div>
             ) : null}
 
             <div className="mb-10">
-              <div className="mb-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--blue)]">Details</div>
+              <div className="mb-3.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--blue)]">Details</div>
               <div className="grid gap-2.5 sm:grid-cols-2">
                 {(() => {
                   const kindDef = EVENT_KINDS.find((k) => k.key === event.kind);
@@ -948,7 +948,7 @@ export default function LeagueEventPage() {
                 <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(340px 200px at 85% -20%, rgba(232,181,96,.20), transparent 65%), radial-gradient(280px 180px at -10% 110%, rgba(232,181,96,.09), transparent 60%), linear-gradient(180deg, rgba(232,181,96,.05), transparent 55%)" }} />
                 <IconTrophy className="pointer-events-none absolute -right-5 -top-5 h-32 w-32 rotate-12 text-[var(--gold)] opacity-[0.08]" />
                 <div className="relative">
-                  <div className="flex items-center gap-2.5 font-mono text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--gold)]">
+                  <div className="flex items-center gap-2.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--gold)]">
                     <span aria-hidden className="h-px w-5 bg-[rgba(232,181,96,0.5)]" />{finalized ? "Winner" : `Leader after round ${roundsComplete}`}<span aria-hidden className="h-px flex-1 bg-[rgba(232,181,96,0.22)]" />
                   </div>
                   <div className="mt-5 flex items-center gap-4">
@@ -958,11 +958,11 @@ export default function LeagueEventPage() {
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="truncate font-[family-name:var(--font-heading)] text-[20px] font-extrabold leading-tight text-[var(--cream)]"><UserLink username={usernameById(ranked[0].id)}>{nameOf(ranked[0])}</UserLink></div>
-                      {(ranked[0].roundScores?.filter((r) => r > 0).length ?? 0) > 1 && <div className="mt-1 font-mono text-[12px] text-[var(--cream-60)]">rounds of {ranked[0].roundScores!.filter((r) => r > 0).join(", ")}</div>}
+                      {(ranked[0].roundScores?.filter((r) => r > 0).length ?? 0) > 1 && <div className="mt-1 text-[12px] text-[var(--cream-60)]">rounds of {ranked[0].roundScores!.filter((r) => r > 0).join(", ")}</div>}
                     </div>
                     <div className="shrink-0 text-right">
-                      <div className="font-mono text-[42px] font-bold leading-none tracking-[-0.02em] text-[var(--gold)]">{fmtTotal(ranked[0])}</div>
-                      <div className="mt-1.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.18em] text-[var(--cream-38)]">{finalized ? "Final" : `Through ${roundsComplete} of ${event.roundCount}`}</div>
+                      <div className="text-[42px] font-bold leading-none tracking-[-0.02em] text-[var(--gold)]">{fmtTotal(ranked[0])}</div>
+                      <div className="mt-1.5 text-[9.5px] font-semibold uppercase tracking-[0.18em] text-[var(--cream-38)]">{finalized ? "Final" : `Through ${roundsComplete} of ${event.roundCount}`}</div>
                     </div>
                   </div>
                   {(() => {
@@ -974,8 +974,8 @@ export default function LeagueEventPage() {
                         {played.length > 0 && (
                           <button onClick={() => { setScGroup(null); setScorecardEdit(false); setScorecardOpen(true); }} className="group mt-5 block w-full border-t border-[rgba(232,181,96,0.2)] pt-4 text-left">
                             <div className="flex items-center justify-between gap-3">
-                              <span className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--cream-38)]">{event.roundCount > 1 ? "Final round" : "Winning card"}{played.length < event.holes ? ` · thru ${played.length}` : ""}</span>
-                              <span className="inline-flex items-center gap-1 font-mono text-[10px] font-bold uppercase tracking-wide text-[var(--gold)] transition-colors group-hover:text-[var(--gold-bright)]">{finalized ? "View winning scorecard" : "View scorecard"} <span aria-hidden className="transition-transform group-hover:translate-x-0.5">→</span></span>
+                              <span className="text-[9.5px] uppercase tracking-[0.14em] text-[var(--cream-38)]">{event.roundCount > 1 ? "Final round" : "Winning card"}{played.length < event.holes ? ` · thru ${played.length}` : ""}</span>
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-[var(--gold)] transition-colors group-hover:text-[var(--gold-bright)]">{finalized ? "View winning scorecard" : "View scorecard"} <span aria-hidden className="transition-transform group-hover:translate-x-0.5">→</span></span>
                             </div>
                             <div className="mt-2.5 flex gap-1">
                               {played.map(({ h, i }) => {
@@ -987,7 +987,7 @@ export default function LeagueEventPage() {
                                 return <span key={i} title={`Hole ${i + 1} · par ${par} · ${h}`} className={`h-2.5 min-w-[6px] flex-1 rounded-full ${tone}`} />;
                               })}
                             </div>
-                            <div className="mt-2.5 flex items-center gap-4 font-mono text-[9px] uppercase tracking-[0.12em] text-[var(--cream-38)]">
+                            <div className="mt-2.5 flex items-center gap-4 text-[9px] uppercase tracking-[0.12em] text-[var(--cream-38)]">
                               <span className="flex items-center gap-1.5"><i className="h-2 w-2 rounded-[3px] bg-[var(--gold)]" />Eagle</span>
                               <span className="flex items-center gap-1.5"><i className="h-2 w-2 rounded-[3px] bg-[var(--blue)]" />Birdie</span>
                               <span className="flex items-center gap-1.5"><i className="h-2 w-2 rounded-[3px] bg-white/[0.16]" />Par</span>
@@ -996,9 +996,9 @@ export default function LeagueEventPage() {
                         )}
                         {(hotRound != null || birdies > 0 || (w.payout ?? 0) > 0) && (
                           <div className="mt-5 flex flex-wrap gap-x-6 gap-y-3 border-t border-[rgba(232,181,96,0.2)] pt-4">
-                            {hotRound != null && <div><div className="font-mono text-base font-bold text-[var(--cream)]">{hotRound}</div><div className="mt-0.5 font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Hot round</div></div>}
-                            {birdies > 0 && <div><div className="font-mono text-base font-bold text-[var(--blue)]">{birdies}</div><div className="mt-0.5 font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--cream-38)]">{birdies === 1 ? "Birdie" : "Birdies"}</div></div>}
-                            {(w.payout ?? 0) > 0 && <div><div className="font-mono text-base font-bold text-[#5fcf80]">${w.payout}</div><div className="mt-0.5 font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Payout</div></div>}
+                            {hotRound != null && <div><div className="text-base font-bold text-[var(--cream)]">{hotRound}</div><div className="mt-0.5 text-[9.5px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Hot round</div></div>}
+                            {birdies > 0 && <div><div className="text-base font-bold text-[var(--blue)]">{birdies}</div><div className="mt-0.5 text-[9.5px] uppercase tracking-[0.14em] text-[var(--cream-38)]">{birdies === 1 ? "Birdie" : "Birdies"}</div></div>}
+                            {(w.payout ?? 0) > 0 && <div><div className="text-base font-bold text-[#5fcf80]">${w.payout}</div><div className="mt-0.5 text-[9.5px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Payout</div></div>}
                           </div>
                         )}
                       </>
@@ -1021,8 +1021,8 @@ export default function LeagueEventPage() {
               return (
                 <div className={`${card} p-6`}>
                   <div className="mb-3 flex items-center justify-between">
-                    <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">Your position</span>
-                    <span className="inline-flex items-center gap-1 font-mono text-[10.5px] tracking-[0.08em] text-[#5fcf80]">✓{divisions.length > 1 && me.division ? ` ${me.division}` : " In"}</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">Your position</span>
+                    <span className="inline-flex items-center gap-1 text-[10.5px] tracking-[0.08em] text-[#5fcf80]">✓{divisions.length > 1 && me.division ? ` ${me.division}` : " In"}</span>
                   </div>
                   <div className="font-[family-name:var(--font-heading)] text-[15px] font-semibold leading-relaxed text-[var(--cream)]">{line}</div>
                 </div>
@@ -1031,7 +1031,7 @@ export default function LeagueEventPage() {
 
             {open && (
               <button onClick={() => setTab("players")} className={`${card} block w-full p-6 text-left transition-colors hover:border-[var(--hair-strong)]`}>
-                <div className="mb-4 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--blue)]">Field</div>
+                <div className="mb-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--blue)]">Field</div>
                 {entries.length > 0 && (
                   <div className="mb-3.5 flex items-center">
                     <span className="flex -space-x-2">
@@ -1039,7 +1039,7 @@ export default function LeagueEventPage() {
                         <span key={e.id} className="rounded-full ring-2 ring-[var(--forest)]"><Avatar url={e.photo} name={nameOf(e)} size={28} ring={false} /></span>
                       ))}
                     </span>
-                    {entries.length > 6 && <span className="z-10 -ml-2 grid h-7 w-7 place-items-center rounded-full bg-[var(--card-raised)] font-mono text-[10px] font-semibold text-[var(--cream-60)] ring-2 ring-[var(--forest)]">+{entries.length - 6}</span>}
+                    {entries.length > 6 && <span className="z-10 -ml-2 grid h-7 w-7 place-items-center rounded-full bg-[var(--card-raised)] text-[10px] font-semibold text-[var(--cream-60)] ring-2 ring-[var(--forest)]">+{entries.length - 6}</span>}
                   </div>
                 )}
                 {event.capacity ? (() => {
@@ -1050,11 +1050,11 @@ export default function LeagueEventPage() {
                       <div className="h-[3px] overflow-hidden rounded-[2px] bg-[var(--hair)]">
                         <i className={`block h-full rounded-[2px] ${hot ? "bg-[var(--gold)]" : "bg-[var(--blue)]"}`} style={{ width: `${pct}%` }} />
                       </div>
-                      <div className="mt-2 font-mono text-[10.5px] tracking-[0.06em] text-[var(--cream-38)]"><b className="font-medium text-[var(--cream-60)]">{entries.length} of {event.capacity}</b> registered{hot ? " · filling fast" : ""}</div>
+                      <div className="mt-2 text-[10.5px] tracking-[0.06em] text-[var(--cream-38)]"><b className="font-medium text-[var(--cream-60)]">{entries.length} of {event.capacity}</b> registered{hot ? " · filling fast" : ""}</div>
                     </>
                   );
                 })() : (
-                  <div className="font-mono text-[10.5px] tracking-[0.06em] text-[var(--cream-38)]">{entries.length > 0 ? <><b className="font-medium text-[var(--cream-60)]">{entries.length}</b> joined</> : "Be the first to join"}</div>
+                  <div className="text-[10.5px] tracking-[0.06em] text-[var(--cream-38)]">{entries.length > 0 ? <><b className="font-medium text-[var(--cream-60)]">{entries.length}</b> joined</> : "Be the first to join"}</div>
                 )}
               </button>
             )}
@@ -1063,16 +1063,16 @@ export default function LeagueEventPage() {
 
             <div className={`${card} p-6`}>
               <div className="mb-4 flex items-center justify-between gap-3">
-                <div className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--blue)]">Schedule</div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--blue)]">Schedule</div>
                 {admin && open && scoringKind && event.roundCount > 1 && (
-                  <button onClick={() => { if (!schedEdit) setSchedDraft(Array.from({ length: event.roundCount }, (_, i) => toLocalInput(event.roundStarts?.[i] ?? event.date))); setSchedEdit((v) => !v); }} className="font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--gold)] transition-opacity hover:opacity-80">{schedEdit ? "Cancel" : event.roundStarts ? "Edit times" : "Set round times"}</button>
+                  <button onClick={() => { if (!schedEdit) setSchedDraft(Array.from({ length: event.roundCount }, (_, i) => toLocalInput(event.roundStarts?.[i] ?? event.date))); setSchedEdit((v) => !v); }} className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--gold)] transition-opacity hover:opacity-80">{schedEdit ? "Cancel" : event.roundStarts ? "Edit times" : "Set round times"}</button>
                 )}
               </div>
               {schedEdit ? (
                 <div className="grid gap-2.5">
                   {schedDraft.map((v, i) => (
                     <label key={i} className="flex flex-wrap items-center gap-3">
-                      <span className="w-14 shrink-0 font-mono text-xs font-bold uppercase tracking-wide text-[var(--gold)]">Rd {i + 1}</span>
+                      <span className="w-14 shrink-0 text-xs font-bold uppercase tracking-wide text-[var(--gold)]">Rd {i + 1}</span>
                       <input type="datetime-local" value={v} onChange={(e) => setSchedDraft((xs) => xs.map((x, j) => (j === i ? e.target.value : x)))} className="rounded-lg border border-[var(--hair-strong)] bg-[var(--card)] px-3 py-2 text-sm text-[var(--cream)] outline-none transition-colors focus:border-[var(--gold)]" />
                     </label>
                   ))}
@@ -1084,7 +1084,7 @@ export default function LeagueEventPage() {
                     <div key={i} className={`relative ${i < arr.length - 1 ? "pb-5" : ""}`}>
                       <span className="absolute -left-[27px] top-1.5 h-2 w-2 rounded-full border-2 border-[var(--blue)] bg-[var(--forest)]" />
                       <div className="font-[family-name:var(--font-heading)] text-[14.5px] font-semibold text-[var(--cream)]">{event.kind === "clinic" ? "Session" : event.kind === "cleanup" ? "Work day" : arr.length > 1 ? `Round ${i + 1}` : event.roundCount === 1 ? "Round 1" : event.roundCount === 2 ? "Rounds 1 and 2" : `Rounds 1–${event.roundCount}`}</div>
-                      <div className="mt-1 font-mono text-xs text-[var(--blue)]">{fmtDate(ms)}</div>
+                      <div className="mt-1 text-xs text-[var(--blue)]">{fmtDate(ms)}</div>
                       <div className="mt-[3px] text-[12.5px] text-[var(--cream-60)]">{event.kind === "clinic" || event.kind === "cleanup"
                         ? [event.durationMin ? (event.durationMin >= 60 ? `${Math.floor(event.durationMin / 60)}h${event.durationMin % 60 ? ` ${event.durationMin % 60}m` : ""}` : `${event.durationMin} min`) : null, event.meetingPoint, event.courseName].filter(Boolean).join(" · ")
                         : `${event.holes} holes${arr.length <= 1 && event.roundCount > 1 ? " per round" : ""} · ${event.startFormat}${event.courseName ? ` · ${event.courseName}` : ""}`}</div>
@@ -1099,13 +1099,13 @@ export default function LeagueEventPage() {
 
             {staff.length > 0 && (
               <div className={`${card} p-6`}>
-                <div className="mb-4 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">Staff</div>
+                <div className="mb-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">Staff</div>
                 <div className="grid gap-3">
                   {staff.map((m) => (
                     <div key={m.id} className="flex items-center gap-3 text-sm">
                       {m.username ? <Link href={`/u/${m.username}`}><Avatar url={m.photo} name={m.name} size={30} /></Link> : <Avatar url={m.photo} name={m.name} size={30} />}
                       <span className="min-w-0 flex-1 truncate font-semibold text-[var(--cream)]">{m.username ? <Link href={`/u/${m.username}`} className="hover:underline">{m.name}</Link> : m.name}</span>
-                      <span className="rounded border border-[rgba(232,181,96,.4)] px-[7px] py-[3px] font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--gold)]">{m.role}</span>
+                      <span className="rounded border border-[rgba(232,181,96,.4)] px-[7px] py-[3px] text-[9.5px] uppercase tracking-[0.14em] text-[var(--gold)]">{m.role}</span>
                     </div>
                   ))}
                 </div>
@@ -1130,9 +1130,9 @@ export default function LeagueEventPage() {
                     <span className="block text-xs text-[var(--sage-dim)]">Joined {new Date(e.checkedInAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
                   </span>
                   {league?.settings.checkIns && e.arrivedAt && <span className="inline-flex items-center gap-1 rounded-full bg-[#5fcf80]/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#5fcf80]">✓ Checked in</span>}
-                  {typeof e.tag === "number" && <span className="rounded-full bg-white/[0.08] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[var(--cream)]">#{e.tag}</span>}
+                  {typeof e.tag === "number" && <span className="rounded-full bg-white/[0.08] px-1.5 py-0.5 text-[10px] font-bold text-[var(--cream)]">#{e.tag}</span>}
                   {divisions.length > 1 && e.division && <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[9px] font-bold uppercase text-[var(--sage-dim)]">{e.division}</span>}
-                  {typeof e.teamId === "number" && <span className="rounded-full bg-white/[0.06] px-2 py-0.5 font-mono text-[10px] font-bold text-[var(--text-body)]">T{e.teamId}</span>}
+                  {typeof e.teamId === "number" && <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] font-bold text-[var(--text-body)]">T{e.teamId}</span>}
                   {event.buyIn && <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${e.paid ? "bg-[#5fcf80]/15 text-[#5fcf80]" : "bg-white/[0.05] text-[var(--sage-dim)]"}`}>{e.paid ? "Paid" : "Unpaid"}</span>}
                 </div>
               ))}
@@ -1152,7 +1152,7 @@ export default function LeagueEventPage() {
           ].map((s) => (
             <div key={s.label} className={`${card} px-4 py-3.5`}>
               <div className="text-[9px] font-bold uppercase tracking-[0.14em] text-[var(--sage-dim)]">{s.label}</div>
-              <div className={`mt-1 font-mono text-xl font-extrabold ${s.gold ? "text-[var(--gold)]" : "text-[var(--cream)]"}`}>{s.value}</div>
+              <div className={`mt-1 text-xl font-extrabold ${s.gold ? "text-[var(--gold)]" : "text-[var(--cream)]"}`}>{s.value}</div>
             </div>
           ))}
           {admin && event.payoutPlaces && paidCount > 0 ? (() => {
@@ -1161,7 +1161,7 @@ export default function LeagueEventPage() {
             const curve = curves[Math.min(event.payoutPlaces!, 5)] ?? curves[3];
             const cuts = curve.map((pct) => Math.round((pot * pct) / 100));
             return (
-              <p className="col-span-2 font-mono text-[10.5px] tracking-[0.06em] text-[var(--cream-38)] sm:col-span-4">
+              <p className="col-span-2 text-[10.5px] tracking-[0.06em] text-[var(--cream-38)] sm:col-span-4">
                 Suggested from the ${pot} pot: {cuts.map((c, i) => `${i + 1}${["st", "nd", "rd"][i] ?? "th"} $${c}`).join(" · ")} — enter actual payouts on the rows.
               </p>
             );
@@ -1207,7 +1207,7 @@ export default function LeagueEventPage() {
 
         {admin && editScores && (
           <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-[var(--hair)] bg-[var(--card)] p-2.5">
-            <span className="pl-1 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--cream-38)]">Add player</span>
+            <span className="pl-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--cream-38)]">Add player</span>
             <input
               value={walkName}
               onChange={(ev2) => setWalkName(ev2.target.value)}
@@ -1253,10 +1253,10 @@ export default function LeagueEventPage() {
                         <span className={`relative block ${first ? "rounded-full border-2 border-[var(--gold)] p-[3px]" : ""}`}><Avatar url={e.photo} name={nameOf(e)} size={first ? 54 : 44} gold={first ? false : you} ring={false} /></span>
                       </span>
                       <span className={`mt-1.5 max-w-full truncate font-bold ${first ? "text-[13px]" : "text-[11px]"} ${you ? "text-[var(--gold)]" : "text-[var(--cream)]"}`}>{nameOf(e)}</span>
-                      <span className={`font-mono font-extrabold tabular-nums ${first ? "text-xl" : "text-base"} ${first ? "text-[var(--gold)]" : "text-[var(--cream-60)]"}`}>{fmtTotal(e)}</span>
+                      <span className={`font-extrabold tabular-nums ${first ? "text-xl" : "text-base"} ${first ? "text-[var(--gold)]" : "text-[var(--cream-60)]"}`}>{fmtTotal(e)}</span>
                     </UserLink>
                     <div className={`relative mt-1.5 w-full rounded-t-lg ${pedH}`} style={{ background: first ? "linear-gradient(180deg, rgba(232,181,96,.35), rgba(232,181,96,.08))" : "linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.03))" }}>
-                      <span className={`absolute left-1/2 top-1.5 -translate-x-1/2 font-mono text-[15px] font-black ${first ? "text-[var(--gold)]" : "text-white/50"}`}>{place}</span>
+                      <span className={`absolute left-1/2 top-1.5 -translate-x-1/2 text-[15px] font-black ${first ? "text-[var(--gold)]" : "text-white/50"}`}>{place}</span>
                     </div>
                   </div>
                 );
@@ -1264,7 +1264,7 @@ export default function LeagueEventPage() {
             </div>
           )}
           <div className={`${card} overflow-hidden`}>
-            <div className="flex items-center gap-3.5 bg-[var(--forest)] px-4 py-2 font-mono text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[var(--cream-38)]">
+            <div className="flex items-center gap-3.5 bg-[var(--forest)] px-4 py-2 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[var(--cream-38)]">
               <span className="w-8">Pos</span><span className="flex-1">Player</span>{tournamentOver && event.roundCount > 1 ? Array.from({ length: event.roundCount }, (_, r) => <span key={r} className="hidden w-[76px] text-right sm:block">Round {r + 1}</span>) : <span className="hidden w-[184px] text-right sm:block">{tournamentOver ? "F · B" : "Last 9"}</span>}{!tournamentOver && <span className="w-14 text-right">Thru</span>}<span className="w-20 text-right">Total</span>
             </div>
             {[...ranked, ...unscored].map((e, i) => {
@@ -1283,9 +1283,9 @@ export default function LeagueEventPage() {
                   <span className="min-w-0 flex-1">
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                       <span className="truncate font-bold text-[var(--cream)]">{e.username ? <Link href={`/u/${e.username}`} className="hover:underline">{nameOf(e)}</Link> : nameOf(e)}</span>
-                      {you && <span className="rounded-full bg-[var(--gold)] px-1.5 py-0.5 font-mono text-[8px] font-bold text-[#141B16]">YOU</span>}
-                      {typeof e.tag === "number" && <span className="rounded-full bg-white/[0.08] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[var(--cream)]" title="Bag tag">#{e.tag}</span>}
-                      {(e.payout ?? 0) > 0 && <span className="rounded-full bg-[#5fcf80]/15 px-1.5 py-0.5 font-mono text-[10px] font-bold text-[#5fcf80]" title="Payout">${e.payout}</span>}
+                      {you && <span className="rounded-full bg-[var(--gold)] px-1.5 py-0.5 text-[8px] font-bold text-[#141B16]">YOU</span>}
+                      {typeof e.tag === "number" && <span className="rounded-full bg-white/[0.08] px-1.5 py-0.5 text-[10px] font-bold text-[var(--cream)]" title="Bag tag">#{e.tag}</span>}
+                      {(e.payout ?? 0) > 0 && <span className="rounded-full bg-[#5fcf80]/15 px-1.5 py-0.5 text-[10px] font-bold text-[#5fcf80]" title="Payout">${e.payout}</span>}
                       {(e.startingScore ?? 0) !== 0 && <span className="rounded-full bg-[var(--gold-dim)] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[var(--gold)]" title="Handicap adjustment">HCP {e.startingScore! > 0 ? `+${e.startingScore}` : e.startingScore}</span>}
                       {divisions.length > 1 && e.division && !divFilter && <span className="rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[var(--sage-dim)]">{e.division}</span>}
                       {e.dnf && <span className="rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[var(--sage-dim)]">DNF</span>}
@@ -1301,13 +1301,13 @@ export default function LeagueEventPage() {
                       <span className="mt-0.5 block text-[10px] font-bold text-[var(--sage-dim)]">{points.get(e.id) ?? ""} pts</span>
                     )}
                   </span>
-                  {(e.penalty ?? 0) > 0 && admin && <span className="font-mono text-xs font-bold text-[#f08c8c]">+{e.penalty}</span>}
+                  {(e.penalty ?? 0) > 0 && admin && <span className="text-xs font-bold text-[#f08c8c]">+{e.penalty}</span>}
 
                   {admin && editScores ? (
                     <span className="flex items-center gap-1.5">
-                      {!!event.buyIn && <button onClick={() => patchEntry(e.id, { paid: !e.paid })} title={e.paid ? "Mark unpaid" : "Mark paid"} className={`rounded-full px-2 py-1.5 font-mono text-xs font-bold transition-colors ${e.paid ? "bg-[#5fcf80]/15 text-[#5fcf80]" : "bg-white/[0.05] text-[var(--sage-dim)] hover:text-[var(--cream)]"}`}>$</button>}
-                      <button onClick={() => patchEntry(e.id, { penalty: (e.penalty ?? 0) > 0 ? undefined : 2 })} title={(e.penalty ?? 0) > 0 ? `Penalty +${e.penalty} — click to clear` : "Add +2 penalty"} className={`rounded-full px-2 py-1.5 font-mono text-xs font-bold transition-colors ${(e.penalty ?? 0) > 0 ? "bg-[#f08c8c]/15 text-[#f08c8c]" : "bg-white/[0.05] text-[var(--sage-dim)] hover:text-[var(--cream)]"}`}>{(e.penalty ?? 0) > 0 ? `+${e.penalty}` : "P"}</button>
-                      <button onClick={() => patchEntry(e.id, { dnf: !e.dnf })} title={e.dnf ? "Clear DNF" : "Mark DNF"} className={`rounded-full px-2 py-1.5 font-mono text-[10px] font-bold transition-colors ${e.dnf ? "bg-white/[0.1] text-[var(--cream)]" : "bg-white/[0.05] text-[var(--sage-dim)] hover:text-[var(--cream)]"}`}>DNF</button>
+                      {!!event.buyIn && <button onClick={() => patchEntry(e.id, { paid: !e.paid })} title={e.paid ? "Mark unpaid" : "Mark paid"} className={`rounded-full px-2 py-1.5 text-xs font-bold transition-colors ${e.paid ? "bg-[#5fcf80]/15 text-[#5fcf80]" : "bg-white/[0.05] text-[var(--sage-dim)] hover:text-[var(--cream)]"}`}>$</button>}
+                      <button onClick={() => patchEntry(e.id, { penalty: (e.penalty ?? 0) > 0 ? undefined : 2 })} title={(e.penalty ?? 0) > 0 ? `Penalty +${e.penalty} — click to clear` : "Add +2 penalty"} className={`rounded-full px-2 py-1.5 text-xs font-bold transition-colors ${(e.penalty ?? 0) > 0 ? "bg-[#f08c8c]/15 text-[#f08c8c]" : "bg-white/[0.05] text-[var(--sage-dim)] hover:text-[var(--cream)]"}`}>{(e.penalty ?? 0) > 0 ? `+${e.penalty}` : "P"}</button>
+                      <button onClick={() => patchEntry(e.id, { dnf: !e.dnf })} title={e.dnf ? "Clear DNF" : "Mark DNF"} className={`rounded-full px-2 py-1.5 text-[10px] font-bold transition-colors ${e.dnf ? "bg-white/[0.1] text-[var(--cream)]" : "bg-white/[0.05] text-[var(--sage-dim)] hover:text-[var(--cream)]"}`}>DNF</button>
                       <input
                         key={`${e.id}-hcp-${e.startingScore ?? ""}`}
                         inputMode="numeric"
@@ -1358,7 +1358,7 @@ export default function LeagueEventPage() {
                         Array.from({ length: event.roundCount }, (_, r) => {
                           const rs = typeof e.score === "number" ? e.roundScores?.[r] : undefined;
                           return (
-                            <span key={r} className="hidden w-[76px] items-baseline justify-end gap-1 font-mono tabular-nums sm:flex">
+                            <span key={r} className="hidden w-[76px] items-baseline justify-end gap-1 tabular-nums sm:flex">
                               {rs ? <><span className="text-sm font-bold text-[var(--cream)]">{parTotal != null ? signed(rs - parTotal) : rs}</span>{parTotal != null && <span className="text-[10px] text-[var(--cream-38)]">({rs})</span>}</> : <span className="text-xs text-[var(--cream-38)]">–</span>}
                             </span>
                           );
@@ -1366,7 +1366,7 @@ export default function LeagueEventPage() {
                       ) : (
                         <span className="hidden w-[184px] items-center justify-end gap-[5px] sm:flex">
                           {!liveRound && typeof e.score === "number" ? (
-                            (() => { const hs = e.holeScores ?? []; const f = hs.slice(0, 9).filter((h) => h > 0).reduce((a, b) => a + b, 0); const b = hs.slice(9, 18).filter((h) => h > 0).reduce((a, b) => a + b, 0); return (f || b) ? <span className="font-mono text-xs text-[var(--cream-60)]">F {f || "–"} · B {b || "–"}</span> : null; })()
+                            (() => { const hs = e.holeScores ?? []; const f = hs.slice(0, 9).filter((h) => h > 0).reduce((a, b) => a + b, 0); const b = hs.slice(9, 18).filter((h) => h > 0).reduce((a, b) => a + b, 0); return (f || b) ? <span className="text-xs text-[var(--cream-60)]">F {f || "–"} · B {b || "–"}</span> : null; })()
                           ) : last9.length > 0 && (
                             <>
                             {last9.map((h, hi) => {
@@ -1377,21 +1377,21 @@ export default function LeagueEventPage() {
                                 : h === par - 1 ? "border-[var(--blue)] bg-[var(--blue-dim)] text-[var(--blue)]"
                                 : h === par ? "border-[var(--hair-strong)] text-[var(--cream-38)]"
                                 : "border-[rgba(244,241,232,.24)] text-[var(--cream-60)]";
-                              return <span key={hi} className={`grid h-4 w-4 place-items-center rounded-full border font-mono text-[8.5px] ${cls}`}>{h}</span>;
+                              return <span key={hi} className={`grid h-4 w-4 place-items-center rounded-full border text-[8.5px] ${cls}`}>{h}</span>;
                             })}
                             </>
                           )}
                         </span>
                       )}
                       {!tournamentOver && (
-                        <span className="w-14 text-right font-mono text-xs">
+                        <span className="w-14 text-right text-xs">
                           {e.dnf ? <span className="text-[var(--cream-38)]">DNF</span>
                             : thruN != null ? <span className="inline-flex items-center gap-1 text-[#5fcf80]"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#5fcf80]" />{thruN}</span>
                             : typeof e.score === "number" ? <span className="font-bold uppercase text-[var(--cream-60)]">R{roundsDone(e)}</span>
                             : ""}
                         </span>
                       )}
-                      <span className={`w-20 text-right font-mono text-lg font-extrabold ${scoreOf(e) == null || e.dnf ? "text-[var(--cream-38)]" : scoreTone(fmtLive(e), you)}`}>
+                      <span className={`w-20 text-right text-lg font-extrabold ${scoreOf(e) == null || e.dnf ? "text-[var(--cream-38)]" : scoreTone(fmtLive(e), you)}`}>
                         {scoreOf(e) == null ? "" : e.dnf ? scoreOf(e) : fmtLive(e)}
                         {scoreOf(e) != null && !e.dnf && parTotal != null && <span className="ml-1 align-middle text-[10px] font-normal text-[var(--cream-38)]">({anyHcp ? adjOf(e) : scoreOf(e)})</span>}
                       </span>
@@ -1421,7 +1421,7 @@ export default function LeagueEventPage() {
           </>
         )}
         {admin && editScores && entries.length > 0 && (
-          <p className="mt-2.5 font-mono text-[10.5px] uppercase tracking-[0.08em] text-[var(--cream-38)]">Director score entry — editable even after the event is complete. App rounds attach automatically when players publish.</p>
+          <p className="mt-2.5 text-[10.5px] uppercase tracking-[0.08em] text-[var(--cream-38)]">Director score entry — editable even after the event is complete. App rounds attach automatically when players publish.</p>
         )}
       </section>
       )}
@@ -1460,10 +1460,10 @@ export default function LeagueEventPage() {
                       <div className="border-b border-[var(--hair)] px-4 py-3 text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--gold)]">Standings</div>
                       {mp.map((row, i) => (
                         <div key={row.id} className={`flex items-center gap-3 border-b border-[var(--hair)] px-4 py-2.5 text-sm last:border-b-0 ${row.id === cid ? "bg-[var(--gold)]/[0.06]" : ""}`}>
-                          <span className="w-6 font-mono text-xs text-[var(--cream-38)]">{i + 1}</span>
+                          <span className="w-6 text-xs text-[var(--cream-38)]">{i + 1}</span>
                           <span className="min-w-0 flex-1 truncate font-semibold text-[var(--cream)]">{row.name}</span>
-                          <span className="font-mono text-xs text-[var(--cream-38)]">{row.wins}-{row.ties}-{row.losses}</span>
-                          <span className="w-10 text-right font-mono font-bold text-[var(--gold)]">{row.points}</span>
+                          <span className="text-xs text-[var(--cream-38)]">{row.wins}-{row.ties}-{row.losses}</span>
+                          <span className="w-10 text-right font-bold text-[var(--gold)]">{row.points}</span>
                         </div>
                       ))}
                     </div>
@@ -1475,7 +1475,7 @@ export default function LeagueEventPage() {
                         {reg.filter((m) => m.round === r).map((m) => (
                           <div key={m.id} className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${mine(m) ? "bg-[var(--gold)]/[0.06] ring-1 ring-[var(--gold)]/25" : "bg-white/[0.03]"}`}>
                             {side(m, "a")}
-                            <span className="shrink-0 font-mono text-[10px] text-[var(--cream-38)]">{m.winnerId ? "final" : "vs"}</span>
+                            <span className="shrink-0 text-[10px] text-[var(--cream-38)]">{m.winnerId ? "final" : "vs"}</span>
                             {side(m, "b")}
                           </div>
                         ))}
@@ -1531,7 +1531,7 @@ export default function LeagueEventPage() {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 {photo && <img src={photo} alt="" className="absolute inset-0 h-full w-full object-cover" />}
               </div>
-              <div className="mt-1.5 font-mono text-[7px] font-black uppercase tracking-[0.14em]" style={{ color: tone }}>{title}</div>
+              <div className="mt-1.5 text-[7px] font-black uppercase tracking-[0.14em]" style={{ color: tone }}>{title}</div>
               <div className={`mt-0.5 max-w-full truncate px-1 font-[family-name:var(--font-heading)] font-bold ${crowned ? "text-[13px]" : "text-[11px]"} ${you ? "text-[var(--gold)]" : "text-[var(--cream)]"}`}>{row.name}</div>
               <div className={`font-[family-name:var(--font-heading)] font-black tabular-nums ${crowned ? "text-[26px] leading-tight" : "text-lg"}`} style={{ color: tone }}>{row.points}</div>
               {delta != null && delta > 0
@@ -1713,20 +1713,20 @@ export default function LeagueEventPage() {
                   const isSynth = synthRounds.has(rnd);
                   return (
                     <div key={rnd}>
-                      {multiRound && <div className="mb-3 flex flex-wrap items-center gap-3 border-b border-[var(--hair)] pb-2"><span className="font-[family-name:var(--font-heading)] text-base font-bold text-[var(--cream)]">Round {rnd}</span><span className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--cream-38)]">{fmtDate(roundStart)}</span>{isSynth && <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--cream-38)]">· mirrors Round 1{admin ? " · regenerate to re-pair" : ""}</span>}</div>}
+                      {multiRound && <div className="mb-3 flex flex-wrap items-center gap-3 border-b border-[var(--hair)] pb-2"><span className="font-[family-name:var(--font-heading)] text-base font-bold text-[var(--cream)]">Round {rnd}</span><span className="text-[11px] uppercase tracking-[0.08em] text-[var(--cream-38)]">{fmtDate(roundStart)}</span>{isSynth && <span className="text-[10px] uppercase tracking-[0.08em] text-[var(--cream-38)]">· mirrors Round 1{admin ? " · regenerate to re-pair" : ""}</span>}</div>}
                       <div className="grid gap-6">
                         {[...groups.entries()].map(([div, gcards]) => (
                           <div key={div || "open"}>
-                            {multiDiv && <div className="mb-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--gold)]">{div || "Open"}</div>}
+                            {multiDiv && <div className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--gold)]">{div || "Open"}</div>}
                             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                               {gcards.map((c) => (
                                 <div key={c.id} className={`${card} p-4`}>
                                   <div className="mb-3 flex items-center justify-between gap-2">
                                     <span className="font-[family-name:var(--font-heading)] text-sm font-extrabold text-[var(--cream)]">Group {c.number}</span>
                                     {admin && open && !isSynth ? (
-                                      <input type="time" value={c.teeTime ? toLocalHM(c.teeTime) : ""} onChange={(e) => editTeeTime(c.id, e.target.value)} className="rounded-lg bg-[var(--gold-dim)] px-2 py-1 font-mono text-[11px] font-bold text-[var(--gold)] outline-none [color-scheme:dark]" />
+                                      <input type="time" value={c.teeTime ? toLocalHM(c.teeTime) : ""} onChange={(e) => editTeeTime(c.id, e.target.value)} className="rounded-lg bg-[var(--gold-dim)] px-2 py-1 text-[11px] font-bold text-[var(--gold)] outline-none [color-scheme:dark]" />
                                     ) : (
-                                      <span className="rounded-lg bg-[var(--gold-dim)] px-2 py-1 font-mono text-[10px] font-bold text-[var(--gold)]">{c.teeTime ? fmtHM(c.teeTime) : "—"}</span>
+                                      <span className="rounded-lg bg-[var(--gold-dim)] px-2 py-1 text-[10px] font-bold text-[var(--gold)]">{c.teeTime ? fmtHM(c.teeTime) : "—"}</span>
                                     )}
                                   </div>
                                   <div className="space-y-2">
@@ -1746,7 +1746,7 @@ export default function LeagueEventPage() {
                                   </div>
                                   {c.playerIds.length > 0 && (tournamentOver || entries.some((e) => e.holeScores?.some((h) => h > 0) || e.roundScores?.some((r) => r > 0))) && (
                                     <div className="mt-3 flex justify-end border-t border-[var(--hair)] pt-2.5">
-                                      <button onClick={() => { setScGroup({ ids: c.playerIds, label: `Group ${c.number}` }); setScRound(rnd - 1); setScorecardEdit(false); setScorecardOpen(true); }} className="inline-flex items-center gap-1 font-mono text-[10px] font-bold uppercase tracking-wide text-[var(--gold)] transition-colors hover:text-[var(--gold-bright)]">View scorecard <span aria-hidden>→</span></button>
+                                      <button onClick={() => { setScGroup({ ids: c.playerIds, label: `Group ${c.number}` }); setScRound(rnd - 1); setScorecardEdit(false); setScorecardOpen(true); }} className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-[var(--gold)] transition-colors hover:text-[var(--gold-bright)]">View scorecard <span aria-hidden>→</span></button>
                                     </div>
                                   )}
                                 </div>
@@ -1767,7 +1767,7 @@ export default function LeagueEventPage() {
               <div key={c.id} className={`${card} p-4`}>
                 <div className="mb-3 flex items-center justify-between">
                   <span className="font-[family-name:var(--font-heading)] text-sm font-extrabold text-[var(--cream)]">Card {c.number}</span>
-                  <span className="rounded-lg bg-[var(--gold-dim)] px-2 py-1 font-mono text-[10px] font-bold text-[var(--gold)]">HOLE {c.startHole}</span>
+                  <span className="rounded-lg bg-[var(--gold-dim)] px-2 py-1 text-[10px] font-bold text-[var(--gold)]">HOLE {c.startHole}</span>
                 </div>
                 <div className="space-y-2">
                   {c.playerIds.map((pid) => (
@@ -1825,9 +1825,9 @@ export default function LeagueEventPage() {
                 <div className="absolute inset-0 bg-gradient-to-t from-[#111813] via-[#111813]/85 to-[#111813]/60" />
                 <div className="relative flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--gold)]"><IconTarget className="h-3.5 w-3.5" />{editing ? "Edit scorecard" : scGroup ? scGroup.label : "Scorecard"}{!editing && (complete ? " · Final" : liveNow ? " · Live" : "")}</div>
+                    <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--gold)]"><IconTarget className="h-3.5 w-3.5" />{editing ? "Edit scorecard" : scGroup ? scGroup.label : "Scorecard"}{!editing && (complete ? " · Final" : liveNow ? " · Live" : "")}</div>
                     <h2 className="mt-1 truncate font-[family-name:var(--font-heading)] text-2xl font-black text-[var(--cream)]">{event.name}</h2>
-                    <div className="mt-0.5 truncate font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--cream-38)]">{editing ? (multiRoundCard ? `Editing Round ${rnd + 1} — each round has its own total` : "Fix any hole; the total updates automatically") : [event.courseName, `Par ${totalPar}`, `${N} holes`].filter(Boolean).join(" · ")}</div>
+                    <div className="mt-0.5 truncate text-[11px] uppercase tracking-[0.08em] text-[var(--cream-38)]">{editing ? (multiRoundCard ? `Editing Round ${rnd + 1} — each round has its own total` : "Fix any hole; the total updates automatically") : [event.courseName, `Par ${totalPar}`, `${N} holes`].filter(Boolean).join(" · ")}</div>
                   </div>
                   <button onClick={() => { setScorecardOpen(false); setScorecardEdit(false); setScGroup(null); }} aria-label="Close" className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[var(--hair-strong)] bg-black/30 text-lg text-[var(--cream-60)] transition-colors hover:text-[var(--cream)]">×</button>
                 </div>
@@ -1836,7 +1836,7 @@ export default function LeagueEventPage() {
                     {Array.from({ length: event.roundCount }, (_, r) => {
                       const has = roundHasData(r);
                       return (
-                        <button key={r} onClick={() => setScRound(r)} disabled={!has} className={`rounded-full px-3.5 py-1.5 font-mono text-[11px] font-bold uppercase tracking-wide transition-colors ${rnd === r ? "bg-[var(--gold)] text-[#141B16]" : has ? "border border-[var(--hair-strong)] text-[var(--cream-60)] hover:text-[var(--cream)]" : "border border-[var(--hair)] text-[var(--cream-38)] opacity-50"}`}>Rd {r + 1}</button>
+                        <button key={r} onClick={() => setScRound(r)} disabled={!has} className={`rounded-full px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-wide transition-colors ${rnd === r ? "bg-[var(--gold)] text-[#141B16]" : has ? "border border-[var(--hair-strong)] text-[var(--cream-60)] hover:text-[var(--cream)]" : "border border-[var(--hair)] text-[var(--cream-38)] opacity-50"}`}>Rd {r + 1}</button>
                       );
                     })}
                   </div>
@@ -1847,19 +1847,19 @@ export default function LeagueEventPage() {
                 <table className="w-full min-w-max border-collapse text-center">
                   <thead>
                     <tr className="bg-[rgba(0,0,0,0.25)]">
-                      <th className={`${stick} px-4 py-2.5 text-left font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--cream-38)] bg-[rgba(10,14,11,1)]`}>Hole</th>
-                      {holeNums.map((i) => <th key={i} className="min-w-[36px] px-1.5 py-2.5 font-mono text-[12px] font-bold text-[var(--cream-60)]">{i}</th>)}
-                      <th className="min-w-[54px] px-3 py-2.5 font-mono text-[10px] font-bold uppercase tracking-wide text-[var(--gold)]">Tot</th>
+                      <th className={`${stick} px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--cream-38)] bg-[rgba(10,14,11,1)]`}>Hole</th>
+                      {holeNums.map((i) => <th key={i} className="min-w-[36px] px-1.5 py-2.5 text-[12px] font-bold text-[var(--cream-60)]">{i}</th>)}
+                      <th className="min-w-[54px] px-3 py-2.5 text-[10px] font-bold uppercase tracking-wide text-[var(--gold)]">Tot</th>
                     </tr>
                     <tr className="border-b border-[var(--hair)]">
-                      <th className={`${stick} px-4 py-1.5 text-left font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]`}>Par</th>
-                      {holeNums.map((i) => <th key={i} className="px-1.5 py-1.5 font-mono text-[12px] text-[var(--cream-38)]">{parOf(i - 1)}</th>)}
-                      <th className="px-3 py-1.5 font-mono text-[12px] text-[var(--cream-38)]">{totalPar}</th>
+                      <th className={`${stick} px-4 py-1.5 text-left text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]`}>Par</th>
+                      {holeNums.map((i) => <th key={i} className="px-1.5 py-1.5 text-[12px] text-[var(--cream-38)]">{parOf(i - 1)}</th>)}
+                      <th className="px-3 py-1.5 text-[12px] text-[var(--cream-38)]">{totalPar}</th>
                     </tr>
                     {holeInfo && holeInfo.some((h) => h.distFt) && (
                       <tr className="border-b border-[var(--hair)]">
-                        <th className={`${stick} px-4 py-1.5 text-left font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]`}>Dist</th>
-                        {holeNums.map((i) => <th key={i} className="px-1.5 py-1.5 font-mono text-[10px] font-normal text-[var(--sage-dim)]">{distOf(i - 1) ? `${distOf(i - 1)}′` : "–"}</th>)}
+                        <th className={`${stick} px-4 py-1.5 text-left text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]`}>Dist</th>
+                        {holeNums.map((i) => <th key={i} className="px-1.5 py-1.5 text-[10px] font-normal text-[var(--sage-dim)]">{distOf(i - 1) ? `${distOf(i - 1)}′` : "–"}</th>)}
                         <th />
                       </tr>
                     )}
@@ -1880,10 +1880,10 @@ export default function LeagueEventPage() {
                                 <div className="flex items-center gap-1.5"><span className="truncate text-[13px] font-bold text-[var(--cream)]">{nameOf(p)}</span>{p.dnf && <span className="rounded bg-[#f08c8c]/15 px-1 text-[9px] font-bold text-[#f08c8c]">DNF</span>}{editing && (p.roundScores?.[rnd] ?? 0) > 0 && !p.dnf && <span className="rounded bg-[#5fcf80]/15 px-1 text-[9px] font-bold text-[#5fcf80]">✓</span>}</div>
                                 {editing ? (
                                   <div className="mt-0.5 flex items-center gap-2">
-                                    {!p.dnf && cardOf(p).some((h) => h > 0) && !((p.roundScores?.[rnd] ?? 0) > 0) && <button onClick={() => bankRound(p)} className="font-mono text-[9.5px] font-bold uppercase tracking-wide text-[var(--gold)] transition-opacity hover:opacity-80">Submit</button>}
-                                    <button onClick={() => toggleDnf(p)} className="font-mono text-[9.5px] font-bold uppercase tracking-wide text-[var(--sage-dim)] transition-colors hover:text-[#f08c8c]">{p.dnf ? "Undo DNF" : "DNF"}</button>
+                                    {!p.dnf && cardOf(p).some((h) => h > 0) && !((p.roundScores?.[rnd] ?? 0) > 0) && <button onClick={() => bankRound(p)} className="text-[9.5px] font-bold uppercase tracking-wide text-[var(--gold)] transition-opacity hover:opacity-80">Submit</button>}
+                                    <button onClick={() => toggleDnf(p)} className="text-[9.5px] font-bold uppercase tracking-wide text-[var(--sage-dim)] transition-colors hover:text-[#f08c8c]">{p.dnf ? "Undo DNF" : "DNF"}</button>
                                   </div>
-                                ) : usernameById(p.id) ? <div className="truncate font-mono text-[10px] text-[var(--sage-dim)]">@{usernameById(p.id)}</div> : null}
+                                ) : usernameById(p.id) ? <div className="truncate text-[10px] text-[var(--sage-dim)]">@{usernameById(p.id)}</div> : null}
                               </div>
                             </div>
                           </td>
@@ -1896,7 +1896,7 @@ export default function LeagueEventPage() {
                             ) : (
                               <>
                                 <span className="font-[family-name:var(--font-heading)] text-[15px] font-black text-[var(--cream)]">{strokes || "–"}</span>
-                                {strokes > 0 && parTotal != null && <span className="ml-1 font-mono text-[11px] text-[var(--blue)]">{sp(toPar)}</span>}
+                                {strokes > 0 && parTotal != null && <span className="ml-1 text-[11px] text-[var(--blue)]">{sp(toPar)}</span>}
                               </>
                             )}
                           </td>
@@ -1905,8 +1905,8 @@ export default function LeagueEventPage() {
                     })}
                     {players.some((p) => cardOf(p).some((h) => h > 0)) && (
                       <tr className="border-t-2 border-[var(--hair-strong)] bg-[rgba(0,0,0,0.28)]">
-                        <td className={`${stick} px-4 py-2.5 text-left font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--gold)] bg-[rgba(10,14,11,1)]`}>Field avg</td>
-                        {holeNums.map((i) => { const a = avgOf(i - 1); return <td key={i} className="px-1 py-2.5 font-mono text-[12px] font-semibold text-[var(--cream-60)]">{a != null ? a.toFixed(1) : "–"}</td>; })}
+                        <td className={`${stick} px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--gold)] bg-[rgba(10,14,11,1)]`}>Field avg</td>
+                        {holeNums.map((i) => { const a = avgOf(i - 1); return <td key={i} className="px-1 py-2.5 text-[12px] font-semibold text-[var(--cream-60)]">{a != null ? a.toFixed(1) : "–"}</td>; })}
                         <td />
                       </tr>
                     )}
@@ -1915,14 +1915,14 @@ export default function LeagueEventPage() {
               </div>
               {editing && (
                 <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--hair)] px-6 py-3.5">
-                  <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--cream-38)]">Fix holes, then Publish to submit &amp; lock in totals</span>
+                  <span className="text-[10px] uppercase tracking-[0.1em] text-[var(--cream-38)]">Fix holes, then Publish to submit &amp; lock in totals</span>
                   <div className="flex items-center gap-2.5">
                     <button onClick={() => { setScorecardOpen(false); setScorecardEdit(false); setScGroup(null); }} className="rounded-full border border-[var(--hair-strong)] px-4 py-2 text-xs font-bold text-[var(--cream-60)] transition-colors hover:text-[var(--cream)]">Done</button>
                     <button onClick={publishScores} className={btnGold + " !px-5 !py-2 !text-xs"}>Publish scores</button>
                   </div>
                 </div>
               )}
-              {!editing && event.roundCount > 1 && <div className="shrink-0 border-t border-[var(--hair)] px-6 py-2.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--cream-38)]">Round {rnd + 1} of {event.roundCount}{event.roundStarts?.[rnd] ? ` · ${fmtDate(event.roundStarts[rnd])}` : ""}</div>}
+              {!editing && event.roundCount > 1 && <div className="shrink-0 border-t border-[var(--hair)] px-6 py-2.5 text-[10px] uppercase tracking-[0.1em] text-[var(--cream-38)]">Round {rnd + 1} of {event.roundCount}{event.roundStarts?.[rnd] ? ` · ${fmtDate(event.roundStarts[rnd])}` : ""}</div>}
             </div>
           </div>
         );

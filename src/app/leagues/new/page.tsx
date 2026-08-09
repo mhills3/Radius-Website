@@ -246,7 +246,7 @@ export default function EventWizard() {
     return (
       <main className="relative mx-auto grid min-h-[70vh] max-w-2xl place-items-center px-5 text-center">
         <div>
-          <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--gold)]">Radius Events</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--gold)]">Radius Events</p>
           <h1 className="mt-3 font-[family-name:var(--font-heading)] text-4xl font-extrabold tracking-tight text-[var(--cream)]">List your event.<br />Score your event.<br /><span className="text-[var(--gold)]">All with Radius.</span></h1>
           <p className="mx-auto mt-4 max-w-sm text-sm leading-relaxed text-[var(--sage)]">Live leaderboards, honest handicaps, money tracking, and bag tags — free for directors and players.</p>
           <Link href="/login" className={`${btnGold} mt-7 inline-block`}>Sign in to get started</Link>
@@ -262,7 +262,7 @@ export default function EventWizard() {
         {/* Question + answer rail */}
         <div className="lg:pt-16">
           <BackLink href="/leagues" label="Events" />
-          <p className="mt-6 font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--gold)]">Step {stepIdx + 1} of {steps.length}</p>
+          <p className="mt-6 text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--gold)]">Step {stepIdx + 1} of {steps.length}</p>
           <h1 key={step} className="mt-3 max-w-md font-[family-name:var(--font-heading)] text-4xl font-extrabold leading-[1.06] tracking-tight text-[var(--cream)] animate-[fadeIn_0.3s_ease] sm:text-5xl">
             {QUESTION[step].title}
           </h1>
@@ -421,7 +421,7 @@ export default function EventWizard() {
                   <FieldLabel>Duration</FieldLabel>
                   <div className="flex flex-wrap items-center gap-2">
                     {[60, 90, 120, 180].map((n) => (
-                      <button key={n} onClick={() => setDurationMin(n)} className={`h-11 min-w-[52px] rounded-xl border px-4 font-mono text-sm font-bold transition-all ${durationMin === n ? "border-[var(--gold)] bg-[var(--gold-dim)] text-[var(--gold)]" : "border-white/[0.09] bg-white/[0.03] text-[var(--text-body)] hover:border-white/25"}`}>{n >= 60 ? `${n / 60}h${n % 60 ? ` ${n % 60}m` : ""}` : `${n}m`}</button>
+                      <button key={n} onClick={() => setDurationMin(n)} className={`h-11 min-w-[52px] rounded-xl border px-4 text-sm font-bold transition-all ${durationMin === n ? "border-[var(--gold)] bg-[var(--gold-dim)] text-[var(--gold)]" : "border-white/[0.09] bg-white/[0.03] text-[var(--text-body)] hover:border-white/25"}`}>{n >= 60 ? `${n / 60}h${n % 60 ? ` ${n % 60}m` : ""}` : `${n}m`}</button>
                     ))}
                   </div>
                 </div>
@@ -431,7 +431,7 @@ export default function EventWizard() {
                 <FieldLabel>Holes per round</FieldLabel>
                 <div className="flex flex-wrap items-center gap-2">
                   {[9, 18].map((n) => (
-                    <button key={n} onClick={() => { setUseCustomHoles(false); setHoles(n); }} className={`h-11 min-w-[52px] rounded-xl border px-4 font-mono text-sm font-bold transition-all ${!useCustomHoles && holes === n ? "border-[var(--gold)] bg-[var(--gold-dim)] text-[var(--gold)]" : "border-white/[0.09] bg-white/[0.03] text-[var(--text-body)] hover:border-white/25"}`}>{n}</button>
+                    <button key={n} onClick={() => { setUseCustomHoles(false); setHoles(n); }} className={`h-11 min-w-[52px] rounded-xl border px-4 text-sm font-bold transition-all ${!useCustomHoles && holes === n ? "border-[var(--gold)] bg-[var(--gold-dim)] text-[var(--gold)]" : "border-white/[0.09] bg-white/[0.03] text-[var(--text-body)] hover:border-white/25"}`}>{n}</button>
                   ))}
                   <button onClick={() => setUseCustomHoles(true)} className={`h-11 rounded-xl border px-4 text-sm font-bold transition-all ${useCustomHoles ? "border-[var(--gold)] bg-[var(--gold-dim)] text-[var(--gold)]" : "border-white/[0.09] bg-white/[0.03] text-[var(--text-body)] hover:border-white/25"}`}>Custom</button>
                   {useCustomHoles && <input inputMode="numeric" value={customHoles} onChange={(e) => setCustomHoles(e.target.value)} placeholder="27" className={`${inputCls} w-24`} autoFocus />}
@@ -446,7 +446,7 @@ export default function EventWizard() {
                     <button
                       key={n}
                       onClick={() => { setWeeksMode("preset"); (isLeagueKind ? setRepeat : setRounds)(n); }}
-                      className={`h-11 min-w-[52px] rounded-xl border px-4 font-mono text-sm font-bold transition-all ${weeksMode === "preset" && (isLeagueKind ? repeat : rounds) === n ? "border-[var(--gold)] bg-[var(--gold-dim)] text-[var(--gold)]" : "border-white/[0.09] bg-white/[0.03] text-[var(--text-body)] hover:border-white/25"}`}
+                      className={`h-11 min-w-[52px] rounded-xl border px-4 text-sm font-bold transition-all ${weeksMode === "preset" && (isLeagueKind ? repeat : rounds) === n ? "border-[var(--gold)] bg-[var(--gold-dim)] text-[var(--gold)]" : "border-white/[0.09] bg-white/[0.03] text-[var(--text-body)] hover:border-white/25"}`}
                     >{n}</button>
                   ))}
                   {isLeagueKind && <button onClick={() => setWeeksMode("until")} className={`h-11 rounded-xl border px-4 text-sm font-bold transition-all ${weeksMode === "until" ? "border-[var(--gold)] bg-[var(--gold-dim)] text-[var(--gold)]" : "border-white/[0.09] bg-white/[0.03] text-[var(--text-body)] hover:border-white/25"}`}>Until a date</button>}
@@ -466,12 +466,12 @@ export default function EventWizard() {
                   <FieldLabel>Round schedule <span className="normal-case tracking-normal text-[var(--cream-38)]">— set a day &amp; time for each round</span></FieldLabel>
                   <div className="grid gap-2.5">
                     <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--gold)]/25 bg-[var(--gold-dim)] px-4 py-3">
-                      <span className="w-14 shrink-0 font-mono text-xs font-bold uppercase tracking-wide text-[var(--gold)]">Rd 1</span>
+                      <span className="w-14 shrink-0 text-xs font-bold uppercase tracking-wide text-[var(--gold)]">Rd 1</span>
                       <span className="text-sm text-[var(--cream)]">{date ? new Date(`${date}T${time || "17:30"}`).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "Set the start date above"}</span>
                     </div>
                     {Array.from({ length: rounds - 1 }, (_, i) => (
                       <div key={i} className="flex flex-wrap items-center gap-3 rounded-xl border border-white/[0.09] bg-white/[0.03] px-4 py-3">
-                        <span className="w-14 shrink-0 font-mono text-xs font-bold uppercase tracking-wide text-[var(--gold)]">Rd {i + 2}</span>
+                        <span className="w-14 shrink-0 text-xs font-bold uppercase tracking-wide text-[var(--gold)]">Rd {i + 2}</span>
                         <input type="date" value={extraStarts[i]?.date ?? ""} min={date || undefined} onChange={(e) => setRoundVal(i, { date: e.target.value })} className={`${inputCls} min-w-[170px] flex-none`} />
                         <input type="time" value={extraStarts[i]?.time ?? time} onChange={(e) => setRoundVal(i, { time: e.target.value })} className={`${inputCls} w-[130px] flex-none`} />
                       </div>
@@ -550,7 +550,7 @@ export default function EventWizard() {
                   <FieldLabel>Places paid <span className="normal-case tracking-normal text-[var(--cream-38)]">optional — suggests payout splits from the pot</span></FieldLabel>
                   <div className="flex flex-wrap items-center gap-2">
                     {[0, 2, 3, 4, 5].map((n) => (
-                      <button key={n} onClick={() => setPayoutPlaces(n)} className={`h-11 min-w-[52px] rounded-xl border px-4 font-mono text-sm font-bold transition-all ${payoutPlaces === n ? "border-[var(--gold)] bg-[var(--gold-dim)] text-[var(--gold)]" : "border-white/[0.09] bg-white/[0.03] text-[var(--text-body)] hover:border-white/25"}`}>{n === 0 ? "Skip" : n}</button>
+                      <button key={n} onClick={() => setPayoutPlaces(n)} className={`h-11 min-w-[52px] rounded-xl border px-4 text-sm font-bold transition-all ${payoutPlaces === n ? "border-[var(--gold)] bg-[var(--gold-dim)] text-[var(--gold)]" : "border-white/[0.09] bg-white/[0.03] text-[var(--text-body)] hover:border-white/25"}`}>{n === 0 ? "Skip" : n}</button>
                     ))}
                   </div>
                 </div>

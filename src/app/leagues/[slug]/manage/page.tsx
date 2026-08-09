@@ -371,7 +371,7 @@ export default function LeagueManagePage() {
 
   const EventRow = ({ ev }: { ev: LeagueEvent }) => (
     <Link href={`/leagues/${league.slug}/e/${ev.id}`} className={`${card} ${cardHover} group flex items-center gap-3.5 p-3.5`}>
-      <div className="w-9 shrink-0 font-mono leading-[1.15]">
+      <div className="w-9 shrink-0 leading-[1.15]">
         <div className="text-[9.5px] uppercase tracking-[0.2em] text-[var(--cream-38)]">{new Date(ev.date).toLocaleDateString(undefined, { month: "short" })}</div>
         <div className="text-[20px] font-bold text-[var(--cream)]">{new Date(ev.date).getDate()}</div>
       </div>
@@ -381,13 +381,13 @@ export default function LeagueManagePage() {
           {ev.roundStarts && ev.roundStarts.length > 1
             ? ev.roundStarts.map((ms, i) => `R${i + 1} ${new Date(ms).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`).join(" · ")
             : fmtDate(ev.date)}
-          {ev.entryCount > 0 ? <> · <span className="font-mono">{ev.entryCount}</span> in</> : ""}
+          {ev.entryCount > 0 ? <> · <span className="">{ev.entryCount}</span> in</> : ""}
         </div>
       </div>
       {ev.status === "scheduled" && Date.now() >= ev.date && Date.now() <= ev.date + 6 * 3600_000 && ev.entryCount > 0 ? (
-        <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--blue-dim)] px-2 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.1em] text-[var(--blue)]"><span className="live-dot h-1 w-1 rounded-full bg-[var(--blue)]" />Live</span>
+        <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--blue-dim)] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-[var(--blue)]"><span className="live-dot h-1 w-1 rounded-full bg-[var(--blue)]" />Live</span>
       ) : (
-        <span className={`shrink-0 rounded-full border px-2 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.1em] ${ev.status === "cancelled" ? "border-[#f08c8c]/25 text-[#f08c8c]" : "border-[var(--hair)] text-[var(--cream-60)]"}`}>{ev.status}</span>
+        <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] ${ev.status === "cancelled" ? "border-[#f08c8c]/25 text-[#f08c8c]" : "border-[var(--hair)] text-[var(--cream-60)]"}`}>{ev.status}</span>
       )}
     </Link>
   );
@@ -495,7 +495,7 @@ export default function LeagueManagePage() {
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-2">
                       {m.username ? <Link href={`/u/${m.username}`} className="truncate text-sm font-bold text-[var(--cream)] hover:underline">{m.name}</Link> : <span className="truncate text-sm font-bold text-[var(--cream)]">{m.name}</span>}
-                      {typeof m.tag === "number" && <span className="rounded-full bg-white/[0.08] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[var(--cream)]">#{m.tag}</span>}
+                      {typeof m.tag === "number" && <span className="rounded-full bg-white/[0.08] px-1.5 py-0.5 text-[10px] font-bold text-[var(--cream)]">#{m.tag}</span>}
                     </span>
                     {m.username && <span className="block text-xs text-[var(--sage-dim)]">@{m.username}</span>}
                   </span>
@@ -666,10 +666,10 @@ export default function LeagueManagePage() {
                     <div className="border-b border-white/[0.05] px-4 py-3 text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--gold)]">Match standings</div>
                     {mp.map((row, i) => (
                       <div key={row.id} className="flex items-center gap-3 border-b border-white/[0.05] px-4 py-2.5 text-sm last:border-b-0">
-                        <span className="w-6 font-mono text-xs text-[var(--sage-dim)]">{i + 1}</span>
+                        <span className="w-6 text-xs text-[var(--sage-dim)]">{i + 1}</span>
                         <span className="min-w-0 flex-1 truncate font-semibold text-[var(--cream)]">{row.name}</span>
-                        <span className="font-mono text-xs text-[var(--sage-dim)]">{row.wins}-{row.ties}-{row.losses}</span>
-                        <span className="w-10 text-right font-mono font-bold text-[var(--gold)]">{row.points}</span>
+                        <span className="text-xs text-[var(--sage-dim)]">{row.wins}-{row.ties}-{row.losses}</span>
+                        <span className="w-10 text-right font-bold text-[var(--gold)]">{row.points}</span>
                       </div>
                     ))}
                   </div>
@@ -749,7 +749,7 @@ export default function LeagueManagePage() {
                       <div className="flex items-center justify-between gap-3">
                         <h2 className="font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">{NOUN} details</h2>
                         <div className="flex items-center gap-4">
-                          <Link href={`/leagues/${slug}/e/${primaryEvent.id}`} className="font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--gold)] transition-opacity hover:opacity-80">View event page →</Link>
+                          <Link href={`/leagues/${slug}/e/${primaryEvent.id}`} className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--gold)] transition-opacity hover:opacity-80">View event page →</Link>
                           <button onClick={startEditEvent} className="rounded-full border border-[var(--gold)]/40 bg-[var(--gold-dim)] px-4 py-1.5 text-xs font-bold text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/20">Edit</button>
                         </div>
                       </div>
@@ -768,7 +768,7 @@ export default function LeagueManagePage() {
                         <div className="mt-4 grid gap-2">
                           {rs.map((ms, i) => (
                             <div key={i} className="flex items-center gap-3 rounded-xl border border-[var(--hair)] bg-[var(--card)] px-4 py-2.5">
-                              <span className="w-12 shrink-0 font-mono text-xs font-bold uppercase tracking-wide text-[var(--gold)]">Rd {i + 1}</span>
+                              <span className="w-12 shrink-0 text-xs font-bold uppercase tracking-wide text-[var(--gold)]">Rd {i + 1}</span>
                               <span className="text-sm text-[var(--cream)]">{fmtDate(ms)}</span>
                             </div>
                           ))}
@@ -782,7 +782,7 @@ export default function LeagueManagePage() {
                 <div className={`${card} p-6`}>
                   <div className="flex items-center justify-between gap-3">
                     <h2 className="font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">Edit {NOUN.toLowerCase()}</h2>
-                    <button onClick={() => setEditEvent(false)} className="font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--cream-38)] transition-colors hover:text-[var(--cream)]">Cancel</button>
+                    <button onClick={() => setEditEvent(false)} className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--cream-38)] transition-colors hover:text-[var(--cream)]">Cancel</button>
                   </div>
                   <div className="mt-5 grid gap-4 sm:grid-cols-2">
                     <label className="block sm:col-span-2"><FieldLabel>Name</FieldLabel><input value={ed.name} onChange={(e) => setEd((s) => ({ ...s, name: e.target.value }))} placeholder={league.name} className={inputCls} /></label>
@@ -807,12 +807,12 @@ export default function LeagueManagePage() {
                       <FieldLabel>Round schedule</FieldLabel>
                       <div className="mt-1 grid gap-2.5">
                         <div className="flex items-center gap-3 rounded-xl border border-[var(--gold)]/25 bg-[var(--gold-dim)] px-4 py-3">
-                          <span className="w-12 shrink-0 font-mono text-xs font-bold uppercase tracking-wide text-[var(--gold)]">Rd 1</span>
+                          <span className="w-12 shrink-0 text-xs font-bold uppercase tracking-wide text-[var(--gold)]">Rd 1</span>
                           <span className="text-sm text-[var(--cream)]">{ed.date ? new Date(`${ed.date}T${ed.time || "17:30"}`).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "Set the start date above"}</span>
                         </div>
                         {Array.from({ length: ed.rounds - 1 }, (_, i) => (
                           <div key={i} className="flex items-center gap-3 rounded-xl border border-[var(--hair)] bg-[var(--card)] px-4 py-3">
-                            <span className="w-12 shrink-0 font-mono text-xs font-bold uppercase tracking-wide text-[var(--gold)]">Rd {i + 2}</span>
+                            <span className="w-12 shrink-0 text-xs font-bold uppercase tracking-wide text-[var(--gold)]">Rd {i + 2}</span>
                             <input type="date" value={ed.extra?.[i]?.date ?? ed.date} min={ed.date || undefined} onChange={(e) => setRoundTime(i, { date: e.target.value })} className={`${rowInput} min-w-0 flex-1`} />
                             <input type="time" value={ed.extra?.[i]?.time ?? ed.time} onChange={(e) => setRoundTime(i, { time: e.target.value })} className={`${rowInput} w-[128px] shrink-0`} />
                           </div>
@@ -847,8 +847,8 @@ export default function LeagueManagePage() {
             <div className="grid gap-6">
               <div className={`${card} p-6`}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <h2 className="font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">{startsNoun(teeFormat)}<span className="ml-2 font-mono text-[11px] font-semibold uppercase tracking-wide text-[var(--sage-dim)]">{teeFormat} start</span></h2>
-                  <Link href={`/leagues/${slug}/e/${teeEvent.id}?tab=scores`} className="font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--gold)] transition-opacity hover:opacity-80">Public sheet →</Link>
+                  <h2 className="font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">{startsNoun(teeFormat)}<span className="ml-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--sage-dim)]">{teeFormat} start</span></h2>
+                  <Link href={`/leagues/${slug}/e/${teeEvent.id}?tab=scores`} className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--gold)] transition-opacity hover:opacity-80">Public sheet →</Link>
                 </div>
                 {upcoming.length > 1 && (
                   <label className="mt-4 block">
@@ -900,20 +900,20 @@ export default function LeagueManagePage() {
                       const roundStart = teeEvent.roundStarts?.[rnd - 1] ?? teeEvent.date;
                       return (
                         <div key={rnd}>
-                          {multiRound && <div className="mb-3 flex flex-wrap items-center gap-3 border-b border-[var(--hair)] pb-2"><span className="font-[family-name:var(--font-heading)] text-base font-bold text-[var(--cream)]">Round {rnd}</span><span className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--sage-dim)]">{fmtDate(roundStart)}</span></div>}
+                          {multiRound && <div className="mb-3 flex flex-wrap items-center gap-3 border-b border-[var(--hair)] pb-2"><span className="font-[family-name:var(--font-heading)] text-base font-bold text-[var(--cream)]">Round {rnd}</span><span className="text-[11px] uppercase tracking-[0.08em] text-[var(--sage-dim)]">{fmtDate(roundStart)}</span></div>}
                           <div className="grid gap-6">
                             {[...groups.entries()].map(([div, gcards]) => (
                               <div key={div || "open"}>
-                                {multiDiv && <div className="mb-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--gold)]">{div || "Open"}</div>}
+                                {multiDiv && <div className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--gold)]">{div || "Open"}</div>}
                                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                                   {gcards.map((c) => (
                                     <div key={c.id} className={`${card} p-4`}>
                                       <div className="mb-3 flex items-center justify-between gap-2">
                                         <span className="font-[family-name:var(--font-heading)] text-sm font-extrabold text-[var(--cream)]">Group {c.number}</span>
                                         {teeFormat === "Tee times" ? (
-                                          <input type="time" value={c.teeTime ? toTimeInput(c.teeTime) : ""} onChange={(e) => editTee(c.id, e.target.value)} className="rounded-lg bg-[var(--gold-dim)] px-2 py-1 font-mono text-[11px] font-bold text-[var(--gold)] outline-none [color-scheme:dark]" />
+                                          <input type="time" value={c.teeTime ? toTimeInput(c.teeTime) : ""} onChange={(e) => editTee(c.id, e.target.value)} className="rounded-lg bg-[var(--gold-dim)] px-2 py-1 text-[11px] font-bold text-[var(--gold)] outline-none [color-scheme:dark]" />
                                         ) : teeFormat === "Shotgun" ? (
-                                          <span className="inline-flex items-center gap-1 rounded-lg bg-[var(--gold-dim)] pl-2 pr-1 py-1 font-mono text-[10px] font-bold text-[var(--gold)]">HOLE <input type="number" min={1} max={holeCount} value={c.startHole} onChange={(e) => editHole(c.id, Number(e.target.value))} className="w-10 rounded bg-transparent text-center text-[11px] font-bold text-[var(--gold)] outline-none" />{waveOf(c) && <span className="ml-0.5 rounded bg-[var(--gold)]/25 px-1">{waveOf(c)}</span>}</span>
+                                          <span className="inline-flex items-center gap-1 rounded-lg bg-[var(--gold-dim)] pl-2 pr-1 py-1 text-[10px] font-bold text-[var(--gold)]">HOLE <input type="number" min={1} max={holeCount} value={c.startHole} onChange={(e) => editHole(c.id, Number(e.target.value))} className="w-10 rounded bg-transparent text-center text-[11px] font-bold text-[var(--gold)] outline-none" />{waveOf(c) && <span className="ml-0.5 rounded bg-[var(--gold)]/25 px-1">{waveOf(c)}</span>}</span>
                                         ) : null}
                                       </div>
                                       <div className="space-y-2">
@@ -955,7 +955,7 @@ export default function LeagueManagePage() {
                   <Avatar url={photoOf.get(s.id)} name={s.name} size={30} />
                   <span className="min-w-0 flex-1 truncate font-semibold text-[var(--cream)]">{s.name}{s.division && <span className="ml-2 rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[var(--sage-dim)]">{s.division}</span>}</span>
                   <span className="hidden text-xs text-[var(--sage-dim)] sm:inline">{s.played} played{s.bestToPar != null ? ` · best ${fmtToPar(s.bestToPar)}` : ""}</span>
-                  <span className="w-12 text-right font-mono text-base font-extrabold text-[var(--gold)]">{s.points}</span>
+                  <span className="w-12 text-right text-base font-extrabold text-[var(--gold)]">{s.points}</span>
                 </div>
               ))}
             </div>
@@ -979,7 +979,7 @@ export default function LeagueManagePage() {
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       {curveTableDraft.map((v, i) => (
                         <span key={i} className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--hair-strong)] bg-white/[0.03] py-1 pl-2 pr-1">
-                          <span className="font-mono text-[11px] font-bold text-[var(--sage-dim)]">{i + 1}{["st", "nd", "rd"][i] ?? "th"}</span>
+                          <span className="text-[11px] font-bold text-[var(--sage-dim)]">{i + 1}{["st", "nd", "rd"][i] ?? "th"}</span>
                           <input inputMode="numeric" value={v} onChange={(e) => setCurveTableDraft((xs) => xs.map((x, j) => (j === i ? (Number(e.target.value.replace(/[^0-9]/g, "")) || 0) : x)))} className="w-12 rounded-md bg-[var(--card)] px-1.5 py-1 text-center text-sm font-bold text-[var(--cream)] outline-none" />
                           <button onClick={() => setCurveTableDraft((xs) => xs.filter((_, j) => j !== i))} aria-label="Remove place" className="grid h-5 w-5 place-items-center rounded text-[var(--sage-dim)] transition-colors hover:text-[#f08c8c]">×</button>
                         </span>
@@ -1015,7 +1015,7 @@ export default function LeagueManagePage() {
                   </label>
                   <div className="text-xs leading-relaxed text-[var(--cream-60)]">Event logo — shows on discovery cards in place of the course photo.<br />JPEG or PNG, ~256×256.</div>
                 </div>
-                {brandNote && <p className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-[var(--cream-38)]">{brandNote}</p>}
+                {brandNote && <p className="text-[10.5px] uppercase tracking-[0.08em] text-[var(--cream-38)]">{brandNote}</p>}
               </div>
             </div>
             <div className={`${card} p-6`}>
@@ -1077,7 +1077,7 @@ export default function LeagueManagePage() {
                 </label>
                 <label className="block sm:col-span-2"><FieldLabel>Description</FieldLabel><textarea value={descDraft} onChange={(e) => setDescDraft(e.target.value)} rows={2} className={inputCls} /></label>
               </div>
-              <p className="mt-4 text-xs leading-relaxed text-[var(--sage-dim)]">Handicaps are public math: <span className="font-mono text-[var(--sage)]">% × avg(player − field) over last 5 rounds</span>, capped — apply them per event, override any player inline.</p>
+              <p className="mt-4 text-xs leading-relaxed text-[var(--sage-dim)]">Handicaps are public math: <span className="text-[var(--sage)]">% × avg(player − field) over last 5 rounds</span>, capped — apply them per event, override any player inline.</p>
               <div className="mt-5 flex items-center justify-end gap-3">
                 {saved && <span className="text-sm font-bold text-[#5fcf80]">Saved ✓</span>}
                 <button onClick={saveSettings} disabled={busy} className={btnGold}>{busy ? "Saving…" : "Save settings"}</button>

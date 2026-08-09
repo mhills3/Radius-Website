@@ -137,7 +137,7 @@ export default function LeaguePage() {
                 <Pos n={i + 1} />
                 <Avatar url={e.photo} name={e.name} size={28} />
                 <span className="min-w-0 flex-1 truncate font-semibold text-[var(--cream)]">{e.username ? <Link href={`/u/${e.username}`} className="hover:underline">{e.name}</Link> : e.name}</span>
-                <span className="font-mono text-base font-extrabold text-[var(--cream)]">{e.score! + (e.penalty ?? 0) + (e.startingScore ?? 0)}</span>
+                <span className="text-base font-extrabold text-[var(--cream)]">{e.score! + (e.penalty ?? 0) + (e.startingScore ?? 0)}</span>
               </div>
             ))}
           </div>
@@ -156,7 +156,7 @@ export default function LeaguePage() {
                   <Avatar url={photoOf.get(s.id)} name={s.name} size={col === 1 ? 52 : 42} />
                   <div className="mt-2 w-full truncate px-1 text-sm font-bold text-[var(--cream)]">{s.name}</div>
                   {s.division && <div className="text-[9px] font-bold uppercase tracking-wide text-[var(--sage-dim)]">{s.division}</div>}
-                  <div className={`mt-1 font-mono font-extrabold ${col === 1 ? "text-2xl text-[var(--gold)]" : "text-lg text-[var(--cream)]"}`}>{s.points}</div>
+                  <div className={`mt-1 font-extrabold ${col === 1 ? "text-2xl text-[var(--gold)]" : "text-lg text-[var(--cream)]"}`}>{s.points}</div>
                   <div className="text-[9px] font-bold uppercase tracking-wide text-[var(--sage-dim)]">pts · {s.played} played</div>
                 </div>
               ) : <div key={col} />)}
@@ -170,7 +170,7 @@ export default function LeaguePage() {
                   <Avatar url={photoOf.get(s.id)} name={s.name} size={30} />
                   <span className="min-w-0 flex-1 truncate font-semibold text-[var(--cream)]">{s.name}{s.division && <span className="ml-2 rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[var(--sage-dim)]">{s.division}</span>}</span>
                   <span className="hidden text-xs text-[var(--sage-dim)] sm:inline">{s.played} played{s.bestToPar != null ? ` · best ${fmtToPar(s.bestToPar)}` : ""}</span>
-                  <span className="w-12 text-right font-mono text-base font-extrabold text-[var(--cream)]">{s.points}</span>
+                  <span className="w-12 text-right text-base font-extrabold text-[var(--cream)]">{s.points}</span>
                 </div>
               ))}
             </div>
@@ -194,7 +194,7 @@ export default function LeaguePage() {
             <span key={m.id} className="inline-flex items-center gap-2 rounded-full bg-white/[0.04] py-1.5 pl-1.5 pr-3.5 text-sm text-[var(--text-body)] ring-1 ring-white/[0.06]">
               <Avatar url={m.photo} name={m.name} size={26} ring={false} />
               {m.username ? <Link href={`/u/${m.username}`} className="font-semibold text-[var(--cream)] hover:underline">{m.name}</Link> : <span className="font-semibold text-[var(--cream)]">{m.name}</span>}
-              {typeof m.tag === "number" && <span className="rounded-full bg-white/[0.08] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[var(--cream)]">#{m.tag}</span>}
+              {typeof m.tag === "number" && <span className="rounded-full bg-white/[0.08] px-1.5 py-0.5 text-[10px] font-bold text-[var(--cream)]">#{m.tag}</span>}
               {m.role !== "member" && <span className="rounded-full bg-[var(--gold-dim)] px-1.5 py-0.5 text-[9px] font-bold uppercase text-[var(--gold)]">{m.role}</span>}
               {admin && m.role !== "owner" && (
                 <button

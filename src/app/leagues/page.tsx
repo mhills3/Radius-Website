@@ -49,14 +49,14 @@ function CourseStrip({ url, isLogo, ms, distMi, noDate }: { url?: string; isLogo
       {!isLogo && <div aria-hidden className="absolute inset-0 hidden sm:block" style={{ background: "linear-gradient(90deg, transparent 55%, rgba(23,32,25,.92) 100%)" }} />}
       {!isLogo && <div aria-hidden className="absolute inset-0 sm:hidden" style={{ background: "linear-gradient(180deg, transparent 55%, rgba(23,32,25,.92) 100%)" }} />}
       {distMi != null && (
-        <span className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full border border-[var(--hair)] bg-[rgba(20,27,22,0.85)] px-2 py-0.5 font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--cream-60)] backdrop-blur-[6px]">
+        <span className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full border border-[var(--hair)] bg-[rgba(20,27,22,0.85)] px-2 py-0.5 text-[10px] font-semibold tracking-[0.08em] text-[var(--cream-60)] backdrop-blur-[6px]">
           <IconPin className="h-3 w-3" />{distMi < 10 ? distMi.toFixed(1) : Math.round(distMi)} MI
         </span>
       )}
       {!noDate && (
         <div className="absolute left-3 top-3 min-w-[46px] rounded-xl border border-[var(--hair)] bg-[rgba(20,27,22,0.85)] px-2 py-1.5 text-center backdrop-blur-[6px]">
-          <div className="font-mono text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[var(--cream-60)]">{d.toLocaleDateString(undefined, { month: "short" })}</div>
-          <div className="font-mono text-[19px] font-bold leading-[1.1] text-[var(--cream)]">{d.getDate()}</div>
+          <div className="text-[9.5px] font-semibold uppercase tracking-[0.16em] text-[var(--cream-60)]">{d.toLocaleDateString(undefined, { month: "short" })}</div>
+          <div className="text-[19px] font-bold leading-[1.1] text-[var(--cream)]">{d.getDate()}</div>
         </div>
       )}
     </div>
@@ -69,10 +69,10 @@ function LiveEventTile({ ev, href, top, cid }: { ev: LeagueEvent; href: string; 
       <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(600px 300px at 80% -10%, rgba(143,189,227,.10), transparent 60%)" }} />
       <div className="relative">
         <div className="flex items-center justify-between">
-          <span className="inline-flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--blue)]">
+          <span className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--blue)]">
             <i className="pulse-ring h-2 w-2 rounded-full bg-[var(--blue)]" />Live now
           </span>
-          <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-[var(--cream-38)]">{plural(ev.entryCount, "player")}</span>
+          <span className="text-[10.5px] uppercase tracking-[0.08em] text-[var(--cream-38)]">{plural(ev.entryCount, "player")}</span>
         </div>
         <h3 className="mt-3.5 font-[family-name:var(--font-heading)] text-[19px] font-bold text-[var(--cream)]">{ev.name}</h3>
         <div className="text-[13px] text-[var(--cream-60)]">{[ev.leagueName !== ev.name ? ev.leagueName : null, ev.courseName, "Round in progress"].filter(Boolean).join(" · ")}</div>
@@ -84,10 +84,10 @@ function LiveEventTile({ ev, href, top, cid }: { ev: LeagueEvent; href: string; 
               const thru = typeof e.score !== "number" ? (e.thruHole ?? e.holeScores?.filter((h) => h > 0).length) : null;
               return (
                 <div key={e.id} className={`grid grid-cols-[34px_1fr_62px_62px] items-center border-b border-[var(--hair)] px-1 py-[11px] text-[13.5px] ${you ? "rounded-lg border-b-transparent bg-[var(--gold-dim)]" : ""}`}>
-                  <span className="font-mono text-[var(--cream-38)]">{i + 1}</span>
-                  <span className="flex items-center gap-2 font-semibold text-[var(--cream)]">{e.name}{you && <span className="rounded border border-[rgba(232,181,96,.4)] px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.14em] text-[var(--gold)]">You</span>}</span>
-                  <span className="text-right font-mono text-xs text-[var(--cream-38)]">{thru ? `THRU ${thru}` : ""}</span>
-                  <span className={`text-right font-mono font-bold ${you ? "text-[var(--gold)]" : "text-[var(--blue)]"}`}>{total}</span>
+                  <span className="text-[var(--cream-38)]">{i + 1}</span>
+                  <span className="flex items-center gap-2 font-semibold text-[var(--cream)]">{e.name}{you && <span className="rounded border border-[rgba(232,181,96,.4)] px-1.5 py-0.5 text-[9.5px] tracking-[0.14em] text-[var(--gold)]">You</span>}</span>
+                  <span className="text-right text-xs text-[var(--cream-38)]">{thru ? `THRU ${thru}` : ""}</span>
+                  <span className={`text-right font-bold ${you ? "text-[var(--gold)]" : "text-[var(--blue)]"}`}>{total}</span>
                 </div>
               );
             })}
@@ -114,20 +114,20 @@ function Calendar({ eventDays, selected, onSelect, initial, upNext }: { eventDay
   return (
     <div className={`${card} p-6`}>
       <div className="flex items-center justify-between">
-        <div className="font-[family-name:var(--font-heading)] text-base font-bold text-[var(--cream)]">{MONTH_LONG[m]}<span className="ml-[7px] font-mono text-[13px] font-normal text-[var(--cream-38)]">{y}</span></div>
+        <div className="font-[family-name:var(--font-heading)] text-base font-bold text-[var(--cream)]">{MONTH_LONG[m]}<span className="ml-[7px] text-[13px] font-normal text-[var(--cream-38)]">{y}</span></div>
         <div className="flex gap-2">
           <button onClick={() => setView(new Date(y, m - 1, 1))} aria-label="Previous month" className="grid h-[30px] w-[30px] place-items-center rounded-full border border-[var(--hair)] text-sm leading-none text-[var(--cream-60)] transition-colors hover:border-[var(--hair-strong)] hover:text-[var(--cream)]">‹</button>
           <button onClick={() => setView(new Date(y, m + 1, 1))} aria-label="Next month" className="grid h-[30px] w-[30px] place-items-center rounded-full border border-[var(--hair)] text-sm leading-none text-[var(--cream-60)] transition-colors hover:border-[var(--hair-strong)] hover:text-[var(--cream)]">›</button>
         </div>
       </div>
-      <div className="mb-4 mt-2 font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]"><b className="font-medium text-[var(--blue)]">{plural(monthCount, "event")}</b> this month</div>
+      <div className="mb-4 mt-2 text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]"><b className="font-medium text-[var(--blue)]">{plural(monthCount, "event")}</b> this month</div>
       <div className="grid grid-cols-7 gap-[3px] text-center">
-        {DAY.map((d, i) => <span key={i} className="py-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-[var(--cream-38)]">{d}</span>)}
+        {DAY.map((d, i) => <span key={i} className="py-1.5 text-[9px] uppercase tracking-[0.12em] text-[var(--cream-38)]">{d}</span>)}
         {Array.from({ length: total }, (_, i) => {
           const offset = i - lead;
           const inMonth = offset >= 0 && offset < daysInMonth;
           const n = inMonth ? offset + 1 : offset < 0 ? prevDays + offset + 1 : offset - daysInMonth + 1;
-          if (!inMonth) return <span key={`x${i}`} className="grid h-10 place-items-center rounded-[10px] font-mono text-[12.5px] text-[var(--cream-38)] opacity-40">{n}</span>;
+          if (!inMonth) return <span key={`x${i}`} className="grid h-10 place-items-center rounded-[10px] text-[12.5px] text-[var(--cream-38)] opacity-40">{n}</span>;
           const k = `${y}-${m}-${n}`;
           const count = eventDays.get(k) ?? 0;
           const isToday = today.getFullYear() === y && today.getMonth() === m && today.getDate() === n;
@@ -137,7 +137,7 @@ function Calendar({ eventDays, selected, onSelect, initial, upNext }: { eventDay
               key={k}
               onClick={() => count > 0 && onSelect(isSel ? null : k)}
               disabled={count === 0 && !isSel}
-              className={`relative grid h-10 place-items-center rounded-[10px] font-mono text-[12.5px] transition-colors
+              className={`relative grid h-10 place-items-center rounded-[10px] text-[12.5px] transition-colors
                 ${isSel ? "bg-[var(--gold-dim)] text-[var(--gold)] shadow-[inset_0_0_0_1px_rgba(232,181,96,0.35)]"
                 : isToday ? "text-[var(--cream)] shadow-[inset_0_0_0_1px_var(--hair-strong)] hover:bg-[rgba(244,241,232,0.04)]"
                 : count > 0 ? "text-[var(--cream)] hover:bg-[rgba(244,241,232,0.04)]"
@@ -151,13 +151,13 @@ function Calendar({ eventDays, selected, onSelect, initial, upNext }: { eventDay
       </div>
       {upNext && nd && (
         <Link href={upNext.href} className="group mt-4 flex items-center gap-[13px] border-t border-[var(--hair)] pt-4">
-          <span className="min-w-[34px] shrink-0 text-center font-mono leading-[1.1]">
+          <span className="min-w-[34px] shrink-0 text-center leading-[1.1]">
             <span className="block text-[8.5px] uppercase tracking-[0.16em] text-[var(--cream-38)]">{nd.toLocaleDateString(undefined, { month: "short" })}</span>
             <span className="mt-px block text-base font-bold text-[var(--cream)]">{nd.getDate()}</span>
           </span>
           <span className="min-w-0 flex-1">
             <span className="block truncate text-[13.5px] font-semibold text-[var(--cream)]">{upNext.name}</span>
-            <span className="mt-0.5 block truncate font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--cream-38)]">{[upNext.courseName, `${nd.toLocaleDateString(undefined, { weekday: "short" })} ${nd.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`].filter(Boolean).join(" · ")}</span>
+            <span className="mt-0.5 block truncate text-[10px] uppercase tracking-[0.06em] text-[var(--cream-38)]">{[upNext.courseName, `${nd.toLocaleDateString(undefined, { weekday: "short" })} ${nd.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`].filter(Boolean).join(" · ")}</span>
           </span>
           <span className="text-[15px] text-[var(--cream-38)] transition-colors group-hover:text-[var(--cream)]">›</span>
         </Link>
@@ -364,11 +364,11 @@ export default function LeaguesPage() {
       {/* Compact page header — one hairline, ends above the controls row */}
       <header className="flex flex-wrap items-end justify-between gap-4 border-b border-[var(--hair)] pb-6 pt-10">
         <div>
-          <h1 className="flex items-center gap-2.5 font-[family-name:var(--font-heading)] text-[28px] font-extrabold tracking-[-0.01em] text-[var(--cream)]">Events<span className="rounded-full bg-[var(--gold-dim)] px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--gold)]">Beta</span></h1>
+          <h1 className="flex items-center gap-2.5 font-[family-name:var(--font-heading)] text-[28px] font-extrabold tracking-[-0.01em] text-[var(--cream)]">Events<span className="rounded-full bg-[var(--gold-dim)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--gold)]">Beta</span></h1>
           <p className="mt-1 text-sm text-[var(--cream-60)]">Leagues, weeklies, and tournaments near you.</p>
         </div>
         <div className="flex items-center gap-4">
-          <span className="font-mono text-xs uppercase tracking-[0.1em] text-[var(--cream-38)]">{tab === "Live now" ? `${liveEvents.length} live` : myPastView ? `${shownEvents.length} completed` : `${shownEvents.length} upcoming`}</span>
+          <span className="text-xs uppercase tracking-[0.1em] text-[var(--cream-38)]">{tab === "Live now" ? `${liveEvents.length} live` : myPastView ? `${shownEvents.length} completed` : `${shownEvents.length} upcoming`}</span>
           {user ? (
             <Link href="/leagues/new" className={`${btnGold} inline-flex h-11 items-center`}>Create an event</Link>
           ) : (
@@ -400,11 +400,11 @@ export default function LeaguesPage() {
         {userLoc && (
           <span className="flex items-center gap-1">
             {[25, 50, 100].map((r) => (
-              <button key={r} onClick={() => setRadiusMi(r)} className={`h-9 rounded-full px-3 font-mono text-[11.5px] font-semibold transition-colors ${radiusMi === r ? "bg-[var(--gold-dim)] text-[var(--gold)]" : "text-[var(--cream-38)] hover:text-[var(--cream)]"}`}>{r} mi</button>
+              <button key={r} onClick={() => setRadiusMi(r)} className={`h-9 rounded-full px-3 text-[11.5px] font-semibold transition-colors ${radiusMi === r ? "bg-[var(--gold-dim)] text-[var(--gold)]" : "text-[var(--cream-38)] hover:text-[var(--cream)]"}`}>{r} mi</button>
             ))}
           </span>
         )}
-        {locErr && <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-[var(--cream-38)]">Location unavailable</span>}
+        {locErr && <span className="text-[10.5px] uppercase tracking-[0.08em] text-[var(--cream-38)]">Location unavailable</span>}
         <span aria-hidden className="mx-1.5 h-6 w-px bg-[var(--hair)]" />
         {/* Scope filter — All events vs My events (sits left of the type filter) */}
         <div className="relative" ref={scopeMenuRef}>
@@ -500,7 +500,7 @@ export default function LeaguesPage() {
           </div>
           <div>
           {tab === "Events" && !myMode && liveEvents.length > 0 && (
-            <button onClick={() => setTab("Live now")} className="mb-3 inline-flex items-center gap-2.5 rounded-full border border-[var(--blue-dim)] px-4 py-2 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--blue)] transition-colors hover:border-[var(--blue)]/40">
+            <button onClick={() => setTab("Live now")} className="mb-3 inline-flex items-center gap-2.5 rounded-full border border-[var(--blue-dim)] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--blue)] transition-colors hover:border-[var(--blue)]/40">
               <i className="pulse-ring h-2 w-2 rounded-full bg-[var(--blue)]" />{plural(liveEvents.length, "event")} live now →
             </button>
           )}
@@ -508,7 +508,7 @@ export default function LeaguesPage() {
               <Link href={slugOf.get(live.ev.leagueId) ? `/leagues/${slugOf.get(live.ev.leagueId)}/e/${live.ev.id}` : "#"} className="relative mb-3 block overflow-hidden rounded-2xl border border-[var(--hair)] bg-[var(--card)] p-6 transition-colors hover:border-[var(--hair-strong)]">
                 <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(600px 300px at 80% -10%, rgba(143,189,227,.10), transparent 60%)" }} />
                 <div className="relative">
-                  <span className="inline-flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--blue)]">
+                  <span className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--blue)]">
                     <i className="pulse-ring h-2 w-2 rounded-full bg-[var(--blue)]" />Live now
                   </span>
                   <h3 className="mt-3.5 font-[family-name:var(--font-heading)] text-[19px] font-bold text-[var(--cream)]">{live.ev.name}</h3>
@@ -521,16 +521,16 @@ export default function LeaguesPage() {
                         const thru = typeof e.score !== "number" ? (e.thruHole ?? e.holeScores?.filter((h) => h > 0).length) : null;
                         return (
                           <div key={e.id} className={`grid grid-cols-[34px_1fr_62px_62px] items-center border-b border-[var(--hair)] px-1 py-[11px] text-[13.5px] ${you ? "rounded-lg border-b-transparent bg-[var(--gold-dim)]" : ""}`}>
-                            <span className="font-mono text-[var(--cream-38)]">{i + 1}</span>
-                            <span className="flex items-center gap-2 font-semibold text-[var(--cream)]">{e.name}{you && <span className="rounded border border-[rgba(232,181,96,.4)] px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.14em] text-[var(--gold)]">You</span>}</span>
-                            <span className="text-right font-mono text-xs text-[var(--cream-38)]">{thru ? `THRU ${thru}` : ""}</span>
-                            <span className={`text-right font-mono font-bold ${you ? "text-[var(--gold)]" : "text-[var(--blue)]"}`}>{total}</span>
+                            <span className="text-[var(--cream-38)]">{i + 1}</span>
+                            <span className="flex items-center gap-2 font-semibold text-[var(--cream)]">{e.name}{you && <span className="rounded border border-[rgba(232,181,96,.4)] px-1.5 py-0.5 text-[9.5px] tracking-[0.14em] text-[var(--gold)]">You</span>}</span>
+                            <span className="text-right text-xs text-[var(--cream-38)]">{thru ? `THRU ${thru}` : ""}</span>
+                            <span className={`text-right font-bold ${you ? "text-[var(--gold)]" : "text-[var(--blue)]"}`}>{total}</span>
                           </div>
                         );
                       })}
                     </div>
                   )}
-                  <div className="mt-4 flex items-center gap-6 font-mono text-[10.5px] tracking-[0.08em] text-[var(--cream-38)]">
+                  <div className="mt-4 flex items-center gap-6 text-[10.5px] tracking-[0.08em] text-[var(--cream-38)]">
                     <span className="flex items-center gap-2"><i className="h-2 w-2 rounded-full bg-[var(--blue)]" />The field</span>
                     <span className="flex items-center gap-2"><i className="h-2 w-2 rounded-full bg-[var(--gold)]" />You</span>
                   </div>
@@ -562,8 +562,8 @@ export default function LeaguesPage() {
                           <div className="min-w-0 truncate font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">{ev.name}</div>
                           {(() => { const k = KIND_CHIP[ev.kind ?? ""]; const Ic = k?.icon; return (
                             <span className="flex shrink-0 items-center gap-1.5">
-                              {ev.isPrivate && <span className="inline-flex items-center gap-1 rounded-full border border-[var(--hair-strong)] px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--cream-38)]">Private</span>}
-                              <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--blue-dim)] px-2.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--blue)]">{Ic && <Ic className="h-3 w-3" />}{k?.label ?? "EVENT"}</span>
+                              {ev.isPrivate && <span className="inline-flex items-center gap-1 rounded-full border border-[var(--hair-strong)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--cream-38)]">Private</span>}
+                              <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--blue-dim)] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--blue)]">{Ic && <Ic className="h-3 w-3" />}{k?.label ?? "EVENT"}</span>
                             </span>
                           ); })()}
                         </div>
@@ -575,13 +575,13 @@ export default function LeaguesPage() {
                           ].filter(Boolean).join(" · ")}
                         </div>
                         <div className="mt-5 flex gap-[22px]">
-                          <span><span className={`block text-[15px] font-bold ${ev.buyIn ? "font-mono text-[var(--blue)]" : "text-[var(--cream)]"}`}>{ev.buyIn ? `$${ev.buyIn}` : "Free"}</span><span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Buy-in</span></span>
-                          <span><span className="block text-[15px] font-bold text-[var(--cream)]">{ev.format}</span><span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Format</span></span>
-                          {ev.entryCount > 0 && <span><span className="block font-mono text-[15px] font-bold text-[var(--blue)]">{ev.entryCount}</span><span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]">{pluralWord(ev.entryCount, "Player")}</span></span>}
-                          {ev.roundCount > 1 && <span><span className="block font-mono text-[15px] font-bold text-[var(--blue)]">{ev.roundCount}×{ev.holes}</span><span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Rounds</span></span>}
+                          <span><span className={`block text-[15px] font-bold ${ev.buyIn ? "text-[var(--blue)]" : "text-[var(--cream)]"}`}>{ev.buyIn ? `$${ev.buyIn}` : "Free"}</span><span className="block text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Buy-in</span></span>
+                          <span><span className="block text-[15px] font-bold text-[var(--cream)]">{ev.format}</span><span className="block text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Format</span></span>
+                          {ev.entryCount > 0 && <span><span className="block text-[15px] font-bold text-[var(--blue)]">{ev.entryCount}</span><span className="block text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]">{pluralWord(ev.entryCount, "Player")}</span></span>}
+                          {ev.roundCount > 1 && <span><span className="block text-[15px] font-bold text-[var(--blue)]">{ev.roundCount}×{ev.holes}</span><span className="block text-[10px] uppercase tracking-[0.14em] text-[var(--cream-38)]">Rounds</span></span>}
                         </div>
                         {!ev.capacity && (
-                          <div className="mt-4 font-mono text-[10.5px] tracking-[0.06em] text-[var(--cream-38)]">{ev.entryCount > 0 ? <><b className="font-medium text-[var(--cream-60)]">{ev.entryCount}</b> joined</> : "Be the first to join"}</div>
+                          <div className="mt-4 text-[10.5px] tracking-[0.06em] text-[var(--cream-38)]">{ev.entryCount > 0 ? <><b className="font-medium text-[var(--cream-60)]">{ev.entryCount}</b> joined</> : "Be the first to join"}</div>
                         )}
                         {ev.capacity && (() => {
                           const pct = Math.min(100, Math.round((ev.entryCount / ev.capacity!) * 100));
@@ -591,7 +591,7 @@ export default function LeaguesPage() {
                               <div className="h-[3px] overflow-hidden rounded-[2px] bg-[var(--hair)]">
                                 <i className={`block h-full rounded-[2px] ${hot ? "bg-[var(--gold)]" : "bg-[var(--blue)]"}`} style={{ width: `${pct}%` }} />
                               </div>
-                              <div className="mt-2 font-mono text-[10.5px] tracking-[0.06em] text-[var(--cream-38)]"><b className="font-medium text-[var(--cream-60)]">{ev.entryCount} of {ev.capacity}</b> registered{hot ? " · filling fast" : ""}</div>
+                              <div className="mt-2 text-[10.5px] tracking-[0.06em] text-[var(--cream-38)]"><b className="font-medium text-[var(--cream-60)]">{ev.entryCount} of {ev.capacity}</b> registered{hot ? " · filling fast" : ""}</div>
                             </div>
                           );
                         })()}
