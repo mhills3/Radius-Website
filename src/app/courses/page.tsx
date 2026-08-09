@@ -372,11 +372,17 @@ export default function CoursesPage() {
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={courseOfDay.coverPhotoUrl} alt={courseOfDay.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                        <div className="absolute left-5 top-5 rounded-full bg-[var(--gold)] px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-[#141b16]">☀️ Course of the day</div>
+                        {/* Course-of-the-day ribbon — a flat fishtail banner pinned to the top-left corner */}
+                        <div className="absolute left-0 top-6">
+                          <div aria-hidden className="absolute -left-0 top-full h-2 w-2 bg-[#b8862f]" style={{ clipPath: "polygon(0 0, 100% 0, 100% 100%)" }} />
+                          <div className="relative bg-gradient-to-b from-[var(--gold-bright)] to-[var(--gold)] py-1.5 pl-5 pr-7 font-[family-name:var(--font-heading)] text-[11px] font-extrabold uppercase tracking-[0.2em] text-[#141b16] shadow-[0_8px_20px_-8px_rgba(0,0,0,0.6)]" style={{ clipPath: "polygon(0 0, 100% 0, calc(100% - 11px) 50%, 100% 100%, 0 100%)" }}>
+                            Course of the Day
+                          </div>
+                        </div>
                         <div className="absolute bottom-5 left-5 right-5 flex flex-wrap items-end justify-between gap-3 text-white">
                           <div>
                             <h2 className="font-[family-name:var(--font-heading)] text-2xl font-extrabold drop-shadow md:text-3xl">{courseOfDay.name}</h2>
-                            <div className="mt-1 text-sm text-white/90 drop-shadow">📍 {[courseOfDay.city, courseOfDay.state].filter(Boolean).join(", ")} · {courseOfDay.holeCount} holes · Par {courseOfDay.par}{courseOfDay.rating ? ` · ★ ${courseOfDay.rating.toFixed(1)}` : ""}</div>
+                            <div className="mt-1 text-sm text-white/90 drop-shadow">{[courseOfDay.city, courseOfDay.state].filter(Boolean).join(", ")} · {courseOfDay.holeCount} holes · Par {courseOfDay.par}{courseOfDay.rating ? ` · ★ ${courseOfDay.rating.toFixed(1)}` : ""}</div>
                           </div>
                           <span className="rounded-full bg-white/95 px-5 py-2.5 text-sm font-bold text-[#141b16] transition-transform group-hover:-translate-y-0.5">Explore →</span>
                         </div>

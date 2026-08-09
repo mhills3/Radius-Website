@@ -31,7 +31,13 @@ export default function CourseTagPicker({ onSelect, onClose }: { onSelect: (c: C
           ) : (
             results.map((c) => (
               <button key={c.id} onClick={() => { onSelect({ id: c.id, slug: slugify(c.name, c.id), name: c.name }); onClose(); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/[0.05]">
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--bg-deep)] text-sm text-[var(--gold)]">⛳</span>
+                <span className="relative grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-[radial-gradient(circle_at_30%_25%,rgba(246,193,101,0.3),var(--bg-deep))] font-[family-name:var(--font-heading)] text-sm font-bold text-[var(--cream)]/70">
+                  {c.name.charAt(0).toUpperCase()}
+                  {c.coverPhotoUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={c.coverPhotoUrl} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" onError={(e) => e.currentTarget.remove()} />
+                  )}
+                </span>
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-semibold text-[var(--cream)]">{c.name}</span>
                   <span className="block truncate text-xs text-[var(--sage-dim)]">{[c.city, c.state].filter(Boolean).join(", ")}</span>

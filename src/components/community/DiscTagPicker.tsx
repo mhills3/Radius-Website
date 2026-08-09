@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { getDiscCatalog } from "@/lib/bag";
 import { buildDiscs, type DiscData } from "@/lib/discs";
+import DiscGraphic from "@/components/bag/DiscGraphic";
 import type { DiscTag } from "@/lib/feed";
 
 export default function DiscTagPicker({ onSelect, onClose }: { onSelect: (d: DiscTag) => void; onClose: () => void }) {
@@ -32,7 +33,7 @@ export default function DiscTagPicker({ onSelect, onClose }: { onSelect: (d: Dis
           ) : (
             results.map((d) => (
               <button key={d.slug} onClick={() => { onSelect({ name: d.name, brand: d.manufacturer, slug: d.slug }); onClose(); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/[0.05]">
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-sm" style={{ background: `${d.color || "#9aa6b2"}33` }}>🥏</span>
+                <span className="grid h-9 w-9 shrink-0 place-items-center drop-shadow"><DiscGraphic color={d.color || "#9aa6b2"} speed={d.speed} size={34} /></span>
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-semibold text-[var(--cream)]">{d.name}</span>
                   <span className="block truncate text-xs text-[var(--sage-dim)]">{d.manufacturer} · {d.speed}/{d.glide}/{d.turn}/{d.fade}</span>
