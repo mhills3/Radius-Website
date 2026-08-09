@@ -78,7 +78,7 @@ html { scroll-behavior: smooth; }
   --c-chip: rgba(255,255,255,0.09);   /* neutral chip (was #16221b on light) */
   --c-ink: #f1ede2;                   /* primary text (was #16221b) */
   --c-body: rgba(241,237,226,0.72);   /* secondary text (was #46554c) */
-  --c-muted: rgba(241,237,226,0.46);  /* tertiary text (was #8a968d/#6b7a70) */
+  --c-muted: rgba(241,237,226,0.58);  /* tertiary text (was #8a968d/#6b7a70) */
   /* One radius + elevation + floating-surface system for the courses index restructure. */
   --r-pill: 9999px;
   --r-panel: 20px;
@@ -100,6 +100,9 @@ html { scroll-behavior: smooth; }
   border-radius: 12px;
 }
 .courses-scope .mapboxgl-popup-tip { border-top-color: #17211c; border-bottom-color: #17211c; }
+/* Map fills the viewport under the fixed nav — push Mapbox's own controls clear of it so they're clickable. */
+.courses-scope .mapboxgl-ctrl-top-right,
+.courses-scope .mapboxgl-ctrl-top-left { top: 72px; }
 .events-scope :focus-visible {
   outline: 2px solid var(--gold);
   outline-offset: 2px;

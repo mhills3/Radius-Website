@@ -253,18 +253,12 @@ export default function CoursesPage() {
               <CourseMap courses={filtered} filterActive={anyFilter} highlightId={highlightId} flyTo={flyTo} userLoc={userLoc} onSelect={setHighlightId} onLocate={setUserLoc} onBoundsChange={setMapBounds} mode={mapMode} className="h-full w-full" />
             )}
           </div>
-          {/* top scrim so the nav + floating header read cleanly over the map */}
-          <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 z-10 h-72 bg-[linear-gradient(to_bottom,rgba(12,18,15,0.92),rgba(12,18,15,0.45)_55%,transparent)]" />
-          {/* floating header: title + stats + unified controls */}
-          <div className="pointer-events-none absolute inset-x-0 top-0 z-20 px-4 pt-[86px] sm:px-5">
-            <div className="mx-auto max-w-[1600px]">
-              <div className="pointer-events-auto">{heroHead}</div>
-              <div className="pointer-events-auto mt-4">{controlBar}</div>
-            </div>
-          </div>
-          {/* floating results panel */}
-          <div className="absolute bottom-4 left-4 top-[224px] z-20 flex w-[360px] max-w-[calc(100%-2rem)] flex-col overflow-hidden rounded-[var(--r-panel)] bg-[var(--panel)] shadow-[var(--e-float)] backdrop-blur-xl sm:left-5">
-            <div className="shrink-0 px-4 pt-3.5 pb-2">
+          {/* slim top scrim so the transparent nav stays legible over the map */}
+          <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 z-10 h-28 bg-[linear-gradient(to_bottom,rgba(12,18,15,0.85),transparent)]" />
+          {/* floating results panel — carries the controls + list; the map itself stays clean */}
+          <div className="absolute bottom-4 left-4 top-[84px] z-20 flex w-[372px] max-w-[calc(100%-2rem)] flex-col overflow-hidden rounded-[var(--r-panel)] bg-[var(--panel)] shadow-[var(--e-float)] backdrop-blur-xl sm:left-5">
+            <div className="shrink-0 px-3 pt-3">{controlBar}</div>
+            <div className="shrink-0 px-4 pb-2 pt-3">
               <div className="flex items-baseline gap-1.5">
                 <span className="font-[family-name:var(--font-heading)] text-base font-extrabold text-[var(--c-ink)]">{(viewportFiltering ? visibleCourses.length : (anyFilter ? filtered.length : (totalCount || filtered.length))).toLocaleString()}</span>
                 <span className="text-sm text-[var(--c-muted)]">{(viewportFiltering ? visibleCourses.length : (anyFilter ? filtered.length : (totalCount || filtered.length))) === 1 ? "course" : "courses"}{viewportFiltering ? " in view" : stateFilter ? ` in ${stateFilter}` : userLoc ? " near you" : ""}</span>
@@ -383,7 +377,7 @@ export default function CoursesPage() {
                 {user && (
                   <Link href="/courses/mine" className="group relative block overflow-hidden rounded-2xl shadow-[0_12px_30px_-14px_rgba(15,24,19,0.6)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_44px_-14px_rgba(15,24,19,0.85)]">
                     <span className="pointer-events-none absolute -inset-x-12 inset-y-0 z-10 bg-[linear-gradient(110deg,transparent_32%,rgba(246,193,101,0.4),transparent_68%)] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-                    <div className="relative flex items-center gap-3.5 bg-gradient-to-br from-[#243a2e] to-[#16221b] p-4 ring-1 ring-[var(--gold)]/25 transition-colors group-hover:ring-[var(--gold)]/55">
+                    <div className="relative flex items-center gap-3.5 bg-[linear-gradient(135deg,rgba(232,181,96,0.14),var(--c-card)_58%)] p-4 ring-1 ring-[var(--gold)]/30 transition-colors group-hover:ring-[var(--gold)]/55">
                       <span className="pointer-events-none absolute inset-0 opacity-[0.06]" style={{ maskImage: "url(/topo.png)", WebkitMaskImage: "url(/topo.png)", maskSize: "cover", WebkitMaskSize: "cover", backgroundColor: "#fff" }} />
                       <span className="relative grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-[var(--gold-bright)] to-[var(--gold)] shadow-[inset_0_1px_2px_rgba(255,255,255,0.45)]">
                         <span className="h-8 w-8 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: "url(/basket-icon.svg)" }} />
@@ -415,7 +409,7 @@ export default function CoursesPage() {
                             <svg className="h-3.5 w-3.5 shrink-0 text-[var(--gold-bright)]" viewBox="0 0 24 24" fill="currentColor" aria-label="Legend"><path d="M5 19h14l1.5-10-4.5 3.5L12 6l-4 6.5L3.5 9 5 19z" /></svg>
                           )}
                           <span className="flex min-w-0 flex-col">
-                            <span className={`min-w-0 truncate text-sm leading-tight ${legend ? "bg-gradient-to-r from-[#9a7a3a] to-[#d4a94a] bg-clip-text font-extrabold text-transparent" : "font-semibold text-[var(--c-ink)]"}`} title={legend ? `${b.name} · Legend builder (${b.count} courses)` : b.name}>{b.name}</span>
+                            <span className={`min-w-0 truncate text-sm leading-tight ${legend ? "bg-gradient-to-r from-[#f0c377] to-[#f7dca0] bg-clip-text font-extrabold text-transparent" : "font-semibold text-[var(--c-ink)]"}`} title={legend ? `${b.name} · Legend builder (${b.count} courses)` : b.name}>{b.name}</span>
                             {b.username && <span className="min-w-0 truncate text-[11px] leading-tight text-[var(--c-muted)]">@{b.username}</span>}
                           </span>
                         </span>
@@ -446,7 +440,7 @@ export default function CoursesPage() {
                             <span className="flex min-w-0 flex-1 items-center gap-1">
                               {top && <svg className="h-3.5 w-3.5 shrink-0 text-[var(--gold-bright)]" viewBox="0 0 24 24" fill="currentColor" aria-label="Most played"><path d="M5 19h14l1.5-10-4.5 3.5L12 6l-4 6.5L3.5 9 5 19z" /></svg>}
                               <span className="min-w-0">
-                                <span className={`block truncate text-sm leading-tight ${top ? "bg-gradient-to-r from-[#9a7a3a] to-[#d4a94a] bg-clip-text font-extrabold text-transparent" : "font-semibold text-[var(--c-ink)] group-hover:text-[var(--gold)]"}`}>{c.name}</span>
+                                <span className={`block truncate text-sm leading-tight ${top ? "bg-gradient-to-r from-[#f0c377] to-[#f7dca0] bg-clip-text font-extrabold text-transparent" : "font-semibold text-[var(--c-ink)] group-hover:text-[var(--gold)]"}`}>{c.name}</span>
                                 <span className="block truncate text-[11px] text-[var(--c-muted)]">{[c.city, c.state].filter(Boolean).join(", ")}</span>
                               </span>
                             </span>
@@ -513,7 +507,7 @@ const FLAG: Record<string, string> = {
 };
 
 function Num({ label, value }: { label: string; value: string | number }) {
-  return <div className="flex items-center justify-between"><span className="text-[var(--c-muted)]">{label}</span><span className="font-bold text-[var(--c-ink)]">{value}</span></div>;
+  return <div className="flex items-center justify-between"><span className="text-[var(--c-body)]">{label}</span><span className="font-bold text-[var(--c-ink)]">{value}</span></div>;
 }
 
 function Row({ title, subtitle, items, played }: { title: string; subtitle?: string; items: Course[]; played?: Map<string, PlayedStat> }) {
