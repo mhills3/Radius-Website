@@ -127,28 +127,35 @@ export interface SystemMilestone {
  * likeable (setReaction) and commentable (addComment) through the existing paths.
  * Requires an authenticated caller (Firestore rules). Returns the FeedPost, or null on failure.
  */
-export async function ensureSystemPost(m: SystemMilestone): Promise<FeedPost | null> {
+export async function ensureSystemPost(m: SystemMilestone, keepFresh = false): Promise<FeedPost | null> {
   try {
     const ref = doc(db, "posts", m.id);
     const snap = await getDoc(ref);
+    const tagged = [{ id: m.user.id, name: m.user.name, username: m.user.username ?? "" }];
     if (snap.exists()) {
       const p = snap.data();
       if (p.isDeleted) return null;
+      // A "standing" post (keepFresh) keeps its text/tag current when the underlying fact changes —
+      // e.g. the #1 builder's exact count ticks up, or leadership passes to someone else. Likes,
+      // comments, reactions and createdAt are preserved (merge write of just the changed fields).
+      if (keepFresh && (p.text ?? "") !== m.text) {
+        await setDoc(ref, { text: m.text, taggedUserIds: [m.user.id], taggedUsers: tagged, lastUpdated: Date.now() }, { merge: true });
+      }
+      const text = keepFresh ? m.text : ((p.text ?? m.text) as string);
       return {
         id: m.id,
-        text: (p.text ?? m.text) as string,
+        text,
         authorName: (p.authorName ?? SYSTEM_AUTHOR_NAME) as string,
         authorId: SYSTEM_AUTHOR_ID,
         createdAt: (p.createdAt ?? p.lastUpdated ?? 0) as number,
         likeCount: (p.likeCount ?? 0) as number,
         commentCount: (p.commentCount ?? 0) as number,
-        taggedUsers: Array.isArray(p.taggedUsers) ? (p.taggedUsers as { id: string; name: string; username: string }[]) : undefined,
+        taggedUsers: keepFresh ? tagged : (Array.isArray(p.taggedUsers) ? (p.taggedUsers as { id: string; name: string; username: string }[]) : undefined),
         reactions: p.reactions && typeof p.reactions === "object" ? (p.reactions as Record<string, number>) : undefined,
         isSystem: true,
       };
     }
     const now = Date.now();
-    const tagged = [{ id: m.user.id, name: m.user.name, username: m.user.username ?? "" }];
     await setDoc(ref, {
       id: m.id,
       authorName: SYSTEM_AUTHOR_NAME,
@@ -169,6 +176,20 @@ export async function ensureSystemPost(m: SystemMilestone): Promise<FeedPost | n
     return { id: m.id, text: m.text, authorName: SYSTEM_AUTHOR_NAME, authorId: SYSTEM_AUTHOR_ID, createdAt: now, likeCount: 0, commentCount: 0, taggedUsers: tagged, isSystem: true };
   } catch {
     return null;
+  }
+}
+
+/** Soft-delete a system post by id (idempotent; only writes if it exists and isn't already gone).
+ *  Used to retire a superseded milestone card (e.g. an old "#1 builder" tier post). */
+export async function softDeleteSystemPost(id: string): Promise<void> {
+  try {
+    const ref = doc(db, "posts", id);
+    const snap = await getDoc(ref);
+    if (snap.exists() && snap.data().isDeleted !== true) {
+      await setDoc(ref, { isDeleted: true, lastUpdated: Date.now() }, { merge: true });
+    }
+  } catch {
+    /* best-effort */
   }
 }
 

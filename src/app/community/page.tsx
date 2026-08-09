@@ -4,13 +4,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
-import { getFeed, createPost, ensureSystemPost, getReactionMap, setReaction, hotScore, SYSTEM_AUTHOR_ID, type FeedPost, type CourseTag, type DiscTag, type SharedRound } from "@/lib/feed";
+import { getFeed, createPost, ensureSystemPost, softDeleteSystemPost, getReactionMap, setReaction, hotScore, SYSTEM_AUTHOR_ID, type FeedPost, type CourseTag, type DiscTag, type SharedRound } from "@/lib/feed";
 import RoundPicker from "@/components/community/RoundPicker";
 import { getPlayedCourses } from "@/lib/rounds";
 import CourseTagPicker from "@/components/community/CourseTagPicker";
 import DiscTagPicker from "@/components/community/DiscTagPicker";
 import UserTagPicker from "@/components/community/UserTagPicker";
-import { getLeaderboard, getLeaderboardWithRegion, getMostActivePlayers, type MentionUser, type LeaderRow, type GeoLeaderRow, type ActiveRow } from "@/lib/leaderboard";
+import { getLeaderboard, getLeaderboardWithRegion, type MentionUser, type LeaderRow, type GeoLeaderRow } from "@/lib/leaderboard";
 import { followUser, unfollowUser } from "@/lib/follow";
 import { createNotification } from "@/lib/notifications";
 import { uploadPostImage } from "@/lib/postImage";
@@ -59,32 +59,6 @@ function PostSkeleton() {
   );
 }
 
-// Counts up 0 → value on mount (community-wide numbers get this treatment, in blue).
-function CountUp({ to, className }: { to: number; className?: string }) {
-  const [n, setN] = useState(0);
-  useEffect(() => {
-    let raf = 0; const start = performance.now(); const dur = 900;
-    const tick = (t: number) => { const p = Math.min(1, (t - start) / dur); setN(Math.round(to * (1 - Math.pow(1 - p, 3)))); if (p < 1) raf = requestAnimationFrame(tick); };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [to]);
-  return <span className={className}>{n.toLocaleString()}</span>;
-}
-
-type PulseMetric = { label: string; value: number; plus: boolean };
-function Pulse({ metrics }: { metrics: PulseMetric[] }) {
-  if (metrics.length === 0) return null;
-  return (
-    <div className="mt-5 flex flex-wrap items-center gap-x-7 gap-y-2 font-mono text-[10.5px] uppercase tracking-[0.18em] text-[var(--cream)]/75">
-      {metrics.map((m) => (
-        <span key={m.label} className="inline-flex items-baseline gap-2">
-          <CountUp to={m.value} className="text-lg font-extrabold tracking-normal text-[#8FBDE3]" />{m.plus ? <span className="-ml-1.5 text-[#8FBDE3]">+</span> : null}<span>{m.label}</span>
-        </span>
-      ))}
-    </div>
-  );
-}
-
 // Dense, heavily-darkened, slowly-drifting mosaic of real member/course imagery. Texture only.
 function HeroMosaic({ images }: { images: string[] }) {
   if (images.length === 0) return null;
@@ -97,79 +71,6 @@ function HeroMosaic({ images }: { images: string[] }) {
           <img key={i} src={src} alt="" loading="lazy" decoding="async" className="aspect-square w-full rounded-lg object-cover" onError={(e) => { e.currentTarget.style.visibility = "hidden"; }} />
         ))}
       </div>
-    </div>
-  );
-}
-
-type SpotItem = { id: string; name: string; username?: string; count: number; photo?: string; cover?: string };
-
-// Avatar with a graceful fallback chain: profile photo → blurred latest-course-cover + monogram →
-// refined monogram with a gold ring. Never a bare letter on a flat circle.
-function PodiumAvatar({ item, big }: { item: SpotItem; big: boolean }) {
-  const size = big ? "h-24 w-24" : "h-16 w-16";
-  const mono = (item.name || "?").charAt(0).toUpperCase();
-  if (item.photo) {
-    return (
-      <span className={`relative block overflow-hidden rounded-full border-2 border-[var(--gold)] p-[3px] ${size}`}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={item.photo} alt="" className="h-full w-full rounded-full object-cover" />
-      </span>
-    );
-  }
-  if (item.cover) {
-    return (
-      <span className={`relative block overflow-hidden rounded-full ring-2 ring-[var(--gold)] ${size}`}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={item.cover} alt="" className="absolute inset-0 h-full w-full scale-110 object-cover blur-[6px] brightness-[0.45]" />
-        <span className={`relative grid h-full w-full place-items-center font-[family-name:var(--font-heading)] font-bold text-[var(--cream)] ${big ? "text-3xl" : "text-xl"}`}>{mono}</span>
-      </span>
-    );
-  }
-  return (
-    <span className={`grid place-items-center rounded-full border-2 border-[var(--gold)] bg-[radial-gradient(circle_at_30%_25%,rgba(232,181,96,0.22),var(--bg-mid))] font-[family-name:var(--font-heading)] font-bold text-[var(--gold)] ${size} ${big ? "text-3xl" : "text-xl"}`}>{mono}</span>
-  );
-}
-function PodiumPerson({ item, big }: { item: SpotItem; big: boolean }) {
-  return (
-    <div className={`flex flex-col items-center text-center ${big ? "" : "opacity-70"}`}>
-      <span className="relative">
-        {big && <span aria-hidden className="absolute -inset-3 rounded-full" style={{ background: "radial-gradient(closest-side, rgba(232,181,96,0.4), transparent)" }} />}
-        <span className="relative block">{item.username ? <Link href={`/u/${item.username}`}><PodiumAvatar item={item} big={big} /></Link> : <PodiumAvatar item={item} big={big} />}</span>
-      </span>
-      <div className={`mt-3 max-w-[8rem] truncate font-[family-name:var(--font-heading)] font-extrabold tracking-tight text-[var(--cream)] ${big ? "text-xl" : "text-sm"}`}>{item.name}</div>
-      {big && item.username && <Link href={`/u/${item.username}`} className="text-sm text-[var(--sage)] hover:text-[var(--gold)]">@{item.username}</Link>}
-      <div className={`font-[family-name:var(--font-heading)] font-black leading-none tracking-[-0.02em] text-[var(--gold)] ${big ? "mt-2.5 text-5xl sm:text-6xl" : "mt-1.5 text-2xl"}`}>{item.count}</div>
-    </div>
-  );
-}
-function Podium({ items, metric }: { items: SpotItem[]; metric: string }) {
-  const [page, setPage] = useState(0);
-  const pages = Math.max(1, Math.ceil(items.length / 3));
-  useEffect(() => { setPage(0); }, [metric]); // reset when the source (toggle) changes
-  useEffect(() => {
-    if (pages <= 1) return;
-    const t = setInterval(() => setPage((p) => (p + 1) % pages), 8000);
-    return () => clearInterval(t);
-  }, [pages]);
-  if (items.length === 0) return null;
-  const p = Math.min(page, pages - 1);
-  const trio = items.slice(p * 3, p * 3 + 3); // [1st, 2nd, 3rd] on this page
-  const [c, l, r] = [trio[0], trio[1], trio[2]];
-  return (
-    <div className="flex flex-col items-center">
-      <div key={`${metric}-${p}`} className="hero-fade flex items-end justify-center gap-5 sm:gap-9">
-        <div className="w-24 shrink-0">{l && <PodiumPerson item={l} big={false} />}</div>
-        {c && <PodiumPerson item={c} big />}
-        <div className="w-24 shrink-0">{r && <PodiumPerson item={r} big={false} />}</div>
-      </div>
-      <div className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--sage-dim)]">{metric}</div>
-      {pages > 1 && (
-        <div className="mt-4 flex items-center gap-2">
-          {Array.from({ length: pages }, (_, idx) => (
-            <button key={idx} onClick={() => setPage(idx)} aria-label={`Page ${idx + 1}`} className={`h-1.5 rounded-full transition-all ${idx === p ? "w-5 bg-[var(--gold)]" : "w-1.5 bg-white/25 hover:bg-white/40"}`} />
-          ))}
-        </div>
-      )}
     </div>
   );
 }
@@ -214,8 +115,6 @@ export default function CommunityPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [newThread, setNewThread] = useState(false);
   const [newMeetup, setNewMeetup] = useState(false);
-  const [heroMode, setHeroMode] = useState<"builders" | "players" | "active">("builders");
-  const [activePlayers, setActivePlayers] = useState<ActiveRow[]>([]);
   // Return mechanics: unread dots on the tabs + a "N new posts" pill.
   const [seen, setSeen] = useState<{ feed: number; forums: number }>({ feed: 0, forums: 0 });
   const [pendingNew, setPendingNew] = useState<FeedPost[]>([]);
@@ -237,7 +136,6 @@ export default function CommunityPage() {
     getTopBuilders(12).then((b) => { if (!alive) return; setBuilders(b); getRanksFor(b.map((x) => x.id).filter(Boolean)).then((r) => alive && setBuilderRanks(r)).catch(() => {}); }).catch(() => {});
     // Right-rail action modules: region-aware players + courses that need a cover.
     getLeaderboardWithRegion(150).then((rows) => alive && setGeoRows(rows)).catch(() => {});
-    getMostActivePlayers(12).then((rows) => alive && setActivePlayers(rows)).catch(() => {});
     // Courses that need help: no cover, or no reviews yet. Keep coords for nearest-to-you sorting.
     getAllCourses().then((cs) => { if (alive) setImproveCourses(cs.filter((c) => c.name && (!c.coverPhotoUrl || !c.reviewCount)).slice(0, 1200)); }).catch(() => {});
     // Best-effort current location so "near you" is actually near you (falls back to home-course region).
@@ -397,63 +295,54 @@ export default function CommunityPage() {
     posts.forEach((p) => { if (p.authorPhotoUrl) urls.add(p.authorPhotoUrl); if (p.imageUrl) urls.add(p.imageUrl); });
     return [...urls].slice(0, 48);
   }, [topPlayers, builders, builderRanks, posts]);
-  // Hero podium — top builders (courses mapped), up to 3 pages of 3.
-  const builderPodium = useMemo(() => builders.filter((b) => b.count > 0).slice(0, 9).map((b) => ({ id: b.id, name: b.name, username: b.username, count: b.count, photo: builderRanks.get(b.id)?.photo, cover: b.cover })), [builders, builderRanks]);
-  // Top players by Game IQ (geoRows is already ordered by gameIQ desc).
-  const playerPodium = useMemo(() => geoRows.filter((r) => r.username && r.gameIQ > 0).slice(0, 9).map((r) => ({ id: r.id, name: r.name, username: r.username, count: r.gameIQ, photo: r.photo })), [geoRows]);
-  // Most active players by total rounds logged.
-  const activePodium = useMemo(() => activePlayers.filter((r) => r.username && r.rounds > 0).slice(0, 9).map((r) => ({ id: r.id, name: r.name, username: r.username, count: r.rounds, photo: r.photo })), [activePlayers]);
-  // Radius milestone posts. We create them as REAL `posts` docs with a deterministic id, so the
-  // first signed-in visitor after a threshold is crossed writes it once (Firestore rules allow any
-  // authed write; no server needed) and everyone else no-ops. Being real posts, they're likeable +
-  // commentable through the same paths as any post. Honest: each reflects a genuinely-crossed tier.
+  // Radius milestone posts — created as REAL `posts` docs with deterministic ids so the first
+  // signed-in visitor writes them once (Firestore rules allow any authed write; no server) and
+  // everyone else no-ops. Being real posts, they're likeable + commentable like any post.
+  //  • The #1-builder card is a LIVE standing: a single `sys_topbuilder` doc that always shows the
+  //    exact current leader and their exact course count (kept fresh — that count is what makes them #1).
+  //  • A second card celebrates a non-#1 builder who just crossed a round-number tier (25/50/100).
   useEffect(() => {
     if (!user || builders.length === 0) return;
-    const tiers = [100, 50, 25];
-    const picks: { b: Builder; tier: number; lead: boolean }[] = [];
     const top = builders[0];
-    const t0 = top?.username ? tiers.find((t) => top.count >= t) : undefined;
-    if (top?.username && t0) picks.push({ b: top, tier: t0, lead: true });
-    for (const b of builders.slice(1)) {
-      if (!b.username) continue;
-      const t = tiers.find((x) => b.count >= x);
-      if (t) { picks.push({ b, tier: t, lead: false }); break; }
-    }
-    if (picks.length === 0) return;
+    if (!top?.username) return;
     let alive = true;
-    Promise.all(picks.map(({ b, tier, lead }) => ensureSystemPost({
-      id: `sys_builder_${tier}_${b.id}`,
-      text: lead
-        ? `🏆 @${b.username} just crossed ${tier} courses mapped — the community's #1 course builder. Congrats! 🎉`
-        : `🏗️ @${b.username} just crossed ${tier} courses mapped on Radius — a huge contribution to the community!`,
-      user: { id: b.id, name: b.name, username: b.username },
-    }))).then((res) => {
+    (async () => {
+      const made: FeedPost[] = [];
+      const removeIds: string[] = [];
+      const lead = await ensureSystemPost({
+        id: "sys_topbuilder",
+        text: `🏆 @${top.username} is Radius's #1 course builder with ${top.count} courses mapped. Congrats! 🎉`,
+        user: { id: top.id, name: top.name, username: top.username },
+      }, true); // keepFresh — updates text/tag when the leader or their count changes
+      if (lead) made.push(lead);
+      // Retire any legacy per-builder "#1" tier card for the current champion (older format baked the
+      // #1 claim into a "crossed 100" tier post) — the standing card above now owns that.
+      for (const t of [100, 50, 25]) removeIds.push(`sys_builder_${t}_${top.id}`);
+      await Promise.all(removeIds.map((id) => softDeleteSystemPost(id)));
+      // A non-#1 builder who just crossed a tier — a genuine milestone, frozen at the crossing.
+      const tiers = [100, 50, 25];
+      for (const b of builders.slice(1)) {
+        if (!b.username) continue;
+        const t = tiers.find((x) => b.count >= x);
+        if (t) {
+          const p = await ensureSystemPost({
+            id: `sys_builder_${t}_${b.id}`,
+            text: `🏗️ @${b.username} just crossed ${t} courses mapped on Radius — a huge contribution to the community!`,
+            user: { id: b.id, name: b.name, username: b.username },
+          });
+          if (p) made.push(p);
+          break;
+        }
+      }
       if (!alive) return;
-      const made = res.filter((p): p is FeedPost => !!p);
-      if (!made.length) return;
       setPosts((prev) => {
-        const have = new Set(prev.map((p) => p.id));
-        const add = made.filter((p) => !have.has(p.id));
-        return add.length ? [...add, ...prev] : prev;
+        const madeById = new Map(made.map((p) => [p.id, p]));
+        const kept = prev.filter((p) => !removeIds.includes(p.id) && !madeById.has(p.id));
+        return [...made, ...kept];
       });
-    }).catch(() => {});
+    })().catch(() => {});
     return () => { alive = false; };
   }, [user, builders]);
-  // Pulse — honest 7-day counts from the loaded feed. Metrics below a floor of 10 hide; fewer than two hides the strip.
-  const pulse = useMemo(() => {
-    const wk = Date.now() - 7 * 86400_000;
-    const recent = posts.filter((p) => p.createdAt >= wk);
-    const players = new Set(recent.map((p) => p.authorId).filter(Boolean)).size;
-    const rounds = recent.filter((p) => p.linkedCourseName).length;
-    const saturated = posts.length > 0 && recent.length === posts.length; // whole loaded feed is within the window
-    const metrics = [
-      { label: "posts this week", value: recent.length, plus: saturated },
-      { label: "active players", value: players, plus: false },
-      { label: "rounds shared", value: rounds, plus: false },
-    ].filter((m) => m.value >= 10);
-    return metrics.length >= 2 ? metrics : [];
-  }, [posts]);
-
   const onPickImage = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (f) { setImageFile(f); setImagePreview(URL.createObjectURL(f)); }
@@ -577,58 +466,45 @@ export default function CommunityPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[var(--bg-deep)] text-[var(--cream)]">
-      {/* ===== SECTION 1 — layered hero (mosaic · spotlight · pulse) ===== */}
-      <section className="relative flex h-[100svh] min-h-[620px] w-full flex-col overflow-hidden">
+    <div className="relative min-h-screen bg-[var(--bg-deep)] text-[var(--cream)]">
+      {/* Ambient, slowly-drifting mosaic behind ALL content — the old hero photo, now page texture. */}
+      <div aria-hidden className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
         <HeroMosaic images={mosaicImages} />
-        <div aria-hidden className="pointer-events-none absolute inset-0 bg-[var(--bg-deep)]/80" />
-        <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_75%_at_50%_-8%,transparent_42%,rgba(11,17,14,0.65))]" />
-        <div aria-hidden className="pointer-events-none absolute -right-40 -top-44 h-[28rem] w-[28rem] rounded-full bg-[radial-gradient(circle,rgba(246,193,101,0.14),transparent_70%)]" />
-        {/* generous fade — the mosaic dissolves into the page ground, no seam */}
-        <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-[46vh] bg-[linear-gradient(to_top,var(--bg-deep)_16%,transparent)]" />
-        <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 pb-16 pt-28">
-          <div>
-            <div className="mb-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.24em] text-[var(--gold)]">The home of disc golf</div>
-            <h1 className="font-[family-name:var(--font-heading)] text-6xl font-black leading-[0.95] tracking-[-0.04em] text-[var(--cream)] sm:text-7xl md:text-[5.5rem]">Community</h1>
-            <Pulse metrics={pulse} />
+        <div className="absolute inset-0 bg-[var(--bg-deep)]/85" />
+        <div className="absolute inset-0 bg-[radial-gradient(120%_70%_at_50%_-10%,transparent_45%,rgba(11,17,14,0.72))]" />
+        <div className="absolute -right-40 -top-44 h-[28rem] w-[28rem] rounded-full bg-[radial-gradient(circle,rgba(246,193,101,0.12),transparent_70%)]" />
+      </div>
+
+      {/* Compact sticky header — small tagline + Community title on the left, Feed/Forums toggle far right. */}
+      <div className="sticky top-[72px] z-30 border-b border-white/[0.06] bg-[var(--bg-deep)]/85 backdrop-blur-md">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-3">
+          <div className="flex items-baseline gap-3">
+            <span className="hidden font-mono text-[10px] font-bold uppercase tracking-[0.24em] text-[var(--gold)] sm:inline">The home of disc golf</span>
+            <h1 className="font-[family-name:var(--font-heading)] text-3xl font-black leading-none tracking-[-0.03em] text-[var(--cream)] sm:text-4xl">Community</h1>
           </div>
-          <div className="flex flex-1 flex-col items-center justify-center gap-7 pb-4">
-            <div className="inline-flex rounded-full bg-white/[0.06] p-1 backdrop-blur-md">
-              {([["builders", "Builders"], ["players", "Top players"], ["active", "Most active"]] as const).map(([k, label]) => (
-                <button key={k} onClick={() => setHeroMode(k)} className={`rounded-full px-4 py-1.5 font-mono text-[11px] font-bold uppercase tracking-wide transition-colors ${heroMode === k ? "bg-[var(--gold)] text-[#141b16]" : "text-[var(--text-body)] hover:text-[var(--cream)]"}`}>{label}</button>
-              ))}
-            </div>
-            {(() => {
-              const items = heroMode === "players" ? playerPodium : heroMode === "active" ? activePodium : builderPodium;
-              const metric = heroMode === "players" ? "Game IQ" : heroMode === "active" ? "rounds played" : "courses mapped";
-              return <Podium items={items} metric={metric} />;
-            })()}
+          <div className="inline-flex shrink-0 rounded-full bg-white/[0.06] p-1 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.7)]">
+            {TABS.map((t) => {
+              const unread = t.key !== tab && ((t.key === "feed" && unreadFeed) || (t.key === "forums" && unreadForums));
+              return (
+                <button key={t.key} onClick={() => setTab(t.key)} className={`relative rounded-full px-5 py-2 text-sm font-bold transition-colors ${tab === t.key ? "bg-[var(--gold)] text-[#141b16]" : "text-[var(--text-body)] hover:text-[var(--cream)]"}`}>
+                  {t.label}
+                  {unread && <span className="absolute right-2.5 top-1.5 h-2 w-2 rounded-full bg-[#8FBDE3] ring-2 ring-[var(--bg-deep)]" />}
+                </button>
+              );
+            })}
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* ===== SECTION 2 — video rail, directly after the hero ===== */}
-      <div className="mx-auto max-w-7xl px-6 pt-10"><HighlightsBar /></div>
+      {/* Video rail */}
+      <div className="relative z-10 mx-auto max-w-7xl px-6 pt-6"><HighlightsBar /></div>
 
-      {/* ===== SECTION 3 — feed (sticky tabs; composer sits at the top of the feed column) ===== */}
-      <div className="mx-auto max-w-7xl px-6 pb-10 pt-6">
-        <div className="sticky top-[58px] z-30 -mx-6 mb-5 bg-[var(--bg-deep)]/80 px-6 py-2.5 backdrop-blur-md">
-          <div className="inline-flex rounded-full bg-white/[0.06] p-1 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.7)]">
-          {TABS.map((t) => {
-            const unread = t.key !== tab && ((t.key === "feed" && unreadFeed) || (t.key === "forums" && unreadForums));
-            return (
-              <button key={t.key} onClick={() => setTab(t.key)} className={`relative rounded-full px-5 py-2 text-sm font-bold transition-colors ${tab === t.key ? "bg-[var(--gold)] text-[#141b16]" : "text-[var(--text-body)] hover:text-[var(--cream)]"}`}>
-                {t.label}
-                {unread && <span className="absolute right-2.5 top-1.5 h-2 w-2 rounded-full bg-[#8FBDE3] ring-2 ring-[var(--bg-deep)]" />}
-              </button>
-            );
-          })}
-          </div>
-        </div>
+      {/* Feed */}
+      <div className="relative z-10 mx-auto max-w-7xl px-6 pb-10 pt-6">
         <div className="grid gap-5 lg:grid-cols-[230px_1fr_300px]">
           {/* LEFT RAIL */}
           <aside className="hidden lg:block">
-            <div className="sticky top-24 space-y-4">
+            <div className="sticky top-[148px] space-y-4">
               {tab === "feed" && (
                 <div className="space-y-0.5">
                   {(["hot", "top", "new", "following"] as Sort[]).map((s) => (
@@ -726,15 +602,15 @@ export default function CommunityPage() {
 
           {/* RIGHT RAIL — borderless modules (label + list) */}
           <aside className="hidden lg:block">
-            <div className="sticky top-24 space-y-8">
-              {/* Players near you — grows the follow graph */}
+            <div className="sticky top-[148px] space-y-8">
+              {/* Suggested for you — grows the follow graph (nearest players first) */}
               <div>
                 <div className="mb-3 flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--gold)]">📍 Players near you</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--gold)]">✨ Suggested for you</span>
                   <Link href="/leaderboard" className="text-[11px] font-bold text-[var(--gold)] hover:underline">All →</Link>
                 </div>
                 {playersNearYou.length === 0 ? (
-                  <p className="text-sm text-[var(--sage-dim)]">Finding players in your area…</p>
+                  <p className="text-sm text-[var(--sage-dim)]">Finding players to suggest…</p>
                 ) : (
                   <div className="space-y-2.5">
                     {playersNearYou.map((p) => (
@@ -785,7 +661,7 @@ export default function CommunityPage() {
 
       {/* "N new posts" — appears once you've scrolled down and fresh posts have arrived; jumps to top */}
       {tab === "feed" && pendingNew.length > 0 && scrolledDown && (
-        <button onClick={showNewPosts} className="fixed left-1/2 top-[74px] z-40 inline-flex -translate-x-1/2 items-center gap-2 rounded-full bg-[#8FBDE3] px-4 py-2 text-sm font-bold text-[#0b110e] shadow-[0_12px_30px_-10px_rgba(0,0,0,0.7)] transition-transform hover:-translate-y-0.5 hover:-translate-x-1/2">
+        <button onClick={showNewPosts} className="fixed left-1/2 top-[140px] z-40 inline-flex -translate-x-1/2 items-center gap-2 rounded-full bg-[#8FBDE3] px-4 py-2 text-sm font-bold text-[#0b110e] shadow-[0_12px_30px_-10px_rgba(0,0,0,0.7)] transition-transform hover:-translate-y-0.5 hover:-translate-x-1/2">
           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
           {pendingNew.length} new post{pendingNew.length === 1 ? "" : "s"}
         </button>
