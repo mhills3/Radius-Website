@@ -4,16 +4,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
-import { getFeed, createPost, getReactionMap, setReaction, getTrendingDiscs, hotScore, type FeedPost, type TrendingDisc, type CourseTag, type DiscTag, type SharedRound } from "@/lib/feed";
+import { getFeed, createPost, getReactionMap, setReaction, hotScore, type FeedPost, type CourseTag, type DiscTag, type SharedRound } from "@/lib/feed";
 import RoundPicker from "@/components/community/RoundPicker";
 import CourseTagPicker from "@/components/community/CourseTagPicker";
 import DiscTagPicker from "@/components/community/DiscTagPicker";
 import UserTagPicker from "@/components/community/UserTagPicker";
-import { getLeaderboard, type MentionUser, type LeaderRow } from "@/lib/leaderboard";
+import { getLeaderboard, getLeaderboardWithRegion, type MentionUser, type LeaderRow, type GeoLeaderRow } from "@/lib/leaderboard";
+import { followUser, unfollowUser } from "@/lib/follow";
 import { createNotification } from "@/lib/notifications";
 import { uploadPostImage } from "@/lib/postImage";
 import { getThreads, getMeetups, getRanksFor, FORUM_CATEGORIES, categoryColor, type Thread, type Meetup, type RankInfo } from "@/lib/community";
-import { getTopBuilders, type Builder } from "@/lib/courses";
+import { getTopBuilders, getAllCourses, slugify, type Builder, type Course } from "@/lib/courses";
 import { getFollowingIds, myCanonicalId } from "@/lib/follow";
 import PostCard from "@/components/community/PostCard";
 import PostDetail from "@/components/community/PostDetail";
@@ -173,10 +174,12 @@ export default function CommunityPage() {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [meetups, setMeetups] = useState<Meetup[]>([]);
   const [ranks, setRanks] = useState<Map<string, RankInfo>>(new Map());
-  const [trending, setTrending] = useState<TrendingDisc[]>([]);
   const [topPlayers, setTopPlayers] = useState<LeaderRow[]>([]);
   const [builders, setBuilders] = useState<Builder[]>([]);
   const [builderRanks, setBuilderRanks] = useState<Map<string, RankInfo>>(new Map());
+  const [geoRows, setGeoRows] = useState<GeoLeaderRow[]>([]);
+  const [improveCourses, setImproveCourses] = useState<Course[]>([]);
+  const [myCid, setMyCid] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [reactionMap, setReactionMap] = useState<Record<string, string>>({});
   const [following, setFollowing] = useState<Set<string>>(new Set());
@@ -208,10 +211,10 @@ export default function CommunityPage() {
 
   useEffect(() => {
     let alive = true;
-    Promise.all([getFeed(20), getThreads(50), getMeetups(30), getTrendingDiscs(8)])
-      .then(([p, t, m, tr]) => {
+    Promise.all([getFeed(20), getThreads(50), getMeetups(30)])
+      .then(([p, t, m]) => {
         if (!alive) return;
-        setPosts(p); setThreads(t); setMeetups(m); setTrending(tr); setLoading(false);
+        setPosts(p); setThreads(t); setMeetups(m); setLoading(false);
         if (p.length < 20) setHasMore(false);
         const ids = [...p.map((x) => x.authorId), ...t.map((x) => x.authorId)].filter(Boolean) as string[];
         getRanksFor(ids).then((r) => alive && setRanks(r)).catch(() => {});
@@ -220,14 +223,34 @@ export default function CommunityPage() {
     getLeaderboard(6).then((rows) => alive && setTopPlayers(rows)).catch(() => {});
     // Top builders drive the hero spotlight; their rank photos give avatars for it and the mosaic.
     getTopBuilders(12).then((b) => { if (!alive) return; setBuilders(b); getRanksFor(b.map((x) => x.id).filter(Boolean)).then((r) => alive && setBuilderRanks(r)).catch(() => {}); }).catch(() => {});
+    // Right-rail action modules: region-aware players + courses that need a cover.
+    getLeaderboardWithRegion(150).then((rows) => alive && setGeoRows(rows)).catch(() => {});
+    getAllCourses().then((cs) => { if (alive) setImproveCourses(cs.filter((c) => !c.coverPhotoUrl && c.name).slice(0, 400)); }).catch(() => {});
     return () => { alive = false; };
   }, []);
   useEffect(() => {
     if (user) {
       getReactionMap(user.uid).then(setReactionMap).catch(() => {});
-      myCanonicalId(user.uid).then(getFollowingIds).then(setFollowing).catch(() => {});
-    } else { setReactionMap({}); setFollowing(new Set()); }
+      myCanonicalId(user.uid).then((cid) => { setMyCid(cid); return getFollowingIds(cid); }).then(setFollowing).catch(() => {});
+    } else { setReactionMap({}); setFollowing(new Set()); setMyCid(null); }
   }, [user]);
+  const toggleFollow = (targetId: string) => {
+    if (!user) { router.push("/login"); return; }
+    const isFollowing = following.has(targetId);
+    setFollowing((prev) => { const n = new Set(prev); if (isFollowing) n.delete(targetId); else n.add(targetId); return n; });
+    (isFollowing ? unfollowUser : followUser)(user.uid, targetId).catch(() => setFollowing((prev) => { const n = new Set(prev); if (isFollowing) n.add(targetId); else n.delete(targetId); return n; }));
+  };
+  // The signed-in player's region (from their leaderboard row) drives the "near you" modules.
+  const myRegion = useMemo(() => geoRows.find((r) => r.id === myCid) ?? undefined, [geoRows, myCid]);
+  const playersNearYou = useMemo(() => {
+    if (!myRegion || (!myRegion.state && !myRegion.country)) return [];
+    return geoRows.filter((r) => r.id !== myCid && !following.has(r.id) && r.username && (myRegion.state ? r.state === myRegion.state : r.country === myRegion.country)).slice(0, 5);
+  }, [geoRows, myRegion, myCid, following]);
+  const nearbyImprove = useMemo(() => {
+    if (!myRegion?.state) return improveCourses.slice(0, 4); // no region → just surface any that need a cover
+    const inState = improveCourses.filter((c) => c.state === myRegion.state);
+    return (inState.length >= 3 ? inState : improveCourses).slice(0, 4);
+  }, [improveCourses, myRegion]);
 
   // Load the last-seen marks (per device) so we can show unread dots on the tabs.
   useEffect(() => {
@@ -615,51 +638,57 @@ export default function CommunityPage() {
           {/* RIGHT RAIL */}
           <aside className="hidden lg:block">
             <div className="sticky top-24 space-y-4">
+              {/* Players near you — grows the follow graph */}
               <div className={`${card} p-4`}>
                 <div className="mb-3 flex items-center justify-between">
-                  <span className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-[var(--gold)]">🏆 Top players</span>
-                  <Link href="/leaderboard" className="text-[11px] font-bold text-[var(--gold)] hover:underline">View all →</Link>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--gold)]">📍 Players near you</span>
+                  <Link href="/leaderboard" className="text-[11px] font-bold text-[var(--gold)] hover:underline">All →</Link>
                 </div>
-                <div className="space-y-3">
-                  {topPlayers.length === 0 && <p className="text-sm text-[var(--sage-dim)]">—</p>}
-                  {topPlayers.map((p, i) => {
-                    const inner = (
-                      <>
-                        <span className="w-3 shrink-0 text-xs font-bold text-[var(--gold)]">{i + 1}</span>
-                        <span className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--bg-mid)] text-xs font-bold text-[var(--cream)]">
+                {playersNearYou.length === 0 ? (
+                  <p className="text-sm text-[var(--sage-dim)]">{myRegion ? "You already follow the locals 🎉 Find more on the leaderboard." : "Set a home course in the Radius app to find players near you."}</p>
+                ) : (
+                  <div className="space-y-2.5">
+                    {playersNearYou.map((p) => (
+                      <div key={p.id} className="flex items-center gap-2.5">
+                        <Link href={`/u/${p.username}`} className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--bg-mid)] text-xs font-bold text-[var(--cream)]">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           {p.photo ? <img src={p.photo} alt="" loading="lazy" className="h-full w-full object-cover" /> : p.name.charAt(0).toUpperCase()}
-                        </span>
-                        <div className="flex min-w-0 flex-1 items-center gap-1.5">
-                          <span className="truncate text-sm font-semibold text-[var(--cream)]">{p.name}</span>
-                          <span className="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold" style={{ background: `${p.color}22`, color: p.color }}>{p.tier}</span>
+                        </Link>
+                        <div className="min-w-0 flex-1">
+                          <Link href={`/u/${p.username}`} className="block truncate text-sm font-semibold text-[var(--cream)] hover:text-[var(--gold)]">{p.name}</Link>
+                          <div className="truncate text-[11px] text-[var(--sage-dim)]">{p.state || p.country}</div>
                         </div>
-                        <span className="text-xs font-bold text-[var(--text-body)]">{p.gameIQ}</span>
-                      </>
-                    );
-                    return p.username ? (
-                      <Link key={p.id + i} href={`/u/${p.username}`} className="flex items-center gap-3 rounded-lg -mx-1 px-1 py-0.5 hover:bg-white/[0.04]">{inner}</Link>
-                    ) : (
-                      <div key={p.id + i} className="flex items-center gap-3">{inner}</div>
-                    );
-                  })}
-                </div>
-              </div>
-              <div className={`${card} p-4`}>
-                <div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-[var(--gold)]">🔥 Trending discs</div>
-                {trending.length === 0 ? <p className="text-sm text-[var(--sage-dim)]">—</p> : (
-                  <div className="space-y-2.5">
-                    {trending.map((d, i) => (
-                      <div key={d.name} className="flex items-center gap-3"><span className="w-3 shrink-0 text-xs font-bold text-[var(--gold)]">{i + 1}</span><span className="flex-1 truncate text-sm font-semibold text-[var(--cream)]">{d.name}</span><span className="text-xs text-[var(--sage-dim)]">{d.throws.toLocaleString()}</span></div>
+                        <button onClick={() => toggleFollow(p.id)} className="shrink-0 rounded-full bg-[#8FBDE3]/15 px-3 py-1 text-xs font-bold text-[#8FBDE3] transition-colors hover:bg-[#8FBDE3]/25">Follow</button>
+                      </div>
                     ))}
                   </div>
                 )}
               </div>
-              <div className="rounded-2xl bg-[var(--bg-mid)] p-5">
-                <div className="font-[family-name:var(--font-heading)] text-lg font-bold">Your hub for disc golf</div>
-                <p className="mt-1 text-sm text-[var(--text-body)]">Rounds, gear talk, forums, and meetups — all in one place.</p>
-                {!user && <Link href="/login" className="mt-4 inline-block rounded-full bg-[var(--gold)] px-5 py-2.5 text-sm font-bold text-[#16221b] hover:bg-[var(--gold-bright)]">Join free</Link>}
-              </div>
+              {/* Courses to improve — drives contribution */}
+              {nearbyImprove.length > 0 && (
+                <div className={`${card} p-4`}>
+                  <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-[var(--gold)]">🛠️ Courses to improve{myRegion?.state ? ` in ${myRegion.state}` : ""}</div>
+                  <div className="space-y-2.5">
+                    {nearbyImprove.map((c) => (
+                      <div key={c.id} className="flex items-center gap-2.5">
+                        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--gold-dim)] text-base text-[var(--gold)]">⛳</span>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-semibold text-[var(--cream)]">{c.name}</div>
+                          <div className="truncate text-[11px] text-[var(--sage-dim)]">{[c.city, c.state].filter(Boolean).join(", ") || "Add a cover photo"}</div>
+                        </div>
+                        <Link href={`/courses/${slugify(c.name, c.id)}`} className="shrink-0 rounded-full bg-[var(--gold)]/15 px-3 py-1 text-xs font-bold text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/25">Improve</Link>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {!user && (
+                <div className="rounded-2xl bg-[var(--bg-mid)] p-5">
+                  <div className="font-[family-name:var(--font-heading)] text-lg font-bold">Your hub for disc golf</div>
+                  <p className="mt-1 text-sm text-[var(--text-body)]">Rounds, gear talk, forums, and meetups — all in one place.</p>
+                  <Link href="/login" className="mt-4 inline-block rounded-full bg-[var(--gold)] px-5 py-2.5 text-sm font-bold text-[#141b16] hover:bg-[var(--gold-bright)]">Join free</Link>
+                </div>
+              )}
             </div>
           </aside>
         </div>
