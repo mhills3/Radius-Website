@@ -200,9 +200,12 @@ export default function CourseDetailClient({ slug, initialCourse }: { slug: stri
 
   return (
     <div className="min-h-screen bg-[#faf8f3] text-[#16221b]">
-      {/* ===== HERO — cinematic aerial of the actual course ===== */}
+      {/* ===== HERO — the course's cover photo (falls back to a satellite aerial) ===== */}
       <div className="relative isolate flex h-[64vh] min-h-[460px] w-full flex-col overflow-hidden bg-[var(--bg-deep)]">
-        {hasGeo ? (
+        {course.coverPhotoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={course.coverPhotoUrl} alt="" className="absolute inset-0 -z-10 h-full w-full animate-[kenburns_26s_ease-in-out_infinite_alternate] object-cover" aria-hidden />
+        ) : hasGeo ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={`https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/${course.longitude},${course.latitude},13.6,0/1280x720@2x?access_token=${MAPBOX_TOKEN}`} alt="" referrerPolicy="origin" className="absolute inset-0 -z-10 h-full w-full animate-[kenburns_26s_ease-in-out_infinite_alternate] object-cover" aria-hidden />
         ) : (

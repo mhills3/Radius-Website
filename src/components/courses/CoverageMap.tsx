@@ -34,7 +34,7 @@ export default function CoverageMap({ stateCounts, countryCounts }: { stateCount
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let feats = (fc as any).features as any[];
     feats = scope === "us"
-      ? feats.filter((f) => Number(f.id) <= 56) // 50 states + DC, no territories
+      ? feats.filter((f) => Number(f.id) <= 56 && f.properties.name !== "District of Columbia") // 50 states — DC is a district, not a state; territories excluded
       : feats.filter((f) => f.properties.name !== "Antarctica");
     const proj = (scope === "us" ? geoAlbersUsa() : geoNaturalEarth1()).fitSize([W, H], { type: "FeatureCollection", features: feats });
     const pathGen = geoPath(proj);

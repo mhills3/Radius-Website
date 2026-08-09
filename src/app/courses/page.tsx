@@ -75,7 +75,8 @@ export default function CoursesPage() {
   const anyFilter = !!(search || stateFilter || holes !== "all" || freeOnly);
 
   // geo + fun stats — canonicalState dedupes "CA" vs "California" so this matches the coverage map.
-  const usStateCount = useMemo(() => new Set(courses.map((c) => canonicalState(c.state)).filter(Boolean)).size, [courses]);
+  // DC is a federal district, not a state — exclude it so the count tops out at 50.
+  const usStateCount = useMemo(() => new Set(courses.map((c) => canonicalState(c.state)).filter((s) => s && s !== "DISTRICT OF COLUMBIA")).size, [courses]);
   const countryCount = useMemo(() => new Set(courses.map((c) => countryOf(c)).filter((co) => co && co !== "International")).size, [courses]);
   const topStates = useMemo(() => {
     const m = new Map<string, number>();
