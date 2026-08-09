@@ -489,14 +489,14 @@ export default function CommunityPage() {
           {/* CENTER */}
           <div className="min-w-0">
             {tab === "feed" && (
-              <div className="space-y-3">
-                {loading && [0, 1, 2].map((i) => <PostSkeleton key={i} />)}
+              <div className="space-y-0">
+                {loading && <div className="space-y-3">{[0, 1, 2].map((i) => <PostSkeleton key={i} />)}</div>}
 
                 {sort === "following" && !user && <p className={`${card} p-8 text-center text-sm text-[var(--sage-dim)]`}><Link href="/login" className="font-bold text-[var(--gold)] hover:underline">Sign in</Link> to see rounds from players you follow.</p>}
                 {sort === "following" && user && !loading && feedList.length === 0 && <p className={`${card} p-8 text-center text-sm text-[var(--sage-dim)]`}>You&apos;re not following anyone with posts yet. Find players on the <Link href="/leaderboard" className="font-bold text-[var(--gold)] hover:underline">leaderboard</Link> and tap Follow.</p>}
 
                 {sort !== "following" && !loading && featured && (
-                  <div className="relative rounded-2xl bg-[var(--gold)]/[0.07] p-2 shadow-[0_20px_50px_-26px_rgba(232,181,96,0.45)]">
+                  <div className="relative mb-3 rounded-2xl bg-[var(--gold)]/[0.07] p-2 shadow-[0_20px_50px_-26px_rgba(232,181,96,0.45)]">
                     <div className="absolute -top-2.5 left-4 z-10 rounded-full bg-[var(--gold)] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#141b16]">📌 Featured</div>
                     <PostCard post={featured} rank={featured.authorId ? ranks.get(featured.authorId) : undefined} myReaction={reactionMap[featured.id]} onReact={(t) => onReact(featured.id, t)} onOpen={() => setOpen(featured)} />
                   </div>

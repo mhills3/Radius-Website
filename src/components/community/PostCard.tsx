@@ -12,7 +12,7 @@ import MentionText from "@/components/community/MentionText";
 const fmtScore = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`);
 const scoreColor = (n: number) => (n < 0 ? "#5fcf80" : n === 0 ? "var(--cream)" : "#f08c8c");
 
-function Avatar({ url, name, size = 40 }: { url?: string; name: string; size?: number }) {
+function Avatar({ url, name, size = 32 }: { url?: string; name: string; size?: number }) {
   // Initial sits underneath; the photo overlays it and removes itself on load error, so a broken
   // photo URL falls back cleanly to the letter instead of a broken-image icon.
   return (
@@ -42,40 +42,40 @@ export default function PostCard({ post, rank, myReaction, onReact, onOpen }: { 
     </>
   );
   return (
-    <article className="rounded-2xl bg-white/[0.045] p-4 shadow-[0_16px_40px_-24px_rgba(0,0,0,0.65)] transition-colors hover:bg-white/[0.06]">
+    <article className="border-b border-white/[0.055] py-3.5">
       {handle ? (
-        <Link href={post.authorId ? `/u/${handle}?id=${post.authorId}` : `/u/${handle}`} onClick={(e) => e.stopPropagation()} className="group/author flex items-center gap-3">{authorRow}</Link>
+        <Link href={post.authorId ? `/u/${handle}?id=${post.authorId}` : `/u/${handle}`} onClick={(e) => e.stopPropagation()} className="group/author flex items-center gap-2.5">{authorRow}</Link>
       ) : (
-        <div className="flex items-center gap-3">{authorRow}</div>
+        <div className="flex items-center gap-2.5">{authorRow}</div>
       )}
 
-      {post.text && <MentionText text={post.text} tagged={post.taggedUsers} className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-[var(--text-body)]" />}
+      {post.text && <MentionText text={post.text} tagged={post.taggedUsers} className="mt-2 whitespace-pre-wrap text-[15px] leading-snug text-[var(--text-body)]" />}
 
       {post.linkedCourseName && (
-        <div className="mt-3 flex items-center gap-3 rounded-xl bg-white/[0.05] p-3">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[var(--gold-dim)] text-lg text-[var(--gold)]">⛳</span>
+        <Link href={post.taggedCourseSlug ? `/courses/${post.taggedCourseSlug}` : "#"} onClick={(e) => { if (!post.taggedCourseSlug) e.preventDefault(); e.stopPropagation(); }} className="mt-2 flex items-center gap-2.5 rounded-lg bg-white/[0.04] p-2.5 transition-colors hover:bg-white/[0.06]">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-[var(--gold-dim)] text-base text-[var(--gold)]">⛳</span>
           <div className="min-w-0 flex-1">
-            <div className="truncate font-bold text-[var(--cream)]">{post.linkedCourseName}</div>
-            <div className="text-xs text-[var(--sage-dim)]">Round{post.holesPlayed ? ` · ${post.holesPlayed} holes` : ""}</div>
+            <div className="truncate text-sm font-bold text-[var(--cream)]">{post.linkedCourseName}</div>
+            <div className="text-[11px] text-[var(--sage-dim)]">Round{post.holesPlayed ? ` · ${post.holesPlayed} holes` : ""}</div>
           </div>
-          {post.scoreToPar != null && <span className="font-[family-name:var(--font-heading)] text-2xl font-extrabold" style={{ color: scoreColor(post.scoreToPar) }}>{fmtScore(post.scoreToPar)}</span>}
-        </div>
+          {post.scoreToPar != null && <span className="font-[family-name:var(--font-heading)] text-xl font-extrabold" style={{ color: scoreColor(post.scoreToPar) }}>{fmtScore(post.scoreToPar)}</span>}
+        </Link>
       )}
 
       {post.taggedDiscName && (
         post.taggedDiscSlug ? (
-          <Link href={`/discs/${post.taggedDiscSlug}`} onClick={(e) => e.stopPropagation()} className="mt-3 inline-flex items-center gap-2 rounded-full bg-white/[0.05] px-3 py-1.5 text-sm font-medium text-[var(--text-body)] transition-colors hover:bg-white/[0.1] hover:text-[var(--cream)]">🥏 {post.taggedDiscName}{post.taggedDiscBrand ? <span className="text-[var(--sage-dim)]">· {post.taggedDiscBrand}</span> : null}</Link>
+          <Link href={`/discs/${post.taggedDiscSlug}`} onClick={(e) => e.stopPropagation()} className="mt-2 inline-flex items-center gap-2 rounded-full bg-white/[0.05] px-2.5 py-1 text-[13px] font-medium text-[var(--text-body)] transition-colors hover:bg-white/[0.1] hover:text-[var(--cream)]">🥏 {post.taggedDiscName}{post.taggedDiscBrand ? <span className="text-[var(--sage-dim)]">· {post.taggedDiscBrand}</span> : null}</Link>
         ) : (
-          <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-white/[0.05] px-3 py-1.5 text-sm font-medium text-[var(--text-body)]">🥏 {post.taggedDiscName}{post.taggedDiscBrand ? <span className="text-[var(--sage-dim)]">· {post.taggedDiscBrand}</span> : null}</div>
+          <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-white/[0.05] px-2.5 py-1 text-[13px] font-medium text-[var(--text-body)]">🥏 {post.taggedDiscName}{post.taggedDiscBrand ? <span className="text-[var(--sage-dim)]">· {post.taggedDiscBrand}</span> : null}</div>
         )
       )}
 
       {post.taggedCourseName && post.taggedCourseSlug && (
-        <Link href={`/courses/${post.taggedCourseSlug}`} onClick={(e) => e.stopPropagation()} className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[var(--gold)]/12 px-3 py-1.5 text-sm font-semibold text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/20">⛳ {post.taggedCourseName}</Link>
+        <Link href={`/courses/${post.taggedCourseSlug}`} onClick={(e) => e.stopPropagation()} className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[var(--gold)]/12 px-2.5 py-1 text-[13px] font-semibold text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/20">⛳ {post.taggedCourseName}</Link>
       )}
 
       {post.taggedUsers && post.taggedUsers.length > 0 && (
-        <div className="mt-2 flex flex-wrap items-center gap-x-1 gap-y-0.5 text-sm text-[var(--sage)]">
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-1 gap-y-0.5 text-[13px] text-[var(--sage)]">
           <span>with</span>
           {post.taggedUsers.map((u, i) => (
             <span key={u.id}>
@@ -86,18 +86,18 @@ export default function PostCard({ post, rank, myReaction, onReact, onOpen }: { 
       )}
 
       {post.imageUrl && (
-        <button type="button" onClick={(e) => { e.stopPropagation(); setZoom(true); }} className="mt-3 block w-full cursor-zoom-in overflow-hidden rounded-xl bg-black/20">
+        <button type="button" onClick={(e) => { e.stopPropagation(); setZoom(true); }} className="mt-2 block w-full cursor-zoom-in overflow-hidden rounded-lg bg-black/20">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={post.imageUrl} alt="" loading="lazy" decoding="async" className="max-h-[520px] w-full object-cover" />
+          <img src={post.imageUrl} alt="" loading="lazy" decoding="async" className="max-h-[420px] w-full object-cover" />
         </button>
       )}
       {zoom && post.imageUrl && <ImageLightbox src={post.imageUrl} onClose={() => setZoom(false)} />}
 
-      <div className="mt-3 flex items-center gap-1 pt-2.5 text-sm">
+      <div className="mt-1.5 flex items-center gap-0.5 text-[13px]">
         <ReactionBar count={post.likeCount} reactions={post.reactions} myReaction={myReaction} onReact={onReact} />
-        <button onClick={onOpen} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 font-medium text-[var(--sage)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)]">
+        <button onClick={onOpen} className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium text-[var(--sage)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)]">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.5L3 21l2-5.6A8.5 8.5 0 1 1 21 11.5z" /></svg>
-          {post.commentCount > 0 ? `${post.commentCount}` : "Comment"}
+          {post.commentCount >= 3 ? `${post.commentCount}` : "Comment"}
         </button>
       </div>
     </article>
