@@ -47,7 +47,7 @@ export default function PostCard({ post, rank, myReaction, onReact, onOpen }: { 
           <ReactionBar count={post.likeCount} reactions={post.reactions} myReaction={myReaction} onReact={onReact} />
           <button onClick={onOpen} className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium text-[var(--sage)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)]">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.5L3 21l2-5.6A8.5 8.5 0 1 1 21 11.5z" /></svg>
-            {post.commentCount >= 3 ? `${post.commentCount}` : "Comment"}
+            {post.commentCount > 0 ? post.commentCount : "Comment"}
           </button>
         </div>
       </article>
@@ -137,7 +137,7 @@ export default function PostCard({ post, rank, myReaction, onReact, onOpen }: { 
         <ReactionBar count={post.likeCount} reactions={post.reactions} myReaction={myReaction} onReact={onReact} />
         <button onClick={onOpen} className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium text-[var(--sage)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)]">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.5L3 21l2-5.6A8.5 8.5 0 1 1 21 11.5z" /></svg>
-          {post.commentCount >= 3 ? `${post.commentCount}` : "Comment"}
+          {post.commentCount > 0 ? post.commentCount : "Comment"}
         </button>
       </div>
     </article>
