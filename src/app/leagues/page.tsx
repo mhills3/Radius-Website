@@ -219,6 +219,18 @@ export default function LeaguesPage() {
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, [typeMenuOpen]);
+  // Scope filter (All events | My events) — lives left of the type filter on the Events tab.
+  const [scope, setScope] = useState<"all" | "mine">("all");
+  const [scopeMenuOpen, setScopeMenuOpen] = useState(false);
+  const scopeMenuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!scopeMenuOpen) return;
+    const h = (e: MouseEvent) => { if (scopeMenuRef.current && !scopeMenuRef.current.contains(e.target as Node)) setScopeMenuOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [scopeMenuOpen]);
+  // "My events" is now a scope of the Events tab (not its own top toggle).
+  const myMode = tab === "Events" && scope === "mine";
   const requestLocation = () => {
     if (userLoc) { setUserLoc(null); return; }
     if (!navigator.geolocation) { setLocErr(true); return; }
@@ -258,7 +270,7 @@ export default function LeaguesPage() {
     return () => { dead = true; };
   }, [tab, liveEvents]);
 
-  const calendarSource = useMemo(() => (tab === "My events" ? upcoming : upcoming.filter((e) => registrationOpen(e))), [tab, upcoming]);
+  const calendarSource = useMemo(() => (myMode ? upcoming : upcoming.filter((e) => registrationOpen(e))), [myMode, upcoming]);
   const eventDays = useMemo(() => {
     const m = new Map<string, number>();
     for (const e of calendarSource) { const k = dayKey(e.date); m.set(k, (m.get(k) ?? 0) + 1); }
@@ -274,7 +286,7 @@ export default function LeaguesPage() {
   // My events = events you run OR are signed up for (checked in).
   const [signedUp, setSignedUp] = useState<Set<string>>(new Set());
   useEffect(() => {
-    if (tab !== "My events" || !cid || upcoming.length === 0) return;
+    if (!myMode || !cid || upcoming.length === 0) return;
     let dead = false;
     (async () => {
       const { fsGet } = await import("@/lib/firestoreRest");
@@ -292,7 +304,7 @@ export default function LeaguesPage() {
   // so a player who signed up on any device sees the league here (matches iOS).
   const [memberLeagues, setMemberLeagues] = useState<League[]>([]);
   useEffect(() => {
-    if (tab !== "My events") return;
+    if (!myMode) return;
     const memberLeagueIds = [...new Set(upcoming.filter((e) => signedUp.has(e.id)).map((e) => e.leagueId))]
       .filter((id) => !mine.some((l) => l.id === id));
     if (memberLeagueIds.length === 0) { setMemberLeagues([]); return; }
@@ -302,7 +314,7 @@ export default function LeaguesPage() {
   }, [tab, upcoming, signedUp, mine]);
   // My events → Past: completed events from the leagues you run or belong to (lazy).
   useEffect(() => {
-    if (tab !== "My events" || !myPast || pastLoaded) return;
+    if (!myMode || !myPast || pastLoaded) return;
     const ids = [...new Set([...mine.map((l) => l.id), ...memberLeagues.map((l) => l.id)])];
     if (ids.length === 0) { setPastLoaded(true); return; }
     Promise.all(ids.map((id) => getLeagueEvents(id).catch(() => [] as LeagueEvent[]))).then((lists) => {
@@ -314,7 +326,7 @@ export default function LeaguesPage() {
   // Private events never enter the public feed, so pull them for leagues you run.
   const [privateMine, setPrivateMine] = useState<LeagueEvent[]>([]);
   useEffect(() => {
-    if (tab !== "My events" || adminLeagueIds.size === 0) { setPrivateMine([]); return; }
+    if (!myMode || adminLeagueIds.size === 0) { setPrivateMine([]); return; }
     let dead = false;
     Promise.all([...adminLeagueIds].map((id) => getLeagueEvents(id).catch(() => [] as LeagueEvent[]))).then((lists) => {
       if (dead) return;
@@ -327,8 +339,8 @@ export default function LeaguesPage() {
 
   const needle = q.trim().toLowerCase();
   // Public feed hides events past their registration close; entrants/admins keep them under My events.
-  const myPastView = tab === "My events" && myPast;
-  const tabEvents = tab === "My events"
+  const myPastView = myMode && myPast;
+  const tabEvents = myMode
     ? (myPast
         ? pastEvents
         : [...upcoming.filter((e) => adminLeagueIds.has(e.leagueId) || signedUp.has(e.id)), ...privateMine]
@@ -366,7 +378,7 @@ export default function LeaguesPage() {
 
       {/* Controls — every control 44px, no hairline touches this row */}
       <section className="mb-6 mt-6 flex flex-wrap items-center gap-3">
-        <Segmented tall options={["Events", "My events", "Live now"]} icons={{ Events: IconCalendar, "My events": IconUser, "Live now": IconLiveDot }} value={tab} onChange={(t) => { setTab(t); setDayFilter(null); }} />
+        <Segmented tall options={["Events", "Live now"]} icons={{ Events: IconCalendar, "Live now": IconLiveDot }} value={tab} onChange={(t) => { setTab(t); setDayFilter(null); }} />
         {tab !== "Live now" && <div className="relative min-w-[220px] flex-1">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--sage-dim)]"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search events, leagues, or courses" className={`${inputCls} h-11 pl-11`} />
@@ -393,6 +405,36 @@ export default function LeaguesPage() {
         )}
         {locErr && <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-[var(--cream-38)]">Location unavailable</span>}
         <span aria-hidden className="mx-1.5 h-6 w-px bg-[var(--hair)]" />
+        {/* Scope filter — All events vs My events (sits left of the type filter) */}
+        <div className="relative" ref={scopeMenuRef}>
+          <button
+            onClick={() => setScopeMenuOpen((o) => !o)}
+            aria-haspopup="listbox"
+            aria-expanded={scopeMenuOpen}
+            className={`inline-flex h-9 items-center gap-2 rounded-full border px-3.5 text-[13px] font-semibold transition-colors ${scope === "mine" || scopeMenuOpen ? "border-[rgba(232,181,96,.4)] bg-[var(--gold-dim)] text-[var(--gold)]" : "border-[var(--hair-strong)] text-[var(--cream-60)] hover:text-[var(--cream)]"}`}
+          >
+            <IconUser className="h-3.5 w-3.5" />
+            {scope === "mine" ? "My events" : "All events"}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`h-3 w-3 transition-transform ${scopeMenuOpen ? "rotate-180" : ""}`}><path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          </button>
+          {scopeMenuOpen && (
+            <div role="listbox" className="absolute left-0 top-[calc(100%+6px)] z-30 min-w-[180px] overflow-hidden rounded-2xl border border-[var(--hair-strong)] bg-[var(--card)] p-1.5 shadow-2xl">
+              {([["all", "All events", IconCalendar], ["mine", "My events", IconUser]] as const).map(([key, label, Ic]) => (
+                <button
+                  key={key}
+                  role="option"
+                  aria-selected={scope === key}
+                  onClick={() => { setScope(key); setScopeMenuOpen(false); setMyPast(false); setDayFilter(null); }}
+                  className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[13px] font-semibold transition-colors ${scope === key ? "bg-[var(--gold-dim)] text-[var(--gold)]" : "text-[var(--cream-60)] hover:bg-white/[0.04] hover:text-[var(--cream)]"}`}
+                >
+                  <Ic className="h-4 w-4 shrink-0" />
+                  <span className="flex-1">{label}</span>
+                  {scope === key && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-4 w-4 text-[var(--gold)]"><path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         {(() => {
           const opts = [{ key: "all", label: "All types", Ic: null as React.ComponentType<{ className?: string }> | null }, ...Object.entries(KIND_CHIP).map(([key, v]) => ({ key, label: v.label.charAt(0) + v.label.slice(1).toLowerCase(), Ic: v.icon as React.ComponentType<{ className?: string }> | null }))];
           const active = opts.find((o) => o.key === kindFilter) ?? opts[0];
@@ -456,7 +498,7 @@ export default function LeaguesPage() {
             {dayFilter && <button onClick={() => setDayFilter(null)} className="mt-3 w-full rounded-full bg-white/[0.05] py-2 text-xs font-bold text-[var(--sage)] transition-colors hover:text-[var(--cream)]">Clear day filter</button>}
           </div>
           <div>
-          {tab === "My events" && (() => {
+          {myMode && (() => {
             const myLeagues = [...mine, ...memberLeagues].filter((l) => !needle || l.name.toLowerCase().includes(needle));
             return myLeagues.length > 0 && (
               <div className="mb-4 grid gap-3">
@@ -492,12 +534,12 @@ export default function LeaguesPage() {
               </div>
             );
           })()}
-          {tab === "Events" && liveEvents.length > 0 && (
+          {tab === "Events" && !myMode && liveEvents.length > 0 && (
             <button onClick={() => setTab("Live now")} className="mb-3 inline-flex items-center gap-2.5 rounded-full border border-[var(--blue-dim)] px-4 py-2 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--blue)] transition-colors hover:border-[var(--blue)]/40">
               <i className="pulse-ring h-2 w-2 rounded-full bg-[var(--blue)]" />{plural(liveEvents.length, "event")} live now →
             </button>
           )}
-          {live && (tab === "My events" || registrationOpen(live.ev)) && (
+          {live && (myMode || registrationOpen(live.ev)) && (
               <Link href={slugOf.get(live.ev.leagueId) ? `/leagues/${slugOf.get(live.ev.leagueId)}/e/${live.ev.id}` : "#"} className="relative mb-3 block overflow-hidden rounded-2xl border border-[var(--hair)] bg-[var(--card)] p-6 transition-colors hover:border-[var(--hair-strong)]">
                 <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(600px 300px at 80% -10%, rgba(143,189,227,.10), transparent 60%)" }} />
                 <div className="relative">
@@ -530,7 +572,7 @@ export default function LeaguesPage() {
                 </div>
               </Link>
             )}
-            {tab === "My events" && (
+            {myMode && (
               <div className="mb-4 inline-flex rounded-full border border-[var(--hair-strong)] bg-[var(--card)] p-0.5">
                 {[["Upcoming", false], ["Past", true]].map(([label, val]) => (
                   <button key={label as string} onClick={() => setMyPast(val as boolean)} className={`rounded-full px-4 py-1.5 text-xs font-bold transition-colors ${myPast === val ? "bg-[var(--gold)] text-[#16221b]" : "text-[var(--cream-60)] hover:text-[var(--cream)]"}`}>{label as string}</button>
@@ -540,8 +582,8 @@ export default function LeaguesPage() {
             {shownEvents.length === 0 ? (
               <div className={`${card} grid place-items-center px-6 py-16 text-center`}>
                 <span className="grid h-14 w-14 place-items-center rounded-full bg-[var(--card-raised)] text-[var(--blue)]"><IconCalendar className="h-6 w-6" /></span>
-                <p className="mt-4 font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">{myPastView ? (pastLoaded ? "No past results yet" : "Loading past events…") : tab === "My events" ? (user ? "Nothing on your calendar" : "Sign in to see your events") : upcoming.length === 0 ? "No upcoming events" : "Nothing matches"}</p>
-                <p className="mt-1 max-w-xs text-sm text-[var(--sage-dim)]">{myPastView ? "Completed events from your leagues land here — tap one for the results." : tab === "My events" ? (user ? "Events you run or are checked into show up here." : "Your check-ins and leagues land here.") : upcoming.length === 0 ? "Create one in about a minute." : "Clear the search or day filter."}</p>
+                <p className="mt-4 font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">{myPastView ? (pastLoaded ? "No past results yet" : "Loading past events…") : myMode ? (user ? "Nothing on your calendar" : "Sign in to see your events") : upcoming.length === 0 ? "No upcoming events" : "Nothing matches"}</p>
+                <p className="mt-1 max-w-xs text-sm text-[var(--sage-dim)]">{myPastView ? "Completed events from your leagues land here — tap one for the results." : myMode ? (user ? "Events you run or are checked into show up here." : "Your check-ins and leagues land here.") : upcoming.length === 0 ? "Create one in about a minute." : "Clear the search or day filter."}</p>
               </div>
             ) : (
               <div className="grid gap-3">
