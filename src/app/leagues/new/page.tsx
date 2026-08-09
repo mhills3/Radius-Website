@@ -383,7 +383,7 @@ export default function EventWizard() {
                   </label>
                 </>
               )}
-              {isScoringKind && myLeagues.length > 0 && (
+              {isLeagueKind && myLeagues.length > 0 && (
                 <label className="block">
                   <FieldLabel>League <span className="normal-case tracking-normal text-[var(--sage-dim)]">— optional; otherwise one is set up for you</span></FieldLabel>
                   <select value={leagueChoice} onChange={(e) => setLeagueChoice(e.target.value)} className={inputCls}>
