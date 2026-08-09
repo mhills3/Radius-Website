@@ -29,7 +29,7 @@ export function freshId(): string {
 
 export const LEAGUE_FORMATS = ["Singles", "Teams"] as const;
 export const TEAM_SIZES = [2, 3, 4] as const; // 2 = "Doubles"; teams are a size, not a separate format
-export const START_FORMATS = ["Shotgun", "Tee times", "Flex"] as const;
+export const START_FORMATS = ["Tee times", "Shotgun", "Flex"] as const;
 /** True for the Teams format (and legacy "Doubles" docs, which are Teams of 2). */
 export const isTeamFormat = (format?: string) => format === "Teams" || format === "Doubles";
 /** Legacy "Doubles" → "Teams" so the format pickers (Singles|Teams) light up correctly. */
