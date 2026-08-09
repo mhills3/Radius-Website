@@ -13,7 +13,7 @@ export default function ThreadCard({ thread, rank }: { thread: Thread; rank?: Ra
   // to their profile imperatively instead.
   const handle = thread.authorHandle || rank?.username;
   return (
-    <Link href={`/community/thread/${thread.id}`} className="block w-full rounded-2xl border border-white/[0.07] bg-white/[0.03] p-4 text-left transition-all hover:-translate-y-0.5 hover:border-white/[0.12]">
+    <Link href={`/community/thread/${thread.id}`} className="block w-full rounded-2xl bg-white/[0.045] p-4 text-left shadow-[0_16px_40px_-24px_rgba(0,0,0,0.65)] transition-all hover:-translate-y-0.5 hover:bg-white/[0.06]">
       <div className="flex items-center gap-2">
         <span className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide" style={{ background: `${cc}26`, color: cc }}>{thread.category}</span>
         <span className="flex min-w-0 items-center gap-1.5 truncate text-xs text-[var(--sage-dim)]">

@@ -27,14 +27,12 @@ function Card({ v, onClick }: { v: Highlight; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className={`group relative w-[316px] shrink-0 overflow-hidden rounded-2xl text-left transition-all duration-300 hover:-translate-y-1 ${
-        f
-          ? "ring-[3px] ring-[var(--gold)] shadow-[0_0_20px_-2px_rgba(246,193,101,0.6),0_18px_42px_-18px_rgba(246,193,101,0.65)]"
-          : x
-          ? "ring-[3px] ring-[#5fcf80] shadow-[0_0_20px_-2px_rgba(95,207,128,0.6),0_18px_42px_-18px_rgba(95,207,128,0.65)]"
-          : "bg-white/[0.02] ring-1 ring-white/[0.08] hover:bg-white/[0.05] hover:ring-white/20 hover:shadow-[0_18px_40px_-22px_rgba(0,0,0,0.8)]"
+      className={`group relative w-[316px] shrink-0 snap-start overflow-hidden rounded-2xl text-left transition-all duration-300 hover:-translate-y-1 ${
+        f || x
+          ? "ring-[3px] ring-[var(--gold)] shadow-[0_0_20px_-2px_rgba(246,193,101,0.55),0_18px_42px_-18px_rgba(246,193,101,0.6)]"
+          : "hover:shadow-[0_18px_40px_-22px_rgba(0,0,0,0.8)]"
       }`}
-      style={f ? { background: "linear-gradient(180deg, rgba(246,193,101,0.12), rgba(246,193,101,0.02))" } : x ? { background: "linear-gradient(180deg, rgba(95,207,128,0.12), rgba(95,207,128,0.02))" } : undefined}
+      style={f || x ? { background: "linear-gradient(180deg, rgba(246,193,101,0.12), rgba(246,193,101,0.02))" } : undefined}
     >
       <div className="relative aspect-video w-full overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -46,7 +44,7 @@ function Card({ v, onClick }: { v: Highlight; onClick: () => void }) {
           </span>
         )}
         {x && (
-          <span className="absolute left-2.5 top-2.5 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#8fe0a8] via-[#5fcf80] to-[#3aa85e] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[#16221b] shadow-[0_4px_12px_rgba(95,207,128,0.5)] ring-1 ring-white/50">
+          <span className="absolute left-2.5 top-2.5 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#f8cf80] via-[#f6c165] to-[#e0a23a] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[#141b16] shadow-[0_4px_12px_rgba(246,193,101,0.5)] ring-1 ring-white/50">
             <span className="text-[11px]">★</span> Radius Exclusive
           </span>
         )}
@@ -57,7 +55,7 @@ function Card({ v, onClick }: { v: Highlight; onClick: () => void }) {
       <div className="p-3">
         <div className="line-clamp-2 min-h-[2.5rem] text-[13px] font-semibold leading-snug text-[var(--cream)]">{v.title}</div>
         <div className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-[var(--sage-dim)]">
-          <span className={`truncate font-bold ${f ? "text-[var(--gold)]" : x ? "text-[#5fcf80]" : "text-[var(--sage)]"}`}>{v.channel}</span>
+          <span className={`truncate font-bold ${f || x ? "text-[var(--gold)]" : "text-[var(--sage)]"}`}>{v.channel}</span>
           <span>·</span><span className="shrink-0">{timeAgo(v.published)}</span>
           {views && (<><span>·</span><span className="shrink-0">{views}</span></>)}
         </div>
@@ -90,8 +88,8 @@ export default function HighlightsBar() {
         <div>
           <div className="flex items-center gap-2.5">
             <span className="relative flex h-2.5 w-2.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#ff5a5a] opacity-70" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#ff5a5a] shadow-[0_0_8px_#ff5a5a]" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--gold)] opacity-70" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[var(--gold)] shadow-[0_0_8px_var(--gold)]" />
             </span>
             <h2 className="font-[family-name:var(--font-heading)] text-xl font-extrabold tracking-[-0.02em] text-[var(--cream)]">Disc Golf Highlights</h2>
           </div>
@@ -102,8 +100,12 @@ export default function HighlightsBar() {
         </a>
       </div>
 
-      <div className="-mx-2 flex gap-4 overflow-x-auto px-2 pb-4 pt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {videos.map((v) => <Card key={v.id} v={v} onClick={() => setActive(v)} />)}
+      <div className="relative -mx-2">
+        <div className="flex snap-x snap-mandatory scroll-px-2 gap-4 overflow-x-auto px-2 pb-4 pt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {videos.map((v) => <Card key={v.id} v={v} onClick={() => setActive(v)} />)}
+        </div>
+        {/* right-edge fade signals the row keeps scrolling (instead of reading as a clipped card) */}
+        <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-[linear-gradient(to_left,var(--bg-deep),transparent)]" />
       </div>
 
       {active && (

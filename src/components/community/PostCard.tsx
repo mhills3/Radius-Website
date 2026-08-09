@@ -42,7 +42,7 @@ export default function PostCard({ post, rank, myReaction, onReact, onOpen }: { 
     </>
   );
   return (
-    <article className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-4 transition-colors hover:border-white/[0.12]">
+    <article className="rounded-2xl bg-white/[0.045] p-4 shadow-[0_16px_40px_-24px_rgba(0,0,0,0.65)] transition-colors hover:bg-white/[0.06]">
       {handle ? (
         <Link href={post.authorId ? `/u/${handle}?id=${post.authorId}` : `/u/${handle}`} onClick={(e) => e.stopPropagation()} className="group/author flex items-center gap-3">{authorRow}</Link>
       ) : (
@@ -52,7 +52,7 @@ export default function PostCard({ post, rank, myReaction, onReact, onOpen }: { 
       {post.text && <MentionText text={post.text} tagged={post.taggedUsers} className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-[var(--text-body)]" />}
 
       {post.linkedCourseName && (
-        <div className="mt-3 flex items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.03] p-3">
+        <div className="mt-3 flex items-center gap-3 rounded-xl bg-white/[0.05] p-3">
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[var(--gold-dim)] text-lg text-[var(--gold)]">⛳</span>
           <div className="min-w-0 flex-1">
             <div className="truncate font-bold text-[var(--cream)]">{post.linkedCourseName}</div>
@@ -93,7 +93,7 @@ export default function PostCard({ post, rank, myReaction, onReact, onOpen }: { 
       )}
       {zoom && post.imageUrl && <ImageLightbox src={post.imageUrl} onClose={() => setZoom(false)} />}
 
-      <div className="mt-3 flex items-center gap-1 border-t border-white/[0.06] pt-2.5 text-sm">
+      <div className="mt-3 flex items-center gap-1 pt-2.5 text-sm">
         <ReactionBar count={post.likeCount} reactions={post.reactions} myReaction={myReaction} onReact={onReact} />
         <button onClick={onOpen} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 font-medium text-[var(--sage)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)]">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.5L3 21l2-5.6A8.5 8.5 0 1 1 21 11.5z" /></svg>

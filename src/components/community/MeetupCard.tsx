@@ -13,7 +13,7 @@ export default function MeetupCard({ meetup }: { meetup: Meetup }) {
   const full = spotsLeft === 0;
 
   return (
-    <div className="flex flex-col rounded-2xl border border-white/[0.07] bg-white/[0.03] p-5 transition-colors hover:border-white/[0.12]">
+    <div className="flex flex-col rounded-2xl bg-white/[0.045] p-5 shadow-[0_16px_40px_-24px_rgba(0,0,0,0.65)] transition-colors hover:bg-white/[0.06]">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-[11px] font-bold uppercase tracking-wide text-[var(--gold)]">{dateStr}{meetup.timeLabel ? ` · ${meetup.timeLabel}` : ""}</div>
@@ -25,7 +25,7 @@ export default function MeetupCard({ meetup }: { meetup: Meetup }) {
 
       {meetup.description && <p className="mt-3 line-clamp-2 text-sm text-[var(--text-body)]">{meetup.description}</p>}
 
-      <div className="mt-auto flex items-center justify-between border-t border-white/[0.06] pt-4">
+      <div className="mt-auto flex items-center justify-between pt-4">
         <div className="flex items-center">
           <div className="flex -space-x-2">
             {meetup.playerNames.slice(0, 4).map((n, i) => (

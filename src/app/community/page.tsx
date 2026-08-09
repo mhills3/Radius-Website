@@ -24,7 +24,8 @@ import NewMeetupModal from "@/components/community/NewMeetupModal";
 
 type Tab = "feed" | "forums" | "meetups";
 type Sort = "hot" | "new" | "top" | "following";
-const card = "rounded-2xl border border-white/[0.07] bg-white/[0.03]";
+// One surface system: no borders — elevation from a slightly-lighter fill + a soft ambient shadow, one radius.
+const card = "rounded-2xl bg-white/[0.045] shadow-[0_16px_40px_-24px_rgba(0,0,0,0.65)]";
 
 function reactPost(p: FeedPost, old: string | undefined, type: string): FeedPost {
   const r = { ...(p.reactions ?? {}) };
@@ -188,20 +189,22 @@ export default function CommunityPage() {
 
   return (
     <div className="min-h-screen bg-[var(--bg-deep)] text-[var(--cream)]">
-      {/* hero band */}
-      <div className="relative overflow-hidden border-b border-white/[0.06]">
+      {/* hero band — dissolves into the page (no hard edge) */}
+      <div className="relative overflow-hidden">
         <div
           className="pointer-events-none absolute inset-0"
           aria-hidden
           style={{ maskImage: "url(/topo.png)", WebkitMaskImage: "url(/topo.png)", maskSize: "cover", WebkitMaskSize: "cover", maskPosition: "center", WebkitMaskPosition: "center", backgroundColor: "var(--cream)", opacity: 0.08 }}
         />
         <div className="pointer-events-none absolute -right-32 -top-40 h-96 w-96 rounded-full bg-[radial-gradient(circle,rgba(246,193,101,0.12),transparent_70%)]" />
+        {/* generous bottom fade so the textured hero dissolves into the page — no detectable edge */}
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-[linear-gradient(to_top,var(--bg-deep),transparent)]" />
         <div className="relative mx-auto max-w-7xl px-6 pb-5 pt-10">
           <div>
             <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">The home of disc golf</div>
             <h1 className="font-[family-name:var(--font-heading)] text-4xl font-extrabold tracking-[-0.03em] md:text-5xl">Community</h1>
           </div>
-          <div className="mt-5 inline-flex rounded-full border border-white/[0.08] bg-white/[0.04] p-1">
+          <div className="mt-5 inline-flex rounded-full bg-white/[0.06] p-1 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.7)]">
             {TABS.map((t) => (
               <button key={t.key} onClick={() => setTab(t.key)} className={`rounded-full px-5 py-2 text-sm font-bold transition-colors ${tab === t.key ? "bg-[var(--gold)] text-[#16221b]" : "text-[var(--text-body)] hover:text-[var(--cream)]"}`}>
                 {t.label}
@@ -308,8 +311,8 @@ export default function CommunityPage() {
                 {sort === "following" && user && !loading && feedList.length === 0 && <p className={`${card} p-8 text-center text-sm text-[var(--sage-dim)]`}>You&apos;re not following anyone with posts yet. Find players on the <Link href="/leaderboard" className="font-bold text-[var(--gold)] hover:underline">leaderboard</Link> and tap Follow.</p>}
 
                 {sort !== "following" && !loading && featured && (
-                  <div className="relative rounded-2xl border border-[var(--gold)]/30 bg-[var(--gold)]/[0.05] p-px">
-                    <div className="absolute -top-2.5 left-4 z-10 rounded-full bg-[var(--gold)] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#16221b]">📌 Featured</div>
+                  <div className="relative rounded-2xl bg-[var(--gold)]/[0.07] p-2 shadow-[0_20px_50px_-26px_rgba(232,181,96,0.45)]">
+                    <div className="absolute -top-2.5 left-4 z-10 rounded-full bg-[var(--gold)] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#141b16]">📌 Featured</div>
                     <PostCard post={featured} rank={featured.authorId ? ranks.get(featured.authorId) : undefined} myReaction={reactionMap[featured.id]} onReact={(t) => onReact(featured.id, t)} onOpen={() => setOpen(featured)} />
                   </div>
                 )}
