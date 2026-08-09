@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getRecentRounds, type RecentRound } from "@/lib/rounds";
+import { getDecodedRounds, type DecodedRound } from "@/lib/rounds";
 import { getAllCourses, slugify, type Course } from "@/lib/courses";
 import type { SharedRound } from "@/lib/feed";
 
@@ -9,12 +9,28 @@ const fmtScore = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`);
 const scoreColor = (n: number) => (n < 0 ? "#5fcf80" : n === 0 ? "var(--cream)" : "#f08c8c");
 const fmtDate = (ms: number) => (ms ? new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "");
 
+// Lightweight, share-ready round: summary fields + the full per-hole arrays for the scorecard.
+type PickRound = { roundId: string; courseName: string; date: number; relativeToPar: number; holesPlayed: number; birdies: number; holeScores: number[]; holePars: number[] };
+function toPickRound(r: DecodedRound): PickRound {
+  const played = r.holes.filter((h) => h.played && h.score > 0);
+  const maxHole = played.reduce((m, h) => Math.max(m, h.holeNumber), 0);
+  const byNum = new Map(played.map((h) => [h.holeNumber, h]));
+  const holeScores = Array.from({ length: maxHole }, (_, i) => byNum.get(i + 1)?.score ?? 0);
+  const holePars = Array.from({ length: maxHole }, (_, i) => byNum.get(i + 1)?.par ?? 0);
+  return {
+    roundId: r.roundId, courseName: r.courseName, date: r.date, relativeToPar: r.relativeToPar, holesPlayed: r.holesPlayed,
+    birdies: played.filter((h) => h.score < h.par).length, holeScores, holePars,
+  };
+}
+
 export default function RoundPicker({ uid, onSelect, onClose }: { uid: string; onSelect: (r: SharedRound) => void; onClose: () => void }) {
-  const [rounds, setRounds] = useState<RecentRound[] | null>(null);
+  const [rounds, setRounds] = useState<PickRound[] | null>(null);
   const [byName, setByName] = useState<Map<string, Course>>(new Map());
 
   useEffect(() => {
-    getRecentRounds(uid, 15).then(setRounds).catch(() => setRounds([]));
+    getDecodedRounds(uid)
+      .then((rs) => setRounds(rs.filter((r) => r.isComplete && !!r.courseName).sort((a, b) => b.date - a.date).slice(0, 15).map(toPickRound)))
+      .catch(() => setRounds([]));
     // Resolve each round's course → cover + slug so the shared card has a real visual + link.
     getAllCourses().then((cs) => {
       const m = new Map<string, Course>();
@@ -23,9 +39,9 @@ export default function RoundPicker({ uid, onSelect, onClose }: { uid: string; o
     }).catch(() => {});
   }, [uid]);
 
-  const pick = (r: RecentRound) => {
+  const pick = (r: PickRound) => {
     const c = byName.get(r.courseName.trim().toLowerCase());
-    onSelect({ courseName: r.courseName, scoreToPar: r.relativeToPar, holesPlayed: r.holesPlayed, birdies: r.birdies, cover: c?.coverPhotoUrl, slug: c ? slugify(c.name, c.id) : undefined, courseId: c?.id });
+    onSelect({ courseName: r.courseName, scoreToPar: r.relativeToPar, holesPlayed: r.holesPlayed, birdies: r.birdies, cover: c?.coverPhotoUrl, slug: c ? slugify(c.name, c.id) : undefined, courseId: c?.id, holeScores: r.holeScores, holePars: r.holePars });
     onClose();
   };
 

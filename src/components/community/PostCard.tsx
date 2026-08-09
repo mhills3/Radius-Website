@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import ImageLightbox from "@/components/community/ImageLightbox";
+import RoundScorecardModal from "@/components/scorecard/RoundScorecardModal";
 import { type FeedPost, timeAgo } from "@/lib/feed";
 import { type RankInfo } from "@/lib/community";
 import RankPill from "@/components/community/RankPill";
@@ -26,6 +27,8 @@ function Avatar({ url, name, size = 32 }: { url?: string; name: string; size?: n
 
 export default function PostCard({ post, rank, myReaction, onReact, onOpen }: { post: FeedPost; rank?: RankInfo; myReaction?: string; onReact: (type: string) => void; onOpen: () => void }) {
   const [zoom, setZoom] = useState(false);
+  const [scorecard, setScorecard] = useState(false);
+  const hasScorecard = !!(post.holeScores && post.holeScores.length && post.holePars && post.holePars.length);
 
   // Radius milestone/announcement — real post, but wears a distinct gold identity (trophy + badge)
   // instead of a user author row. Still fully likeable + commentable.
@@ -82,25 +85,36 @@ export default function PostCard({ post, rank, myReaction, onReact, onOpen }: { 
       {post.linkedCourseName && (() => {
         const slug = post.linkedCourseSlug || post.taggedCourseSlug;
         return (
-          <Link href={slug ? `/courses/${slug}` : "#"} onClick={(e) => { if (!slug) e.preventDefault(); e.stopPropagation(); }} className="group/round mt-2 block overflow-hidden rounded-xl">
-            <div className="relative h-32 w-full overflow-hidden bg-[radial-gradient(circle_at_30%_25%,rgba(246,193,101,0.35),var(--bg-deep))]">
-              {post.linkedCourseCover && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={post.linkedCourseCover} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover/round:scale-[1.05]" />
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
-              <span className="absolute left-3 top-3 rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white backdrop-blur-sm">⛳ Round</span>
-              <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-3">
-                <div className="min-w-0">
-                  <div className="truncate font-[family-name:var(--font-heading)] text-[15px] font-extrabold text-white drop-shadow">{post.linkedCourseName}</div>
-                  <div className="text-xs text-white/85 drop-shadow">{post.holesPlayed ? `${post.holesPlayed} holes` : "Round"}{post.linkedBirdies ? ` · ${post.linkedBirdies} birdie${post.linkedBirdies === 1 ? "" : "s"}` : ""}</div>
+          <div className="relative mt-2">
+            <Link href={slug ? `/courses/${slug}` : "#"} onClick={(e) => { if (!slug) e.preventDefault(); e.stopPropagation(); }} className="group/round block overflow-hidden rounded-xl">
+              <div className="relative h-32 w-full overflow-hidden bg-[radial-gradient(circle_at_30%_25%,rgba(246,193,101,0.35),var(--bg-deep))]">
+                {post.linkedCourseCover && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={post.linkedCourseCover} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover/round:scale-[1.05]" />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
+                <span className="absolute left-3 top-3 rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white backdrop-blur-sm">⛳ Round</span>
+                <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-3">
+                  <div className="min-w-0">
+                    <div className="truncate font-[family-name:var(--font-heading)] text-[15px] font-extrabold text-white drop-shadow">{post.linkedCourseName}</div>
+                    <div className="text-xs text-white/85 drop-shadow">{post.holesPlayed ? `${post.holesPlayed} holes` : "Round"}{post.linkedBirdies ? ` · ${post.linkedBirdies} birdie${post.linkedBirdies === 1 ? "" : "s"}` : ""}</div>
+                  </div>
+                  {post.scoreToPar != null && <span className="shrink-0 font-[family-name:var(--font-heading)] text-3xl font-black leading-none drop-shadow" style={{ color: scoreColor(post.scoreToPar) }}>{fmtScore(post.scoreToPar)}</span>}
                 </div>
-                {post.scoreToPar != null && <span className="shrink-0 font-[family-name:var(--font-heading)] text-3xl font-black leading-none drop-shadow" style={{ color: scoreColor(post.scoreToPar) }}>{fmtScore(post.scoreToPar)}</span>}
               </div>
-            </div>
-          </Link>
+            </Link>
+            {hasScorecard && (
+              <button onClick={(e) => { e.stopPropagation(); setScorecard(true); }} className="absolute right-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white backdrop-blur-sm transition-colors hover:bg-black/75">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3 w-3"><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8M8 12h8M8 16h5" /></svg>
+                View scorecard
+              </button>
+            )}
+          </div>
         );
       })()}
+      {scorecard && hasScorecard && (
+        <RoundScorecardModal courseName={post.linkedCourseName ?? "Round"} cover={post.linkedCourseCover} date={post.createdAt} holeScores={post.holeScores!} holePars={post.holePars!} onClose={() => setScorecard(false)} />
+      )}
 
       {post.taggedDiscName && (
         post.taggedDiscSlug ? (

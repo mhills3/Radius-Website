@@ -44,6 +44,8 @@ export interface FeedPost {
   linkedBirdies?: number | null;
   scoreToPar?: number | null;
   holesPlayed?: number | null;
+  holeScores?: number[]; // per-hole strokes (index 0 = hole 1) for the "View scorecard" view
+  holePars?: number[];
   reactions?: Record<string, number>;
   isSystem?: boolean;
 }
@@ -104,6 +106,8 @@ export async function getFeed(max = 40, before?: number): Promise<FeedPost[]> {
           linkedBirdies: typeof p.linkedBirdies === "number" ? p.linkedBirdies : null,
           scoreToPar: p.linkedScoreToPar ?? p.scoreToPar ?? null,
           holesPlayed: p.linkedHolesPlayed ?? p.holesPlayed ?? null,
+          holeScores: Array.isArray(p.linkedHoleScores) ? (p.linkedHoleScores as number[]) : undefined,
+          holePars: Array.isArray(p.linkedHolePars) ? (p.linkedHolePars as number[]) : undefined,
           reactions: p.reactions && typeof p.reactions === "object" ? (p.reactions as Record<string, number>) : undefined,
           isSystem: p.isSystem === true || (p.createdById ?? p.authorId) === SYSTEM_AUTHOR_ID,
         } as FeedPost;
@@ -287,7 +291,7 @@ export async function setReaction(uid: string, postId: string, newType: string, 
 export interface CourseTag { id: string; slug: string; name: string }
 export interface DiscTag { name: string; brand: string; slug: string }
 
-export interface SharedRound { courseName: string; scoreToPar: number; holesPlayed: number; birdies?: number; cover?: string; slug?: string; courseId?: string }
+export interface SharedRound { courseName: string; scoreToPar: number; holesPlayed: number; birdies?: number; cover?: string; slug?: string; courseId?: string; holeScores?: number[]; holePars?: number[] }
 export async function createPost(uid: string, text: string, opts?: { course?: CourseTag; disc?: DiscTag; imageUrl?: string; mentions?: MentionUser[]; round?: SharedRound }): Promise<FeedPost | null> {
   const profile = await getProfileLite(uid);
   if (!profile) return null;
@@ -325,6 +329,8 @@ export async function createPost(uid: string, text: string, opts?: { course?: Co
     linkedBirdies: round?.birdies ?? null,
     linkedScoreToPar: round ? round.scoreToPar : null,
     linkedHolesPlayed: round ? round.holesPlayed : null,
+    linkedHoleScores: round?.holeScores ?? null,
+    linkedHolePars: round?.holePars ?? null,
     linkURL: null,
     likeCount: 0,
     commentCount: 0,
@@ -359,6 +365,8 @@ export async function createPost(uid: string, text: string, opts?: { course?: Co
     linkedBirdies: round?.birdies ?? null,
     scoreToPar: round ? round.scoreToPar : null,
     holesPlayed: round ? round.holesPlayed : null,
+    holeScores: round?.holeScores,
+    holePars: round?.holePars,
   };
 }
 
@@ -437,6 +445,8 @@ export async function getPostsByAuthor(canonicalId: string, max = 30): Promise<F
           linkedBirdies: typeof p.linkedBirdies === "number" ? p.linkedBirdies : null,
           scoreToPar: p.linkedScoreToPar ?? p.scoreToPar ?? null,
           holesPlayed: p.linkedHolesPlayed ?? p.holesPlayed ?? null,
+          holeScores: Array.isArray(p.linkedHoleScores) ? (p.linkedHoleScores as number[]) : undefined,
+          holePars: Array.isArray(p.linkedHolePars) ? (p.linkedHolePars as number[]) : undefined,
           reactions: p.reactions && typeof p.reactions === "object" ? (p.reactions as Record<string, number>) : undefined,
         } as FeedPost;
       })

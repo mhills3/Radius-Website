@@ -3,42 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { type DecodedRound, computeRoundStats, type RoundStats } from "@/lib/rounds";
 import { rankForIQ, rankLabel } from "@/lib/rank";
-import { useMetricPref } from "@/lib/useMetricPref";
-import { fmtDist } from "@/lib/units";
 import { usePro } from "@/lib/usePro";
 import ProGate from "@/components/ProGate";
+import ScorecardTable from "@/components/scorecard/ScorecardTable";
 
 const fmtScore = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`);
 const fmtDate = (ms: number) => (ms ? new Date(ms).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" }) : "");
 const pct = (v: number | null) => (v == null ? "—" : `${Math.round(v * 100)}%`);
-
-// Color a hole by score relative to par.
-function holeColor(diff: number): string {
-  if (diff <= -2) return "#33c773"; // eagle+
-  if (diff === -1) return "#5fb87a"; // birdie
-  if (diff === 0) return "var(--cream)"; // par
-  if (diff === 1) return "#e0a23f"; // bogey
-  return "#e0473f"; // double+
-}
-
-function HoleCell({ n, par, score, dist, metric }: { n: number; par: number; score: number; dist?: number; metric: boolean }) {
-  const diff = score - par;
-  const color = holeColor(diff);
-  const ring = diff < 0; // circle for under par
-  const square = diff > 0; // square for over par
-  return (
-    <div className="flex w-12 shrink-0 flex-col items-center gap-1">
-      <div className="text-[10px] font-semibold text-[var(--sage-dim)]">{n}</div>
-      <div className="text-[10px] text-[var(--sage-dim)]">{dist ? fmtDist(dist, metric) : `par ${par}`}</div>
-      <div
-        className={`grid h-9 w-9 place-items-center font-[family-name:var(--font-heading)] text-base font-bold ${ring ? "rounded-full border-2" : square ? "border-2" : ""}`}
-        style={{ color, borderColor: diff !== 0 ? color : "transparent" }}
-      >
-        {score}
-      </div>
-    </div>
-  );
-}
 
 function Metric({ label, value, color }: { label: string; value: string; color: string }) {
   return (
@@ -53,7 +24,6 @@ type Tab = "scorecard" | "stats" | "insights";
 
 export default function Scorecard({ round, onClose }: { round: DecodedRound; onClose: () => void }) {
   const [tab, setTab] = useState<Tab>("scorecard");
-  const metric = useMetricPref();
   const pro = usePro();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -61,11 +31,7 @@ export default function Scorecard({ round, onClose }: { round: DecodedRound; onC
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const holes = round.holes.filter((h) => h.played);
-  const front = holes.filter((h) => h.holeNumber <= 9);
-  const back = holes.filter((h) => h.holeNumber > 9);
-  const sumPar = (hs: typeof holes) => hs.reduce((s, h) => s + h.par, 0);
-  const sumScore = (hs: typeof holes) => hs.reduce((s, h) => s + h.score, 0);
+  const scHoles = round.holes.filter((h) => h.played).map((h) => ({ holeNumber: h.holeNumber, par: h.par, score: h.score }));
   const rel = round.relativeToPar;
   const relColor = rel < 0 ? "#5fb87a" : rel === 0 ? "var(--cream)" : "#e0473f";
 
@@ -121,31 +87,7 @@ export default function Scorecard({ round, onClose }: { round: DecodedRound; onC
           ))}
         </div>
 
-        {tab === "scorecard" && (
-          <>
-            {[{ label: "Front", hs: front.length ? front : holes }, ...(back.length ? [{ label: "Back", hs: back }] : [])].map((seg) => (
-              <div key={seg.label} className="mb-4">
-                {back.length > 0 && <div className="mb-2 text-xs font-bold uppercase tracking-wide text-[var(--sage-dim)]">{seg.label} nine</div>}
-                <div className="flex items-center gap-1 overflow-x-auto pb-2">
-                  {seg.hs.map((h) => (
-                    <HoleCell key={h.holeNumber} n={h.holeNumber} par={h.par} score={h.score} dist={h.distance || undefined} metric={metric} />
-                  ))}
-                  <div className="ml-2 flex w-14 shrink-0 flex-col items-center gap-1 border-l border-white/10 pl-3">
-                    <div className="text-[10px] font-semibold text-[var(--sage-dim)]">TOT</div>
-                    <div className="text-[10px] text-[var(--sage-dim)]">par {sumPar(seg.hs)}</div>
-                    <div className="grid h-9 place-items-center font-[family-name:var(--font-heading)] text-base font-bold text-[var(--cream)]">{sumScore(seg.hs)}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1 border-t border-white/[0.06] pt-4 text-xs text-[var(--text-body)]">
-              <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded-full border-2" style={{ borderColor: "#5fb87a" }} /> Under par</span>
-              <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3" style={{ color: "var(--cream)" }}>—</span> Par</span>
-              <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 border-2" style={{ borderColor: "#e0473f" }} /> Over par</span>
-            </div>
-          </>
-        )}
+        {tab === "scorecard" && <ScorecardTable holes={scHoles} />}
 
         {tab === "stats" && (
           <div className="space-y-5">
