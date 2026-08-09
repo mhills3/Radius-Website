@@ -198,6 +198,10 @@ export default function CommunityPage() {
   const [newThread, setNewThread] = useState(false);
   const [newMeetup, setNewMeetup] = useState(false);
   const [heroMode, setHeroMode] = useState<"builders" | "contributors">("builders");
+  // Return mechanics: unread dots on the tabs + a "N new posts" pill.
+  const [seen, setSeen] = useState<{ feed: number; forums: number }>({ feed: 0, forums: 0 });
+  const [pendingNew, setPendingNew] = useState<FeedPost[]>([]);
+  const [scrolledDown, setScrolledDown] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -221,6 +225,44 @@ export default function CommunityPage() {
       myCanonicalId(user.uid).then(getFollowingIds).then(setFollowing).catch(() => {});
     } else { setReactionMap({}); setFollowing(new Set()); }
   }, [user]);
+
+  // Load the last-seen marks (per device) so we can show unread dots on the tabs.
+  useEffect(() => {
+    try { const s = JSON.parse(localStorage.getItem("community_seen") || "{}"); setSeen({ feed: Number(s.feed) || 0, forums: Number(s.forums) || 0 }); } catch { /* ignore */ }
+  }, []);
+  // Mark the active tab seen (up to its newest item) shortly after viewing it.
+  useEffect(() => {
+    const newest = tab === "feed" ? posts[0]?.createdAt : tab === "forums" ? threads[0]?.createdAt : undefined;
+    if (!newest) return;
+    const t = setTimeout(() => setSeen((prev) => { const next = { ...prev, [tab]: Math.max(prev[tab as "feed" | "forums"] ?? 0, newest) }; try { localStorage.setItem("community_seen", JSON.stringify(next)); } catch { /* ignore */ } return next; }), 1500);
+    return () => clearTimeout(t);
+  }, [tab, posts, threads]);
+  // Poll for genuinely newer posts while on the feed; surface them via the pill (never auto-inject).
+  useEffect(() => {
+    if (tab !== "feed") return;
+    const iv = setInterval(async () => {
+      if (posts.length === 0) return;
+      const top = posts[0].createdAt;
+      const latest = await getFeed(6).catch(() => [] as FeedPost[]);
+      const fresh = latest.filter((m) => m.createdAt > top && !posts.some((p) => p.id === m.id));
+      if (fresh.length) setPendingNew((prev) => [...fresh.filter((f) => !prev.some((p) => p.id === f.id)), ...prev].slice(0, 30));
+    }, 30000);
+    return () => clearInterval(iv);
+  }, [tab, posts]);
+  useEffect(() => {
+    const onScroll = () => setScrolledDown(window.scrollY > 500);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  const showNewPosts = () => {
+    if (pendingNew.length === 0) return;
+    setPosts((prev) => [...pendingNew, ...prev.filter((p) => !pendingNew.some((n) => n.id === p.id))]);
+    getRanksFor(pendingNew.map((m) => m.authorId).filter(Boolean) as string[]).then((r) => setRanks((prev) => new Map([...prev, ...r]))).catch(() => {});
+    setPendingNew([]);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  const unreadFeed = (posts[0]?.createdAt ?? 0) > seen.feed;
+  const unreadForums = (threads[0]?.createdAt ?? 0) > seen.forums;
 
   // infinite scroll
   const sentinel = useRef<HTMLDivElement | null>(null);
@@ -445,11 +487,15 @@ export default function CommunityPage() {
       <div className="mx-auto max-w-7xl px-6 pb-10 pt-6">
         <div className="sticky top-[58px] z-30 -mx-6 mb-5 bg-[var(--bg-deep)]/80 px-6 py-2.5 backdrop-blur-md">
           <div className="inline-flex rounded-full bg-white/[0.06] p-1 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.7)]">
-          {TABS.map((t) => (
-            <button key={t.key} onClick={() => setTab(t.key)} className={`rounded-full px-5 py-2 text-sm font-bold transition-colors ${tab === t.key ? "bg-[var(--gold)] text-[#141b16]" : "text-[var(--text-body)] hover:text-[var(--cream)]"}`}>
-              {t.label}
-            </button>
-          ))}
+          {TABS.map((t) => {
+            const unread = t.key !== tab && ((t.key === "feed" && unreadFeed) || (t.key === "forums" && unreadForums));
+            return (
+              <button key={t.key} onClick={() => setTab(t.key)} className={`relative rounded-full px-5 py-2 text-sm font-bold transition-colors ${tab === t.key ? "bg-[var(--gold)] text-[#141b16]" : "text-[var(--text-body)] hover:text-[var(--cream)]"}`}>
+                {t.label}
+                {unread && <span className="absolute right-2.5 top-1.5 h-2 w-2 rounded-full bg-[#8FBDE3] ring-2 ring-[var(--bg-deep)]" />}
+              </button>
+            );
+          })}
           </div>
         </div>
         <div className="grid gap-5 lg:grid-cols-[230px_1fr_300px]">
@@ -598,6 +644,13 @@ export default function CommunityPage() {
         </div>
       </div>
 
+      {/* "N new posts" — appears once you've scrolled down and fresh posts have arrived; jumps to top */}
+      {tab === "feed" && pendingNew.length > 0 && scrolledDown && (
+        <button onClick={showNewPosts} className="fixed left-1/2 top-[74px] z-40 inline-flex -translate-x-1/2 items-center gap-2 rounded-full bg-[#8FBDE3] px-4 py-2 text-sm font-bold text-[#0b110e] shadow-[0_12px_30px_-10px_rgba(0,0,0,0.7)] transition-transform hover:-translate-y-0.5 hover:-translate-x-1/2">
+          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
+          {pendingNew.length} new post{pendingNew.length === 1 ? "" : "s"}
+        </button>
+      )}
       {open && <PostDetail post={open} uid={user?.uid} myReaction={reactionMap[open.id]} onReact={(t) => onReact(open.id, t)} onClose={() => setOpen(null)} onCommented={() => bumpComment(open.id)} />}
       {openThread && <ThreadDetail thread={openThread} rank={openThread.authorId ? ranks.get(openThread.authorId) : undefined} uid={user?.uid} onClose={() => setOpenThread(null)} />}
       {newThread && user && <NewThreadModal uid={user.uid} onCreated={(t) => { setThreads((prev) => [t, ...prev]); setNewThread(false); setTab("forums"); setOpenThread(t); }} onClose={() => setNewThread(false)} />}
