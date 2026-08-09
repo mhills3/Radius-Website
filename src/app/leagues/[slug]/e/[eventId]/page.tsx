@@ -1248,8 +1248,12 @@ export default function LeagueEventPage() {
                 const pedH = first ? "h-[62px]" : place === 2 ? "h-[44px]" : "h-[34px]";
                 return (
                   <div key={e.id} className="flex min-w-0 flex-col items-center">
+                    {first && <IconTrophy className="mb-1 h-6 w-6 text-[var(--gold)] drop-shadow-[0_2px_8px_rgba(232,181,96,0.45)]" />}
                     <UserLink username={usernameById(e.id)} className="flex min-w-0 flex-col items-center">
-                      <Avatar url={e.photo} name={nameOf(e)} size={first ? 56 : 44} gold={you} />
+                      <span className="relative">
+                        {first && <span aria-hidden className="pointer-events-none absolute -inset-2.5 rounded-full" style={{ background: "radial-gradient(closest-side, rgba(232,181,96,0.4), transparent)" }} />}
+                        <span className={`relative block ${first ? "rounded-full border-2 border-[var(--gold)] p-[3px]" : ""}`}><Avatar url={e.photo} name={nameOf(e)} size={first ? 54 : 44} gold={first ? false : you} ring={false} /></span>
+                      </span>
                       <span className={`mt-1.5 max-w-full truncate font-bold ${first ? "text-[13px]" : "text-[11px]"} ${you ? "text-[var(--gold)]" : "text-[var(--cream)]"}`}>{nameOf(e)}</span>
                       <span className={`font-mono font-extrabold tabular-nums ${first ? "text-xl" : "text-base"} ${first ? "text-[var(--gold)]" : "text-[var(--cream-60)]"}`}>{fmtTotal(e)}</span>
                     </UserLink>
