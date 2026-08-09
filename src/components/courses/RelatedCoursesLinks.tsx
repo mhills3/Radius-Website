@@ -17,16 +17,16 @@ export default function RelatedCoursesLinks({
 }) {
   if (courses.length === 0 && (!hubs || hubs.length === 0)) return null;
   return (
-    <section className="border-t border-black/[0.06] bg-[#faf8f3] px-6 py-12">
+    <section className="border-t border-[var(--c-line)] bg-[var(--c-bg)] px-6 py-12">
       <div className="mx-auto max-w-5xl">
-        <h2 className="font-[family-name:var(--font-heading)] text-xl font-extrabold tracking-tight text-[#16221b]">{heading}</h2>
+        <h2 className="font-[family-name:var(--font-heading)] text-xl font-extrabold tracking-tight text-[var(--c-ink)]">{heading}</h2>
         {courses.length > 0 && (
           <ul className="mt-4 grid gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
             {courses.map((c) => (
               <li key={c.id}>
-                <Link href={`/courses/${slugify(c.name, c.id)}`} className="text-sm text-[#46554c] transition-colors hover:text-[#9a7a3a] hover:underline">
+                <Link href={`/courses/${slugify(c.name, c.id)}`} className="text-sm text-[var(--c-body)] transition-colors hover:text-[var(--gold)] hover:underline">
                   {c.name}
-                  {c.city ? <span className="text-[#8a968d]"> · {c.city}</span> : null}
+                  {c.city ? <span className="text-[var(--c-muted)]"> · {c.city}</span> : null}
                 </Link>
               </li>
             ))}
@@ -35,7 +35,7 @@ export default function RelatedCoursesLinks({
         {hubs && hubs.length > 0 && (
           <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2">
             {hubs.map((h) => (
-              <Link key={h.href} href={h.href} className="text-sm font-bold text-[#9a7a3a] hover:underline">
+              <Link key={h.href} href={h.href} className="text-sm font-bold text-[var(--gold)] hover:underline">
                 {h.label} →
               </Link>
             ))}

@@ -38,10 +38,10 @@ export default function CourseDiscussionForm({ courseId, courseName }: { courseI
           {added.map((p) => (
             <div key={p.id} className="flex gap-3">
               <Avatar url={profile?.profileImageUrl} name={p.authorName} />
-              <div className="min-w-0 flex-1 rounded-2xl border border-black/5 bg-white p-3.5 shadow-sm">
-                <div className="text-sm font-bold text-[#16221b]">{p.authorName}</div>
-                <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-[#46554c]">{p.text}</p>
-                <div className="mt-1.5 text-xs text-[#8a968d]">{fmtDate(p.createdAt)}</div>
+              <div className="min-w-0 flex-1 rounded-2xl border border-[var(--c-line)] bg-[var(--c-card)] p-3.5 shadow-sm">
+                <div className="text-sm font-bold text-[var(--c-ink)]">{p.authorName}</div>
+                <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-[var(--c-body)]">{p.text}</p>
+                <div className="mt-1.5 text-xs text-[var(--c-muted)]">{fmtDate(p.createdAt)}</div>
               </div>
             </div>
           ))}
@@ -49,15 +49,15 @@ export default function CourseDiscussionForm({ courseId, courseName }: { courseI
       )}
 
       {user ? (
-        <div className="rounded-2xl border border-black/8 bg-white p-4 shadow-sm">
-          <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} placeholder={`Ask a question or share a tip about ${courseName}…`} className="w-full resize-none rounded-xl border border-black/10 bg-[#faf8f3] px-4 py-3 text-sm text-[#16221b] outline-none focus:border-[var(--gold)]" />
+        <div className="rounded-2xl border border-[var(--c-line)] bg-[var(--c-card)] p-4 shadow-sm">
+          <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} placeholder={`Ask a question or share a tip about ${courseName}…`} className="w-full resize-none rounded-xl border border-[var(--c-line)] bg-[var(--c-raise)] px-4 py-3 text-sm text-[var(--c-ink)] outline-none placeholder:text-[var(--c-muted)] focus:border-[var(--gold)]" />
           <div className="mt-3 flex justify-end">
-            <button onClick={submit} disabled={!text.trim() || busy} className="rounded-full bg-[#16221b] px-6 py-2.5 text-sm font-bold text-[var(--cream)] transition-colors hover:bg-[#22332a] disabled:cursor-not-allowed disabled:opacity-50">{busy ? "Posting…" : "Post"}</button>
+            <button onClick={submit} disabled={!text.trim() || busy} className="rounded-full bg-[var(--gold)] px-6 py-2.5 text-sm font-bold text-[#141b16] transition-colors hover:bg-[var(--gold-bright)] disabled:cursor-not-allowed disabled:opacity-50">{busy ? "Posting…" : "Post"}</button>
           </div>
         </div>
       ) : (
-        <button onClick={() => router.push("/login")} className="w-full rounded-2xl border border-black/10 bg-white px-4 py-4 text-left text-sm text-[#6b7a70] shadow-sm transition-colors hover:border-[var(--gold)]">
-          Join the {courseName} discussion… <span className="font-bold text-[#9a7a3a]">Sign in to post</span>
+        <button onClick={() => router.push("/login")} className="w-full rounded-2xl border border-[var(--c-line)] bg-[var(--c-card)] px-4 py-4 text-left text-sm text-[var(--c-muted)] shadow-sm transition-colors hover:border-[var(--gold)]">
+          Join the {courseName} discussion… <span className="font-bold text-[var(--gold)]">Sign in to post</span>
         </button>
       )}
     </div>

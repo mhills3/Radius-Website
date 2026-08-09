@@ -374,24 +374,21 @@ export default function CourseDetailClient({ slug, initialCourse }: { slug: stri
                 </div>
               )}
               <div className="overflow-hidden rounded-2xl border border-[var(--c-line)] bg-[var(--c-card)] shadow-sm">
-                {(() => { const maxD = Math.max(1, ...activeHoles.map((h) => h.distance || 0)); return activeHoles.map((h) => {
-                  const pct = Math.max(8, ((h.distance || 0) / maxD) * 100);
+                {activeHoles.map((h) => {
                   return (
                     <div key={h.holeNumber} onMouseEnter={() => setActiveHole(h.holeNumber)} onMouseLeave={() => setActiveHole(null)} className={`flex items-center gap-3 border-b border-[var(--c-line)] px-4 py-2.5 transition-colors last:border-0 ${activeHole === h.holeNumber ? "bg-[var(--gold)]/[0.12]" : "hover:bg-[var(--c-raise)]"}`}>
                       <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold ${activeHole === h.holeNumber ? "bg-[var(--gold)] text-[#141b16]" : "bg-[var(--c-chip)] text-[var(--c-ink)]"}`}>{h.holeNumber}</span>
-                      <span className="w-12 shrink-0 text-sm font-bold">Par {h.par}</span>
-                      <div className="hidden min-w-0 flex-1 sm:block"><div className="h-1.5 overflow-hidden rounded-full bg-[var(--c-raise)]"><div className="h-full rounded-full bg-[var(--gold)]/70" style={{ width: `${pct}%` }} /></div></div>
-                      <span className="w-16 shrink-0 text-right text-sm text-[var(--c-body)]">{h.distance > 0 ? fmtDist(h.distance, metric) : "—"}</span>
-                      <span className="hidden w-28 shrink-0 truncate text-right text-xs text-[var(--c-muted)] md:block">{[h.fairwayShape, h.elevation].filter((x) => x && x !== "Flat").join(" · ") || h.holeType || ""}</span>
+                      <span className="w-14 shrink-0 text-sm font-bold">Par {h.par}</span>
+                      <span className="min-w-0 flex-1 truncate text-xs text-[var(--c-muted)]">{[h.fairwayShape, h.elevation].filter((x) => x && x !== "Flat").join(" · ") || h.holeType || ""}</span>
+                      <span className="w-16 shrink-0 text-right text-sm font-semibold text-[var(--c-body)]">{h.distance > 0 ? fmtDist(h.distance, metric) : "—"}</span>
                     </div>
                   );
-                }); })()}
+                })}
                 <div className="flex items-center gap-3 bg-[var(--c-raise)] px-4 py-3 text-sm font-bold">
                   <span className="grid h-7 w-7 shrink-0 place-items-center">Σ</span>
-                  <span className="w-12 shrink-0">Par {activeLayout.par}</span>
-                  <div className="hidden flex-1 sm:block" />
+                  <span className="w-14 shrink-0">Par {activeLayout.par}</span>
+                  <div className="flex-1" />
                   <span className="w-16 shrink-0 text-right">{fmtDist(activeLayout.distanceFt, metric)}</span>
-                  <span className="hidden w-28 md:block" />
                 </div>
               </div>
             </section>

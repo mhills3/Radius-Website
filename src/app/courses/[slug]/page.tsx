@@ -105,7 +105,7 @@ export default async function Page({ params }: Props) {
   const faqLd = faq.length ? faqJsonLd(faq) : null;
 
   return (
-    <>
+    <div className="courses-scope bg-[var(--c-bg)]">
       {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />}
       {breadcrumbLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />}
       {faqLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />}
@@ -118,20 +118,20 @@ export default async function Page({ params }: Props) {
         />
       )}
       {faq.length > 0 && (
-        <section className="border-t border-black/[0.06] bg-white px-6 py-12">
+        <section className="border-t border-[var(--c-line)] bg-[var(--c-bg)] px-6 py-12">
           <div className="mx-auto max-w-3xl">
-            <h2 className="font-[family-name:var(--font-heading)] text-xl font-extrabold tracking-tight text-[#16221b]">Frequently asked</h2>
+            <h2 className="font-[family-name:var(--font-heading)] text-xl font-extrabold tracking-tight text-[var(--c-ink)]">Frequently asked</h2>
             <dl className="mt-5 space-y-5">
               {faq.map((x) => (
                 <div key={x.q}>
-                  <dt className="font-semibold text-[#16221b]">{x.q}</dt>
-                  <dd className="mt-1 text-sm text-[#46554c]">{x.a}</dd>
+                  <dt className="font-semibold text-[var(--c-ink)]">{x.q}</dt>
+                  <dd className="mt-1 text-sm text-[var(--c-body)]">{x.a}</dd>
                 </div>
               ))}
             </dl>
           </div>
         </section>
       )}
-    </>
+    </div>
   );
 }

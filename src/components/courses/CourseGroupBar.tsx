@@ -41,18 +41,18 @@ export default function CourseGroupBar({ courseId, courseName }: { courseId: str
   };
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-black/8 bg-white p-4 shadow-sm">
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--c-line)] bg-[var(--c-card)] p-4 shadow-sm">
       <div className="flex items-center gap-3">
         <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[var(--bg-deep)] text-xl text-[var(--gold)]">⛳</span>
         <div>
-          <div className="font-[family-name:var(--font-heading)] font-bold text-[#16221b]">{courseName} group</div>
-          <div className="text-xs text-[#8a968d]">{count} member{count === 1 ? "" : "s"}{isHome ? " · 🏠 your home course" : ""}</div>
+          <div className="font-[family-name:var(--font-heading)] font-bold text-[var(--c-ink)]">{courseName} group</div>
+          <div className="text-xs text-[var(--c-muted)]">{count} member{count === 1 ? "" : "s"}{isHome ? " · 🏠 your home course" : ""}</div>
         </div>
       </div>
       {isHome ? (
-        <span className="rounded-full bg-[#5fcf80]/15 px-4 py-2 text-sm font-bold text-[#1d8f48]">✓ Member</span>
+        <span className="rounded-full bg-[#5fcf80]/15 px-4 py-2 text-sm font-bold text-[#5fcf80]">✓ Member</span>
       ) : (
-        <button onClick={toggle} disabled={busy} className={`rounded-full px-5 py-2 text-sm font-bold transition-colors ${joined ? "border border-black/10 bg-white text-[#16221b] hover:border-[var(--gold)]" : "bg-[var(--gold)] text-[#16221b] hover:bg-[var(--gold-bright)]"} disabled:opacity-60`}>{joined ? "✓ Joined" : "+ Join group"}</button>
+        <button onClick={toggle} disabled={busy} className={`rounded-full px-5 py-2 text-sm font-bold transition-colors ${joined ? "border border-[var(--c-line)] bg-[var(--c-card)] text-[var(--c-ink)] hover:border-[var(--gold)]" : "bg-[var(--gold)] text-[#141b16] hover:bg-[var(--gold-bright)]"} disabled:opacity-60`}>{joined ? "✓ Joined" : "+ Join group"}</button>
       )}
     </div>
   );
