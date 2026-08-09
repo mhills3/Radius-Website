@@ -91,7 +91,6 @@ export default function Nav() {
         { href: "/leagues", label: "Events" },
         { href: "/community", label: "Community" },
         { href: "/courses", label: "Courses" },
-        { href: "/discs", label: "Discs" },
       ]
     : NAV_LINKS;
 
