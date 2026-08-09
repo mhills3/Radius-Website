@@ -344,7 +344,6 @@ export default function LeaguesPage() {
     ? (myPast
         ? pastEvents
         : [...upcoming.filter((e) => adminLeagueIds.has(e.leagueId) || signedUp.has(e.id)), ...privateMine]
-            .filter((e) => (e.kind ?? "league") !== "league")
             .sort((a, b) => a.date - b.date))
     : upcoming.filter((e) => registrationOpen(e));
   const shownEvents = tabEvents.filter((e) =>
@@ -498,42 +497,6 @@ export default function LeaguesPage() {
             {dayFilter && <button onClick={() => setDayFilter(null)} className="mt-3 w-full rounded-full bg-white/[0.05] py-2 text-xs font-bold text-[var(--sage)] transition-colors hover:text-[var(--cream)]">Clear day filter</button>}
           </div>
           <div>
-          {myMode && (() => {
-            const myLeagues = [...mine, ...memberLeagues].filter((l) => !needle || l.name.toLowerCase().includes(needle));
-            return myLeagues.length > 0 && (
-              <div className="mb-4 grid gap-3">
-                {myLeagues.map((l) => {
-                  const next = upcoming.filter((e) => e.leagueId === l.id).sort((a, b) => a.date - b.date)[0];
-                  const art = l.logoUrl ?? (l.courseId ? courseMeta.get(l.courseId)?.cover : undefined);
-                  const cNoun = l.kind === "tournament" ? "Tournament" : l.kind && l.kind !== "league" ? "Event" : "League";
-                  const cTarget = l.kind && l.kind !== "league" && next ? `/leagues/${l.slug}/e/${next.id}` : `/leagues/${l.slug}`;
-                  return (
-                    <Link key={l.id} href={cTarget} className={`${card} ${cardHover} group block overflow-hidden`}>
-                      <div className="grid sm:grid-cols-[220px_1fr]">
-                        <CourseStrip url={art} isLogo={!!l.logoUrl} ms={next?.date ?? 0} noDate={!next} />
-                        <div className="min-w-0 p-6">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0 truncate font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">{l.name}</div>
-                            <span className="flex shrink-0 items-center gap-1.5">
-                              {isLeagueAdmin(l, cid) && <span className="rounded-full bg-[var(--gold-dim)] px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--gold)]">Director</span>}
-                              <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--blue-dim)] px-2.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--blue)]"><IconCalendar className="h-3 w-3" />{cNoun}</span>
-                            </span>
-                          </div>
-                          <div className="mt-0.5 truncate text-[13px] text-[var(--cream-60)]">
-                            {[l.courseName, plural(l.memberCount, "member")].filter(Boolean).join(" · ")}
-                          </div>
-                          <div className="mt-5 font-mono text-[10.5px] tracking-[0.06em] text-[var(--cream-38)]">
-                            {next ? <>Next: <b className="font-medium text-[var(--cream-60)]">{new Date(next.date).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })} · {new Date(next.date).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</b></> : "No upcoming events"}
-                          </div>
-                          <div className="mt-2 text-[13px] font-semibold text-[var(--cream-60)] transition-colors group-hover:text-[var(--cream)]">Open {cNoun.toLowerCase()} page →</div>
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            );
-          })()}
           {tab === "Events" && !myMode && liveEvents.length > 0 && (
             <button onClick={() => setTab("Live now")} className="mb-3 inline-flex items-center gap-2.5 rounded-full border border-[var(--blue-dim)] px-4 py-2 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--blue)] transition-colors hover:border-[var(--blue)]/40">
               <i className="pulse-ring h-2 w-2 rounded-full bg-[var(--blue)]" />{plural(liveEvents.length, "event")} live now →
