@@ -62,7 +62,7 @@ export default function EventWizard() {
   const [desc, setDesc] = useState("");
   const [format, setFormat] = useState<string>(LEAGUE_FORMATS[0]);
   const [teamSize, setTeamSize] = useState(2);
-  const [startFormat, setStartFormat] = useState<string>(START_FORMATS[0]);
+  const [startFormat, setStartFormat] = useState<string>("Tee times");
   const [scoring, setScoring] = useState<string>("Stroke play"); // label from SCORING_MODELS
   const [isPrivate, setIsPrivate] = useState(false);
   const [leagueChoice] = useState(""); // always auto-create the container (League picker retired)
@@ -331,7 +331,7 @@ export default function EventWizard() {
               {isScoringKind && (
                 <div>
                   <FieldLabel>Play format *</FieldLabel>
-                  <Segmented options={[...LEAGUE_FORMATS]} value={format === "Doubles" ? "Teams" : format} onChange={setFormat} />
+                  <Segmented options={[...LEAGUE_FORMATS]} value={format === "Doubles" ? "Teams" : format} onChange={setFormat} disabled={["Teams"]} />
                   {format === "Teams" && (
                     <div className="mt-3">
                       <FieldLabel>Team size</FieldLabel>
