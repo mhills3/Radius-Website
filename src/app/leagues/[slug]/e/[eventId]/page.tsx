@@ -1237,7 +1237,7 @@ export default function LeagueEventPage() {
           <>
           <div className={`${card} overflow-hidden`}>
             <div className="flex items-center gap-3.5 bg-[var(--forest)] px-4 py-2 font-mono text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[var(--cream-38)]">
-              <span className="w-8">Pos</span><span className="flex-1">Player</span><span className="hidden w-[184px] text-right sm:block">{tournamentOver ? (event.roundCount > 1 ? Array.from({ length: event.roundCount }, (_, r) => `R${r + 1}`).join(" · ") : "F · B") : "Last 9"}</span><span className="w-14 text-right">Thru</span><span className="w-20 text-right">Total</span>
+              <span className="w-8">Pos</span><span className="flex-1">Player</span><span className={`hidden text-right sm:block ${tournamentOver && event.roundCount > 1 ? "w-[200px]" : "w-[184px]"}`}>{tournamentOver ? (event.roundCount > 1 ? Array.from({ length: event.roundCount }, (_, r) => `R${r + 1}`).join(" · ") : "F · B") : "Last 9"}</span>{!tournamentOver && <span className="w-14 text-right">Thru</span>}<span className="w-20 text-right">Total</span>
             </div>
             {[...ranked, ...unscored].map((e, i) => {
               const isRanked = ranked.includes(e);
@@ -1326,9 +1326,18 @@ export default function LeagueEventPage() {
                     </span>
                   ) : (
                     <span className="flex items-center gap-3.5">
-                      <span className="hidden w-[184px] items-center justify-end gap-[5px] sm:flex">
+                      <span className={`hidden items-center justify-end gap-[5px] sm:flex ${tournamentOver && event.roundCount > 1 ? "w-[200px]" : "w-[184px]"}`}>
                         {tournamentOver && event.roundCount > 1 ? (
-                          typeof e.score === "number" ? <span className="font-mono text-xs tabular-nums text-[var(--cream-60)]">{Array.from({ length: event.roundCount }, (_, r) => e.roundScores?.[r] || "–").join("  ·  ")}</span> : null
+                          typeof e.score === "number" ? (
+                            <span className="flex items-baseline justify-end gap-1.5 font-mono text-xs tabular-nums">
+                              {Array.from({ length: event.roundCount }, (_, r) => {
+                                const rs = e.roundScores?.[r];
+                                return rs
+                                  ? <span key={r} className="inline-flex items-baseline gap-1"><span className="text-[var(--cream)]">{rs}</span>{parTotal != null && <span className="text-[10px] text-[var(--cream-38)]">{signed(rs - parTotal)}</span>}</span>
+                                  : <span key={r} className="text-[var(--cream-38)]">–</span>;
+                              }).flatMap((el, idx) => idx === 0 ? [el] : [<span key={`sep${idx}`} className="text-[var(--cream-38)]">·</span>, el])}
+                            </span>
+                          ) : null
                         ) : !liveRound && typeof e.score === "number" ? (
                           (() => { const hs = e.holeScores ?? []; const f = hs.slice(0, 9).filter((h) => h > 0).reduce((a, b) => a + b, 0); const b = hs.slice(9, 18).filter((h) => h > 0).reduce((a, b) => a + b, 0); return (f || b) ? <span className="font-mono text-xs text-[var(--cream-60)]">F {f || "–"} · B {b || "–"}</span> : null; })()
                         ) : last9.length > 0 && (
@@ -1346,12 +1355,14 @@ export default function LeagueEventPage() {
                           </>
                         )}
                       </span>
-                      <span className="w-14 text-right font-mono text-xs">
-                        {e.dnf ? <span className="text-[var(--cream-38)]">DNF</span>
-                          : thruN != null ? <span className="inline-flex items-center gap-1 text-[#5fcf80]"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#5fcf80]" />{thruN}</span>
-                          : typeof e.score === "number" ? <span className="font-bold uppercase text-[var(--cream-60)]">R{roundsDone(e)}</span>
-                          : ""}
-                      </span>
+                      {!tournamentOver && (
+                        <span className="w-14 text-right font-mono text-xs">
+                          {e.dnf ? <span className="text-[var(--cream-38)]">DNF</span>
+                            : thruN != null ? <span className="inline-flex items-center gap-1 text-[#5fcf80]"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#5fcf80]" />{thruN}</span>
+                            : typeof e.score === "number" ? <span className="font-bold uppercase text-[var(--cream-60)]">R{roundsDone(e)}</span>
+                            : ""}
+                        </span>
+                      )}
                       <span className={`w-20 text-right font-mono text-lg font-extrabold ${scoreOf(e) == null || e.dnf ? "text-[var(--cream-38)]" : scoreTone(fmtLive(e), you)}`}>
                         {scoreOf(e) == null ? "" : e.dnf ? scoreOf(e) : fmtLive(e)}
                         {scoreOf(e) != null && !e.dnf && parTotal != null && <span className="ml-1 align-middle text-[10px] font-normal text-[var(--cream-38)]">({anyHcp ? adjOf(e) : scoreOf(e)})</span>}
