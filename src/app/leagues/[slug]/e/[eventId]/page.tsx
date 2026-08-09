@@ -1237,6 +1237,30 @@ export default function LeagueEventPage() {
           renderTeamBoard()
         ) : (
           <>
+          {/* Podium — only on a FINAL result (a multi-round event still running has a leader, not a top three). Mirrors iOS individualBoard: 2nd · 1st · 3rd with risers. */}
+          {tournamentOver && ranked.length >= 3 && (
+            <div className="mb-5 grid grid-cols-3 items-end gap-2.5">
+              {[1, 0, 2].map((idx) => {
+                const e = ranked[idx];
+                const place = idx + 1;
+                const you = cid != null && e.id === cid;
+                const first = place === 1;
+                const pedH = first ? "h-[62px]" : place === 2 ? "h-[44px]" : "h-[34px]";
+                return (
+                  <div key={e.id} className="flex min-w-0 flex-col items-center">
+                    <UserLink username={usernameById(e.id)} className="flex min-w-0 flex-col items-center">
+                      <Avatar url={e.photo} name={nameOf(e)} size={first ? 56 : 44} gold={you} />
+                      <span className={`mt-1.5 max-w-full truncate font-bold ${first ? "text-[13px]" : "text-[11px]"} ${you ? "text-[var(--gold)]" : "text-[var(--cream)]"}`}>{nameOf(e)}</span>
+                      <span className={`font-mono font-extrabold tabular-nums ${first ? "text-xl" : "text-base"} ${first ? "text-[var(--gold)]" : "text-[var(--cream-60)]"}`}>{fmtTotal(e)}</span>
+                    </UserLink>
+                    <div className={`relative mt-1.5 w-full rounded-t-lg ${pedH}`} style={{ background: first ? "linear-gradient(180deg, rgba(232,181,96,.35), rgba(232,181,96,.08))" : "linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.03))" }}>
+                      <span className={`absolute left-1/2 top-1.5 -translate-x-1/2 font-mono text-[15px] font-black ${first ? "text-[var(--gold)]" : "text-white/50"}`}>{place}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
           <div className={`${card} overflow-hidden`}>
             <div className="flex items-center gap-3.5 bg-[var(--forest)] px-4 py-2 font-mono text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[var(--cream-38)]">
               <span className="w-8">Pos</span><span className="flex-1">Player</span>{tournamentOver && event.roundCount > 1 ? Array.from({ length: event.roundCount }, (_, r) => <span key={r} className="hidden w-[76px] text-right sm:block">Round {r + 1}</span>) : <span className="hidden w-[184px] text-right sm:block">{tournamentOver ? "F · B" : "Last 9"}</span>}{!tournamentOver && <span className="w-14 text-right">Thru</span>}<span className="w-20 text-right">Total</span>
