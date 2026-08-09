@@ -44,6 +44,14 @@ function IconTile({ selected, children }: { selected: boolean; children: React.R
   );
 }
 
+// How results are scored. Stored on the league container (settings.scoring.model) and read by every
+// event's leaderboard. Tournaments default to stroke play (cumulative strokes); leagues to points.
+const SCORING_MODELS = [
+  { label: "Stroke play", model: "strokeplay", blurb: "Lowest total strokes wins — standard tournament scoring." },
+  { label: "Points", model: "placement", blurb: "Finish position earns points each event — best for season-long leagues." },
+  { label: "Match play", model: "matchplay", blurb: "Head-to-head: win holes to win the match, matches drive the standings." },
+] as const;
+
 export default function EventWizard() {
   const { user, profile } = useAuth();
   const router = useRouter();
@@ -55,6 +63,7 @@ export default function EventWizard() {
   const [format, setFormat] = useState<string>(LEAGUE_FORMATS[0]);
   const [teamSize, setTeamSize] = useState(2);
   const [startFormat, setStartFormat] = useState<string>(START_FORMATS[0]);
+  const [scoring, setScoring] = useState<string>("Stroke play"); // label from SCORING_MODELS
   const [isPrivate, setIsPrivate] = useState(false);
   const [leagueChoice, setLeagueChoice] = useState(""); // "" = auto-create container
   const [date, setDate] = useState("");
@@ -109,6 +118,8 @@ export default function EventWizard() {
 
   const isLeagueKind = kind === "league";
   const isScoringKind = kind !== "clinic" && kind !== "cleanup" && kind !== "social";
+  // Default the scoring model to match the event kind (tournament → strokes, league → points).
+  useEffect(() => { setScoring(kind === "league" ? "Points" : "Stroke play"); }, [kind]);
   const isSessionKind = kind === "clinic" || kind === "cleanup";
   const steps: StepKey[] = useMemo(() => ["type", "details", "when", "where", "money", "contact", "logo", "review"], []);
   const step = steps[stepIdx];
@@ -159,7 +170,7 @@ export default function EventWizard() {
           courseName: placeName || undefined,
           courseId: course?.id,
           kind,
-          settings: { format, startFormat, description: "", teamSize: format === "Teams" ? teamSize : undefined },
+          settings: { format, startFormat, description: "", teamSize: format === "Teams" ? teamSize : undefined, scoring: { model: SCORING_MODELS.find((s) => s.label === scoring)?.model ?? "strokeplay" } },
         });
         if (!league) throw new Error("Couldn't create the event — are you signed in?");
       }
@@ -334,6 +345,13 @@ export default function EventWizard() {
                   <FieldLabel>Start format</FieldLabel>
                   <Segmented options={[...START_FORMATS]} value={startFormat} onChange={setStartFormat} />
                   <p className="mt-2 text-xs text-[var(--sage-dim)]">{startFormat === "Tee times" ? "Groups start in staggered time slots, all off hole 1." : startFormat === "Flex" ? "Players tee off any time in a window and report their score." : "Everyone tees off at once, each group on a different hole."}</p>
+                </div>
+              )}
+              {isScoringKind && !chosenLeague && (
+                <div>
+                  <FieldLabel>Scoring *</FieldLabel>
+                  <Segmented options={SCORING_MODELS.map((s) => s.label)} value={scoring} onChange={setScoring} />
+                  <p className="mt-2 text-xs text-[var(--sage-dim)]">{SCORING_MODELS.find((s) => s.label === scoring)?.blurb}</p>
                 </div>
               )}
               {kind === "clinic" && (
@@ -616,6 +634,7 @@ export default function EventWizard() {
                 { label: "Event type", value: kindMeta?.label ?? "—", idx: 0 },
                 { label: evName.trim() || "Event", value: desc.trim() ? (desc.length > 120 ? `${desc.slice(0, 120)}…` : desc) : "No description", idx: 1 },
                 { label: "Play format", value: format, idx: 1 },
+                ...(isScoringKind && !chosenLeague ? [{ label: "Scoring", value: scoring, idx: 1 }] : []),
                 { label: "Visibility", value: isPrivate ? "Private — link only" : "Public event", idx: 1 },
                 ...(chosenLeague ? [{ label: "League", value: chosenLeague.name, idx: 1 }] : []),
                 { label: "Event dates", value: date ? `${new Date(`${date}T${time}`).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}${isLeagueKind && nCount > 1 ? ` · weekly × ${nCount}` : ""}${!isLeagueKind && nCount > 1 ? ` · ${nCount} rounds` : ""}` : "—", idx: 2 },
