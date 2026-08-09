@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
@@ -91,40 +91,72 @@ function HeroMosaic({ images }: { images: string[] }) {
   );
 }
 
-type SpotItem = { id: string; name: string; username?: string; count: number; photo?: string };
-function Spotlight({ items }: { items: SpotItem[] }) {
-  const [i, setI] = useState(0);
-  useEffect(() => {
-    if (items.length <= 1) return;
-    const t = setInterval(() => setI((x) => (x + 1) % items.length), 7000);
-    return () => clearInterval(t);
-  }, [items.length]);
-  if (items.length === 0) return null;
-  const b = items[Math.min(i, items.length - 1)];
+type SpotItem = { id: string; name: string; username?: string; count: number; photo?: string; cover?: string };
+
+// Avatar with a graceful fallback chain: profile photo → blurred latest-course-cover + monogram →
+// refined monogram with a gold ring. Never a bare letter on a flat circle.
+function PodiumAvatar({ item, big }: { item: SpotItem; big: boolean }) {
+  const size = big ? "h-24 w-24" : "h-16 w-16";
+  const mono = (item.name || "?").charAt(0).toUpperCase();
+  if (item.photo) {
+    return (
+      <span className={`relative block overflow-hidden rounded-full border-2 border-[var(--gold)] p-[3px] ${size}`}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={item.photo} alt="" className="h-full w-full rounded-full object-cover" />
+      </span>
+    );
+  }
+  if (item.cover) {
+    return (
+      <span className={`relative block overflow-hidden rounded-full ring-2 ring-[var(--gold)] ${size}`}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={item.cover} alt="" className="absolute inset-0 h-full w-full scale-110 object-cover blur-[6px] brightness-[0.45]" />
+        <span className={`relative grid h-full w-full place-items-center font-[family-name:var(--font-heading)] font-bold text-[var(--cream)] ${big ? "text-3xl" : "text-xl"}`}>{mono}</span>
+      </span>
+    );
+  }
   return (
-    <div className="flex flex-col items-center text-center">
-      <div className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-[var(--gold)]">Top builder</div>
-      <div key={b.id} className="hero-fade mt-5 flex flex-col items-center">
-        <span className="relative">
-          <span aria-hidden className="absolute -inset-3 rounded-full" style={{ background: "radial-gradient(closest-side, rgba(232,181,96,0.4), transparent)" }} />
-          <span className="relative block h-24 w-24 overflow-hidden rounded-full border-2 border-[var(--gold)] p-[3px]">
-            {b.photo ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={b.photo} alt="" className="h-full w-full rounded-full object-cover" />
-            ) : (
-              <span className="grid h-full w-full place-items-center rounded-full bg-[var(--bg-mid)] font-[family-name:var(--font-heading)] text-3xl font-bold text-[var(--cream)]">{(b.name || "?").charAt(0).toUpperCase()}</span>
-            )}
-          </span>
-        </span>
-        <div className="mt-4 font-[family-name:var(--font-heading)] text-2xl font-extrabold tracking-tight text-[var(--cream)]">{b.name}</div>
-        {b.username && <Link href={`/u/${b.username}`} className="mt-0.5 text-sm text-[var(--sage)] hover:text-[var(--gold)]">@{b.username}</Link>}
-        <div className="mt-3 font-[family-name:var(--font-heading)] text-6xl font-black leading-none tracking-[-0.02em] text-[var(--gold)]">{b.count}</div>
-        <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--sage-dim)]">courses mapped</div>
+    <span className={`grid place-items-center rounded-full border-2 border-[var(--gold)] bg-[radial-gradient(circle_at_30%_25%,rgba(232,181,96,0.22),var(--bg-mid))] font-[family-name:var(--font-heading)] font-bold text-[var(--gold)] ${size} ${big ? "text-3xl" : "text-xl"}`}>{mono}</span>
+  );
+}
+function PodiumPerson({ item, big }: { item: SpotItem; big: boolean }) {
+  return (
+    <div className={`flex flex-col items-center text-center ${big ? "" : "opacity-70"}`}>
+      <span className="relative">
+        {big && <span aria-hidden className="absolute -inset-3 rounded-full" style={{ background: "radial-gradient(closest-side, rgba(232,181,96,0.4), transparent)" }} />}
+        <span className="relative block">{item.username ? <Link href={`/u/${item.username}`}><PodiumAvatar item={item} big={big} /></Link> : <PodiumAvatar item={item} big={big} />}</span>
+      </span>
+      <div className={`mt-3 max-w-[8rem] truncate font-[family-name:var(--font-heading)] font-extrabold tracking-tight text-[var(--cream)] ${big ? "text-xl" : "text-sm"}`}>{item.name}</div>
+      {big && item.username && <Link href={`/u/${item.username}`} className="text-sm text-[var(--sage)] hover:text-[var(--gold)]">@{item.username}</Link>}
+      <div className={`font-[family-name:var(--font-heading)] font-black leading-none tracking-[-0.02em] text-[var(--gold)] ${big ? "mt-2.5 text-5xl sm:text-6xl" : "mt-1.5 text-2xl"}`}>{item.count}</div>
+    </div>
+  );
+}
+function Podium({ items, metric }: { items: SpotItem[]; metric: string }) {
+  const [page, setPage] = useState(0);
+  const pages = Math.max(1, Math.ceil(items.length / 3));
+  useEffect(() => { setPage(0); }, [metric]); // reset when the source (toggle) changes
+  useEffect(() => {
+    if (pages <= 1) return;
+    const t = setInterval(() => setPage((p) => (p + 1) % pages), 8000);
+    return () => clearInterval(t);
+  }, [pages]);
+  if (items.length === 0) return null;
+  const p = Math.min(page, pages - 1);
+  const trio = items.slice(p * 3, p * 3 + 3); // [1st, 2nd, 3rd] on this page
+  const [c, l, r] = [trio[0], trio[1], trio[2]];
+  return (
+    <div className="flex flex-col items-center">
+      <div key={`${metric}-${p}`} className="hero-fade flex items-end justify-center gap-5 sm:gap-9">
+        <div className="w-24 shrink-0">{l && <PodiumPerson item={l} big={false} />}</div>
+        {c && <PodiumPerson item={c} big />}
+        <div className="w-24 shrink-0">{r && <PodiumPerson item={r} big={false} />}</div>
       </div>
-      {items.length > 1 && (
-        <div className="mt-6 flex items-center gap-2">
-          {items.map((it, idx) => (
-            <button key={it.id} onClick={() => setI(idx)} aria-label={`Show ${it.name}`} className={`h-1.5 rounded-full transition-all ${idx === Math.min(i, items.length - 1) ? "w-5 bg-[var(--gold)]" : "w-1.5 bg-white/25 hover:bg-white/40"}`} />
+      <div className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--sage-dim)]">{metric}</div>
+      {pages > 1 && (
+        <div className="mt-4 flex items-center gap-2">
+          {Array.from({ length: pages }, (_, idx) => (
+            <button key={idx} onClick={() => setPage(idx)} aria-label={`Page ${idx + 1}`} className={`h-1.5 rounded-full transition-all ${idx === p ? "w-5 bg-[var(--gold)]" : "w-1.5 bg-white/25 hover:bg-white/40"}`} />
           ))}
         </div>
       )}
@@ -165,6 +197,7 @@ export default function CommunityPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [newThread, setNewThread] = useState(false);
   const [newMeetup, setNewMeetup] = useState(false);
+  const [heroMode, setHeroMode] = useState<"builders" | "contributors">("builders");
 
   useEffect(() => {
     let alive = true;
@@ -249,8 +282,23 @@ export default function CommunityPage() {
     posts.forEach((p) => { if (p.authorPhotoUrl) urls.add(p.authorPhotoUrl); if (p.imageUrl) urls.add(p.imageUrl); });
     return [...urls].slice(0, 48);
   }, [topPlayers, builders, builderRanks, posts]);
-  // Hero spotlight — top builders with a real course count.
-  const spotlight = useMemo(() => builders.filter((b) => b.count > 0).slice(0, 8).map((b) => ({ id: b.id, name: b.name, username: b.username, count: b.count, photo: builderRanks.get(b.id)?.photo })), [builders, builderRanks]);
+  // Hero podium — top builders (courses mapped), up to 3 pages of 3.
+  const builderPodium = useMemo(() => builders.filter((b) => b.count > 0).slice(0, 9).map((b) => ({ id: b.id, name: b.name, username: b.username, count: b.count, photo: builderRanks.get(b.id)?.photo, cover: b.cover })), [builders, builderRanks]);
+  // Top contributors — derived honestly from the loaded feed (posts in the last 7 days). Below the
+  // threshold (needs 3+ people and real activity) it's empty, so the BUILDERS/CONTRIBUTORS toggle hides.
+  const contributorPodium = useMemo(() => {
+    const wk = Date.now() - 7 * 86400_000;
+    const byId = new Map<string, { id: string; name: string; username?: string; photo?: string; cover?: string; count: number }>();
+    posts.filter((p) => p.createdAt >= wk && p.authorId).forEach((p) => {
+      const id = p.authorId as string;
+      const e = byId.get(id) || { id, name: p.authorName || "Player", username: p.authorHandle || undefined, photo: p.authorPhotoUrl, count: 0 };
+      e.count++;
+      if (!e.photo && p.authorPhotoUrl) e.photo = p.authorPhotoUrl;
+      byId.set(id, e);
+    });
+    const list = [...byId.values()].sort((a, b) => b.count - a.count).slice(0, 9);
+    return list.length >= 3 && list[0].count >= 2 ? list : [];
+  }, [posts]);
   // Pulse — honest 7-day counts from the loaded feed. Metrics below a floor of 10 hide; fewer than two hides the strip.
   const pulse = useMemo(() => {
     const wk = Date.now() - 7 * 86400_000;
@@ -372,8 +420,18 @@ export default function CommunityPage() {
             <h1 className="font-[family-name:var(--font-heading)] text-6xl font-black leading-[0.95] tracking-[-0.04em] text-[var(--cream)] sm:text-7xl md:text-[5.5rem]">Community</h1>
             <Pulse metrics={pulse} />
           </div>
-          <div className="flex flex-1 items-center justify-center pb-4">
-            <Spotlight items={spotlight} />
+          <div className="flex flex-1 flex-col items-center justify-center gap-7 pb-4">
+            {contributorPodium.length > 0 && (
+              <div className="inline-flex rounded-full bg-white/[0.06] p-1 backdrop-blur-md">
+                {([["builders", "Builders"], ["contributors", "Contributors"]] as const).map(([k, label]) => (
+                  <button key={k} onClick={() => setHeroMode(k)} className={`rounded-full px-4 py-1.5 font-mono text-[11px] font-bold uppercase tracking-wide transition-colors ${heroMode === k ? "bg-[var(--gold)] text-[#141b16]" : "text-[var(--text-body)] hover:text-[var(--cream)]"}`}>{label}</button>
+                ))}
+              </div>
+            )}
+            {(() => {
+              const useContrib = heroMode === "contributors" && contributorPodium.length > 0;
+              return <Podium items={useContrib ? contributorPodium : builderPodium} metric={useContrib ? "posts this week" : "courses mapped"} />;
+            })()}
           </div>
         </div>
       </section>
@@ -381,17 +439,16 @@ export default function CommunityPage() {
       {/* ===== SECTION 2 — composer, immediately below the hero (no header, no band) ===== */}
       <div className="relative z-10 mx-auto -mt-2 w-full max-w-2xl px-6">{composer}</div>
 
-      {/* ===== SECTION 3 — video rail ===== */}
-      <div className="mx-auto max-w-7xl px-6 pt-12"><HighlightsBar /></div>
-
-      {/* ===== SECTION 4 — feed ===== */}
-      <div className="mx-auto max-w-7xl px-6 pb-10 pt-4">
-        <div className="mb-6 inline-flex rounded-full bg-white/[0.06] p-1 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.7)]">
+      {/* ===== SECTION 3 — feed (tabs sticky; video rail injected inline after ~5 posts) ===== */}
+      <div className="mx-auto max-w-7xl px-6 pb-10 pt-6">
+        <div className="sticky top-[58px] z-30 -mx-6 mb-5 bg-[var(--bg-deep)]/80 px-6 py-2.5 backdrop-blur-md">
+          <div className="inline-flex rounded-full bg-white/[0.06] p-1 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.7)]">
           {TABS.map((t) => (
             <button key={t.key} onClick={() => setTab(t.key)} className={`rounded-full px-5 py-2 text-sm font-bold transition-colors ${tab === t.key ? "bg-[var(--gold)] text-[#141b16]" : "text-[var(--text-body)] hover:text-[var(--cream)]"}`}>
               {t.label}
             </button>
           ))}
+          </div>
         </div>
         <div className="grid gap-5 lg:grid-cols-[230px_1fr_300px]">
           {/* LEFT RAIL */}
@@ -444,8 +501,12 @@ export default function CommunityPage() {
                 )}
 
                 {sort !== "following" && !loading && feedList.length === 0 && !featured && <p className={`${card} p-8 text-center text-sm text-[var(--sage-dim)]`}>No posts yet.</p>}
-                {!loading && feedList.map((p) => (
-                  <PostCard key={p.id} post={p} rank={p.authorId ? ranks.get(p.authorId) : undefined} myReaction={reactionMap[p.id]} onReact={(t) => onReact(p.id, t)} onOpen={() => setOpen(p)} />
+                {!loading && feedList.map((p, i) => (
+                  <Fragment key={p.id}>
+                    <PostCard post={p} rank={p.authorId ? ranks.get(p.authorId) : undefined} myReaction={reactionMap[p.id]} onReact={(t) => onReact(p.id, t)} onOpen={() => setOpen(p)} />
+                    {/* Video rail as an in-feed break, not a section that blocks the feed */}
+                    {(i === 4 || (feedList.length < 5 && i === feedList.length - 1)) && <div className="py-1"><HighlightsBar /></div>}
+                  </Fragment>
                 ))}
                 {!loading && <div ref={sentinel} className="h-1" />}
                 {loadingMore && <PostSkeleton />}

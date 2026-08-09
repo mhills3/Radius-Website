@@ -414,6 +414,7 @@ export interface Builder {
   name: string;
   username?: string;
   count: number;
+  cover?: string; // latest mapped course's cover photo — used as an avatar fallback
 }
 /** Users who have built the most courses, grouped by CANONICAL identity — one person's linked
  *  cross-platform accounts combine; two different people who share a display name do NOT. */
@@ -422,15 +423,18 @@ export async function getTopBuilders(max = 10): Promise<Builder[]> {
   // Credit by builder ACCOUNT (createdById), the same way the app does. A builder's courses are
   // often saved to the shared pool under the name "Community", so grouping by display name (the
   // old behaviour) silently dropped those and undercounted — e.g. 64 instead of 85.
-  const byId = new Map<string, { count: number; names: Map<string, number> }>();
+  const byId = new Map<string, { count: number; names: Map<string, number>; cover?: string; coverAt: number }>();
   snap.forEach((d) => {
     const c = d.data();
     const id = ((c.createdById as string) || "").trim();
     if (!id) return; // unattributed courses aren't credited to any builder
     const name = ((c.createdBy as string) || "").trim();
-    const e = byId.get(id) || { count: 0, names: new Map<string, number>() };
+    const e = byId.get(id) || { count: 0, names: new Map<string, number>(), coverAt: 0 };
     e.count++;
     if (name && name.toLowerCase() !== "community") e.names.set(name, (e.names.get(name) || 0) + 1);
+    const cover = typeof c.coverPhotoUrl === "string" && /^https?:\/\//.test(c.coverPhotoUrl) ? c.coverPhotoUrl : undefined;
+    const at = typeof c.dateCreated === "number" ? c.dateCreated : 0;
+    if (cover && at >= e.coverAt) { e.cover = cover; e.coverAt = at; } // keep the newest course's cover
     byId.set(id, e);
   });
   // Fold each account into its CANONICAL id. A single person's linked accounts merge; two
@@ -439,20 +443,21 @@ export async function getTopBuilders(max = 10): Promise<Builder[]> {
   // builder id (not per course); most ids have no mapping and resolve to themselves.
   const canonOf = new Map<string, string>();
   await Promise.all([...byId.keys()].map(async (id) => { canonOf.set(id, await resolveCanonicalId(id)); }));
-  const merged = new Map<string, { id: string; count: number; names: Map<string, number>; topIdCount: number }>();
+  const merged = new Map<string, { id: string; count: number; names: Map<string, number>; topIdCount: number; cover?: string; coverAt: number }>();
   for (const [id, e] of byId) {
     const key = canonOf.get(id) || id;
     const m = merged.get(key);
     if (!m) {
-      merged.set(key, { id, count: e.count, names: new Map(e.names), topIdCount: e.count });
+      merged.set(key, { id, count: e.count, names: new Map(e.names), topIdCount: e.count, cover: e.cover, coverAt: e.coverAt });
     } else {
       m.count += e.count;
       for (const [n, c2] of e.names) m.names.set(n, (m.names.get(n) || 0) + c2);
       if (e.count > m.topIdCount) { m.topIdCount = e.count; m.id = id; } // account with most courses = best avatar
+      if (e.cover && e.coverAt >= m.coverAt) { m.cover = e.cover; m.coverAt = e.coverAt; } // newest cover across accounts
     }
   }
   const top: Builder[] = [...merged.values()]
-    .map((m) => ({ id: m.id, count: m.count, name: [...m.names.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || "" }))
+    .map((m) => ({ id: m.id, count: m.count, cover: m.cover, name: [...m.names.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || "" }))
     .sort((a, b) => b.count - a.count)
     .slice(0, max);
   // Fill username (to disambiguate same-name builders) + any missing display name from the
