@@ -68,16 +68,21 @@ export default function MyCoursesPage() {
         <div className="flex items-end justify-between gap-4">
           <div className="min-w-0">
             <h1 className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-[-0.02em]">My courses &amp; layouts</h1>
-            <p className="mt-2 text-sm text-[var(--c-body)]">Every course and layout you&apos;ve built — review their stats and edit the details.</p>
+            <p className="mt-2 text-sm text-[var(--c-body)]">Every course and layout you&apos;ve built — review their stats and edit the details. <Link href="/rewards" className="font-semibold text-[var(--gold)] underline decoration-[var(--gold)]/40 underline-offset-2 hover:decoration-[var(--gold)]">Mapping earns rewards →</Link></p>
           </div>
           {user && (
-            <Link href="/courses/new" className="group relative hidden shrink-0 items-center gap-2.5 overflow-hidden rounded-full bg-gradient-to-b from-[var(--gold-bright)] to-[var(--gold)] px-5 py-2.5 shadow-[0_8px_24px_-8px_rgba(232,181,96,0.55)] ring-1 ring-inset ring-white/25 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_34px_-10px_rgba(232,181,96,0.72)] md:inline-flex">
-              <span aria-hidden className="pointer-events-none absolute -inset-x-12 inset-y-0 bg-[linear-gradient(110deg,transparent_38%,rgba(255,255,255,0.6),transparent_62%)] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-              <span className="relative grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#141b16]/12">
-                <span className="h-5 w-5 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: "url(/basket-icon.svg)", filter: "brightness(0)" }} />
+            <Link href="/courses/new" className="group relative hidden shrink-0 overflow-hidden rounded-2xl shadow-[0_12px_28px_-12px_rgba(15,24,19,0.65)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_38px_-12px_rgba(15,24,19,0.85)] md:block">
+              <span className="absolute -inset-x-10 inset-y-0 bg-[linear-gradient(110deg,transparent_30%,rgba(246,193,101,0.45),transparent_70%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+              <span className="relative flex items-center gap-3 rounded-2xl bg-[linear-gradient(135deg,rgba(232,181,96,0.14),var(--c-card)_58%)] px-5 py-3 ring-1 ring-[var(--gold)]/30 transition-colors group-hover:ring-[var(--gold)]/60">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[var(--gold-bright)] to-[var(--gold)] text-[#141b16] shadow-[inset_0_1px_2px_rgba(255,255,255,0.45)]">
+                  <span className="h-7 w-7 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: "url(/basket-icon.svg)" }} />
+                </span>
+                <span className="text-left">
+                  <span className="block font-[family-name:var(--font-heading)] text-sm font-extrabold leading-tight tracking-tight text-[var(--cream)]">Build a course</span>
+                  <span className="block text-[11px] leading-tight text-[var(--sage)]">Map it hole by hole</span>
+                </span>
+                <svg className="ml-1 h-4 w-4 text-[var(--gold)] transition-transform duration-300 group-hover:translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
               </span>
-              <span className="relative font-[family-name:var(--font-heading)] text-sm font-extrabold tracking-tight text-[#141b16]">Build a course</span>
-              <svg className="relative ml-0.5 h-4 w-4 text-[#141b16]/70 transition-transform duration-300 group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
             </Link>
           )}
         </div>
