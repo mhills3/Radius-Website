@@ -22,18 +22,21 @@ export function SectionTitle({ children, right }: { children: React.ReactNode; r
   );
 }
 
-export function Segmented({ options, value, onChange, tall, icons }: { options: string[]; value: string; onChange: (v: string) => void; tall?: boolean; icons?: Record<string, React.ComponentType<{ className?: string }>> }) {
+export function Segmented({ options, value, onChange, tall, icons, disabled }: { options: string[]; value: string; onChange: (v: string) => void; tall?: boolean; icons?: Record<string, React.ComponentType<{ className?: string }>>; disabled?: string[] }) {
   return (
     <div className={`flex w-fit rounded-full bg-[var(--card)] ring-1 ring-[var(--hair)] ${tall ? "h-11 p-[3px]" : "p-1"}`}>
       {options.map((o) => {
         const Ic = icons?.[o];
+        const off = disabled?.includes(o);
         return (
         <button
           key={o}
           type="button"
-          onClick={() => onChange(o)}
-          className={`inline-flex items-center justify-center gap-1.5 rounded-full font-bold transition-colors ${tall ? "min-w-[96px] px-4 text-sm" : "px-4 py-2 text-sm"} ${value === o ? "bg-[var(--gold)] text-[#141B16]" : "text-[var(--cream-60)] hover:text-[var(--cream)]"}`}
-        >{Ic && <Ic className="h-3.5 w-3.5 shrink-0" />}{o}</button>
+          disabled={off}
+          onClick={off ? undefined : () => onChange(o)}
+          title={off ? "Coming soon" : undefined}
+          className={`inline-flex items-center justify-center gap-1.5 rounded-full font-bold transition-colors ${tall ? "min-w-[96px] px-4 text-sm" : "px-4 py-2 text-sm"} ${off ? "cursor-not-allowed text-[var(--cream-38)] opacity-50" : value === o ? "bg-[var(--gold)] text-[#141B16]" : "text-[var(--cream-60)] hover:text-[var(--cream)]"}`}
+        >{Ic && <Ic className="h-3.5 w-3.5 shrink-0" />}{o}{off && <span className="ml-1.5 rounded-full bg-white/[0.08] px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-[0.08em] text-[var(--cream-38)]">Soon</span>}</button>
         );
       })}
     </div>

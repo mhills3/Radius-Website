@@ -65,7 +65,7 @@ export default function EventWizard() {
   const [startFormat, setStartFormat] = useState<string>(START_FORMATS[0]);
   const [scoring, setScoring] = useState<string>("Stroke play"); // label from SCORING_MODELS
   const [isPrivate, setIsPrivate] = useState(false);
-  const [leagueChoice, setLeagueChoice] = useState(""); // "" = auto-create container
+  const [leagueChoice] = useState(""); // always auto-create the container (League picker retired)
   const [date, setDate] = useState("");
   const [time, setTime] = useState("17:30");
   const [repeat, setRepeat] = useState(1);
@@ -118,8 +118,8 @@ export default function EventWizard() {
 
   const isLeagueKind = kind === "league";
   const isScoringKind = kind !== "clinic" && kind !== "cleanup" && kind !== "social";
-  // Default the scoring model to match the event kind (tournament → strokes, league → points).
-  useEffect(() => { setScoring(kind === "league" ? "Points" : "Stroke play"); }, [kind]);
+  // Only stroke play is live for now (Points / Match play are coming soon), so default there always.
+  useEffect(() => { setScoring("Stroke play"); }, [kind]);
   const isSessionKind = kind === "clinic" || kind === "cleanup";
   const steps: StepKey[] = useMemo(() => ["type", "details", "when", "where", "money", "contact", "logo", "review"], []);
   const step = steps[stepIdx];
@@ -350,7 +350,7 @@ export default function EventWizard() {
               {isScoringKind && !chosenLeague && (
                 <div>
                   <FieldLabel>Scoring *</FieldLabel>
-                  <Segmented options={SCORING_MODELS.map((s) => s.label)} value={scoring} onChange={setScoring} />
+                  <Segmented options={SCORING_MODELS.map((s) => s.label)} value={scoring} onChange={setScoring} disabled={["Points", "Match play"]} />
                   <p className="mt-2 text-xs text-[var(--sage-dim)]">{SCORING_MODELS.find((s) => s.label === scoring)?.blurb}</p>
                 </div>
               )}
@@ -382,15 +382,6 @@ export default function EventWizard() {
                     <input value={meetingPoint} onChange={(e) => setMeetingPoint(e.target.value)} placeholder="Parking lot by hole 1" className={inputCls} />
                   </label>
                 </>
-              )}
-              {isLeagueKind && myLeagues.length > 0 && (
-                <label className="block">
-                  <FieldLabel>League <span className="normal-case tracking-normal text-[var(--sage-dim)]">— optional; otherwise one is set up for you</span></FieldLabel>
-                  <select value={leagueChoice} onChange={(e) => setLeagueChoice(e.target.value)} className={inputCls}>
-                    <option value="">Set up automatically</option>
-                    {myLeagues.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-                  </select>
-                </label>
               )}
               <div>
                 <FieldLabel>Visibility *</FieldLabel>
