@@ -821,8 +821,8 @@ export default function LeagueEventPage() {
               <div className="mb-10">
                 <div className="mb-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--gold)]">{finalized ? "Final results" : "Leaderboard"}</div>
                 <div className={`${card} overflow-hidden`}>
-                  <div className="grid h-[42px] grid-cols-[56px_1fr_90px_90px] items-center bg-[rgba(0,0,0,0.16)] px-[22px] font-mono text-[10.5px] uppercase tracking-[0.16em] text-[var(--cream-38)]">
-                    <span>Pos</span><span>Player</span><span className="text-right">Rds</span><span className="text-right">Total</span>
+                  <div className="grid h-[42px] items-center bg-[rgba(0,0,0,0.16)] px-[22px] font-mono text-[10.5px] uppercase tracking-[0.16em] text-[var(--cream-38)]" style={{ gridTemplateColumns: event.roundCount > 1 ? `56px 1fr repeat(${event.roundCount}, 72px) 90px` : "56px 1fr 90px 90px" }}>
+                    <span>Pos</span><span>Player</span>{event.roundCount > 1 ? Array.from({ length: event.roundCount }, (_, r) => <span key={r} className="text-right">Round {r + 1}</span>) : <span className="text-right">Rds</span>}<span className="text-right">Total</span>
                   </div>
                   {(() => {
                     const myIdx = cid ? ranked.findIndex((x) => x.id === cid) : -1;
@@ -835,8 +835,8 @@ export default function LeagueEventPage() {
                       return (
                         <div
                           key={e.id}
-                          className={`grid h-14 grid-cols-[56px_1fr_90px_90px] items-center border-b border-[var(--hair)] px-[22px] text-sm last:border-b-0 ${you ? "border-l-[3px] border-l-[var(--gold)] pl-[19px]" : ""} ${appended && ri === rows.length - 1 ? "border-t border-t-[var(--hair-strong)]" : ""}`}
-                          style={you ? { background: "linear-gradient(90deg, rgba(232,181,96,.13), rgba(232,181,96,.04))" } : undefined}
+                          className={`grid h-14 items-center border-b border-[var(--hair)] px-[22px] text-sm last:border-b-0 ${you ? "border-l-[3px] border-l-[var(--gold)] pl-[19px]" : ""} ${appended && ri === rows.length - 1 ? "border-t border-t-[var(--hair-strong)]" : ""}`}
+                          style={{ ...(you ? { background: "linear-gradient(90deg, rgba(232,181,96,.13), rgba(232,181,96,.04))" } : {}), gridTemplateColumns: event.roundCount > 1 ? `56px 1fr repeat(${event.roundCount}, 72px) 90px` : "56px 1fr 90px 90px" }}
                         >
                           <span className={`font-mono ${you ? "text-[var(--gold)]" : i === 0 ? "text-[var(--cream)]" : "text-[var(--cream-38)]"}`}>{i + 1}</span>
                           <span className="flex min-w-0 items-center gap-[11px] font-semibold text-[var(--cream)]">
@@ -845,7 +845,9 @@ export default function LeagueEventPage() {
                             {you && <span className="rounded border border-[rgba(232,181,96,.4)] px-1.5 py-0.5 font-mono text-[9.5px] tracking-[0.14em] text-[var(--gold)]">You</span>}
                             {(e.payout ?? 0) > 0 && <span className="font-mono text-xs font-bold text-[#5fcf80]">${e.payout}</span>}
                           </span>
-                          <span className="text-right font-mono text-[var(--cream-60)]">{e.roundScores?.filter((r) => r > 0).join(" · ") ?? ""}</span>
+                          {event.roundCount > 1
+                            ? Array.from({ length: event.roundCount }, (_, r) => { const rs = e.roundScores?.[r]; return <span key={r} className="text-right font-mono text-[var(--cream-60)]">{rs || <span className="text-[var(--cream-38)]">–</span>}</span>; })
+                            : <span className="text-right font-mono text-[var(--cream-60)]">{e.roundScores?.filter((r) => r > 0).join(" · ") ?? ""}</span>}
                           <span className={`text-right font-mono text-[15px] font-bold ${scoreTone(fmtTotal(e), you)}`}>{fmtTotal(e)}</span>
                         </div>
                       );
@@ -1237,7 +1239,7 @@ export default function LeagueEventPage() {
           <>
           <div className={`${card} overflow-hidden`}>
             <div className="flex items-center gap-3.5 bg-[var(--forest)] px-4 py-2 font-mono text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[var(--cream-38)]">
-              <span className="w-8">Pos</span><span className="flex-1">Player</span><span className={`hidden text-right sm:block ${tournamentOver && event.roundCount > 1 ? "w-[200px]" : "w-[184px]"}`}>{tournamentOver ? (event.roundCount > 1 ? Array.from({ length: event.roundCount }, (_, r) => `R${r + 1}`).join(" · ") : "F · B") : "Last 9"}</span>{!tournamentOver && <span className="w-14 text-right">Thru</span>}<span className="w-20 text-right">Total</span>
+              <span className="w-8">Pos</span><span className="flex-1">Player</span>{tournamentOver && event.roundCount > 1 ? Array.from({ length: event.roundCount }, (_, r) => <span key={r} className="hidden w-[76px] text-right sm:block">Round {r + 1}</span>) : <span className="hidden w-[184px] text-right sm:block">{tournamentOver ? "F · B" : "Last 9"}</span>}{!tournamentOver && <span className="w-14 text-right">Thru</span>}<span className="w-20 text-right">Total</span>
             </div>
             {[...ranked, ...unscored].map((e, i) => {
               const isRanked = ranked.includes(e);
@@ -1326,35 +1328,35 @@ export default function LeagueEventPage() {
                     </span>
                   ) : (
                     <span className="flex items-center gap-3.5">
-                      <span className={`hidden items-center justify-end gap-[5px] sm:flex ${tournamentOver && event.roundCount > 1 ? "w-[200px]" : "w-[184px]"}`}>
-                        {tournamentOver && event.roundCount > 1 ? (
-                          typeof e.score === "number" ? (
-                            <span className="flex items-baseline justify-end gap-2 font-mono tabular-nums">
-                              {Array.from({ length: event.roundCount }, (_, r) => {
-                                const rs = e.roundScores?.[r];
-                                return rs
-                                  ? <span key={r} className="inline-flex items-baseline gap-1"><span className="text-sm font-bold text-[var(--cream)]">{parTotal != null ? signed(rs - parTotal) : rs}</span>{parTotal != null && <span className="text-[10px] text-[var(--cream-38)]">({rs})</span>}</span>
-                                  : <span key={r} className="text-xs text-[var(--cream-38)]">–</span>;
-                              }).flatMap((el, idx) => idx === 0 ? [el] : [<span key={`sep${idx}`} className="text-xs text-[var(--cream-38)]">·</span>, el])}
+                      {tournamentOver && event.roundCount > 1 ? (
+                        Array.from({ length: event.roundCount }, (_, r) => {
+                          const rs = typeof e.score === "number" ? e.roundScores?.[r] : undefined;
+                          return (
+                            <span key={r} className="hidden w-[76px] items-baseline justify-end gap-1 font-mono tabular-nums sm:flex">
+                              {rs ? <><span className="text-sm font-bold text-[var(--cream)]">{parTotal != null ? signed(rs - parTotal) : rs}</span>{parTotal != null && <span className="text-[10px] text-[var(--cream-38)]">({rs})</span>}</> : <span className="text-xs text-[var(--cream-38)]">–</span>}
                             </span>
-                          ) : null
-                        ) : !liveRound && typeof e.score === "number" ? (
-                          (() => { const hs = e.holeScores ?? []; const f = hs.slice(0, 9).filter((h) => h > 0).reduce((a, b) => a + b, 0); const b = hs.slice(9, 18).filter((h) => h > 0).reduce((a, b) => a + b, 0); return (f || b) ? <span className="font-mono text-xs text-[var(--cream-60)]">F {f || "–"} · B {b || "–"}</span> : null; })()
-                        ) : last9.length > 0 && (
-                          <>
-                          {last9.map((h, hi) => {
-                            const holeIdx = playedHoles.length - last9.length + hi;
-                            const par = pars?.[holeIdx];
-                            const cls = par == null ? "border-[var(--hair-strong)] text-[var(--cream-38)]"
-                              : h <= par - 2 ? "border-[var(--blue)] bg-[var(--blue)] font-bold text-[#141B16]"
-                              : h === par - 1 ? "border-[var(--blue)] bg-[var(--blue-dim)] text-[var(--blue)]"
-                              : h === par ? "border-[var(--hair-strong)] text-[var(--cream-38)]"
-                              : "border-[rgba(244,241,232,.24)] text-[var(--cream-60)]";
-                            return <span key={hi} className={`grid h-4 w-4 place-items-center rounded-full border font-mono text-[8.5px] ${cls}`}>{h}</span>;
-                          })}
-                          </>
-                        )}
-                      </span>
+                          );
+                        })
+                      ) : (
+                        <span className="hidden w-[184px] items-center justify-end gap-[5px] sm:flex">
+                          {!liveRound && typeof e.score === "number" ? (
+                            (() => { const hs = e.holeScores ?? []; const f = hs.slice(0, 9).filter((h) => h > 0).reduce((a, b) => a + b, 0); const b = hs.slice(9, 18).filter((h) => h > 0).reduce((a, b) => a + b, 0); return (f || b) ? <span className="font-mono text-xs text-[var(--cream-60)]">F {f || "–"} · B {b || "–"}</span> : null; })()
+                          ) : last9.length > 0 && (
+                            <>
+                            {last9.map((h, hi) => {
+                              const holeIdx = playedHoles.length - last9.length + hi;
+                              const par = pars?.[holeIdx];
+                              const cls = par == null ? "border-[var(--hair-strong)] text-[var(--cream-38)]"
+                                : h <= par - 2 ? "border-[var(--blue)] bg-[var(--blue)] font-bold text-[#141B16]"
+                                : h === par - 1 ? "border-[var(--blue)] bg-[var(--blue-dim)] text-[var(--blue)]"
+                                : h === par ? "border-[var(--hair-strong)] text-[var(--cream-38)]"
+                                : "border-[rgba(244,241,232,.24)] text-[var(--cream-60)]";
+                              return <span key={hi} className={`grid h-4 w-4 place-items-center rounded-full border font-mono text-[8.5px] ${cls}`}>{h}</span>;
+                            })}
+                            </>
+                          )}
+                        </span>
+                      )}
                       {!tournamentOver && (
                         <span className="w-14 text-right font-mono text-xs">
                           {e.dnf ? <span className="text-[var(--cream-38)]">DNF</span>
