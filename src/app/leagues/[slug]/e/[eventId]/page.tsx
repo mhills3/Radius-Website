@@ -1689,8 +1689,21 @@ export default function LeagueEventPage() {
           (() => {
             const byRound = new Map<number, EventCard[]>();
             for (const c of cards) { const r = c.round ?? 1; if (!byRound.has(r)) byRound.set(r, []); byRound.get(r)!.push(c); }
+            // A multi-round event always shows every round. If a later round's sheet was never
+            // persisted (e.g. generated before round 2 existed), derive it from round 1's grouping
+            // shifted to that round's start — exactly how generateGroups builds each round.
+            const r1 = byRound.get(1) ?? [];
+            const start1 = event.roundStarts?.[0] ?? event.date;
+            const synthRounds = new Set<number>();
+            for (let rnd = 2; rnd <= event.roundCount; rnd++) {
+              if (!byRound.has(rnd) && r1.length) {
+                const startR = event.roundStarts?.[rnd - 1] ?? event.date;
+                byRound.set(rnd, r1.map((c) => ({ ...c, id: `${c.id}__r${rnd}`, round: rnd, teeTime: c.teeTime != null ? startR + (c.teeTime - start1) : c.teeTime })));
+                synthRounds.add(rnd);
+              }
+            }
             const roundKeys = [...byRound.keys()].sort((a, b) => a - b);
-            const multiRound = roundKeys.length > 1;
+            const multiRound = event.roundCount > 1 || roundKeys.length > 1;
             return (
               <div className="grid gap-8">
                 {roundKeys.map((rnd) => {
@@ -1699,9 +1712,10 @@ export default function LeagueEventPage() {
                   for (const c of rcards) { const d = c.division || ""; if (!groups.has(d)) groups.set(d, []); groups.get(d)!.push(c); }
                   const multiDiv = groups.size > 1;
                   const roundStart = event.roundStarts?.[rnd - 1] ?? event.date;
+                  const isSynth = synthRounds.has(rnd);
                   return (
                     <div key={rnd}>
-                      {multiRound && <div className="mb-3 flex flex-wrap items-center gap-3 border-b border-[var(--hair)] pb-2"><span className="font-[family-name:var(--font-heading)] text-base font-bold text-[var(--cream)]">Round {rnd}</span><span className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--cream-38)]">{fmtDate(roundStart)}</span></div>}
+                      {multiRound && <div className="mb-3 flex flex-wrap items-center gap-3 border-b border-[var(--hair)] pb-2"><span className="font-[family-name:var(--font-heading)] text-base font-bold text-[var(--cream)]">Round {rnd}</span><span className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--cream-38)]">{fmtDate(roundStart)}</span>{isSynth && <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--cream-38)]">· mirrors Round 1{admin ? " · regenerate to re-pair" : ""}</span>}</div>}
                       <div className="grid gap-6">
                         {[...groups.entries()].map(([div, gcards]) => (
                           <div key={div || "open"}>
@@ -1711,7 +1725,7 @@ export default function LeagueEventPage() {
                                 <div key={c.id} className={`${card} p-4`}>
                                   <div className="mb-3 flex items-center justify-between gap-2">
                                     <span className="font-[family-name:var(--font-heading)] text-sm font-extrabold text-[var(--cream)]">Group {c.number}</span>
-                                    {admin && open ? (
+                                    {admin && open && !isSynth ? (
                                       <input type="time" value={c.teeTime ? toLocalHM(c.teeTime) : ""} onChange={(e) => editTeeTime(c.id, e.target.value)} className="rounded-lg bg-[var(--gold-dim)] px-2 py-1 font-mono text-[11px] font-bold text-[var(--gold)] outline-none [color-scheme:dark]" />
                                     ) : (
                                       <span className="rounded-lg bg-[var(--gold-dim)] px-2 py-1 font-mono text-[10px] font-bold text-[var(--gold)]">{c.teeTime ? fmtHM(c.teeTime) : "—"}</span>
@@ -1722,7 +1736,7 @@ export default function LeagueEventPage() {
                                       <div key={pid} className="flex items-center gap-2 text-sm text-[var(--text-body)]">
                                         <UserLink username={usernameById(pid)}><Avatar url={entryOf(pid)?.photo} name={nameById(pid)} size={22} ring={false} /></UserLink>
                                         <UserLink username={usernameById(pid)} className="min-w-0 flex-1 truncate">{nameById(pid)}</UserLink>
-                                        {admin && open && rcards.length > 1 && (
+                                        {admin && open && !isSynth && rcards.length > 1 && (
                                           <select value="" onChange={(e) => { if (e.target.value) moveEntry(pid, e.target.value); }} title="Move to another group" className="shrink-0 rounded-md bg-white/[0.05] px-1.5 py-1 text-[10px] text-[var(--sage)] outline-none">
                                             <option value="">move…</option>
                                             {rcards.filter((o) => o.id !== c.id).map((o) => <option key={o.id} value={o.id}>Group {o.number}{o.teeTime ? ` · ${fmtHM(o.teeTime)}` : ""}</option>)}
