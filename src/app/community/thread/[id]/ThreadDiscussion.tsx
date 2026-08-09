@@ -41,7 +41,7 @@ function VoteBar({ score, myVote, onVote, small }: { score: number; myVote: numb
   );
 }
 
-export default function ThreadDiscussion({ threadId, initialScore, initialReplyCount, viewCount, opId }: { threadId: string; initialScore: number; initialReplyCount: number; viewCount: number; opId?: string }) {
+export default function ThreadDiscussion({ threadId, initialScore, initialReplyCount, opId }: { threadId: string; initialScore: number; initialReplyCount: number; opId?: string }) {
   const { user, profile } = useAuth();
   const router = useRouter();
   const [replies, setReplies] = useState<Reply[] | null>(null);
@@ -151,7 +151,6 @@ export default function ThreadDiscussion({ threadId, initialScore, initialReplyC
       <div className="mt-4 flex items-center gap-4 border-t border-white/[0.06] pt-3 text-sm text-[var(--sage)]">
         <VoteBar score={threadScore} myVote={threadVote} onVote={onThreadVote} />
         <span className="inline-flex items-center gap-1.5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.5L3 21l2-5.6A8.5 8.5 0 1 1 21 11.5z" /></svg>{total} {total === 1 ? "reply" : "replies"}</span>
-        <span className="inline-flex items-center gap-1.5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>{viewCount}</span>
       </div>
 
       <section className="mt-6">

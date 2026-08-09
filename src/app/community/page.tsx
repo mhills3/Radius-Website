@@ -80,7 +80,15 @@ function HeroMosaic({ images }: { images: string[] }) {
 export default function CommunityPage() {
   const router = useRouter();
   const { user, profile } = useAuth();
-  const [tab, setTab] = useState<Tab>("feed");
+  // Initialize the tab from the URL (?tab=forums) so returning from a thread lands back on Forums,
+  // not the feed. The tab is mirrored into the URL below.
+  const [tab, setTab] = useState<Tab>(() => {
+    if (typeof window !== "undefined") {
+      const t = new URLSearchParams(window.location.search).get("tab");
+      if (t === "feed" || t === "forums" || t === "meetups") return t as Tab;
+    }
+    return "feed";
+  });
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [threads, setThreads] = useState<Thread[]>([]);
   const [meetups, setMeetups] = useState<Meetup[]>([]);
@@ -121,6 +129,14 @@ export default function CommunityPage() {
   const [seen, setSeen] = useState<{ feed: number; forums: number }>({ feed: 0, forums: 0 });
   const [pendingNew, setPendingNew] = useState<FeedPost[]>([]);
   const [scrolledDown, setScrolledDown] = useState(false);
+
+  // Mirror the active tab into the URL (Forums → ?tab=forums) so the browser Back button from a
+  // thread returns to the tab you were on, not the feed.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = tab === "feed" ? "/community" : `/community?tab=${tab}`;
+    if (window.location.pathname + window.location.search !== url) window.history.replaceState(null, "", url);
+  }, [tab]);
 
   useEffect(() => {
     let alive = true;

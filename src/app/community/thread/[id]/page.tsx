@@ -72,7 +72,7 @@ export default async function ThreadPage({ params }: Props) {
           )}
         </article>
 
-        <ThreadDiscussion threadId={id} initialScore={t.score} initialReplyCount={t.replyCount} viewCount={t.viewCount} opId={t.authorId} />
+        <ThreadDiscussion threadId={id} initialScore={t.score} initialReplyCount={t.replyCount} opId={t.authorId} />
       </div>
     </div>
   );
