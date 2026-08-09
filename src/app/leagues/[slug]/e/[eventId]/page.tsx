@@ -481,7 +481,15 @@ export default function LeagueEventPage() {
   // Every user reference links to their public profile when a username exists.
   const usernameById = (id: string) => entryOf(id)?.username ?? staff.find((m) => m.id === id)?.username;
 
-  const scoreOf = (e: EventEntry) => (typeof e.score === "number" ? e.score : liveTotal(e));
+  // Total strokes for an entry. Per-round totals are the granular source of truth: the flat `score`
+  // field can go stale relative to roundScores after a hole/round edit (that mismatch produced the -63
+  // bug — score stuck at one round while roundScores held both). Sum roundScores whenever they exist.
+  const scoreOf = (e: EventEntry) => {
+    // A live round (no numeric score yet) always shows its running per-round total.
+    if (typeof e.score !== "number") return liveTotal(e);
+    const banked = e.roundScores?.filter((r) => r > 0) ?? [];
+    return banked.length > 0 ? banked.reduce((a, b) => a + b, 0) : e.score;
+  };
   const adjOf = (e: EventEntry) => scoreOf(e)! + (e.penalty ?? 0) + (e.startingScore ?? 0);
   const parTotal = pars && pars.length === event.holes ? pars.reduce((a, b) => a + b, 0) : null;
   // How many rounds a score covers. Use roundScores when present; otherwise estimate from the total
