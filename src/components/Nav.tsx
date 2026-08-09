@@ -58,7 +58,7 @@ export default function Nav() {
   // settles into a DARK frosted bar on scroll (unlike marketing pages, which settle into the cream bar).
   // The state/city/mine/new course sub-pages are still light, so they keep the default nav.
   const coursesHero = pathname === "/courses" || (pathname.startsWith("/courses/") && !/^\/courses\/(state|city|mine|new)(\/|$)/.test(pathname));
-  const darkPage = pathname === "/dashboard" || pathname === "/bag" || pathname === "/community" || pathname === "/notifications" || pathname === "/courses/mine" || pathname.startsWith("/u/") || pathname.startsWith("/leagues"); // app surfaces are dark
+  const darkPage = pathname === "/dashboard" || pathname === "/bag" || pathname === "/community" || pathname === "/notifications" || pathname === "/courses/mine" || pathname === "/courses/new" || pathname.startsWith("/u/") || pathname.startsWith("/leagues"); // app surfaces are dark
   const atHeroTop = (darkHeroPage || coursesHero) && !scrolled;
   const onDark = darkPage || coursesHero || atHeroTop; // cream text/logo when over the dark hero photo or on dark app surfaces
   const onDarkSettle = darkPage || (coursesHero && scrolled); // dark frosted bar

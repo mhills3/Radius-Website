@@ -100,9 +100,10 @@ html { scroll-behavior: smooth; }
   border-radius: 12px;
 }
 .courses-scope .mapboxgl-popup-tip { border-top-color: #17211c; border-bottom-color: #17211c; }
-/* Map fills the viewport under the fixed nav — push Mapbox's own controls clear of it so they're clickable. */
-.courses-scope .mapboxgl-ctrl-top-right,
-.courses-scope .mapboxgl-ctrl-top-left { top: 128px; }
+/* On the full-bleed index map only, push Mapbox's own controls clear of the fixed nav so they're
+   clickable. Scoped to .courses-map-full so the builder's in-column map keeps its default control spot. */
+.courses-map-full .mapboxgl-ctrl-top-right,
+.courses-map-full .mapboxgl-ctrl-top-left { top: 128px; }
 /* Premium view swap: fade the incoming list/map view in (opacity only — safe for sticky/fixed children). */
 @keyframes courseViewIn { from { opacity: 0; } to { opacity: 1; } }
 .course-view-in { animation: courseViewIn 300ms ease-out both; }

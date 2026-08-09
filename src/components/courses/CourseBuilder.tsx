@@ -20,7 +20,7 @@ function diffStyle(label: string, on: boolean): React.CSSProperties {
   const c = DIFF_COLOR[label] || "#4AA861";
   const isPro = label === "Pro";
   if (on) return { background: isPro ? PRO_GRADIENT : c, color: "#fff", border: `1px solid ${isPro ? "rgba(255,255,255,0.45)" : c}`, boxShadow: isPro ? "0 5px 18px rgba(246,193,101,0.6)" : `0 5px 18px ${c}73`, transform: "translateY(-1px)" };
-  return { background: isPro ? "rgba(246,193,101,0.1)" : `${c}14`, color: isPro ? "#9a7a3a" : c, border: `1.5px solid ${isPro ? "rgba(246,193,101,0.5)" : c + "59"}` };
+  return { background: isPro ? "rgba(246,193,101,0.1)" : `${c}14`, color: isPro ? "#E8B560" : c, border: `1.5px solid ${isPro ? "rgba(246,193,101,0.5)" : c + "59"}` };
 }
 const AMENITIES = ["Parking", "Restrooms", "Water", "Lighting", "Picnic Area", "Camping", "Pro Shop", "Food"];
 const STEPS = ["Details", "Map holes", "Review"];
@@ -85,10 +85,10 @@ function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: n
   ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
 }
 
-const FIELD = "w-full rounded-xl border border-black/[0.08] bg-[#faf9f5] px-3.5 py-2.5 text-sm text-[#16221b] outline-none placeholder-[#b3bbb2] transition-all focus:border-[var(--gold)] focus:bg-white focus:ring-2 focus:ring-[var(--gold)]/20";
-const LABEL = "mb-1.5 block text-xs font-semibold text-[#46554c]";
-const pill = (on: boolean) => `rounded-xl border py-2 text-xs font-bold transition-all ${on ? "border-[var(--gold)] bg-[var(--gold)] text-[#16221b] shadow-[0_2px_8px_-2px_rgba(246,193,101,0.6)]" : "border-black/[0.08] bg-white text-[#46554c] hover:border-black/20 hover:text-[#16221b]"}`;
-const seg = (on: boolean) => `flex-1 rounded-xl border py-2.5 text-sm font-bold transition-all ${on ? "border-[var(--gold)] bg-[var(--gold)] text-[#16221b] shadow-[0_2px_8px_-2px_rgba(246,193,101,0.6)]" : "border-black/[0.08] bg-white text-[#46554c] hover:border-black/20"}`;
+const FIELD = "w-full rounded-xl border border-[var(--c-line)] bg-[var(--c-card)] px-3.5 py-2.5 text-sm text-[var(--c-ink)] outline-none placeholder-[#b3bbb2] transition-all focus:border-[var(--gold)] focus:bg-[var(--c-card)] focus:ring-2 focus:ring-[var(--gold)]/20";
+const LABEL = "mb-1.5 block text-xs font-semibold text-[var(--c-body)]";
+const pill = (on: boolean) => `rounded-xl border py-2 text-xs font-bold transition-all ${on ? "border-[var(--gold)] bg-[var(--gold)] text-[var(--c-ink)] shadow-[0_2px_8px_-2px_rgba(246,193,101,0.6)]" : "border-[var(--c-line)] bg-[var(--c-card)] text-[var(--c-body)] hover:border-[var(--c-line)] hover:text-[var(--c-ink)]"}`;
+const seg = (on: boolean) => `flex-1 rounded-xl border py-2.5 text-sm font-bold transition-all ${on ? "border-[var(--gold)] bg-[var(--gold)] text-[var(--c-ink)] shadow-[0_2px_8px_-2px_rgba(246,193,101,0.6)]" : "border-[var(--c-line)] bg-[var(--c-card)] text-[var(--c-body)] hover:border-[var(--c-line)]"}`;
 
 export default function CourseBuilder({ uid, initial }: { uid: string; initial?: EditCourse }) {
   const router = useRouter();
@@ -405,25 +405,25 @@ export default function CourseBuilder({ uid, initial }: { uid: string; initial?:
     if (k === "tee") return <span className="h-3.5 w-6 shrink-0 rounded-[3px]" style={{ background: active ? "#fff" : "#16331f" }} />;
     if (k === "altTee") return <span className="h-3 w-5 shrink-0 rounded-[3px]" style={{ background: active ? "#fff" : "#16331f" }} />;
     if (k === "elbow") return <span className="h-3.5 w-3.5 shrink-0 rotate-45 rounded-[2px]" style={{ background: active ? "#fff" : "#E0752A" }} />;
-    if (k === "mando") return <span className="grid h-5 w-4 shrink-0 place-items-center rounded-[3px] text-[10px] font-bold text-[#16221b]" style={{ background: active ? "#fff" : "#F1C40F" }}>→</span>;
+    if (k === "mando") return <span className="grid h-5 w-4 shrink-0 place-items-center rounded-[3px] text-[10px] font-bold text-[var(--c-ink)]" style={{ background: active ? "#fff" : "#F1C40F" }}>→</span>;
     return <span className="h-7 w-7 shrink-0 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: "url(/basket-icon.svg)", filter: active ? "brightness(0) invert(1)" : "none" }} />;
   };
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-10">
-      <Link href="/courses/mine" className="mb-5 inline-flex items-center gap-1.5 text-sm font-semibold text-[#6b7a70] transition-colors hover:text-[#16221b]">
+      <Link href="/courses/mine" className="mb-5 inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--c-muted)] transition-colors hover:text-[var(--c-ink)]">
         <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
         Back to my courses
       </Link>
       <div className="mb-7">
-        <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#9a7a3a]">Course builder</div>
-        <h1 className="mt-1.5 font-[family-name:var(--font-heading)] text-4xl font-extrabold tracking-[-0.03em] text-[#16221b]">{editing ? "Edit course" : "Build a course"}</h1>
-        <p className="mt-2 max-w-xl text-sm text-[#6b7a70]">{editing ? <>Update your course, hole by hole. Changes save back to your course and sync to the apps.</> : <>Map your local course hole by hole, then <span className="font-semibold text-[#46554c]">publish</span> it to go live everywhere — or save a private draft to finish later.</>}</p>
-        <div className="mt-5 inline-flex items-center gap-1 rounded-2xl border border-black/[0.06] bg-white p-1.5 shadow-sm">
+        <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-[var(--gold)]">Course builder</div>
+        <h1 className="mt-1.5 font-[family-name:var(--font-heading)] text-4xl font-extrabold tracking-[-0.03em] text-[var(--c-ink)]">{editing ? "Edit course" : "Build a course"}</h1>
+        <p className="mt-2 max-w-xl text-sm text-[var(--c-muted)]">{editing ? <>Update your course, hole by hole. Changes save back to your course and sync to the apps.</> : <>Map your local course hole by hole, then <span className="font-semibold text-[var(--c-body)]">publish</span> it to go live everywhere — or save a private draft to finish later.</>}</p>
+        <div className="mt-5 inline-flex items-center gap-1 rounded-2xl border border-[var(--c-line)] bg-[var(--c-card)] p-1.5 shadow-sm">
           {STEPS.map((s, i) => (
             <div key={s} className="flex items-center">
-              <div className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold transition-colors ${i === step ? "bg-[#16221b] text-[var(--cream)]" : "text-[#8a968d]"}`}>
-                <span className={`grid h-5 w-5 place-items-center rounded-full text-[10px] ${i === step ? "bg-[var(--gold)] text-[#16221b]" : i < step ? "bg-[var(--gold)]/30 text-[#9a7a3a]" : "bg-black/[0.06] text-[#8a968d]"}`}>{i < step ? "✓" : i + 1}</span>
+              <div className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold transition-colors ${i === step ? "bg-[var(--gold)] text-[#141b16]" : "text-[var(--c-muted)]"}`}>
+                <span className={`grid h-5 w-5 place-items-center rounded-full text-[10px] ${i === step ? "bg-[var(--gold)] text-[var(--c-ink)]" : i < step ? "bg-[var(--gold)]/30 text-[var(--gold)]" : "bg-black/[0.06] text-[var(--c-muted)]"}`}>{i < step ? "✓" : i + 1}</span>
                 {s}
               </div>
               {i < STEPS.length - 1 && <span className="mx-0.5 h-px w-6 bg-black/10" />}
@@ -434,28 +434,28 @@ export default function CourseBuilder({ uid, initial }: { uid: string; initial?:
 
       {resume && (
         <div className="mb-5 flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--gold)]/40 bg-[var(--gold)]/10 px-4 py-3">
-          <span className="text-sm font-semibold text-[#9a7a3a]">You have an unfinished course draft.</span>
+          <span className="text-sm font-semibold text-[var(--gold)]">You have an unfinished course draft.</span>
           <div className="ml-auto flex gap-2">
-            <button onClick={() => resume()} className="rounded-full bg-[#16221b] px-4 py-2 text-xs font-bold text-[var(--cream)] hover:bg-[#22332a]">Resume draft</button>
-            <button onClick={() => { try { localStorage.removeItem(DRAFT_KEY); } catch {} setResume(null); }} className="rounded-full border border-black/10 bg-white px-4 py-2 text-xs font-bold text-[#46554c] hover:border-black/20">Start fresh</button>
+            <button onClick={() => resume()} className="rounded-full bg-[var(--c-chip)] px-4 py-2 text-xs font-bold text-[var(--c-ink)] hover:bg-white/[0.14]">Resume draft</button>
+            <button onClick={() => { try { localStorage.removeItem(DRAFT_KEY); } catch {} setResume(null); }} className="rounded-full border border-[var(--c-line)] bg-[var(--c-card)] px-4 py-2 text-xs font-bold text-[var(--c-body)] hover:border-[var(--c-line)]">Start fresh</button>
           </div>
         </div>
       )}
 
       <div className="grid gap-6 lg:grid-cols-[440px_1fr]">
         <div className="min-w-0">
-          <div className="rounded-3xl border border-black/[0.07] bg-white p-6 shadow-[0_18px_50px_-26px_rgba(15,24,19,0.32)]">
+          <div className="rounded-3xl border border-[var(--c-line)] bg-[var(--c-card)] p-6 shadow-[0_18px_50px_-26px_rgba(15,24,19,0.32)]">
           {step === 0 && (
             <div className="space-y-4">
               <label className="block"><span className={LABEL}>Course name *</span><input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Maple Hill" className={FIELD} /></label>
               <div>
                 <span className={LABEL}>Location *</span>
-                <form onSubmit={geocode} className="flex gap-2"><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search an address or town…" className={FIELD} /><button type="submit" className="shrink-0 rounded-xl border border-black/[0.08] bg-white px-4 text-sm font-bold text-[#16221b] transition-colors hover:border-[var(--gold)]">Find</button></form>
-                <button onClick={setLocationToCenter} className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--gold)]/40 bg-[var(--gold)]/10 py-2.5 text-sm font-bold text-[#9a7a3a] transition-colors hover:bg-[var(--gold)]/20">
+                <form onSubmit={geocode} className="flex gap-2"><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search an address or town…" className={FIELD} /><button type="submit" className="shrink-0 rounded-xl border border-[var(--c-line)] bg-[var(--c-card)] px-4 text-sm font-bold text-[var(--c-ink)] transition-colors hover:border-[var(--gold)]">Find</button></form>
+                <button onClick={setLocationToCenter} className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--gold)]/40 bg-[var(--gold)]/10 py-2.5 text-sm font-bold text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/20">
                   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.1 2 5 5.1 5 9c0 5.2 7 13 7 13s7-7.8 7-13c0-3.9-3.1-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z" /></svg>
                   Set location to map center
                 </button>
-                {loc && <p className="mt-2 rounded-lg bg-[#faf9f5] px-3 py-2 text-xs text-[#46554c]">📍 {loc.city || "—"}{loc.state ? `, ${loc.state}` : ""} <span className="text-[#a3aca4]">· {loc.lat.toFixed(4)}, {loc.lng.toFixed(4)}</span></p>}
+                {loc && <p className="mt-2 rounded-lg bg-[var(--c-card)] px-3 py-2 text-xs text-[var(--c-body)]">📍 {loc.city || "—"}{loc.state ? `, ${loc.state}` : ""} <span className="text-[#a3aca4]">· {loc.lat.toFixed(4)}, {loc.lng.toFixed(4)}</span></p>}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <label className="block"><span className={LABEL}>Holes *</span><input type="number" min={1} max={27} value={holeCountText} onChange={(e) => setHoleCountText(e.target.value)} className={FIELD} /></label>
@@ -464,126 +464,126 @@ export default function CourseBuilder({ uid, initial }: { uid: string; initial?:
               <label className="block"><span className={LABEL}>Description *</span><textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What makes this course great?" className={`${FIELD} resize-none`} /></label>
               <div><span className={LABEL}>Terrain</span><div className="grid grid-cols-3 gap-2">{TERRAINS.map((t) => <button key={t} onClick={() => setTerrain(t)} className={pill(terrain === t)}>{t}</button>)}</div></div>
               <div><span className={LABEL}>Difficulty</span><div className="grid grid-cols-3 gap-2"><button onClick={() => setDifficulty("")} className={pill(difficulty === "")}>Auto</button>{DIFFICULTIES.map((dd) => <button key={dd} onClick={() => setDifficulty(dd)} style={diffStyle(dd, difficulty === dd)} className="rounded-xl py-2 text-xs font-extrabold transition-all">{dd}</button>)}</div></div>
-              <div><span className={LABEL}>Cost</span><div className="flex items-center gap-2"><button onClick={() => setIsFree(true)} className={seg(isFree)}>Free</button><button onClick={() => setIsFree(false)} className={seg(!isFree)}>Pay to play</button>{!isFree && <input type="number" value={feeAmount} onChange={(e) => setFeeAmount(Number(e.target.value))} placeholder="$" className="w-20 rounded-xl border border-black/[0.08] bg-[#faf9f5] px-2 py-2.5 text-sm outline-none focus:border-[var(--gold)]" />}</div></div>
+              <div><span className={LABEL}>Cost</span><div className="flex items-center gap-2"><button onClick={() => setIsFree(true)} className={seg(isFree)}>Free</button><button onClick={() => setIsFree(false)} className={seg(!isFree)}>Pay to play</button>{!isFree && <input type="number" value={feeAmount} onChange={(e) => setFeeAmount(Number(e.target.value))} placeholder="$" className="w-20 rounded-xl border border-[var(--c-line)] bg-[var(--c-card)] px-2 py-2.5 text-sm outline-none focus:border-[var(--gold)]" />}</div></div>
               <div><span className={LABEL}>Amenities</span><div className="grid grid-cols-2 gap-2">{AMENITIES.map((a) => { const on = amenities.has(a); return <button key={a} onClick={() => setAmenities((s) => { const n = new Set(s); if (n.has(a)) n.delete(a); else n.add(a); return n; })} className={pill(on)}>{on ? "✓ " : ""}{a}</button>; })}</div></div>
               <div>
                 <span className={LABEL}>Cover photo</span>
                 {coverPhotoUrl ? (
-                  <div className="relative overflow-hidden rounded-xl border border-black/10">
+                  <div className="relative overflow-hidden rounded-xl border border-[var(--c-line)]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={coverPhotoUrl} alt="Cover" className="h-32 w-full object-cover" />
                     <button onClick={() => setCoverPhotoUrl("")} className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-black/55 text-white backdrop-blur transition-colors hover:bg-black/75"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg></button>
                   </div>
                 ) : (
-                  <label className={`flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-black/15 bg-[#faf9f5] py-7 text-sm font-semibold text-[#6b7a70] transition-colors hover:border-[var(--gold)] hover:text-[#16221b] ${uploading ? "pointer-events-none opacity-60" : ""}`}>
-                    <svg className="h-6 w-6 text-[#9a7a3a]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" /></svg>
+                  <label className={`flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-[var(--c-line)] bg-[var(--c-card)] py-7 text-sm font-semibold text-[var(--c-muted)] transition-colors hover:border-[var(--gold)] hover:text-[var(--c-ink)] ${uploading ? "pointer-events-none opacity-60" : ""}`}>
+                    <svg className="h-6 w-6 text-[var(--gold)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" /></svg>
                     {uploading ? "Uploading…" : "Upload a cover photo"}
                     <input type="file" accept="image/*" disabled={uploading} onChange={onCoverFile} className="hidden" />
                   </label>
                 )}
               </div>
               {error && <p className="text-sm font-medium text-[#d9473f]">{error}</p>}
-              <button onClick={goMap} className="w-full rounded-full bg-[#16221b] px-5 py-3.5 text-sm font-bold text-[var(--cream)] transition-colors hover:bg-[#22332a]">Next: map the holes →</button>
+              <button onClick={goMap} className="w-full rounded-full bg-[var(--gold)] px-5 py-3.5 text-sm font-bold text-[#141b16] transition-colors hover:bg-[var(--gold-bright)]">Next: map the holes →</button>
             </div>
           )}
 
           {step === 1 && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-bold text-[#16221b]">{mappedCount}<span className="text-[#8a968d]">/{holeCount} mapped</span></span>
+                <span className="text-sm font-bold text-[var(--c-ink)]">{mappedCount}<span className="text-[var(--c-muted)]">/{holeCount} mapped</span></span>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {holes.map((h, i) => (
-                  <button key={i} onClick={() => focusHole(i)} className={`relative grid h-9 w-9 place-items-center rounded-xl text-xs font-bold transition-colors ${i === cur ? "bg-[#16221b] text-[var(--cream)] shadow-md" : "bg-[#faf9f5] text-[#46554c] hover:bg-black/[0.06]"}`}>
+                  <button key={i} onClick={() => focusHole(i)} className={`relative grid h-9 w-9 place-items-center rounded-xl text-xs font-bold transition-colors ${i === cur ? "bg-[var(--gold)] text-[#141b16] shadow-md" : "bg-[var(--c-card)] text-[var(--c-body)] hover:bg-[var(--c-raise)]"}`}>
                     {i + 1}
                     <span className={`absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-white ${mapped(h) ? "bg-[#5fb87a]" : "bg-[#e0a23f]"}`} />
                   </button>
                 ))}
               </div>
-              <div className="rounded-2xl border border-black/[0.07] bg-[#faf9f5] p-4">
-                <div className="mb-3 flex items-center justify-between"><span className="font-[family-name:var(--font-heading)] text-lg font-extrabold text-[#16221b]">Hole {cur + 1}</span>{curHole && mapped(curHole) && <span className="rounded-full bg-[var(--gold)]/20 px-2.5 py-1 text-xs font-bold text-[#9a7a3a]">{fmtDist(holeDistFt(curHole), metric)}</span>}</div>
+              <div className="rounded-2xl border border-[var(--c-line)] bg-[var(--c-card)] p-4">
+                <div className="mb-3 flex items-center justify-between"><span className="font-[family-name:var(--font-heading)] text-lg font-extrabold text-[var(--c-ink)]">Hole {cur + 1}</span>{curHole && mapped(curHole) && <span className="rounded-full bg-[var(--gold)]/20 px-2.5 py-1 text-xs font-bold text-[var(--gold)]">{fmtDist(holeDistFt(curHole), metric)}</span>}</div>
                 <div className="mb-3 grid grid-cols-3 gap-2">
-                  {MODES.map((m) => <button key={m.k} disabled={!m.on} onClick={() => { setMode(m.k); setPending(null); }} className={`flex flex-col items-center justify-center gap-1.5 rounded-xl py-3 text-[11px] font-bold leading-none transition-all disabled:opacity-35 ${mode === m.k ? "text-white shadow" : "border border-black/[0.08] bg-white text-[#46554c]"}`} style={mode === m.k ? { background: m.color } : undefined}><span className="flex h-6 items-center justify-center">{modePreview(m.k, mode === m.k)}</span><span>{m.label}</span></button>)}
+                  {MODES.map((m) => <button key={m.k} disabled={!m.on} onClick={() => { setMode(m.k); setPending(null); }} className={`flex flex-col items-center justify-center gap-1.5 rounded-xl py-3 text-[11px] font-bold leading-none transition-all disabled:opacity-35 ${mode === m.k ? "text-white shadow" : "border border-[var(--c-line)] bg-[var(--c-card)] text-[var(--c-body)]"}`} style={mode === m.k ? { background: m.color } : undefined}><span className="flex h-6 items-center justify-center">{modePreview(m.k, mode === m.k)}</span><span>{m.label}</span></button>)}
                 </div>
-                <p className="mb-3 text-xs text-[#6b7a70]">{pending ? "Set the details below, then Add." : mode === "tee" ? "Click the map to drop the TEE." : mode === "basket" ? "Click the map to drop the BASKET." : mode === "elbow" ? "Click to add a dogleg bend along the fairway." : mode === "altTee" ? "Click to place an alternate tee (max 3)." : mode === "altBasket" ? "Click to place an alternate basket (max 3)." : "Click to place a mando (max 4)."}</p>
+                <p className="mb-3 text-xs text-[var(--c-muted)]">{pending ? "Set the details below, then Add." : mode === "tee" ? "Click the map to drop the TEE." : mode === "basket" ? "Click the map to drop the BASKET." : mode === "elbow" ? "Click to add a dogleg bend along the fairway." : mode === "altTee" ? "Click to place an alternate tee (max 3)." : mode === "altBasket" ? "Click to place an alternate basket (max 3)." : "Click to place a mando (max 4)."}</p>
 
                 {pending && (
                   <div className="mb-3 rounded-xl border border-[var(--gold)]/40 bg-[var(--gold)]/10 p-3">
-                    {pending.mode === "altTee" && <input autoFocus value={pending.label} onChange={(e) => setPending({ ...pending, label: e.target.value })} maxLength={15} placeholder="Tee label (e.g. Pro, Back)" className={FIELD.replace("bg-[#faf9f5]", "bg-white")} />}
+                    {pending.mode === "altTee" && <input autoFocus value={pending.label} onChange={(e) => setPending({ ...pending, label: e.target.value })} maxLength={15} placeholder="Tee label (e.g. Pro, Back)" className={FIELD.replace("bg-[var(--c-card)]", "bg-[var(--c-card)]")} />}
                     {pending.mode === "altBasket" && (<>
-                      <input autoFocus value={pending.label} onChange={(e) => setPending({ ...pending, label: e.target.value })} maxLength={15} placeholder="Basket label (e.g. A, Long)" className={FIELD.replace("bg-[#faf9f5]", "bg-white")} />
-                      <div className="mt-2 flex flex-wrap gap-1.5">{ALT_COLORS.map((c) => <button key={c.hex} onClick={() => setPending({ ...pending, colorHex: c.hex })} title={c.name} className={`h-7 w-7 rounded-full border-2 ${pending.colorHex === c.hex ? "border-[#16221b]" : "border-white"} shadow`} style={{ background: `#${c.hex}` }} />)}</div>
+                      <input autoFocus value={pending.label} onChange={(e) => setPending({ ...pending, label: e.target.value })} maxLength={15} placeholder="Basket label (e.g. A, Long)" className={FIELD.replace("bg-[var(--c-card)]", "bg-[var(--c-card)]")} />
+                      <div className="mt-2 flex flex-wrap gap-1.5">{ALT_COLORS.map((c) => <button key={c.hex} onClick={() => setPending({ ...pending, colorHex: c.hex })} title={c.name} className={`h-7 w-7 rounded-full border-2 ${pending.colorHex === c.hex ? "border-[var(--cream)]" : "border-white/40"} shadow`} style={{ background: `#${c.hex}` }} />)}</div>
                     </>)}
-                    {pending.mode === "mando" && <div className="flex gap-2">{(["Left", "Right", "Down"] as Dir[]).map((d) => <button key={d} onClick={() => setPending({ ...pending, direction: d })} className={`flex-1 rounded-lg border py-2 text-sm font-bold ${pending.direction === d ? "border-[var(--gold)] bg-[var(--gold)] text-[#16221b]" : "border-black/10 bg-white text-[#46554c]"}`}>{d === "Left" ? "← Left" : d === "Right" ? "Right →" : "↓ Under"}</button>)}</div>}
-                    <div className="mt-2 flex gap-2"><button onClick={confirmPending} className="flex-1 rounded-full bg-[#16221b] py-2 text-xs font-bold text-[var(--cream)] hover:bg-[#22332a]">Add</button><button onClick={() => setPending(null)} className="rounded-full border border-black/10 bg-white px-4 py-2 text-xs font-bold text-[#46554c]">Cancel</button></div>
+                    {pending.mode === "mando" && <div className="flex gap-2">{(["Left", "Right", "Down"] as Dir[]).map((d) => <button key={d} onClick={() => setPending({ ...pending, direction: d })} className={`flex-1 rounded-lg border py-2 text-sm font-bold ${pending.direction === d ? "border-[var(--gold)] bg-[var(--gold)] text-[var(--c-ink)]" : "border-[var(--c-line)] bg-[var(--c-card)] text-[var(--c-body)]"}`}>{d === "Left" ? "← Left" : d === "Right" ? "Right →" : "↓ Under"}</button>)}</div>}
+                    <div className="mt-2 flex gap-2"><button onClick={confirmPending} className="flex-1 rounded-full bg-[var(--gold)] py-2 text-xs font-bold text-[#141b16] hover:bg-[var(--gold-bright)]">Add</button><button onClick={() => setPending(null)} className="rounded-full border border-[var(--c-line)] bg-[var(--c-card)] px-4 py-2 text-xs font-bold text-[var(--c-body)]">Cancel</button></div>
                   </div>
                 )}
 
                 {/* placed objects on this hole — remove each individually */}
                 {curHole && (curHole.teeLat != null || curHole.basketLat != null || curHole.elbows.length > 0 || curHole.altTees.length > 0 || curHole.altBaskets.length > 0 || curHole.mandos.length > 0) && (
                   <div className="mb-3 space-y-1.5">
-                    <div className="text-[10px] font-bold uppercase tracking-wide text-[#8a968d]">Placed on this hole</div>
-                    {curHole.teeLat != null && <div className="flex items-center gap-2 rounded-lg bg-white px-2 py-1.5"><span className="h-3 w-4 rounded-sm bg-[#16331f]" /><span className="flex-1 text-xs font-semibold text-[#16221b]">Tee</span><button onClick={removeTee} className="text-[#b3bbb2] hover:text-[#d9473f]">✕</button></div>}
-                    {curHole.basketLat != null && <div className="flex items-center gap-2 rounded-lg bg-white px-2 py-1.5"><span className="h-3.5 w-3.5 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: "url(/basket-icon.svg)" }} /><span className="flex-1 text-xs font-semibold text-[#16221b]">Basket</span><button onClick={removeBasket} className="text-[#b3bbb2] hover:text-[#d9473f]">✕</button></div>}
-                    {curHole.elbows.map((_, ei) => <div key={`e${ei}`} className="flex items-center gap-2 rounded-lg bg-white px-2 py-1.5"><span className="h-2.5 w-2.5 rotate-45 rounded-sm bg-[#E0752A]" /><span className="flex-1 text-xs font-semibold text-[#16221b]">Dogleg {ei + 1}</span><button onClick={() => removeElbow(ei)} className="text-[#b3bbb2] hover:text-[#d9473f]">✕</button></div>)}
-                    {curHole.altTees.map((t) => <div key={t.id} className="flex items-center gap-2 rounded-lg bg-white px-2 py-1.5"><span className="h-3 w-4 rounded-sm bg-[#16331f]" /><input value={t.label} onChange={(e) => renameAltTee(t.id, e.target.value)} className="min-w-0 flex-1 bg-transparent text-xs font-semibold text-[#16221b] outline-none" /><button onClick={() => removeAltTee(t.id)} className="text-[#b3bbb2] hover:text-[#d9473f]">✕</button></div>)}
-                    {curHole.altBaskets.map((b) => <div key={b.id} className="flex items-center gap-2 rounded-lg bg-white px-2 py-1.5"><span className="h-3.5 w-3.5 shrink-0 rounded-full border border-white shadow" style={{ background: `#${b.colorHex}` }} /><input value={b.label} onChange={(e) => editAltBasket(b.id, { label: e.target.value })} className="min-w-0 flex-1 bg-transparent text-xs font-semibold text-[#16221b] outline-none" /><div className="flex gap-0.5">{ALT_COLORS.map((c) => <button key={c.hex} onClick={() => editAltBasket(b.id, { colorHex: c.hex })} className={`h-3.5 w-3.5 rounded-full ${b.colorHex === c.hex ? "ring-2 ring-[#16221b]" : ""}`} style={{ background: `#${c.hex}` }} />)}</div><button onClick={() => removeAltBasket(b.id)} className="text-[#b3bbb2] hover:text-[#d9473f]">✕</button></div>)}
-                    {curHole.mandos.map((m) => <div key={m.id} className="flex items-center gap-2 rounded-lg bg-white px-2 py-1.5"><span className="grid h-4 w-4 place-items-center rounded bg-[#F1C40F] text-[9px] font-bold text-black">{m.direction === "Left" ? "←" : m.direction === "Right" ? "→" : "↓"}</span><span className="flex-1 text-xs font-semibold text-[#16221b]">{m.label}</span><div className="flex gap-1">{(["Left", "Right", "Down"] as Dir[]).map((d) => <button key={d} onClick={() => setMandoDir(m.id, d)} className={`rounded px-1.5 text-xs font-bold ${m.direction === d ? "bg-[#F1C40F] text-black" : "text-[#8a968d]"}`}>{d === "Left" ? "←" : d === "Right" ? "→" : "↓"}</button>)}</div><button onClick={() => removeMando(m.id)} className="text-[#b3bbb2] hover:text-[#d9473f]">✕</button></div>)}
+                    <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--c-muted)]">Placed on this hole</div>
+                    {curHole.teeLat != null && <div className="flex items-center gap-2 rounded-lg bg-[var(--c-card)] px-2 py-1.5"><span className="h-3 w-4 rounded-sm bg-[#16331f]" /><span className="flex-1 text-xs font-semibold text-[var(--c-ink)]">Tee</span><button onClick={removeTee} className="text-[var(--c-muted)] hover:text-[#f08c8c]">✕</button></div>}
+                    {curHole.basketLat != null && <div className="flex items-center gap-2 rounded-lg bg-[var(--c-card)] px-2 py-1.5"><span className="h-3.5 w-3.5 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: "url(/basket-icon.svg)" }} /><span className="flex-1 text-xs font-semibold text-[var(--c-ink)]">Basket</span><button onClick={removeBasket} className="text-[var(--c-muted)] hover:text-[#f08c8c]">✕</button></div>}
+                    {curHole.elbows.map((_, ei) => <div key={`e${ei}`} className="flex items-center gap-2 rounded-lg bg-[var(--c-card)] px-2 py-1.5"><span className="h-2.5 w-2.5 rotate-45 rounded-sm bg-[#E0752A]" /><span className="flex-1 text-xs font-semibold text-[var(--c-ink)]">Dogleg {ei + 1}</span><button onClick={() => removeElbow(ei)} className="text-[var(--c-muted)] hover:text-[#f08c8c]">✕</button></div>)}
+                    {curHole.altTees.map((t) => <div key={t.id} className="flex items-center gap-2 rounded-lg bg-[var(--c-card)] px-2 py-1.5"><span className="h-3 w-4 rounded-sm bg-[#16331f]" /><input value={t.label} onChange={(e) => renameAltTee(t.id, e.target.value)} className="min-w-0 flex-1 bg-transparent text-xs font-semibold text-[var(--c-ink)] outline-none" /><button onClick={() => removeAltTee(t.id)} className="text-[var(--c-muted)] hover:text-[#f08c8c]">✕</button></div>)}
+                    {curHole.altBaskets.map((b) => <div key={b.id} className="flex items-center gap-2 rounded-lg bg-[var(--c-card)] px-2 py-1.5"><span className="h-3.5 w-3.5 shrink-0 rounded-full border border-white shadow" style={{ background: `#${b.colorHex}` }} /><input value={b.label} onChange={(e) => editAltBasket(b.id, { label: e.target.value })} className="min-w-0 flex-1 bg-transparent text-xs font-semibold text-[var(--c-ink)] outline-none" /><div className="flex gap-0.5">{ALT_COLORS.map((c) => <button key={c.hex} onClick={() => editAltBasket(b.id, { colorHex: c.hex })} className={`h-3.5 w-3.5 rounded-full ${b.colorHex === c.hex ? "ring-2 ring-[var(--cream)]" : ""}`} style={{ background: `#${c.hex}` }} />)}</div><button onClick={() => removeAltBasket(b.id)} className="text-[var(--c-muted)] hover:text-[#f08c8c]">✕</button></div>)}
+                    {curHole.mandos.map((m) => <div key={m.id} className="flex items-center gap-2 rounded-lg bg-[var(--c-card)] px-2 py-1.5"><span className="grid h-4 w-4 place-items-center rounded bg-[#F1C40F] text-[9px] font-bold text-black">{m.direction === "Left" ? "←" : m.direction === "Right" ? "→" : "↓"}</span><span className="flex-1 text-xs font-semibold text-[var(--c-ink)]">{m.label}</span><div className="flex gap-1">{(["Left", "Right", "Down"] as Dir[]).map((d) => <button key={d} onClick={() => setMandoDir(m.id, d)} className={`rounded px-1.5 text-xs font-bold ${m.direction === d ? "bg-[#F1C40F] text-black" : "text-[var(--c-muted)]"}`}>{d === "Left" ? "←" : d === "Right" ? "→" : "↓"}</button>)}</div><button onClick={() => removeMando(m.id)} className="text-[var(--c-muted)] hover:text-[#f08c8c]">✕</button></div>)}
                   </div>
                 )}
 
                 <div className="mb-3"><span className={LABEL}>Par</span><div className="grid grid-cols-4 gap-2">{[2, 3, 4, 5].map((p) => <button key={p} onClick={() => setPar(p)} className={pill(curHole?.par === p) + " py-2.5"}>{p}</button>)}</div></div>
-                <label className="block"><span className={LABEL}>Notes</span><input value={curHole?.notes ?? ""} onChange={(e) => setNotes(e.target.value)} placeholder="Optional — OB, tips…" className={FIELD.replace("bg-[#faf9f5]", "bg-white")} /></label>
+                <label className="block"><span className={LABEL}>Notes</span><input value={curHole?.notes ?? ""} onChange={(e) => setNotes(e.target.value)} placeholder="Optional — OB, tips…" className={FIELD.replace("bg-[var(--c-card)]", "bg-[var(--c-card)]")} /></label>
                 {curHole && (curHole.teeLat != null || curHole.basketLat != null || curHole.elbows.length > 0 || curHole.altTees.length > 0 || curHole.altBaskets.length > 0 || curHole.mandos.length > 0) && <button onClick={clearHole} className="mt-3 text-xs font-bold text-[#e0857d] hover:underline">Clear this hole</button>}
               </div>
               {error && <p className="text-sm font-medium text-[#d9473f]">{error}</p>}
               <div className="flex gap-2">
-                <button onClick={() => setStep(0)} className="rounded-full border border-black/[0.08] bg-white px-5 py-3.5 text-sm font-bold text-[#16221b] transition-colors hover:border-[var(--gold)]">← Back</button>
-                <button onClick={() => { if (!allMapped) { setError("Map a tee and basket for every hole first."); return; } setError(""); setStep(2); }} className="flex-1 rounded-full bg-[#16221b] px-5 py-3.5 text-sm font-bold text-[var(--cream)] transition-colors hover:bg-[#22332a]">Next: review →</button>
+                <button onClick={() => setStep(0)} className="rounded-full border border-[var(--c-line)] bg-[var(--c-card)] px-5 py-3.5 text-sm font-bold text-[var(--c-ink)] transition-colors hover:border-[var(--gold)]">← Back</button>
+                <button onClick={() => { if (!allMapped) { setError("Map a tee and basket for every hole first."); return; } setError(""); setStep(2); }} className="flex-1 rounded-full bg-[var(--gold)] px-5 py-3.5 text-sm font-bold text-[#141b16] transition-colors hover:bg-[var(--gold-bright)]">Next: review →</button>
               </div>
             </div>
           )}
 
           {step === 2 && (
             <div className="space-y-4">
-              <div className="rounded-2xl border border-black/[0.07] bg-[#faf9f5] p-5">
-                <h2 className="font-[family-name:var(--font-heading)] text-2xl font-extrabold tracking-tight text-[#16221b]">{name}</h2>
-                <p className="text-sm text-[#6b7a70]">{[loc?.city, loc?.state].filter(Boolean).join(", ")}</p>
+              <div className="rounded-2xl border border-[var(--c-line)] bg-[var(--c-card)] p-5">
+                <h2 className="font-[family-name:var(--font-heading)] text-2xl font-extrabold tracking-tight text-[var(--c-ink)]">{name}</h2>
+                <p className="text-sm text-[var(--c-muted)]">{[loc?.city, loc?.state].filter(Boolean).join(", ")}</p>
                 <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-                  <div className="rounded-xl bg-white py-3 shadow-sm"><div className="font-[family-name:var(--font-heading)] text-2xl font-extrabold text-[#16221b]">{holeCount}</div><div className="text-[10px] uppercase tracking-wide text-[#8a968d]">Holes</div></div>
-                  <div className="rounded-xl bg-white py-3 shadow-sm"><div className="font-[family-name:var(--font-heading)] text-2xl font-extrabold text-[#16221b]">{totalPar}</div><div className="text-[10px] uppercase tracking-wide text-[#8a968d]">Par</div></div>
-                  <div className="rounded-xl bg-white py-3 shadow-sm"><div className="font-[family-name:var(--font-heading)] text-2xl font-extrabold text-[#16221b]">{distValue(holes.reduce((s, h) => s + (mapped(h) ? holeDistFt(h) : 0), 0), metric).toLocaleString()}</div><div className="text-[10px] uppercase tracking-wide text-[#8a968d]">{metric ? "Meters" : "Feet"}</div></div>
+                  <div className="rounded-xl bg-[var(--c-card)] py-3 shadow-sm"><div className="font-[family-name:var(--font-heading)] text-2xl font-extrabold text-[var(--c-ink)]">{holeCount}</div><div className="text-[10px] uppercase tracking-wide text-[var(--c-muted)]">Holes</div></div>
+                  <div className="rounded-xl bg-[var(--c-card)] py-3 shadow-sm"><div className="font-[family-name:var(--font-heading)] text-2xl font-extrabold text-[var(--c-ink)]">{totalPar}</div><div className="text-[10px] uppercase tracking-wide text-[var(--c-muted)]">Par</div></div>
+                  <div className="rounded-xl bg-[var(--c-card)] py-3 shadow-sm"><div className="font-[family-name:var(--font-heading)] text-2xl font-extrabold text-[var(--c-ink)]">{distValue(holes.reduce((s, h) => s + (mapped(h) ? holeDistFt(h) : 0), 0), metric).toLocaleString()}</div><div className="text-[10px] uppercase tracking-wide text-[var(--c-muted)]">{metric ? "Meters" : "Feet"}</div></div>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-1.5 text-[11px]">
-                  <span className="rounded-full bg-white px-2.5 py-1 font-bold text-[#46554c] shadow-sm">{courseType}</span>
-                  <span className="rounded-full bg-white px-2.5 py-1 font-bold text-[#46554c] shadow-sm">{terrain}</span>
-                  {difficulty && <span className="rounded-full bg-white px-2.5 py-1 font-bold text-[#46554c] shadow-sm">{difficulty}</span>}
-                  <span className="rounded-full bg-white px-2.5 py-1 font-bold text-[#46554c] shadow-sm">{isFree ? "Free" : `$${feeAmount}`}</span>
+                  <span className="rounded-full bg-[var(--c-card)] px-2.5 py-1 font-bold text-[var(--c-body)] shadow-sm">{courseType}</span>
+                  <span className="rounded-full bg-[var(--c-card)] px-2.5 py-1 font-bold text-[var(--c-body)] shadow-sm">{terrain}</span>
+                  {difficulty && <span className="rounded-full bg-[var(--c-card)] px-2.5 py-1 font-bold text-[var(--c-body)] shadow-sm">{difficulty}</span>}
+                  <span className="rounded-full bg-[var(--c-card)] px-2.5 py-1 font-bold text-[var(--c-body)] shadow-sm">{isFree ? "Free" : `$${feeAmount}`}</span>
                 </div>
               </div>
               {dupes && dupes.length > 0 && (
                 <div className="rounded-xl border border-[var(--gold)]/40 bg-[var(--gold)]/10 p-3 text-sm">
-                  <p className="font-bold text-[#9a7a3a]">Possible duplicate{dupes.length > 1 ? "s" : ""} nearby</p>
-                  <ul className="mt-1 list-disc pl-5 text-[#46554c]">{dupes.map((d) => <li key={d.id}>{d.name}{d.city ? ` · ${d.city}` : ""}</li>)}</ul>
-                  <p className="mt-1.5 text-xs text-[#6b7a70]">If yours is different, tap Publish again to proceed.</p>
+                  <p className="font-bold text-[var(--gold)]">Possible duplicate{dupes.length > 1 ? "s" : ""} nearby</p>
+                  <ul className="mt-1 list-disc pl-5 text-[var(--c-body)]">{dupes.map((d) => <li key={d.id}>{d.name}{d.city ? ` · ${d.city}` : ""}</li>)}</ul>
+                  <p className="mt-1.5 text-xs text-[var(--c-muted)]">If yours is different, tap Publish again to proceed.</p>
                 </div>
               )}
               {error && <p className="text-sm font-medium text-[#d9473f]">{error}</p>}
               <div className="flex flex-wrap gap-2">
-                <button onClick={() => setStep(1)} className="rounded-full border border-black/[0.08] bg-white px-5 py-3.5 text-sm font-bold text-[#16221b] transition-colors hover:border-[var(--gold)]">← Back</button>
+                <button onClick={() => setStep(1)} className="rounded-full border border-[var(--c-line)] bg-[var(--c-card)] px-5 py-3.5 text-sm font-bold text-[var(--c-ink)] transition-colors hover:border-[var(--gold)]">← Back</button>
                 {editing ? (
                   initial?.isDraft ? (
                     <>
-                      <button onClick={() => submit(false)} disabled={status === "saving"} className="rounded-full border border-black/[0.1] bg-white px-5 py-3.5 text-sm font-bold text-[#46554c] transition-colors hover:border-[var(--gold)] hover:text-[#16221b] disabled:opacity-60">{status === "saving" ? "Saving…" : "Save changes"}</button>
-                      <button onClick={() => submit(true)} disabled={status === "saving"} className="flex-1 rounded-full bg-[#16221b] px-5 py-3.5 text-sm font-bold text-[var(--cream)] transition-colors hover:bg-[#22332a] disabled:opacity-60">{status === "saving" ? "Saving…" : "Publish course"}</button>
+                      <button onClick={() => submit(false)} disabled={status === "saving"} className="rounded-full border border-[var(--c-line)] bg-[var(--c-card)] px-5 py-3.5 text-sm font-bold text-[var(--c-body)] transition-colors hover:border-[var(--gold)] hover:text-[var(--c-ink)] disabled:opacity-60">{status === "saving" ? "Saving…" : "Save changes"}</button>
+                      <button onClick={() => submit(true)} disabled={status === "saving"} className="flex-1 rounded-full bg-[var(--gold)] px-5 py-3.5 text-sm font-bold text-[#141b16] transition-colors hover:bg-[var(--gold-bright)] disabled:opacity-60">{status === "saving" ? "Saving…" : "Publish course"}</button>
                     </>
                   ) : (
-                    <button onClick={() => submit(false)} disabled={status === "saving"} className="flex-1 rounded-full bg-[#16221b] px-5 py-3.5 text-sm font-bold text-[var(--cream)] transition-colors hover:bg-[#22332a] disabled:opacity-60">{status === "saving" ? "Saving…" : "Save changes"}</button>
+                    <button onClick={() => submit(false)} disabled={status === "saving"} className="flex-1 rounded-full bg-[var(--gold)] px-5 py-3.5 text-sm font-bold text-[#141b16] transition-colors hover:bg-[var(--gold-bright)] disabled:opacity-60">{status === "saving" ? "Saving…" : "Save changes"}</button>
                   )
                 ) : (
                   <>
-                    <button onClick={() => submit(false)} disabled={status === "saving"} className="rounded-full border border-black/[0.1] bg-white px-5 py-3.5 text-sm font-bold text-[#46554c] transition-colors hover:border-[var(--gold)] hover:text-[#16221b] disabled:opacity-60">Save as draft</button>
-                    <button onClick={() => submit(true)} disabled={status === "saving"} className="flex-1 rounded-full bg-[#16221b] px-5 py-3.5 text-sm font-bold text-[var(--cream)] transition-colors hover:bg-[#22332a] disabled:opacity-60">{status === "saving" ? "Saving…" : dupes && dupes.length > 0 ? "Publish anyway" : "Publish course"}</button>
+                    <button onClick={() => submit(false)} disabled={status === "saving"} className="rounded-full border border-[var(--c-line)] bg-[var(--c-card)] px-5 py-3.5 text-sm font-bold text-[var(--c-body)] transition-colors hover:border-[var(--gold)] hover:text-[var(--c-ink)] disabled:opacity-60">Save as draft</button>
+                    <button onClick={() => submit(true)} disabled={status === "saving"} className="flex-1 rounded-full bg-[var(--gold)] px-5 py-3.5 text-sm font-bold text-[#141b16] transition-colors hover:bg-[var(--gold-bright)] disabled:opacity-60">{status === "saving" ? "Saving…" : dupes && dupes.length > 0 ? "Publish anyway" : "Publish course"}</button>
                   </>
                 )}
               </div>
@@ -594,11 +594,11 @@ export default function CourseBuilder({ uid, initial }: { uid: string; initial?:
 
         <div className="lg:sticky lg:top-24">
           <div className="relative">
-            <div ref={elRef} className="h-[460px] w-full overflow-hidden rounded-3xl border border-black/[0.07] bg-[#e9e4d8] shadow-[0_18px_50px_-26px_rgba(15,24,19,0.32)] lg:h-[640px]" />
+            <div ref={elRef} className="h-[460px] w-full overflow-hidden rounded-3xl border border-[var(--c-line)] bg-[var(--c-card)] shadow-[0_18px_50px_-26px_rgba(15,24,19,0.32)] lg:h-[640px]" />
             {step === 1 && (
               <div className="absolute left-3 top-3 z-10 flex gap-1.5">
-                <button onClick={doUndo} disabled={!undo.length} title="Undo" aria-label="Undo" className="grid h-9 w-9 place-items-center rounded-lg bg-white/95 text-[#16221b] shadow-md transition-colors hover:bg-white disabled:opacity-40"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 14 4 9l5-5" /><path d="M4 9h11a5 5 0 0 1 0 10h-1" /></svg></button>
-                <button onClick={doRedo} disabled={!redo.length} title="Redo" aria-label="Redo" className="grid h-9 w-9 place-items-center rounded-lg bg-white/95 text-[#16221b] shadow-md transition-colors hover:bg-white disabled:opacity-40"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 14 5-5-5-5" /><path d="M20 9H9a5 5 0 0 0 0 10h1" /></svg></button>
+                <button onClick={doUndo} disabled={!undo.length} title="Undo" aria-label="Undo" className="grid h-9 w-9 place-items-center rounded-lg bg-[var(--c-card)]/95 text-[var(--c-ink)] shadow-md transition-colors hover:bg-[var(--c-card)] disabled:opacity-40"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 14 4 9l5-5" /><path d="M4 9h11a5 5 0 0 1 0 10h-1" /></svg></button>
+                <button onClick={doRedo} disabled={!redo.length} title="Redo" aria-label="Redo" className="grid h-9 w-9 place-items-center rounded-lg bg-[var(--c-card)]/95 text-[var(--c-ink)] shadow-md transition-colors hover:bg-[var(--c-card)] disabled:opacity-40"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 14 5-5-5-5" /><path d="M20 9H9a5 5 0 0 0 0 10h1" /></svg></button>
               </div>
             )}
             <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl">

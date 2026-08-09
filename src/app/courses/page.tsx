@@ -262,7 +262,7 @@ export default function CoursesPage() {
     <div className="courses-scope min-h-screen bg-[var(--c-bg)] text-[var(--c-ink)]">
       {view === "map" ? (
         /* ===== Map-first: the map is the foundation; header, controls & results float on it ===== */
-        <div key="map" className="course-view-in relative h-[100svh] w-full overflow-hidden">
+        <div key="map" className="courses-map-full course-view-in relative h-[100svh] w-full overflow-hidden">
           <div className="absolute inset-0">
             {mapMode === "coverage" ? (
               <CoverageMap stateCounts={stateCounts} countryCounts={countryCounts} />
