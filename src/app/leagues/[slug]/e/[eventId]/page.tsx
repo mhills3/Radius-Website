@@ -484,19 +484,25 @@ export default function LeagueEventPage() {
   const scoreOf = (e: EventEntry) => (typeof e.score === "number" ? e.score : liveTotal(e));
   const adjOf = (e: EventEntry) => scoreOf(e)! + (e.penalty ?? 0) + (e.startingScore ?? 0);
   const parTotal = pars && pars.length === event.holes ? pars.reduce((a, b) => a + b, 0) : null;
+  // How many rounds a score covers. Use roundScores when present; otherwise estimate from the total
+  // vs a round's par (a 1-round 53 must not be read as a 2-round score, which produced the -63 bug).
+  const roundsDone = (e: EventEntry) => {
+    const rs = e.roundScores?.filter((r) => r > 0).length ?? 0;
+    if (rs > 0) return rs;
+    if (typeof e.score !== "number") return 0;
+    return parTotal ? Math.max(1, Math.min(event.roundCount, Math.round(e.score / parTotal))) : event.roundCount;
+  };
   // Numeric to-par for an entry: finished scores against full-round par, live
   // scores against the par of only the holes actually played.
   const deltaOf = (e: EventEntry) => {
     if (parTotal == null) return adjOf(e);
     if (typeof e.score === "number") {
-      const roundsPlayed = e.roundScores?.filter((r) => r > 0).length || event.roundCount;
-      return adjOf(e) - parTotal * roundsPlayed;
+      return adjOf(e) - parTotal * Math.max(1, roundsDone(e));
     }
     let strokes = 0, par = 0;
     (e.holeScores ?? []).forEach((h, i) => { if (h > 0) { strokes += h; par += pars![i] ?? 3; } });
     return strokes + (e.penalty ?? 0) + (e.startingScore ?? 0) - par;
   };
-  const roundsDone = (e: EventEntry) => e.roundScores?.filter((r) => r > 0).length ?? (typeof e.score === "number" ? event.roundCount : 0);
   const finishedAll = (e: EventEntry) => roundsDone(e) >= event.roundCount;
   const ranked = [...shown].filter((e) => scoreOf(e) != null && !e.dnf).sort((a, b) => {
     // On a COMPLETED multi-round board, a player short a round can't out-rank a player who finished
