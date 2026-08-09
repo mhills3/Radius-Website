@@ -263,8 +263,8 @@ export default function CoursesPage() {
             </div>
           </div>
           {/* floating results panel */}
-          <div className="absolute bottom-4 left-4 top-[224px] z-20 flex w-[360px] max-w-[calc(100%-2rem)] flex-col overflow-hidden rounded-[var(--r-panel)] border border-[var(--ctl-line)] bg-[var(--panel)] shadow-[var(--e-2)] backdrop-blur-xl sm:left-5">
-            <div className="shrink-0 border-b border-[var(--ctl-line)] px-4 py-3">
+          <div className="absolute bottom-4 left-4 top-[224px] z-20 flex w-[360px] max-w-[calc(100%-2rem)] flex-col overflow-hidden rounded-[var(--r-panel)] bg-[var(--panel)] shadow-[var(--e-float)] backdrop-blur-xl sm:left-5">
+            <div className="shrink-0 px-4 pt-3.5 pb-2">
               <div className="flex items-baseline gap-1.5">
                 <span className="font-[family-name:var(--font-heading)] text-base font-extrabold text-[var(--c-ink)]">{(viewportFiltering ? visibleCourses.length : (anyFilter ? filtered.length : (totalCount || filtered.length))).toLocaleString()}</span>
                 <span className="text-sm text-[var(--c-muted)]">{(viewportFiltering ? visibleCourses.length : (anyFilter ? filtered.length : (totalCount || filtered.length))) === 1 ? "course" : "courses"}{viewportFiltering ? " in view" : stateFilter ? ` in ${stateFilter}` : userLoc ? " near you" : ""}</span>
@@ -279,7 +279,7 @@ export default function CoursesPage() {
                     const d = distOf(c);
                     const active = highlightId === c.id;
                     return (
-                      <Link key={c.id} ref={(el) => { rowRefs.current[c.id] = el; }} href={`/courses/${slugify(c.name, c.id)}`} onMouseEnter={() => setHighlightId(c.id)} onMouseLeave={() => setHighlightId(null)} className={`group flex items-center gap-3 rounded-[var(--r-inset)] px-2.5 py-2.5 transition-all ${active ? "bg-[var(--gold)]/[0.14] ring-1 ring-inset ring-[var(--gold)]/35" : "hover:bg-white/[0.05]"}`}>
+                      <Link key={c.id} ref={(el) => { rowRefs.current[c.id] = el; }} href={`/courses/${slugify(c.name, c.id)}`} onMouseEnter={() => setHighlightId(c.id)} onMouseLeave={() => setHighlightId(null)} className={`group flex items-center gap-3 rounded-[var(--r-inset)] px-2.5 py-2.5 transition-all ${active ? "bg-[var(--gold)]/[0.18]" : "hover:bg-white/[0.05]"}`}>
                         <div className="relative h-[60px] w-[60px] shrink-0 overflow-hidden rounded-[var(--r-inset)] bg-[var(--bg-deep)] ring-1 ring-[var(--c-line)]">
                           {c.coverPhotoUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
@@ -312,7 +312,7 @@ export default function CoursesPage() {
             </div>
           </div>
           {/* Pins / Heatmap / Coverage — bottom-right, clear of the results panel */}
-          <div className="absolute bottom-4 right-4 z-20 inline-flex rounded-full bg-[var(--panel)] p-1 shadow-[var(--e-2)] ring-1 ring-[var(--ctl-line)] backdrop-blur-xl">
+          <div className="absolute bottom-4 right-4 z-20 inline-flex rounded-full bg-[var(--panel)] p-1 shadow-[var(--e-float)] backdrop-blur-xl">
             {(["pins", "heat", "coverage"] as const).map((m) => (
               <button key={m} onClick={() => setMapMode(m)} className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors ${mapMode === m ? "bg-[var(--gold)] text-[#141b16]" : "text-[var(--c-body)] hover:text-[var(--c-ink)]"}`}>{m === "pins" ? "📍 Pins" : m === "heat" ? "🔥 Heatmap" : "🗺️ Coverage"}</button>
             ))}
@@ -324,11 +324,13 @@ export default function CoursesPage() {
           <div className="relative isolate overflow-hidden">
             <Image src="/course/courses-hero.jpg" alt="" fill sizes="100vw" quality={88} className="-z-10 object-cover object-center" />
             <div className="absolute inset-0 -z-10 bg-[rgba(12,18,15,0.62)]" />
-            <div className="absolute inset-x-0 bottom-0 -z-10 h-[280px] bg-[linear-gradient(to_top,var(--c-bg),rgba(12,18,15,0.55)_42%,transparent)]" />
-            <div className="relative mx-auto max-w-7xl px-6 pb-32 pt-[124px]">{heroHead}</div>
+            {/* generous fade — the last ~10% is solid page-ground so the photo's edge is never a line */}
+            <div className="absolute inset-x-0 bottom-0 -z-10 h-[340px] bg-[linear-gradient(to_top,var(--c-bg)_0%,var(--c-bg)_9%,rgba(12,18,15,0.55)_46%,transparent_100%)]" />
+            <div className="relative mx-auto max-w-7xl px-6 pb-40 pt-[124px]">{heroHead}</div>
           </div>
-          {/* unified controls — sticky; detaches from the hero and pins under the nav on scroll */}
-          <div className="sticky top-[58px] z-30 -mt-20 border-y border-[var(--ctl-line)] bg-[var(--c-bg)]/85 backdrop-blur-xl">
+          {/* unified controls — float in the hero's fade zone; no band, no borders. The pills carry
+              their own translucent surface, so they stay readable pinned over content on scroll. */}
+          <div className="sticky top-[58px] z-30 -mt-24">
             <div className="mx-auto max-w-7xl px-6 py-3">{controlBar}</div>
           </div>
           <div className="mx-auto max-w-7xl px-6 py-8">
