@@ -241,6 +241,23 @@ export default function CoursesPage() {
     </div>
   );
 
+  // Minimal controls for the map panel — just search + the list/map toggle (filters live in list view).
+  const mapControls = (
+    <div className="flex items-center gap-2">
+      <div className="flex min-w-0 flex-1 items-center gap-2.5 rounded-full border border-[var(--ctl-line)] bg-[var(--ctl)] px-4 py-2.5 transition-colors focus-within:border-[var(--gold)]">
+        <svg className="h-4 w-4 shrink-0 text-[var(--c-muted)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search courses, cities…" className="w-full bg-transparent text-sm text-[var(--c-ink)] placeholder-[var(--c-muted)] outline-none" />
+      </div>
+      <div className="inline-flex shrink-0 rounded-full border border-[var(--ctl-line)] bg-[var(--ctl)] p-1">
+        {(["list", "map"] as const).map((v) => (
+          <button key={v} onClick={() => setView(v)} aria-label={v} className={`grid h-8 w-9 place-items-center rounded-full transition-colors ${view === v ? "bg-[var(--gold)] text-[#141b16]" : "text-[var(--c-body)] hover:text-[var(--c-ink)]"}`}>
+            {v === "list" ? <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg> : <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 3 3 6v15l6-3 6 3 6-3V3l-6 3-6-3zM9 3v15M15 6v15" /></svg>}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     <div className="courses-scope min-h-screen bg-[var(--c-bg)] text-[var(--c-ink)]">
       {view === "map" ? (
@@ -256,8 +273,8 @@ export default function CoursesPage() {
           {/* slim top scrim so the transparent nav stays legible over the map */}
           <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 z-10 h-28 bg-[linear-gradient(to_bottom,rgba(12,18,15,0.85),transparent)]" />
           {/* floating results panel — carries the controls + list; the map itself stays clean */}
-          <div className="absolute bottom-4 left-4 top-[84px] z-20 flex w-[372px] max-w-[calc(100%-2rem)] flex-col overflow-hidden rounded-[var(--r-panel)] bg-[var(--panel)] shadow-[var(--e-float)] backdrop-blur-xl sm:left-5">
-            <div className="shrink-0 px-3 pt-3">{controlBar}</div>
+          <div className="absolute bottom-11 left-4 top-[84px] z-20 flex w-[372px] max-w-[calc(100%-2rem)] flex-col overflow-hidden rounded-[var(--r-panel)] bg-[var(--panel)] shadow-[var(--e-float)] backdrop-blur-xl sm:left-5">
+            <div className="shrink-0 px-3 pt-3">{mapControls}</div>
             <div className="shrink-0 px-4 pb-2 pt-3">
               <div className="flex items-baseline gap-1.5">
                 <span className="font-[family-name:var(--font-heading)] text-base font-extrabold text-[var(--c-ink)]">{(viewportFiltering ? visibleCourses.length : (anyFilter ? filtered.length : (totalCount || filtered.length))).toLocaleString()}</span>

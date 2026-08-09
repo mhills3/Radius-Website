@@ -102,7 +102,7 @@ html { scroll-behavior: smooth; }
 .courses-scope .mapboxgl-popup-tip { border-top-color: #17211c; border-bottom-color: #17211c; }
 /* Map fills the viewport under the fixed nav — push Mapbox's own controls clear of it so they're clickable. */
 .courses-scope .mapboxgl-ctrl-top-right,
-.courses-scope .mapboxgl-ctrl-top-left { top: 72px; }
+.courses-scope .mapboxgl-ctrl-top-left { top: 128px; }
 .events-scope :focus-visible {
   outline: 2px solid var(--gold);
   outline-offset: 2px;
