@@ -271,28 +271,39 @@ export default function CommunityPage() {
     return () => obs.disconnect();
   }, [loading, tab]);
 
-  // Radius milestone posts (real, interactive) are pinned at the top of the feed on their own —
-  // keep them out of the regular sort/featured/list so they render once, prominently.
+  // A stable key of WHICH posts exist (ids only). It changes on load / new posts / pagination /
+  // removal — but NOT when an existing post's like or comment count changes.
+  const postIdsKey = useMemo(() => [...posts.map((p) => p.id)].sort().join("|"), [posts]);
+  const postById = useMemo(() => new Map(posts.map((p) => [p.id, p])), [posts]);
   // Radius milestone posts flow through the SAME feed algorithm as everyone else's — sorted by hot
   // score, so they decay with age and don't stay pinned forever.
-  const sortedPosts = useMemo(() => {
+  //
+  // IMPORTANT: the feed ORDER is frozen against likes. We recompute the ranking only when the sort
+  // mode or the SET of posts changes (postIdsKey) — never when a post's counts change. So liking a
+  // post updates its count in place but never makes it jump/disappear under you; the new ranking
+  // takes effect on the next reload. (We intentionally omit `posts` from the deps for this reason.)
+  const orderedIds = useMemo(() => {
     const a = [...posts];
     if (sort === "new") a.sort((x, y) => y.createdAt - x.createdAt);
     else if (sort === "top") a.sort((x, y) => y.likeCount - x.likeCount);
     else a.sort((x, y) => hotScore(y) - hotScore(x));
-    return a;
-  }, [posts, sort]);
-  // Featured post rotates on a rhythm (every 6h) through the most-engaging posts, so the
-  // spotlight isn't always the same post visit-to-visit. Radius system posts aren't eligible for
-  // the spotlight (they're not a person's post) — they just ride the normal feed.
-  const featured = useMemo(() => {
+    return a.map((p) => p.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sort, postIdsKey]);
+  const sortedPosts = useMemo(() => orderedIds.map((id) => postById.get(id)).filter((p): p is FeedPost => !!p), [orderedIds, postById]);
+  // Featured spotlight — WHICH post is featured is frozen the same way (by id, stable across likes);
+  // we resolve it to the live post object so its counts still update. Radius system posts aren't
+  // eligible (they're not a person's post).
+  const featuredId = useMemo(() => {
     const pool0 = posts.filter((p) => !p.isSystem);
     if (!pool0.length) return null;
     const ranked = [...pool0].sort((a, b) => (b.likeCount + b.commentCount * 2) - (a.likeCount + a.commentCount * 2));
     const pool = ranked.slice(0, Math.min(5, ranked.length));
     const bucket = Math.floor(Date.now() / (6 * 60 * 60 * 1000));
-    return pool[bucket % pool.length];
-  }, [posts]);
+    return pool[bucket % pool.length]?.id ?? null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [postIdsKey]);
+  const featured = useMemo(() => (featuredId ? postById.get(featuredId) ?? null : null), [featuredId, postById]);
   const feedList = useMemo(() => {
     if (sort === "following") return sortedPosts.filter((p) => p.authorId && following.has(p.authorId));
     return sortedPosts.filter((p) => !featured || p.id !== featured.id);
@@ -417,9 +428,9 @@ export default function CommunityPage() {
 
   // Centered, backdrop-blurred compose modal (opened by the bar or the floating + Post pill).
   const composerModal = composerOpen && user && (
-    <div className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto p-4 pt-[8vh]">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto p-4">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-md animate-[fadeIn_0.2s_ease]" onClick={closeComposer} />
-      <div className="relative w-full max-w-xl rounded-3xl border border-white/10 bg-[var(--bg-mid)] p-5 text-[var(--cream)] shadow-2xl animate-[fadeIn_0.22s_ease]">
+      <div className="relative my-auto w-full max-w-xl rounded-3xl border border-white/10 bg-[var(--bg-deep)] p-5 text-[var(--cream)] shadow-[0_30px_80px_-20px_rgba(0,0,0,0.85)] animate-[fadeIn_0.22s_ease]">
         <div className="mb-3 flex items-center justify-between">
           <span className="text-sm font-bold">Create a post</span>
           <button onClick={closeComposer} aria-label="Close" className="rounded-full p-1.5 text-[var(--sage)] hover:bg-white/10 hover:text-[var(--cream)]"><svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg></button>

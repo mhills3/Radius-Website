@@ -519,7 +519,6 @@ export default function CoursesPage() {
                     })}
                     {topCities.length === 0 && <p className="text-sm text-[var(--c-muted)]">—</p>}
                   </div>
-                  <p className="mt-3 text-[10px] text-[var(--c-muted)]">Most courses worldwide</p>
                 </div>
 
                 <div className="rounded-2xl border border-[var(--c-line)] bg-[var(--c-card)] p-4 shadow-sm">
