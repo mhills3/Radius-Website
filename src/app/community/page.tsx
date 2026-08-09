@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
@@ -287,9 +287,8 @@ export default function CommunityPage() {
   // Top contributors — derived honestly from the loaded feed (posts in the last 7 days). Below the
   // threshold (needs 3+ people and real activity) it's empty, so the BUILDERS/CONTRIBUTORS toggle hides.
   const contributorPodium = useMemo(() => {
-    const wk = Date.now() - 7 * 86400_000;
     const byId = new Map<string, { id: string; name: string; username?: string; photo?: string; cover?: string; count: number }>();
-    posts.filter((p) => p.createdAt >= wk && p.authorId).forEach((p) => {
+    posts.filter((p) => p.authorId).forEach((p) => {
       const id = p.authorId as string;
       const e = byId.get(id) || { id, name: p.authorName || "Player", username: p.authorHandle || undefined, photo: p.authorPhotoUrl, count: 0 };
       e.count++;
@@ -297,7 +296,7 @@ export default function CommunityPage() {
       byId.set(id, e);
     });
     const list = [...byId.values()].sort((a, b) => b.count - a.count).slice(0, 9);
-    return list.length >= 3 && list[0].count >= 2 ? list : [];
+    return list.length >= 3 ? list : []; // needs a podium's worth of distinct posters, else builders-only
   }, [posts]);
   // Pulse — honest 7-day counts from the loaded feed. Metrics below a floor of 10 hide; fewer than two hides the strip.
   const pulse = useMemo(() => {
@@ -430,7 +429,7 @@ export default function CommunityPage() {
             )}
             {(() => {
               const useContrib = heroMode === "contributors" && contributorPodium.length > 0;
-              return <Podium items={useContrib ? contributorPodium : builderPodium} metric={useContrib ? "posts this week" : "courses mapped"} />;
+              return <Podium items={useContrib ? contributorPodium : builderPodium} metric={useContrib ? "posts" : "courses mapped"} />;
             })()}
           </div>
         </div>
@@ -439,7 +438,10 @@ export default function CommunityPage() {
       {/* ===== SECTION 2 — composer, immediately below the hero (no header, no band) ===== */}
       <div className="relative z-10 mx-auto -mt-2 w-full max-w-2xl px-6">{composer}</div>
 
-      {/* ===== SECTION 3 — feed (tabs sticky; video rail injected inline after ~5 posts) ===== */}
+      {/* ===== SECTION 3 — video rail, directly after the composer (best-looking content stays near top) ===== */}
+      <div className="mx-auto max-w-7xl px-6 pt-10"><HighlightsBar /></div>
+
+      {/* ===== SECTION 4 — feed (sticky tabs) ===== */}
       <div className="mx-auto max-w-7xl px-6 pb-10 pt-6">
         <div className="sticky top-[58px] z-30 -mx-6 mb-5 bg-[var(--bg-deep)]/80 px-6 py-2.5 backdrop-blur-md">
           <div className="inline-flex rounded-full bg-white/[0.06] p-1 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.7)]">
@@ -501,12 +503,8 @@ export default function CommunityPage() {
                 )}
 
                 {sort !== "following" && !loading && feedList.length === 0 && !featured && <p className={`${card} p-8 text-center text-sm text-[var(--sage-dim)]`}>No posts yet.</p>}
-                {!loading && feedList.map((p, i) => (
-                  <Fragment key={p.id}>
-                    <PostCard post={p} rank={p.authorId ? ranks.get(p.authorId) : undefined} myReaction={reactionMap[p.id]} onReact={(t) => onReact(p.id, t)} onOpen={() => setOpen(p)} />
-                    {/* Video rail as an in-feed break, not a section that blocks the feed */}
-                    {(i === 4 || (feedList.length < 5 && i === feedList.length - 1)) && <div className="py-1"><HighlightsBar /></div>}
-                  </Fragment>
+                {!loading && feedList.map((p) => (
+                  <PostCard key={p.id} post={p} rank={p.authorId ? ranks.get(p.authorId) : undefined} myReaction={reactionMap[p.id]} onReact={(t) => onReact(p.id, t)} onOpen={() => setOpen(p)} />
                 ))}
                 {!loading && <div ref={sentinel} className="h-1" />}
                 {loadingMore && <PostSkeleton />}

@@ -16,12 +16,12 @@ export interface Rank {
 
 // Exact tier visuals from the app (PlayerRank.kt + LevelBadge.kt): icon shape + colors + description.
 const TIER = {
-  ROOKIE: { display: "Rec", color: "#b78c59", secondary: "#8c6640", icon: "circle" as TierIcon, description: "Learning the basics — building your throw, understanding the game." },
+  ROOKIE: { display: "Rookie", color: "#b78c59", secondary: "#8c6640", icon: "circle" as TierIcon, description: "Learning the basics — building your throw, understanding the game." },
   AMATEUR: { display: "Amateur", color: "#a6adb8", secondary: "#80878f", icon: "hexagon" as TierIcon, description: "Consistent contact, understands disc flight and course strategy." },
-  COMPETITOR: { display: "Intermediate", color: "#d9ad40", secondary: "#b38526", icon: "shield" as TierIcon, description: "Hits fairways, makes C1 putts, plays smart. Ready to compete." },
+  COMPETITOR: { display: "Competitor", color: "#d9ad40", secondary: "#b38526", icon: "shield" as TierIcon, description: "Hits fairways, makes C1 putts, plays smart. Ready to compete." },
   CONTENDER: { display: "Advanced", color: "#8cc7eb", secondary: "#669ec7", icon: "star" as TierIcon, description: "Reliable under pressure. Low bogey rate, strong course management." },
   ELITE: { display: "Pro", color: "#a673d9", secondary: "#7a4db3", icon: "diamond" as TierIcon, description: "Tournament-ready. Attacks courses, controls all shot shapes." },
-  PRO: { display: "MPO", color: "#d9404d", secondary: "#b32633", icon: "crown" as TierIcon, description: "Top-tier complete game. Mastery across putting, driving, and strategy." },
+  PRO: { display: "Champion", color: "#d9404d", secondary: "#b32633", icon: "crown" as TierIcon, description: "Top-tier complete game. Mastery across putting, driving, and strategy." },
 } as const;
 
 export interface TierInfo {
