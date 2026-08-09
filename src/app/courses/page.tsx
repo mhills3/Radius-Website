@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { getAllCourses, getTotalCourseCount, getTopBuilders, slugify, isUSState, canonicalState, stateAbbr, countryOf, STATE_NAMES, type Course, type Builder } from "@/lib/courses";
+import { getAllCourses, getTotalCourseCount, getTopBuilders, slugify, citySlug, isUSState, canonicalState, stateAbbr, countryOf, STATE_NAMES, type Course, type Builder } from "@/lib/courses";
 import { getOwnedIds } from "@/lib/account";
 import { getRanksFor, type RankInfo } from "@/lib/community";
 import { getPlayedCourses, type PlayedStat } from "@/lib/rounds";
@@ -97,6 +97,23 @@ export default function CoursesPage() {
     courses.forEach((c) => { const k = countryOf(c); m.set(k, (m.get(k) || 0) + 1); });
     return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
   }, [courses]);
+  // Top 5 cities WORLDWIDE by number of courses. Keyed by city + region so same-named cities in
+  // different states/countries don't merge; `code` drives the /courses/city link.
+  const topCities = useMemo(() => {
+    const m = new Map<string, { city: string; region: string; code: string; n: number }>();
+    courses.forEach((c) => {
+      const city = (c.city || "").trim();
+      if (!city) return;
+      const abbr = stateAbbr(c.state);
+      const region = abbr || countryOf(c);
+      const code = abbr || (c.state || "").trim();
+      const key = `${city.toLowerCase()}|${region.toLowerCase()}`;
+      const cur = m.get(key) || { city, region, code, n: 0 };
+      cur.n += 1; m.set(key, cur);
+    });
+    return [...m.values()].sort((a, b) => b.n - a.n).slice(0, 5);
+  }, [courses]);
+  const maxCityCount = topCities[0]?.n || 1;
   const totalHoles = useMemo(() => courses.reduce((s, c) => s + (c.holeCount || 0), 0), [courses]);
   // cap at a realistic ceiling — a few courses carry corrupt distanceFt values.
   const longest = useMemo(() => courses.reduce<Course | null>((a, c) => (c.distanceFt > (a?.distanceFt || 0) && c.distanceFt < 60000 ? c : a), null), [courses]);
@@ -482,6 +499,27 @@ export default function CoursesPage() {
                     ))}
                     {topStates.length === 0 && <p className="text-sm text-[var(--c-muted)]">—</p>}
                   </div>
+                </div>
+
+                <div className="rounded-2xl border border-[var(--c-line)] bg-[var(--c-card)] p-4 shadow-sm">
+                  <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-[var(--gold)]">🏙️ Top cities</div>
+                  <div className="space-y-2.5">
+                    {topCities.map((ct, i) => {
+                      const row = (
+                        <>
+                          <span className="w-3 shrink-0 text-xs font-bold text-[var(--gold)]">{i + 1}</span>
+                          <span className="min-w-0 flex-1 truncate"><span className="font-semibold text-[var(--c-ink)] group-hover:text-[var(--gold)]">{ct.city}</span>{ct.region ? <span className="text-[var(--c-muted)]">, {ct.region}</span> : null}</span>
+                          <div className="h-2 w-16 shrink-0 overflow-hidden rounded-full bg-[var(--c-raise)]"><div className="h-full rounded-full bg-[var(--gold)]" style={{ width: `${Math.max(10, (ct.n / maxCityCount) * 100)}%` }} /></div>
+                          <span className="w-6 shrink-0 text-right text-xs font-bold text-[var(--c-muted)]">{ct.n}</span>
+                        </>
+                      );
+                      return ct.code
+                        ? <Link key={`${ct.city}${i}`} href={`/courses/city/${encodeURIComponent(ct.code)}/${citySlug(ct.city)}`} className="group flex items-center gap-2.5 text-sm">{row}</Link>
+                        : <div key={`${ct.city}${i}`} className="flex items-center gap-2.5 text-sm">{row}</div>;
+                    })}
+                    {topCities.length === 0 && <p className="text-sm text-[var(--c-muted)]">—</p>}
+                  </div>
+                  <p className="mt-3 text-[10px] text-[var(--c-muted)]">Most courses worldwide</p>
                 </div>
 
                 <div className="rounded-2xl border border-[var(--c-line)] bg-[var(--c-card)] p-4 shadow-sm">

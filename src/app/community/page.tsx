@@ -62,13 +62,15 @@ function PostSkeleton() {
 // Dense, heavily-darkened, slowly-drifting mosaic of real member/course imagery. Texture only.
 function HeroMosaic({ images }: { images: string[] }) {
   if (images.length === 0) return null;
-  const tiles = images.length >= 40 ? images : Array.from({ length: 48 }, (_, i) => images[i % images.length]);
+  // Denser tiling (tight gaps, more columns) so complete rows fill the frame and the top isn't
+  // awkwardly clipped. Oversized + offset so the slow drift never reveals an edge.
+  const tiles = images.length >= 70 ? images : Array.from({ length: 84 }, (_, i) => images[i % images.length]);
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="hero-drift grid h-[132%] w-[112%] grid-cols-6 gap-2.5 opacity-[0.55] blur-[2.5px] sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12">
+      <div className="hero-drift grid h-[150%] w-[120%] grid-cols-8 gap-1 opacity-[0.6] blur-[2px] sm:grid-cols-10 md:grid-cols-12 lg:grid-cols-[repeat(14,minmax(0,1fr))]">
         {tiles.map((src, i) => (
           // eslint-disable-next-line @next/next/no-img-element
-          <img key={i} src={src} alt="" loading="lazy" decoding="async" className="aspect-square w-full rounded-lg object-cover" onError={(e) => { e.currentTarget.style.visibility = "hidden"; }} />
+          <img key={i} src={src} alt="" loading="lazy" decoding="async" className="aspect-square w-full rounded-md object-cover" onError={(e) => { e.currentTarget.style.visibility = "hidden"; }} />
         ))}
       </div>
     </div>
@@ -91,7 +93,7 @@ export default function CommunityPage() {
   const [myCid, setMyCid] = useState<string | null>(null);
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
   const [playedNames, setPlayedNames] = useState<Set<string>>(new Set());
-  const [composerExpanded, setComposerExpanded] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [reactionMap, setReactionMap] = useState<Record<string, string>>({});
   const [following, setFollowing] = useState<Set<string>>(new Set());
@@ -243,14 +245,9 @@ export default function CommunityPage() {
   // infinite scroll
   const sentinel = useRef<HTMLDivElement | null>(null);
   const loadMoreRef = useRef<() => void>(() => {});
-  const composerRef = useRef<HTMLDivElement | null>(null);
-  // Floating "+ Post" — jump to the composer and expand it from anywhere on the page.
-  const openComposer = () => {
-    if (!user) { router.push("/login"); return; }
-    setTab("feed");
-    setComposerExpanded(true);
-    requestAnimationFrame(() => composerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
-  };
+  // Floating "+ Post" / composer bar — open the centered compose modal from anywhere.
+  const openComposer = () => { if (!user) { router.push("/login"); return; } setComposerOpen(true); };
+  const closeComposer = () => setComposerOpen(false);
   const loadMore = async () => {
     if (loadingMore || !hasMore || tab !== "feed" || posts.length === 0) return;
     setLoadingMore(true);
@@ -312,7 +309,7 @@ export default function CommunityPage() {
     topPlayers.forEach((p) => p.photo && urls.add(p.photo));
     builders.forEach((b) => { const ph = builderRanks.get(b.id)?.photo; if (ph) urls.add(ph); });
     posts.forEach((p) => { if (p.authorPhotoUrl) urls.add(p.authorPhotoUrl); if (p.imageUrl) urls.add(p.imageUrl); });
-    return [...urls].slice(0, 48);
+    return [...urls].slice(0, 84);
   }, [topPlayers, builders, builderRanks, posts]);
   // Radius milestone posts — created as REAL `posts` docs with deterministic ids so the first
   // signed-in visitor writes them once (Firestore rules allow any authed write; no server) and
@@ -374,7 +371,7 @@ export default function CommunityPage() {
       let imageUrl: string | undefined;
       if (imageFile) imageUrl = await uploadPostImage(user.uid, imageFile);
       const post = await createPost(user.uid, text.trim(), { course: taggedCourse ?? undefined, disc: taggedDisc ?? undefined, imageUrl, mentions: taggedUsers, round: sharedRound ?? undefined });
-      if (post) { setPosts((prev) => [post, ...prev]); setText(""); setTaggedCourse(null); setTaggedDisc(null); setImageFile(null); setImagePreview(null); setTaggedUsers([]); setSharedRound(null); setComposerExpanded(false); }
+      if (post) { setPosts((prev) => [post, ...prev]); setText(""); setTaggedCourse(null); setTaggedDisc(null); setImageFile(null); setImagePreview(null); setTaggedUsers([]); setSharedRound(null); setComposerOpen(false); }
     } finally { setPosting(false); }
   };
   const onReact = (id: string, type: string) => {
@@ -396,92 +393,98 @@ export default function CommunityPage() {
     { key: "forums", label: "Forums" },
   ];
 
-  // Composer lives directly below the hero (participation handoff) — same block for feed & forums.
-  const composer = (
-    <>
-      {user ? (
-        <div className="border-b border-white/[0.055] py-3.5">
-          {!composerExpanded ? (
-            <button onClick={() => setComposerExpanded(true)} className="flex w-full items-center gap-2.5 text-left">
-              <span className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--bg-mid)] text-sm font-bold text-[var(--cream)] ring-1 ring-white/10">
-                {profile?.profileImageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={profile.profileImageUrl} alt="" className="h-8 w-8 object-cover" />
-                ) : ((profile?.name || "?").charAt(0).toUpperCase())}
-              </span>
-              <span className="flex-1 rounded-full bg-white/[0.05] px-4 py-2.5 text-[15px] text-[var(--sage-dim)] transition-colors hover:bg-white/[0.08]">What&apos;s your disc golf story today?</span>
-            </button>
-          ) : (
-          <>
-          <div className="flex gap-2.5">
-            <span className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--bg-mid)] text-sm font-bold text-[var(--cream)] ring-1 ring-white/10">
-              {profile?.profileImageUrl ? (
+  const avatarInitial = (profile?.name || "?").charAt(0).toUpperCase();
+  // Collapsed entry at the top of the feed — opens the centered compose modal.
+  const composerBar = user ? (
+    <button onClick={openComposer} className="flex w-full items-center gap-2.5 border-b border-white/[0.055] py-3.5 text-left">
+      <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--bg-mid)] text-sm font-bold text-[var(--cream)] ring-1 ring-white/10">
+        {profile?.profileImageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={profile.profileImageUrl} alt="" className="h-9 w-9 object-cover" />
+        ) : avatarInitial}
+      </span>
+      <span className="flex-1 rounded-full bg-white/[0.05] px-4 py-2.5 text-[15px] text-[var(--sage-dim)] transition-colors hover:bg-white/[0.08]">What&apos;s your disc golf story today?</span>
+      <span className="hidden shrink-0 items-center gap-1.5 rounded-full bg-[var(--gold)] px-4 py-2 text-sm font-bold text-[#141b16] sm:inline-flex">
+        <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>Post
+      </span>
+    </button>
+  ) : (
+    <div className="flex items-center gap-2.5 border-b border-white/[0.055] py-3.5">
+      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--bg-mid)] text-sm font-bold text-[var(--cream)]">+</span>
+      <p className="text-sm text-[var(--text-body)]"><Link href="/login" className="font-bold text-[var(--gold)] hover:underline">Sign in</Link> to share a round or join the conversation.</p>
+    </div>
+  );
+
+  // Centered, backdrop-blurred compose modal (opened by the bar or the floating + Post pill).
+  const composerModal = composerOpen && user && (
+    <div className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto p-4 pt-[8vh]">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-md animate-[fadeIn_0.2s_ease]" onClick={closeComposer} />
+      <div className="relative w-full max-w-xl rounded-3xl border border-white/10 bg-[var(--bg-mid)] p-5 text-[var(--cream)] shadow-2xl animate-[fadeIn_0.22s_ease]">
+        <div className="mb-3 flex items-center justify-between">
+          <span className="text-sm font-bold">Create a post</span>
+          <button onClick={closeComposer} aria-label="Close" className="rounded-full p-1.5 text-[var(--sage)] hover:bg-white/10 hover:text-[var(--cream)]"><svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg></button>
+        </div>
+        <div className="flex gap-2.5">
+          <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--bg-deep)] text-sm font-bold text-[var(--cream)] ring-1 ring-white/10">
+            {profile?.profileImageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={profile.profileImageUrl} alt="" className="h-9 w-9 object-cover" />
+            ) : avatarInitial}
+          </span>
+          <textarea autoFocus value={text} onChange={(e) => setText(e.target.value)} rows={4} placeholder="What's your disc golf story today?" className="min-h-[104px] w-full resize-none bg-transparent pt-1 text-[15px] text-[var(--cream)] placeholder-[var(--sage-dim)] outline-none" />
+        </div>
+        {imagePreview && (
+          <div className="relative mt-2 inline-block">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={imagePreview} alt="" className="max-h-52 rounded-xl object-cover" />
+            <button onClick={() => { setImageFile(null); setImagePreview(null); }} aria-label="Remove photo" className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-black/60 text-sm text-white hover:bg-black/80">✕</button>
+          </div>
+        )}
+        {sharedRound && (
+          <div className="mt-2.5 flex items-center gap-3 overflow-hidden rounded-xl bg-[var(--gold)]/[0.1] p-3">
+            <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-[var(--bg-deep)] text-lg text-[var(--gold)]">
+              {sharedRound.cover ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={profile.profileImageUrl} alt="" className="h-8 w-8 object-cover" />
-              ) : ((profile?.name || "?").charAt(0).toUpperCase())}
+                <img src={sharedRound.cover} alt="" className="h-full w-full object-cover" />
+              ) : "⛳"}
             </span>
-            <textarea autoFocus value={text} onChange={(e) => setText(e.target.value)} rows={2} placeholder="What's your disc golf story today?" className="w-full resize-none bg-transparent pt-1 text-[15px] text-[var(--cream)] placeholder-[var(--sage-dim)] outline-none" />
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-bold text-[var(--cream)]">{sharedRound.courseName}</div>
+              <div className="text-xs text-[var(--sage-dim)]">Sharing a round · {sharedRound.holesPlayed} holes{sharedRound.birdies ? ` · ${sharedRound.birdies} birdie${sharedRound.birdies === 1 ? "" : "s"}` : ""}</div>
+            </div>
+            <span className="font-[family-name:var(--font-heading)] text-xl font-extrabold" style={{ color: sharedRound.scoreToPar < 0 ? "#5fcf80" : sharedRound.scoreToPar === 0 ? "var(--cream)" : "#f08c8c" }}>{sharedRound.scoreToPar === 0 ? "E" : sharedRound.scoreToPar > 0 ? `+${sharedRound.scoreToPar}` : sharedRound.scoreToPar}</span>
+            <button onClick={() => setSharedRound(null)} aria-label="Remove round" className="shrink-0 text-[var(--gold)]/70 hover:text-[var(--gold)]">✕</button>
           </div>
-          {imagePreview && (
-            <div className="relative mt-2 inline-block">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={imagePreview} alt="" className="max-h-52 rounded-xl object-cover" />
-              <button onClick={() => { setImageFile(null); setImagePreview(null); }} aria-label="Remove photo" className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-black/60 text-sm text-white hover:bg-black/80">✕</button>
-            </div>
-          )}
-          {sharedRound && (
-            <div className="mt-2.5 flex items-center gap-3 overflow-hidden rounded-xl bg-[var(--gold)]/[0.1] p-3">
-              <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-[var(--bg-deep)] text-lg text-[var(--gold)]">
-                {sharedRound.cover ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={sharedRound.cover} alt="" className="h-full w-full object-cover" />
-                ) : "⛳"}
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-bold text-[var(--cream)]">{sharedRound.courseName}</div>
-                <div className="text-xs text-[var(--sage-dim)]">Sharing a round · {sharedRound.holesPlayed} holes{sharedRound.birdies ? ` · ${sharedRound.birdies} birdie${sharedRound.birdies === 1 ? "" : "s"}` : ""}</div>
-              </div>
-              <span className="font-[family-name:var(--font-heading)] text-xl font-extrabold" style={{ color: sharedRound.scoreToPar < 0 ? "#5fcf80" : sharedRound.scoreToPar === 0 ? "var(--cream)" : "#f08c8c" }}>{sharedRound.scoreToPar === 0 ? "E" : sharedRound.scoreToPar > 0 ? `+${sharedRound.scoreToPar}` : sharedRound.scoreToPar}</span>
-              <button onClick={() => setSharedRound(null)} aria-label="Remove round" className="shrink-0 text-[var(--gold)]/70 hover:text-[var(--gold)]">✕</button>
-            </div>
-          )}
-          {(taggedCourse || taggedDisc || taggedUsers.length > 0) && (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {taggedCourse && (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--gold)]/15 px-3 py-1 text-sm font-semibold text-[var(--gold)]">⛳ {taggedCourse.name}<button onClick={() => setTaggedCourse(null)} aria-label="Remove course" className="text-[var(--gold)]/70 hover:text-[var(--gold)]">✕</button></span>
-              )}
-              {taggedDisc && (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--gold)]/15 px-3 py-1 text-sm font-semibold text-[var(--gold)]">🥏 {taggedDisc.name}<button onClick={() => setTaggedDisc(null)} aria-label="Remove disc" className="text-[var(--gold)]/70 hover:text-[var(--gold)]">✕</button></span>
-              )}
-              {taggedUsers.map((u) => (
-                <span key={u.id} className="inline-flex items-center gap-1.5 rounded-full bg-[#8FBDE3]/15 px-3 py-1 text-sm font-semibold text-[#8FBDE3]">@{u.username}<button onClick={() => setTaggedUsers((arr) => arr.filter((x) => x.id !== u.id))} aria-label="Remove tag" className="text-[#8FBDE3]/70 hover:text-[#8FBDE3]">✕</button></span>
-              ))}
-            </div>
-          )}
-          <div className="mt-2 flex items-center justify-between">
-            <div className="flex flex-wrap gap-1.5">
-              <button onClick={() => setRoundPickerOpen(true)} className="inline-flex items-center gap-1.5 rounded-full bg-[var(--gold)]/15 px-3 py-1.5 text-xs font-bold text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/25">⛳ Share a round</button>
-              <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-[var(--sage)] transition-colors hover:bg-white/[0.1] hover:text-[var(--cream)]">📷 Photo<input type="file" accept="image/*" onChange={onPickImage} className="hidden" /></label>
-              <button onClick={() => setUserPickerOpen(true)} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-[var(--sage)] transition-colors hover:bg-white/[0.1] hover:text-[var(--cream)]">👤 {taggedUsers.length ? `People (${taggedUsers.length})` : "People"}</button>
-              <button onClick={() => setPickerOpen(true)} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-[var(--sage)] transition-colors hover:bg-white/[0.1] hover:text-[var(--cream)]">⛳ {taggedCourse ? "Course ✓" : "Course"}</button>
-              <button onClick={() => setDiscPickerOpen(true)} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-[var(--sage)] transition-colors hover:bg-white/[0.1] hover:text-[var(--cream)]">🥏 {taggedDisc ? "Disc ✓" : "Disc"}</button>
-            </div>
-            <button onClick={submitPost} disabled={(!text.trim() && !imageFile && !sharedRound) || posting} className="rounded-full bg-[var(--gold)] px-6 py-2 text-sm font-bold text-[#141b16] transition-colors hover:bg-[var(--gold-bright)] disabled:cursor-not-allowed disabled:opacity-50">{posting ? "Posting…" : "Post"}</button>
+        )}
+        {(taggedCourse || taggedDisc || taggedUsers.length > 0) && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {taggedCourse && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--gold)]/15 px-3 py-1 text-sm font-semibold text-[var(--gold)]">⛳ {taggedCourse.name}<button onClick={() => setTaggedCourse(null)} aria-label="Remove course" className="text-[var(--gold)]/70 hover:text-[var(--gold)]">✕</button></span>
+            )}
+            {taggedDisc && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--gold)]/15 px-3 py-1 text-sm font-semibold text-[var(--gold)]">🥏 {taggedDisc.name}<button onClick={() => setTaggedDisc(null)} aria-label="Remove disc" className="text-[var(--gold)]/70 hover:text-[var(--gold)]">✕</button></span>
+            )}
+            {taggedUsers.map((u) => (
+              <span key={u.id} className="inline-flex items-center gap-1.5 rounded-full bg-[#8FBDE3]/15 px-3 py-1 text-sm font-semibold text-[#8FBDE3]">@{u.username}<button onClick={() => setTaggedUsers((arr) => arr.filter((x) => x.id !== u.id))} aria-label="Remove tag" className="text-[#8FBDE3]/70 hover:text-[#8FBDE3]">✕</button></span>
+            ))}
           </div>
-          </>
-          )}
+        )}
+        <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-3">
+          <div className="flex flex-wrap gap-1.5">
+            <button onClick={() => setRoundPickerOpen(true)} className="inline-flex items-center gap-1.5 rounded-full bg-[var(--gold)]/15 px-3 py-1.5 text-xs font-bold text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/25">⛳ Share a round</button>
+            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-[var(--sage)] transition-colors hover:bg-white/[0.1] hover:text-[var(--cream)]">📷 Photo<input type="file" accept="image/*" onChange={onPickImage} className="hidden" /></label>
+            <button onClick={() => setUserPickerOpen(true)} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-[var(--sage)] transition-colors hover:bg-white/[0.1] hover:text-[var(--cream)]">👤 {taggedUsers.length ? `People (${taggedUsers.length})` : "People"}</button>
+            <button onClick={() => setPickerOpen(true)} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-[var(--sage)] transition-colors hover:bg-white/[0.1] hover:text-[var(--cream)]">⛳ {taggedCourse ? "Course ✓" : "Course"}</button>
+            <button onClick={() => setDiscPickerOpen(true)} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-[var(--sage)] transition-colors hover:bg-white/[0.1] hover:text-[var(--cream)]">🥏 {taggedDisc ? "Disc ✓" : "Disc"}</button>
+          </div>
+          <button onClick={submitPost} disabled={(!text.trim() && !imageFile && !sharedRound) || posting} className="rounded-full bg-[var(--gold)] px-6 py-2 text-sm font-bold text-[#141b16] transition-colors hover:bg-[var(--gold-bright)] disabled:cursor-not-allowed disabled:opacity-50">{posting ? "Posting…" : "Post"}</button>
         </div>
-      ) : (
-        <div className="flex items-center gap-2.5 border-b border-white/[0.055] py-3.5">
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--bg-mid)] text-sm font-bold text-[var(--cream)]">+</span>
-          <p className="text-sm text-[var(--text-body)]"><Link href="/login" className="font-bold text-[var(--gold)] hover:underline">Sign in</Link> to share a round or join the conversation.</p>
-        </div>
-      )}
+      </div>
       {pickerOpen && <CourseTagPicker onSelect={setTaggedCourse} onClose={() => setPickerOpen(false)} />}
       {discPickerOpen && <DiscTagPicker onSelect={setTaggedDisc} onClose={() => setDiscPickerOpen(false)} />}
       {roundPickerOpen && user && <RoundPicker uid={user.uid} onSelect={setSharedRound} onClose={() => setRoundPickerOpen(false)} />}
       {userPickerOpen && <UserTagPicker exclude={taggedUsers.map((u) => u.id)} onSelect={(u) => { setTaggedUsers((arr) => (arr.some((x) => x.id === u.id) ? arr : [...arr, u])); setText((t) => `${t}${t && !/\s$/.test(t) ? " " : ""}@${u.username} `); }} onClose={() => setUserPickerOpen(false)} />}
-    </>
+    </div>
   );
 
   return (
@@ -503,13 +506,19 @@ export default function CommunityPage() {
             <span className="hidden font-mono text-[10px] font-bold uppercase tracking-[0.24em] text-[var(--gold)] sm:inline">The home of disc golf</span>
             <h1 className="font-[family-name:var(--font-heading)] text-3xl font-black leading-none tracking-[-0.03em] text-[var(--cream)] sm:text-4xl">Community</h1>
           </div>
-          <div className="inline-flex shrink-0 rounded-full bg-white/[0.06] p-1 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.7)]">
+          <div className="inline-flex shrink-0 rounded-full border border-white/10 bg-white/[0.05] p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_10px_28px_-18px_rgba(0,0,0,0.7)] backdrop-blur-md">
             {TABS.map((t) => {
-              const unread = t.key !== tab && ((t.key === "feed" && unreadFeed) || (t.key === "forums" && unreadForums));
+              const active = tab === t.key;
+              const unread = !active && ((t.key === "feed" && unreadFeed) || (t.key === "forums" && unreadForums));
               return (
-                <button key={t.key} onClick={() => setTab(t.key)} className={`relative rounded-full px-5 py-2 text-sm font-bold transition-colors ${tab === t.key ? "bg-[var(--gold)] text-[#141b16]" : "text-[var(--text-body)] hover:text-[var(--cream)]"}`}>
+                <button key={t.key} onClick={() => setTab(t.key)} className={`relative inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold transition-all ${active ? "bg-gradient-to-b from-[var(--gold-bright)] to-[var(--gold)] text-[#141b16] shadow-[0_6px_16px_-6px_rgba(232,181,96,0.7)]" : "text-[var(--text-body)] hover:text-[var(--cream)]"}`}>
+                  {t.key === "feed" ? (
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h16M4 12h16M4 18h10" /></svg>
+                  ) : (
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.5L3 21l2-5.6A8.5 8.5 0 1 1 21 11.5z" /></svg>
+                  )}
                   {t.label}
-                  {unread && <span className="absolute right-2.5 top-1.5 h-2 w-2 rounded-full bg-[#8FBDE3] ring-2 ring-[var(--bg-deep)]" />}
+                  {unread && <span className="absolute right-2 top-1 h-2 w-2 rounded-full bg-[#8FBDE3] ring-2 ring-[var(--bg-deep)]" />}
                 </button>
               );
             })}
@@ -558,8 +567,8 @@ export default function CommunityPage() {
 
           {/* CENTER */}
           <div className="min-w-0">
-            {/* Composer — first element in the feed column, matching post width */}
-            <div ref={composerRef} className="scroll-mt-[160px]">{composer}</div>
+            {/* Composer entry — opens the centered compose modal */}
+            {composerBar}
             {tab === "feed" && (
               <div className="space-y-0">
                 {loading && <div className="mt-3 space-y-3">{[0, 1, 2].map((i) => <PostSkeleton key={i} />)}</div>}
@@ -690,6 +699,7 @@ export default function CommunityPage() {
         Post
       </button>
 
+      {composerModal}
       {open && <PostDetail post={open} uid={user?.uid} myReaction={reactionMap[open.id]} onReact={(t) => onReact(open.id, t)} onClose={() => setOpen(null)} onCommented={() => bumpComment(open.id)} />}
       {openThread && <ThreadDetail thread={openThread} rank={openThread.authorId ? ranks.get(openThread.authorId) : undefined} uid={user?.uid} onClose={() => setOpenThread(null)} />}
       {newThread && user && <NewThreadModal uid={user.uid} onCreated={(t) => { setThreads((prev) => [t, ...prev]); setNewThread(false); setTab("forums"); setOpenThread(t); }} onClose={() => setNewThread(false)} />}
