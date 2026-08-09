@@ -12,6 +12,7 @@ import { getLeaderboard, type MentionUser, type LeaderRow } from "@/lib/leaderbo
 import { createNotification } from "@/lib/notifications";
 import { uploadPostImage } from "@/lib/postImage";
 import { getThreads, getMeetups, getRanksFor, FORUM_CATEGORIES, categoryColor, type Thread, type Meetup, type RankInfo } from "@/lib/community";
+import { getTopBuilders, type Builder } from "@/lib/courses";
 import { getFollowingIds, myCanonicalId } from "@/lib/follow";
 import PostCard from "@/components/community/PostCard";
 import PostDetail from "@/components/community/PostDetail";
@@ -48,6 +49,89 @@ function PostSkeleton() {
   );
 }
 
+// Counts up 0 → value on mount (community-wide numbers get this treatment, in blue).
+function CountUp({ to, className }: { to: number; className?: string }) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    let raf = 0; const start = performance.now(); const dur = 900;
+    const tick = (t: number) => { const p = Math.min(1, (t - start) / dur); setN(Math.round(to * (1 - Math.pow(1 - p, 3)))); if (p < 1) raf = requestAnimationFrame(tick); };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [to]);
+  return <span className={className}>{n.toLocaleString()}</span>;
+}
+
+type PulseMetric = { label: string; value: number; plus: boolean };
+function Pulse({ metrics }: { metrics: PulseMetric[] }) {
+  if (metrics.length === 0) return null;
+  return (
+    <div className="mt-5 flex flex-wrap items-center gap-x-7 gap-y-2 font-mono text-[10.5px] uppercase tracking-[0.18em] text-[var(--cream)]/75">
+      {metrics.map((m) => (
+        <span key={m.label} className="inline-flex items-baseline gap-2">
+          <CountUp to={m.value} className="text-lg font-extrabold tracking-normal text-[#8FBDE3]" />{m.plus ? <span className="-ml-1.5 text-[#8FBDE3]">+</span> : null}<span>{m.label}</span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+// Dense, heavily-darkened, slowly-drifting mosaic of real member/course imagery. Texture only.
+function HeroMosaic({ images }: { images: string[] }) {
+  if (images.length === 0) return null;
+  const tiles = images.length >= 40 ? images : Array.from({ length: 48 }, (_, i) => images[i % images.length]);
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div className="hero-drift grid h-[132%] w-[112%] grid-cols-6 gap-2.5 opacity-[0.55] blur-[2.5px] sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12">
+        {tiles.map((src, i) => (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img key={i} src={src} alt="" loading="lazy" decoding="async" className="aspect-square w-full rounded-lg object-cover" onError={(e) => { e.currentTarget.style.visibility = "hidden"; }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+type SpotItem = { id: string; name: string; username?: string; count: number; photo?: string };
+function Spotlight({ items }: { items: SpotItem[] }) {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    if (items.length <= 1) return;
+    const t = setInterval(() => setI((x) => (x + 1) % items.length), 7000);
+    return () => clearInterval(t);
+  }, [items.length]);
+  if (items.length === 0) return null;
+  const b = items[Math.min(i, items.length - 1)];
+  return (
+    <div className="flex flex-col items-center text-center">
+      <div className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-[var(--gold)]">Top builder</div>
+      <div key={b.id} className="hero-fade mt-5 flex flex-col items-center">
+        <span className="relative">
+          <span aria-hidden className="absolute -inset-3 rounded-full" style={{ background: "radial-gradient(closest-side, rgba(232,181,96,0.4), transparent)" }} />
+          <span className="relative block h-24 w-24 overflow-hidden rounded-full border-2 border-[var(--gold)] p-[3px]">
+            {b.photo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={b.photo} alt="" className="h-full w-full rounded-full object-cover" />
+            ) : (
+              <span className="grid h-full w-full place-items-center rounded-full bg-[var(--bg-mid)] font-[family-name:var(--font-heading)] text-3xl font-bold text-[var(--cream)]">{(b.name || "?").charAt(0).toUpperCase()}</span>
+            )}
+          </span>
+        </span>
+        <div className="mt-4 font-[family-name:var(--font-heading)] text-2xl font-extrabold tracking-tight text-[var(--cream)]">{b.name}</div>
+        {b.username && <Link href={`/u/${b.username}`} className="mt-0.5 text-sm text-[var(--sage)] hover:text-[var(--gold)]">@{b.username}</Link>}
+        <div className="mt-3 font-[family-name:var(--font-heading)] text-6xl font-black leading-none tracking-[-0.02em] text-[var(--gold)]">{b.count}</div>
+        <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--sage-dim)]">courses mapped</div>
+      </div>
+      {items.length > 1 && (
+        <div className="mt-6 flex items-center gap-2">
+          {items.map((it, idx) => (
+            <button key={it.id} onClick={() => setI(idx)} aria-label={`Show ${it.name}`} className={`h-1.5 rounded-full transition-all ${idx === Math.min(i, items.length - 1) ? "w-5 bg-[var(--gold)]" : "w-1.5 bg-white/25 hover:bg-white/40"}`} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CommunityPage() {
   const router = useRouter();
   const { user, profile } = useAuth();
@@ -58,6 +142,8 @@ export default function CommunityPage() {
   const [ranks, setRanks] = useState<Map<string, RankInfo>>(new Map());
   const [trending, setTrending] = useState<TrendingDisc[]>([]);
   const [topPlayers, setTopPlayers] = useState<LeaderRow[]>([]);
+  const [builders, setBuilders] = useState<Builder[]>([]);
+  const [builderRanks, setBuilderRanks] = useState<Map<string, RankInfo>>(new Map());
   const [loading, setLoading] = useState(true);
   const [reactionMap, setReactionMap] = useState<Record<string, string>>({});
   const [following, setFollowing] = useState<Set<string>>(new Set());
@@ -92,6 +178,8 @@ export default function CommunityPage() {
       })
       .catch(() => setLoading(false));
     getLeaderboard(6).then((rows) => alive && setTopPlayers(rows)).catch(() => {});
+    // Top builders drive the hero spotlight; their rank photos give avatars for it and the mosaic.
+    getTopBuilders(12).then((b) => { if (!alive) return; setBuilders(b); getRanksFor(b.map((x) => x.id).filter(Boolean)).then((r) => alive && setBuilderRanks(r)).catch(() => {}); }).catch(() => {});
     return () => { alive = false; };
   }, []);
   useEffect(() => {
@@ -153,6 +241,31 @@ export default function CommunityPage() {
   }, [threads, category]);
   const hotThreads = useMemo(() => [...threads].sort((x, y) => y.score + y.replyCount - (x.score + x.replyCount)).slice(0, 4), [threads]);
 
+  // Hero mosaic — real avatars + post images + course covers, deduped. Texture only, never readable.
+  const mosaicImages = useMemo(() => {
+    const urls = new Set<string>();
+    topPlayers.forEach((p) => p.photo && urls.add(p.photo));
+    builders.forEach((b) => { const ph = builderRanks.get(b.id)?.photo; if (ph) urls.add(ph); });
+    posts.forEach((p) => { if (p.authorPhotoUrl) urls.add(p.authorPhotoUrl); if (p.imageUrl) urls.add(p.imageUrl); });
+    return [...urls].slice(0, 48);
+  }, [topPlayers, builders, builderRanks, posts]);
+  // Hero spotlight — top builders with a real course count.
+  const spotlight = useMemo(() => builders.filter((b) => b.count > 0).slice(0, 8).map((b) => ({ id: b.id, name: b.name, username: b.username, count: b.count, photo: builderRanks.get(b.id)?.photo })), [builders, builderRanks]);
+  // Pulse — honest 7-day counts from the loaded feed. Metrics below a floor of 10 hide; fewer than two hides the strip.
+  const pulse = useMemo(() => {
+    const wk = Date.now() - 7 * 86400_000;
+    const recent = posts.filter((p) => p.createdAt >= wk);
+    const players = new Set(recent.map((p) => p.authorId).filter(Boolean)).size;
+    const rounds = recent.filter((p) => p.linkedCourseName).length;
+    const saturated = posts.length > 0 && recent.length === posts.length; // whole loaded feed is within the window
+    const metrics = [
+      { label: "posts this week", value: recent.length, plus: saturated },
+      { label: "active players", value: players, plus: false },
+      { label: "rounds shared", value: rounds, plus: false },
+    ].filter((m) => m.value >= 10);
+    return metrics.length >= 2 ? metrics : [];
+  }, [posts]);
+
   const onPickImage = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (f) { setImageFile(f); setImagePreview(URL.createObjectURL(f)); }
@@ -187,35 +300,99 @@ export default function CommunityPage() {
     { key: "forums", label: "Forums" },
   ];
 
-  return (
-    <div className="min-h-screen bg-[var(--bg-deep)] text-[var(--cream)]">
-      {/* hero band — dissolves into the page (no hard edge) */}
-      <div className="relative overflow-hidden">
-        <div
-          className="pointer-events-none absolute inset-0"
-          aria-hidden
-          style={{ maskImage: "url(/topo.png)", WebkitMaskImage: "url(/topo.png)", maskSize: "cover", WebkitMaskSize: "cover", maskPosition: "center", WebkitMaskPosition: "center", backgroundColor: "var(--cream)", opacity: 0.08 }}
-        />
-        <div className="pointer-events-none absolute -right-32 -top-40 h-96 w-96 rounded-full bg-[radial-gradient(circle,rgba(246,193,101,0.12),transparent_70%)]" />
-        {/* generous bottom fade so the textured hero dissolves into the page — no detectable edge */}
-        <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-[linear-gradient(to_top,var(--bg-deep),transparent)]" />
-        <div className="relative mx-auto max-w-7xl px-6 pb-5 pt-10">
-          <div>
-            <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">The home of disc golf</div>
-            <h1 className="font-[family-name:var(--font-heading)] text-4xl font-extrabold tracking-[-0.03em] md:text-5xl">Community</h1>
+  // Composer lives directly below the hero (participation handoff) — same block for feed & forums.
+  const composer = (
+    <>
+      {user ? (
+        <div className={`${card} p-4`}>
+          <div className="flex gap-3">
+            <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--bg-mid)] text-sm font-bold text-[var(--cream)] ring-1 ring-white/10">
+              {profile?.profileImageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={profile.profileImageUrl} alt="" className="h-9 w-9 object-cover" />
+              ) : ((profile?.name || "?").charAt(0).toUpperCase())}
+            </span>
+            <textarea value={text} onChange={(e) => setText(e.target.value)} rows={2} placeholder="What's your disc golf story today?" className="w-full resize-none bg-transparent pt-1.5 text-[15px] text-[var(--cream)] placeholder-[var(--sage-dim)] outline-none" />
           </div>
-          <div className="mt-5 inline-flex rounded-full bg-white/[0.06] p-1 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.7)]">
-            {TABS.map((t) => (
-              <button key={t.key} onClick={() => setTab(t.key)} className={`rounded-full px-5 py-2 text-sm font-bold transition-colors ${tab === t.key ? "bg-[var(--gold)] text-[#16221b]" : "text-[var(--text-body)] hover:text-[var(--cream)]"}`}>
-                {t.label}
-              </button>
-            ))}
+          {imagePreview && (
+            <div className="relative mt-2 inline-block">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={imagePreview} alt="" className="max-h-52 rounded-xl object-cover" />
+              <button onClick={() => { setImageFile(null); setImagePreview(null); }} aria-label="Remove photo" className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-black/60 text-sm text-white hover:bg-black/80">✕</button>
+            </div>
+          )}
+          {(taggedCourse || taggedDisc || taggedUsers.length > 0) && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {taggedCourse && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--gold)]/15 px-3 py-1 text-sm font-semibold text-[var(--gold)]">⛳ {taggedCourse.name}<button onClick={() => setTaggedCourse(null)} aria-label="Remove course" className="text-[var(--gold)]/70 hover:text-[var(--gold)]">✕</button></span>
+              )}
+              {taggedDisc && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--gold)]/15 px-3 py-1 text-sm font-semibold text-[var(--gold)]">🥏 {taggedDisc.name}<button onClick={() => setTaggedDisc(null)} aria-label="Remove disc" className="text-[var(--gold)]/70 hover:text-[var(--gold)]">✕</button></span>
+              )}
+              {taggedUsers.map((u) => (
+                <span key={u.id} className="inline-flex items-center gap-1.5 rounded-full bg-[#8FBDE3]/15 px-3 py-1 text-sm font-semibold text-[#8FBDE3]">@{u.username}<button onClick={() => setTaggedUsers((arr) => arr.filter((x) => x.id !== u.id))} aria-label="Remove tag" className="text-[#8FBDE3]/70 hover:text-[#8FBDE3]">✕</button></span>
+              ))}
+            </div>
+          )}
+          <div className="mt-2 flex items-center justify-between">
+            <div className="flex flex-wrap gap-1.5">
+              <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-[var(--sage)] transition-colors hover:bg-white/[0.1] hover:text-[var(--cream)]">📷 Photo<input type="file" accept="image/*" onChange={onPickImage} className="hidden" /></label>
+              <button onClick={() => setUserPickerOpen(true)} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-[var(--sage)] transition-colors hover:bg-white/[0.1] hover:text-[var(--cream)]">👤 {taggedUsers.length ? `People (${taggedUsers.length})` : "People"}</button>
+              <button onClick={() => setPickerOpen(true)} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-[var(--sage)] transition-colors hover:bg-white/[0.1] hover:text-[var(--cream)]">⛳ {taggedCourse ? "Course ✓" : "Course"}</button>
+              <button onClick={() => setDiscPickerOpen(true)} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-[var(--sage)] transition-colors hover:bg-white/[0.1] hover:text-[var(--cream)]">🥏 {taggedDisc ? "Disc ✓" : "Disc"}</button>
+            </div>
+            <button onClick={submitPost} disabled={(!text.trim() && !imageFile) || posting} className="rounded-full bg-[var(--gold)] px-6 py-2 text-sm font-bold text-[#141b16] transition-colors hover:bg-[var(--gold-bright)] disabled:cursor-not-allowed disabled:opacity-50">{posting ? "Posting…" : "Post"}</button>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className={`flex items-center gap-3 ${card} px-5 py-4`}>
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--bg-mid)] text-sm font-bold text-[var(--cream)]">+</span>
+          <p className="text-sm text-[var(--text-body)]"><Link href="/login" className="font-bold text-[var(--gold)] hover:underline">Sign in</Link> to share a round or join the conversation.</p>
+        </div>
+      )}
+      {pickerOpen && <CourseTagPicker onSelect={setTaggedCourse} onClose={() => setPickerOpen(false)} />}
+      {discPickerOpen && <DiscTagPicker onSelect={setTaggedDisc} onClose={() => setDiscPickerOpen(false)} />}
+      {userPickerOpen && <UserTagPicker exclude={taggedUsers.map((u) => u.id)} onSelect={(u) => { setTaggedUsers((arr) => (arr.some((x) => x.id === u.id) ? arr : [...arr, u])); setText((t) => `${t}${t && !/\s$/.test(t) ? " " : ""}@${u.username} `); }} onClose={() => setUserPickerOpen(false)} />}
+    </>
+  );
 
-      <div className="mx-auto max-w-7xl px-6 py-7">
-        {tab === "feed" && <HighlightsBar />}
+  return (
+    <div className="min-h-screen bg-[var(--bg-deep)] text-[var(--cream)]">
+      {/* ===== SECTION 1 — layered hero (mosaic · spotlight · pulse) ===== */}
+      <section className="relative flex h-[100svh] min-h-[620px] w-full flex-col overflow-hidden">
+        <HeroMosaic images={mosaicImages} />
+        <div aria-hidden className="pointer-events-none absolute inset-0 bg-[var(--bg-deep)]/80" />
+        <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_75%_at_50%_-8%,transparent_42%,rgba(11,17,14,0.65))]" />
+        <div aria-hidden className="pointer-events-none absolute -right-40 -top-44 h-[28rem] w-[28rem] rounded-full bg-[radial-gradient(circle,rgba(246,193,101,0.14),transparent_70%)]" />
+        {/* generous fade — the mosaic dissolves into the page ground, no seam */}
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-[46vh] bg-[linear-gradient(to_top,var(--bg-deep)_16%,transparent)]" />
+        <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 pb-16 pt-28">
+          <div>
+            <div className="mb-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.24em] text-[var(--gold)]">The home of disc golf</div>
+            <h1 className="font-[family-name:var(--font-heading)] text-6xl font-black leading-[0.95] tracking-[-0.04em] text-[var(--cream)] sm:text-7xl md:text-[5.5rem]">Community</h1>
+            <Pulse metrics={pulse} />
+          </div>
+          <div className="flex flex-1 items-center justify-center pb-4">
+            <Spotlight items={spotlight} />
+          </div>
+        </div>
+      </section>
+
+      {/* ===== SECTION 2 — composer, immediately below the hero (no header, no band) ===== */}
+      <div className="relative z-10 mx-auto -mt-2 w-full max-w-2xl px-6">{composer}</div>
+
+      {/* ===== SECTION 3 — video rail ===== */}
+      <div className="mx-auto max-w-7xl px-6 pt-12"><HighlightsBar /></div>
+
+      {/* ===== SECTION 4 — feed ===== */}
+      <div className="mx-auto max-w-7xl px-6 pb-10 pt-4">
+        <div className="mb-6 inline-flex rounded-full bg-white/[0.06] p-1 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.7)]">
+          {TABS.map((t) => (
+            <button key={t.key} onClick={() => setTab(t.key)} className={`rounded-full px-5 py-2 text-sm font-bold transition-colors ${tab === t.key ? "bg-[var(--gold)] text-[#141b16]" : "text-[var(--text-body)] hover:text-[var(--cream)]"}`}>
+              {t.label}
+            </button>
+          ))}
+        </div>
         <div className="grid gap-5 lg:grid-cols-[230px_1fr_300px]">
           {/* LEFT RAIL */}
           <aside className="hidden lg:block">
@@ -254,57 +431,6 @@ export default function CommunityPage() {
           <div className="min-w-0">
             {tab === "feed" && (
               <div className="space-y-3">
-                {user ? (
-                  <div className={`${card} p-4`}>
-                    <div className="flex gap-3">
-                      <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--bg-mid)] text-sm font-bold text-[var(--cream)] ring-1 ring-white/10">
-                        {profile?.profileImageUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={profile.profileImageUrl} alt="" className="h-9 w-9 object-cover" />
-                        ) : ((profile?.name || "?").charAt(0).toUpperCase())}
-                      </span>
-                      <textarea value={text} onChange={(e) => setText(e.target.value)} rows={2} placeholder="Share a round, a photo, a gear take…" className="w-full resize-none bg-transparent pt-1.5 text-[15px] text-[var(--cream)] placeholder-[var(--sage-dim)] outline-none" />
-                    </div>
-                    {imagePreview && (
-                      <div className="relative mt-2 inline-block">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={imagePreview} alt="" className="max-h-52 rounded-xl object-cover" />
-                        <button onClick={() => { setImageFile(null); setImagePreview(null); }} aria-label="Remove photo" className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-black/60 text-sm text-white hover:bg-black/80">✕</button>
-                      </div>
-                    )}
-                    {(taggedCourse || taggedDisc || taggedUsers.length > 0) && (
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {taggedCourse && (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--gold)]/15 px-3 py-1 text-sm font-semibold text-[var(--gold)]">⛳ {taggedCourse.name}<button onClick={() => setTaggedCourse(null)} aria-label="Remove course" className="text-[var(--gold)]/70 hover:text-[var(--gold)]">✕</button></span>
-                        )}
-                        {taggedDisc && (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--gold)]/15 px-3 py-1 text-sm font-semibold text-[var(--gold)]">🥏 {taggedDisc.name}<button onClick={() => setTaggedDisc(null)} aria-label="Remove disc" className="text-[var(--gold)]/70 hover:text-[var(--gold)]">✕</button></span>
-                        )}
-                        {taggedUsers.map((u) => (
-                          <span key={u.id} className="inline-flex items-center gap-1.5 rounded-full bg-[#4d94fa]/15 px-3 py-1 text-sm font-semibold text-[#4d94fa]">@{u.username}<button onClick={() => setTaggedUsers((arr) => arr.filter((x) => x.id !== u.id))} aria-label="Remove tag" className="text-[#4d94fa]/70 hover:text-[#4d94fa]">✕</button></span>
-                        ))}
-                      </div>
-                    )}
-                    <div className="mt-2 flex items-center justify-between">
-                      <div className="flex flex-wrap gap-1.5">
-                        <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-[var(--sage)] transition-colors hover:bg-white/[0.1] hover:text-[var(--cream)]">📷 Photo<input type="file" accept="image/*" onChange={onPickImage} className="hidden" /></label>
-                        <button onClick={() => setUserPickerOpen(true)} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-[var(--sage)] transition-colors hover:bg-white/[0.1] hover:text-[var(--cream)]">👤 {taggedUsers.length ? `People (${taggedUsers.length})` : "People"}</button>
-                        <button onClick={() => setPickerOpen(true)} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-[var(--sage)] transition-colors hover:bg-white/[0.1] hover:text-[var(--cream)]">⛳ {taggedCourse ? "Course ✓" : "Course"}</button>
-                        <button onClick={() => setDiscPickerOpen(true)} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-[var(--sage)] transition-colors hover:bg-white/[0.1] hover:text-[var(--cream)]">🥏 {taggedDisc ? "Disc ✓" : "Disc"}</button>
-                      </div>
-                      <button onClick={submitPost} disabled={(!text.trim() && !imageFile) || posting} className="rounded-full bg-[var(--gold)] px-6 py-2 text-sm font-bold text-[#16221b] transition-colors hover:bg-[var(--gold-bright)] disabled:cursor-not-allowed disabled:opacity-50">{posting ? "Posting…" : "Post"}</button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className={`flex items-center gap-3 ${card} px-5 py-4`}>
-                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--bg-mid)] text-sm font-bold text-[var(--cream)]">+</span>
-                    <p className="text-sm text-[var(--text-body)]"><Link href="/login" className="font-bold text-[var(--gold)] hover:underline">Sign in</Link> to share a round or join the conversation.</p>
-                  </div>
-                )}
-                {pickerOpen && <CourseTagPicker onSelect={setTaggedCourse} onClose={() => setPickerOpen(false)} />}
-                {discPickerOpen && <DiscTagPicker onSelect={setTaggedDisc} onClose={() => setDiscPickerOpen(false)} />}
-                {userPickerOpen && <UserTagPicker exclude={taggedUsers.map((u) => u.id)} onSelect={(u) => { setTaggedUsers((arr) => (arr.some((x) => x.id === u.id) ? arr : [...arr, u])); setText((t) => `${t}${t && !/\s$/.test(t) ? " " : ""}@${u.username} `); }} onClose={() => setUserPickerOpen(false)} />}
-
                 {loading && [0, 1, 2].map((i) => <PostSkeleton key={i} />)}
 
                 {sort === "following" && !user && <p className={`${card} p-8 text-center text-sm text-[var(--sage-dim)]`}><Link href="/login" className="font-bold text-[var(--gold)] hover:underline">Sign in</Link> to see rounds from players you follow.</p>}

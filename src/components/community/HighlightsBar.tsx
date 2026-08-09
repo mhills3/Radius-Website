@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Highlight } from "@/lib/youtube";
 
 function timeAgo(ms: number): string {
@@ -25,35 +25,23 @@ function Card({ v, onClick }: { v: Highlight; onClick: () => void }) {
   const x = v.exclusive;
   const views = fmtViews(v.views);
   return (
-    <button
-      onClick={onClick}
-      className={`group relative w-[316px] shrink-0 snap-start overflow-hidden rounded-2xl text-left transition-all duration-300 hover:-translate-y-1 ${
-        f || x
-          ? "ring-[3px] ring-[var(--gold)] shadow-[0_0_20px_-2px_rgba(246,193,101,0.55),0_18px_42px_-18px_rgba(246,193,101,0.6)]"
-          : "hover:shadow-[0_18px_40px_-22px_rgba(0,0,0,0.8)]"
-      }`}
-      style={f || x ? { background: "linear-gradient(180deg, rgba(246,193,101,0.12), rgba(246,193,101,0.02))" } : undefined}
-    >
-      <div className="relative aspect-video w-full overflow-hidden">
+    <button onClick={onClick} className="group relative w-[316px] shrink-0 snap-start text-left transition-transform duration-300 hover:-translate-y-1">
+      {/* thumbnail — one radius, no border; scales on hover */}
+      <div className="relative aspect-video w-full overflow-hidden rounded-xl">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={v.thumb} alt="" loading="lazy" className="h-full w-full scale-[1.06] object-cover transition-transform duration-500 group-hover:scale-[1.12]" />
-        <div className={`absolute inset-0 bg-gradient-to-t from-black/55 to-transparent transition-opacity ${f || x ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`} />
-        {f && (
-          <span className="absolute left-2.5 top-2.5 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#f8cf80] via-[#f6c165] to-[#e0a23a] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[#16221b] shadow-[0_4px_12px_rgba(246,193,101,0.5)] ring-1 ring-white/50">
-            <span className="text-[11px]">★</span> Featured Partner
-          </span>
-        )}
-        {x && (
-          <span className="absolute left-2.5 top-2.5 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#f8cf80] via-[#f6c165] to-[#e0a23a] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[#141b16] shadow-[0_4px_12px_rgba(246,193,101,0.5)] ring-1 ring-white/50">
-            <span className="text-[11px]">★</span> Radius Exclusive
+        <img src={v.thumb} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.06]" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/55 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+        {(f || x) && (
+          <span className="absolute left-2.5 top-2.5 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#f8cf80] via-[#f6c165] to-[#e0a23a] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[#141b16] shadow-[0_4px_12px_rgba(246,193,101,0.5)]">
+            <span className="text-[11px]">★</span> {f ? "Featured Partner" : "Radius Exclusive"}
           </span>
         )}
         <span className="absolute left-1/2 top-1/2 grid h-11 w-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-black/55 text-white opacity-0 shadow-lg backdrop-blur transition-opacity duration-300 group-hover:opacity-100">
           <svg className="ml-0.5 h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
         </span>
       </div>
-      <div className="p-3">
-        <div className="line-clamp-2 min-h-[2.5rem] text-[13px] font-semibold leading-snug text-[var(--cream)]">{v.title}</div>
+      <div className="pt-3">
+        <div className="line-clamp-2 min-h-[2.5rem] text-[13px] font-semibold leading-snug text-[var(--cream)]/85 transition-colors group-hover:text-[var(--cream)]">{v.title}</div>
         <div className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-[var(--sage-dim)]">
           <span className={`truncate font-bold ${f || x ? "text-[var(--gold)]" : "text-[var(--sage)]"}`}>{v.channel}</span>
           <span>·</span><span className="shrink-0">{timeAgo(v.published)}</span>
@@ -67,6 +55,8 @@ function Card({ v, onClick }: { v: Highlight; onClick: () => void }) {
 export default function HighlightsBar() {
   const [videos, setVideos] = useState<Highlight[]>([]);
   const [active, setActive] = useState<Highlight | null>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const scroll = (dir: number) => rowRef.current?.scrollBy({ left: dir * 332, behavior: "smooth" });
 
   useEffect(() => {
     let alive = true;
@@ -100,12 +90,15 @@ export default function HighlightsBar() {
         </a>
       </div>
 
-      <div className="relative -mx-2">
-        <div className="flex snap-x snap-mandatory scroll-px-2 gap-4 overflow-x-auto px-2 pb-4 pt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="group/rail relative -mx-2">
+        <div ref={rowRef} className="flex snap-x snap-mandatory scroll-px-2 gap-4 overflow-x-auto px-2 pb-4 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {videos.map((v) => <Card key={v.id} v={v} onClick={() => setActive(v)} />)}
         </div>
         {/* right-edge fade signals the row keeps scrolling (instead of reading as a clipped card) */}
-        <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-[linear-gradient(to_left,var(--bg-deep),transparent)]" />
+        <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-20 bg-[linear-gradient(to_left,var(--bg-deep),transparent)]" />
+        {/* arrow controls — appear on hover */}
+        <button onClick={() => scroll(-1)} aria-label="Scroll left" className="absolute left-1 top-[30%] z-10 hidden h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-black/60 text-lg text-[var(--cream)] opacity-0 shadow-lg backdrop-blur transition-opacity duration-200 hover:bg-black/80 group-hover/rail:opacity-100 sm:grid">‹</button>
+        <button onClick={() => scroll(1)} aria-label="Scroll right" className="absolute right-1 top-[30%] z-10 hidden h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-black/60 text-lg text-[var(--cream)] opacity-0 shadow-lg backdrop-blur transition-opacity duration-200 hover:bg-black/80 group-hover/rail:opacity-100 sm:grid">›</button>
       </div>
 
       {active && (
