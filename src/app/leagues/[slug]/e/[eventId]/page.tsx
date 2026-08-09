@@ -156,9 +156,10 @@ export default function LeagueEventPage() {
   const [scorecardOpen, setScorecardOpen] = useState(false);
   const [scorecardEdit, setScorecardEdit] = useState(false); // admin: hole-by-hole edit mode in the scorecard modal
   const [scRound, setScRound] = useState(0); // read scorecard: which round's card is shown (0-based)
+  const [scGroup, setScGroup] = useState<{ ids: string[]; label: string } | null>(null); // when set, modal shows just this group
   // Opening the scorecard on a multi-round event lands on the latest round that has any scores.
   useEffect(() => {
-    if (!scorecardOpen || !event || event.roundCount <= 1) return;
+    if (!scorecardOpen || !event || event.roundCount <= 1 || scGroup) return; // a group opened on a specific round keeps it
     let latest = 0;
     for (let r = event.roundCount - 1; r >= 0; r--) { if (entries.some((e) => (roundHoles(e, r) ?? []).some((h) => h > 0))) { latest = r; break; } }
     setScRound(latest);
@@ -296,7 +297,7 @@ export default function LeagueEventPage() {
   };
   const publishScores = () => {
     entries.filter((e) => !e.dnf).filter((e) => { const r = Math.min(liveRoundIdx(e), (event?.roundCount ?? 1) - 1); return (roundHoles(e, r)?.some((h) => h > 0)) && !((e.roundScores?.[r] ?? 0) > 0); }).forEach(bankRound);
-    setScorecardOpen(false); setScorecardEdit(false);
+    setScorecardOpen(false); setScorecardEdit(false); setScGroup(null);
   };
   const toggleDnf = (e: EventEntry) => {
     if (!event) return;
@@ -886,7 +887,7 @@ export default function LeagueEventPage() {
                       );
                     });
                   })()}
-                  <button onClick={() => { setScorecardEdit(false); setScorecardOpen(true); }} className="block w-full border-t border-[var(--hair)] px-5 py-3 text-left text-[13px] font-semibold text-[var(--gold)] transition-colors hover:text-[var(--gold-bright)]">View live scorecard →</button>
+                  <button onClick={() => { setScGroup(null); setScorecardEdit(false); setScorecardOpen(true); }} className="block w-full border-t border-[var(--hair)] px-5 py-3 text-left text-[13px] font-semibold text-[var(--gold)] transition-colors hover:text-[var(--gold-bright)]">View live scorecard →</button>
                 </div>
               </div>
             )}
@@ -971,7 +972,7 @@ export default function LeagueEventPage() {
                     return (
                       <>
                         {played.length > 0 && (
-                          <button onClick={() => { setScorecardEdit(false); setScorecardOpen(true); }} className="group mt-5 block w-full border-t border-[rgba(232,181,96,0.2)] pt-4 text-left">
+                          <button onClick={() => { setScGroup(null); setScorecardEdit(false); setScorecardOpen(true); }} className="group mt-5 block w-full border-t border-[rgba(232,181,96,0.2)] pt-4 text-left">
                             <div className="flex items-center justify-between gap-3">
                               <span className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--cream-38)]">{event.roundCount > 1 ? "Final round" : "Winning card"}{played.length < event.holes ? ` · thru ${played.length}` : ""}</span>
                               <span className="inline-flex items-center gap-1 font-mono text-[10px] font-bold uppercase tracking-wide text-[var(--gold)] transition-colors group-hover:text-[var(--gold-bright)]">{finalized ? "View winning scorecard" : "View scorecard"} <span aria-hidden className="transition-transform group-hover:translate-x-0.5">→</span></span>
@@ -1172,11 +1173,8 @@ export default function LeagueEventPage() {
       {tab === "scores" && scoringKind && (
       <section className="mb-[44px]">
         <SectionTitle
-          right={(divisions.length > 1 && entries.some((e) => e.division)) || (admin && open) || entries.some((e) => e.holeScores?.some((h) => h > 0)) || tournamentOver ? (
+          right={(divisions.length > 1 && entries.some((e) => e.division)) || admin ? (
             <div className="flex flex-wrap items-center gap-1.5">
-              {(entries.some((e) => e.holeScores?.some((h) => h > 0)) || tournamentOver) && (
-                <button onClick={() => { setScorecardEdit(false); setScorecardOpen(true); }} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--gold)]/40 bg-[var(--gold-dim)] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/20"><IconTarget className="h-3 w-3" />{tournamentOver ? "Results" : "Scorecard"}</button>
-              )}
               {divisions.length > 1 && entries.some((e) => e.division) && (
                 <>
                   <button onClick={() => setDivFilter("")} className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide transition-colors ${!divFilter ? "bg-[var(--gold)] text-[#141B16]" : "bg-[var(--card)] text-[var(--cream-38)] hover:text-[var(--cream)]"}`}>All</button>
@@ -1186,7 +1184,7 @@ export default function LeagueEventPage() {
                 </>
               )}
               {admin && (
-                <button onClick={() => { setScorecardEdit(true); setScorecardOpen(true); }} className="ml-1 rounded-full border border-[var(--gold)]/50 bg-[var(--gold-dim)] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/20">Edit scores</button>
+                <button onClick={() => { setScGroup(null); setScorecardEdit(true); setScorecardOpen(true); }} className="ml-1 rounded-full border border-[var(--gold)]/50 bg-[var(--gold-dim)] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/20">Edit scores</button>
               )}
               {admin && open && canComplete && <button onClick={complete} disabled={busy} className="rounded-full bg-[var(--gold)] px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-[#141B16] transition-colors hover:bg-[var(--gold-bright)] disabled:opacity-50">Complete</button>}
               {admin && open && (
@@ -1746,6 +1744,11 @@ export default function LeagueEventPage() {
                                     ))}
                                     {c.playerIds.length === 0 && <p className="text-xs text-[var(--cream-38)]">Empty group</p>}
                                   </div>
+                                  {c.playerIds.length > 0 && (tournamentOver || entries.some((e) => e.holeScores?.some((h) => h > 0) || e.roundScores?.some((r) => r > 0))) && (
+                                    <div className="mt-3 flex justify-end border-t border-[var(--hair)] pt-2.5">
+                                      <button onClick={() => { setScGroup({ ids: c.playerIds, label: `Group ${c.number}` }); setScRound(rnd - 1); setScorecardEdit(false); setScorecardOpen(true); }} className="inline-flex items-center gap-1 font-mono text-[10px] font-bold uppercase tracking-wide text-[var(--gold)] transition-colors hover:text-[var(--gold-bright)]">View scorecard <span aria-hidden>→</span></button>
+                                    </div>
+                                  )}
                                 </div>
                               ))}
                             </div>
@@ -1790,7 +1793,7 @@ export default function LeagueEventPage() {
         const parOf = (i: number) => holeInfo?.[i]?.par ?? pars?.[i] ?? 3;
         const distOf = (i: number) => holeInfo?.[i]?.distFt ?? null;
         const editing = scorecardEdit && admin;
-        const players = editing ? entries : (ranked.length ? ranked : entries).filter((p) => !p.walkup || typeof p.score === "number" || p.holeScores?.some((h) => h > 0) || (p.holeScoresByRound && Object.values(p.holeScoresByRound).some((a) => a.some((h) => h > 0))));
+        const players = (editing ? entries : (ranked.length ? ranked : entries).filter((p) => !p.walkup || typeof p.score === "number" || p.holeScores?.some((h) => h > 0) || (p.holeScoresByRound && Object.values(p.holeScoresByRound).some((a) => a.some((h) => h > 0))))).filter((p) => !scGroup || scGroup.ids.includes(p.id));
         const totalPar = holeNums.reduce((a, i) => a + parOf(i - 1), 0);
         const sp = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`);
         // Multi-round: flip between each round's card (read AND edit) so a round-2 fix never touches round 1.
@@ -1811,7 +1814,7 @@ export default function LeagueEventPage() {
         };
         const stick = "sticky left-0 z-10 bg-[#111813]";
         return (
-          <div className="fixed inset-0 z-[60] grid place-items-center bg-black/75 p-3 backdrop-blur-sm sm:p-6" onClick={() => { setScorecardOpen(false); setScorecardEdit(false); }}>
+          <div className="fixed inset-0 z-[60] grid place-items-center bg-black/75 p-3 backdrop-blur-sm sm:p-6" onClick={() => { setScorecardOpen(false); setScorecardEdit(false); setScGroup(null); }}>
             <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-[var(--hair-strong)] bg-[#111813] shadow-2xl" onClick={(e) => e.stopPropagation()}>
               {/* Branded header */}
               <div className="relative shrink-0 overflow-hidden px-6 pb-5 pt-6">
@@ -1822,11 +1825,11 @@ export default function LeagueEventPage() {
                 <div className="absolute inset-0 bg-gradient-to-t from-[#111813] via-[#111813]/85 to-[#111813]/60" />
                 <div className="relative flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--gold)]"><IconTarget className="h-3.5 w-3.5" />{editing ? "Edit scorecard" : "Scorecard"}{!editing && (complete ? " · Final" : liveNow ? " · Live" : "")}</div>
+                    <div className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--gold)]"><IconTarget className="h-3.5 w-3.5" />{editing ? "Edit scorecard" : scGroup ? scGroup.label : "Scorecard"}{!editing && (complete ? " · Final" : liveNow ? " · Live" : "")}</div>
                     <h2 className="mt-1 truncate font-[family-name:var(--font-heading)] text-2xl font-black text-[var(--cream)]">{event.name}</h2>
                     <div className="mt-0.5 truncate font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--cream-38)]">{editing ? (multiRoundCard ? `Editing Round ${rnd + 1} — each round has its own total` : "Fix any hole; the total updates automatically") : [event.courseName, `Par ${totalPar}`, `${N} holes`].filter(Boolean).join(" · ")}</div>
                   </div>
-                  <button onClick={() => { setScorecardOpen(false); setScorecardEdit(false); }} aria-label="Close" className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[var(--hair-strong)] bg-black/30 text-lg text-[var(--cream-60)] transition-colors hover:text-[var(--cream)]">×</button>
+                  <button onClick={() => { setScorecardOpen(false); setScorecardEdit(false); setScGroup(null); }} aria-label="Close" className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[var(--hair-strong)] bg-black/30 text-lg text-[var(--cream-60)] transition-colors hover:text-[var(--cream)]">×</button>
                 </div>
                 {multiRoundCard && (
                   <div className="relative mt-4 flex flex-wrap gap-1.5">
@@ -1914,7 +1917,7 @@ export default function LeagueEventPage() {
                 <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--hair)] px-6 py-3.5">
                   <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--cream-38)]">Fix holes, then Publish to submit &amp; lock in totals</span>
                   <div className="flex items-center gap-2.5">
-                    <button onClick={() => { setScorecardOpen(false); setScorecardEdit(false); }} className="rounded-full border border-[var(--hair-strong)] px-4 py-2 text-xs font-bold text-[var(--cream-60)] transition-colors hover:text-[var(--cream)]">Done</button>
+                    <button onClick={() => { setScorecardOpen(false); setScorecardEdit(false); setScGroup(null); }} className="rounded-full border border-[var(--hair-strong)] px-4 py-2 text-xs font-bold text-[var(--cream-60)] transition-colors hover:text-[var(--cream)]">Done</button>
                     <button onClick={publishScores} className={btnGold + " !px-5 !py-2 !text-xs"}>Publish scores</button>
                   </div>
                 </div>
