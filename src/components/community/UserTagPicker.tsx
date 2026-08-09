@@ -1,21 +1,42 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { getMentionableUsers, type MentionUser } from "@/lib/leaderboard";
+import { getMentionableUsers, searchMentionableUsers, type MentionUser } from "@/lib/leaderboard";
 
 export default function UserTagPicker({ onSelect, onClose, exclude = [] }: { onSelect: (u: MentionUser) => void; onClose: () => void; exclude?: string[] }) {
   const [users, setUsers] = useState<MentionUser[] | null>(null);
   const [q, setQ] = useState("");
+  // Live server results tagged with the query they belong to, so stale results are ignored without
+  // a synchronous state reset. `searching` is then derived, not stored.
+  const [live, setLive] = useState<{ q: string; users: MentionUser[] }>({ q: "", users: [] });
 
   useEffect(() => { getMentionableUsers().then(setUsers).catch(() => setUsers([])); }, []);
 
+  // The cached list is capped, so also hit the server directly (debounced) — this finds anyone,
+  // not just the first slice of users.
+  useEffect(() => {
+    const s = q.trim();
+    if (s.length < 2) return;
+    let dead = false;
+    const t = setTimeout(() => {
+      searchMentionableUsers(s, 15).then((r) => { if (!dead) setLive({ q: s, users: r }); }).catch(() => {});
+    }, 220);
+    return () => { dead = true; clearTimeout(t); };
+  }, [q]);
+
+  const s = q.trim();
+  const liveUsers = live.q === s ? live.users : [];
+  const searching = s.length >= 2 && live.q !== s;
+
   const results = useMemo(() => {
-    if (!users) return [];
     const ex = new Set(exclude);
-    const s = q.trim().toLowerCase();
-    const list = users.filter((u) => !ex.has(u.id) && (!s || `${u.name} ${u.username}`.toLowerCase().includes(s)));
-    return list.slice(0, 40);
-  }, [users, q, exclude]);
+    const sl = s.toLowerCase();
+    const local = (users ?? []).filter((u) => !ex.has(u.id) && (!sl || `${u.name} ${u.username}`.toLowerCase().includes(sl)));
+    const seen = new Set(local.map((u) => u.id));
+    const merged = [...local];
+    for (const u of liveUsers) if (!ex.has(u.id) && !seen.has(u.id)) { seen.add(u.id); merged.push(u); }
+    return merged.slice(0, 40);
+  }, [users, s, exclude, liveUsers]);
 
   return (
     <div className="fixed inset-0 z-[80] flex items-start justify-center bg-black/60 p-4 pt-[12vh] backdrop-blur-sm" onClick={onClose}>
@@ -27,7 +48,7 @@ export default function UserTagPicker({ onSelect, onClose, exclude = [] }: { onS
           {users === null ? (
             <div className="p-6 text-center text-sm text-[var(--sage-dim)]">Loading players…</div>
           ) : results.length === 0 ? (
-            <div className="p-6 text-center text-sm text-[var(--sage-dim)]">No players match.</div>
+            <div className="p-6 text-center text-sm text-[var(--sage-dim)]">{searching ? "Searching…" : "No players match."}</div>
           ) : (
             results.map((u) => (
               <button key={u.id} onClick={() => { onSelect(u); onClose(); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/[0.05]">

@@ -79,6 +79,39 @@ export async function findUserByUsername(username: string): Promise<MentionUser 
   }
 }
 
+/**
+ * Live server-side search for @mention candidates by username OR name prefix. The cached picker list
+ * is capped (first N users), so anyone beyond it never showed up locally — this queries Firestore
+ * directly so any user is findable. Firestore prefix ranges are case-sensitive and usernames/names
+ * are stored as typed, so we try a few case variants (as-is, lowercase, Capitalized) of the input.
+ */
+export async function searchMentionableUsers(qRaw: string, max = 12): Promise<MentionUser[]> {
+  const q = qRaw.trim();
+  if (q.length < 2) return [];
+  const lower = q.toLowerCase();
+  const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+  const title = lower.replace(/\b\w/g, (c) => c.toUpperCase()); // "nick harshaw" → "Nick Harshaw"
+  const variants = [...new Set([q, lower, cap(lower), title])];
+  const out = new Map<string, MentionUser>();
+  const runPrefix = async (field: "username" | "name", v: string) => {
+    try {
+      const snap = await getDocs(query(collection(db, "users"), where(field, ">=", v), where(field, "<=", v + ""), orderBy(field), limit(max)));
+      snap.docs.forEach((d) => {
+        const u = d.data();
+        if (u.hideWebProfile === true) return;
+        const username = (u.username as string) || "";
+        if (!username || out.has(d.id)) return;
+        out.set(d.id, { id: d.id, name: (u.name as string) || "", username, photo: safeHttp(u.profileImageUrl) });
+      });
+    } catch { /* a missing single-field index is unlikely; ignore and rely on other variants */ }
+  };
+  // Exact username match first (covers the common "I know their handle" case), then prefix scans.
+  const exact = await findUserByUsername(q);
+  if (exact) out.set(exact.id, exact);
+  await Promise.all(variants.flatMap((v) => [runPrefix("username", v), runPrefix("name", v)]));
+  return [...out.values()].slice(0, max);
+}
+
 export interface LeaderRow {
   id: string;
   name: string;
