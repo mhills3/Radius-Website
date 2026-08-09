@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getThreadByIdSEO, getThreadRepliesSEO } from "@/lib/postsServer";
 import ThreadDiscussion from "./ThreadDiscussion";
+import ForumAvatar from "./ForumAvatar";
 
 type Props = { params: Promise<{ id: string }> };
 const SITE = "https://radiusdiscgolf.com";
@@ -59,7 +60,7 @@ export default async function ThreadPage({ params }: Props) {
           <span className="rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide" style={{ background: `${catColor(t.category)}26`, color: catColor(t.category) }}>{t.category}</span>
           <h1 className="mt-3 font-[family-name:var(--font-heading)] text-3xl font-extrabold leading-tight tracking-[-0.02em]">{t.title}</h1>
           <div className="mt-2 flex items-center gap-2 text-sm text-[var(--sage-dim)]">
-            <Avatar url={t.authorPhotoUrl} name={t.authorName} size={28} />
+            <ForumAvatar url={t.authorPhotoUrl} name={t.authorName} authorId={t.authorId} size={28} />
             <span className="font-semibold text-[var(--text-body)]">{t.authorName}</span>
             <span>· {fmtDate(t.createdAt)}</span>
           </div>
@@ -75,14 +76,5 @@ export default async function ThreadPage({ params }: Props) {
         <ThreadDiscussion threadId={id} initialScore={t.score} initialReplyCount={t.replyCount} opId={t.authorId} />
       </div>
     </div>
-  );
-}
-
-function Avatar({ url, name, size = 44 }: { url?: string; name: string; size?: number }) {
-  return (
-    <span className="grid shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--bg-mid)] font-bold text-[var(--cream)] ring-1 ring-white/10" style={{ width: size, height: size, fontSize: size * 0.4 }}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      {url ? <img src={url} alt="" className="h-full w-full object-cover" /> : (name || "?").charAt(0).toUpperCase()}
-    </span>
   );
 }

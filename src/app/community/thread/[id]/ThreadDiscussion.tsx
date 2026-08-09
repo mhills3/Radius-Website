@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
 import { getThreadReplies, addReply, voteThread, voteReply, getThreadUserVotes, type Reply } from "@/lib/community";
+import ForumAvatar from "./ForumAvatar";
 
 function timeAgo(ms: number): string {
   if (!ms) return "";
@@ -14,15 +15,6 @@ function timeAgo(ms: number): string {
   const h = Math.floor(m / 60); if (h < 24) return `${h}h`;
   const d = Math.floor(h / 24); if (d < 7) return `${d}d`;
   return new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
-function Avatar({ url, name, size = 32 }: { url?: string; name: string; size?: number }) {
-  return (
-    <span className="grid shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--bg-mid)] font-bold text-[var(--cream)] ring-1 ring-white/10" style={{ width: size, height: size, fontSize: size * 0.4 }}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      {url ? <img src={url} alt="" className="h-full w-full object-cover" /> : (name || "?").charAt(0).toUpperCase()}
-    </span>
-  );
 }
 
 function VoteBar({ score, myVote, onVote, small }: { score: number; myVote: number; onVote: (dir: 1 | -1) => void; small?: boolean }) {
@@ -119,7 +111,7 @@ export default function ThreadDiscussion({ threadId, initialScore, initialReplyC
     return (
       <div key={r.id} className={depth > 0 ? "border-l border-white/[0.08] pl-3 sm:pl-4" : ""}>
         <div className="flex gap-2.5 py-2.5">
-          {handle ? <Link href={`/u/${handle}`}><Avatar url={r.authorPhotoUrl} name={r.authorName} /></Link> : <Avatar url={r.authorPhotoUrl} name={r.authorName} />}
+          {handle ? <Link href={`/u/${handle}`}><ForumAvatar url={r.authorPhotoUrl} name={r.authorName} authorId={r.authorId} /></Link> : <ForumAvatar url={r.authorPhotoUrl} name={r.authorName} authorId={r.authorId} />}
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-x-1.5 text-sm">
               {handle ? <Link href={`/u/${handle}`} className="font-bold text-[var(--cream)] hover:underline">{r.authorName}</Link> : <span className="font-bold text-[var(--cream)]">{r.authorName}</span>}
@@ -164,7 +156,7 @@ export default function ThreadDiscussion({ threadId, initialScore, initialReplyC
         {/* Top-level reply composer */}
         {replyingTo === "root" && (
           <div className="mb-4 flex items-start gap-2.5">
-            <Avatar url={profile?.profileImageUrl} name={profile?.name || "?"} />
+            <ForumAvatar url={profile?.profileImageUrl} name={profile?.name || "?"} />
             <div className="min-w-0 flex-1">{replyBox(null)}</div>
           </div>
         )}

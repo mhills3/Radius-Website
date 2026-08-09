@@ -130,13 +130,13 @@ export default function CommunityPage() {
   const [pendingNew, setPendingNew] = useState<FeedPost[]>([]);
   const [scrolledDown, setScrolledDown] = useState(false);
 
-  // Mirror the active tab into the URL (Forums → ?tab=forums) so the browser Back button from a
-  // thread returns to the tab you were on, not the feed.
+  // Mirror the active tab into the URL (Forums → ?tab=forums) via the Next router (so its history
+  // tracking stays intact) — this is what makes Back from a thread return to the tab you were on.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const url = tab === "feed" ? "/community" : `/community?tab=${tab}`;
-    if (window.location.pathname + window.location.search !== url) window.history.replaceState(null, "", url);
-  }, [tab]);
+    if (window.location.pathname + window.location.search !== url) router.replace(url, { scroll: false });
+  }, [tab, router]);
 
   useEffect(() => {
     let alive = true;
