@@ -17,7 +17,7 @@ import { fmtDist } from "@/lib/units";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "pk.eyJ1IjoibWlrZXkzIiwiYSI6ImNtb3Fra25hZzB6dnIycHB6ZHMxcjIwNHYifQ.tyyS7i-aoR54_l11rW0Khg";
 const fmt = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`);
-const scoreColor = (n: number) => (n < 0 ? "#15803d" : n === 0 ? "#16221b" : "#dc2626");
+const scoreColor = (n: number) => (n < 0 ? "#5fcf80" : n === 0 ? "#e7e2d3" : "#f08c8c");
 const fmtDate = (ms: number) => (ms ? new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "");
 const MEDALS = ["🥇", "🥈", "🥉"];
 function shotColor(result: string): string {
@@ -105,7 +105,7 @@ export default function CourseDetailClient({ slug, initialCourse }: { slug: stri
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center gap-3 bg-[#faf8f3] text-[#6b7a70]">
+      <div className="courses-scope flex min-h-screen items-center justify-center gap-3 bg-[var(--c-bg)] text-[var(--c-muted)]">
         <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
         Loading course…
       </div>
@@ -113,20 +113,20 @@ export default function CourseDetailClient({ slug, initialCourse }: { slug: stri
   }
   if (notFound || !course) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#faf8f3] text-[#16221b]">
+      <div className="courses-scope flex min-h-screen flex-col items-center justify-center gap-4 bg-[var(--c-bg)] text-[var(--c-ink)]">
         <h1 className="font-[family-name:var(--font-heading)] text-2xl font-bold">Course not found</h1>
-        <Link href="/courses" className="text-sm font-bold text-[#9a7a3a] hover:underline">← Back to all courses</Link>
+        <Link href="/courses" className="text-sm font-bold text-[var(--gold)] hover:underline">← Back to all courses</Link>
       </div>
     );
   }
   // Private course: anyone who isn't the creator (incl. signed-out visitors) is blocked.
   if (isPrivateCourse(course) && ownerOfPrivate !== true) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-[#faf8f3] px-6 text-center text-[#16221b]">
+      <div className="courses-scope flex min-h-screen flex-col items-center justify-center gap-3 bg-[var(--c-bg)] px-6 text-center text-[var(--c-ink)]">
         <div className="text-3xl">🔒</div>
         <h1 className="font-[family-name:var(--font-heading)] text-2xl font-bold tracking-[-0.02em]">This course is private</h1>
-        <p className="mx-auto max-w-sm text-sm text-[#46554c]">Only the player who built it can view this course.</p>
-        <Link href="/courses" className="mt-4 rounded-full bg-[var(--gold)] px-7 py-3 text-sm font-bold text-[#16221b]">Browse public courses</Link>
+        <p className="mx-auto max-w-sm text-sm text-[var(--c-body)]">Only the player who built it can view this course.</p>
+        <Link href="/courses" className="mt-4 rounded-full bg-[var(--gold)] px-7 py-3 text-sm font-bold text-[#141b16]">Browse public courses</Link>
       </div>
     );
   }
@@ -199,7 +199,7 @@ export default function CourseDetailClient({ slug, initialCourse }: { slug: stri
   ].filter((s) => s.show);
 
   return (
-    <div className="min-h-screen bg-[#faf8f3] text-[#16221b]">
+    <div className="courses-scope min-h-screen bg-[var(--c-bg)] text-[var(--c-ink)]">
       {/* ===== HERO — the course's cover photo (falls back to a satellite aerial) ===== */}
       <div className="relative isolate flex h-[64vh] min-h-[460px] w-full flex-col overflow-hidden bg-[var(--bg-deep)]">
         {course.coverPhotoUrl ? (
@@ -213,9 +213,10 @@ export default function CourseDetailClient({ slug, initialCourse }: { slug: stri
         )}
         {/* topo grain */}
         <div className="pointer-events-none absolute inset-0 -z-10" style={{ maskImage: "url(/topo.png)", WebkitMaskImage: "url(/topo.png)", maskSize: "cover", WebkitMaskSize: "cover", backgroundColor: "#fff", opacity: 0.05 }} aria-hidden />
-        {/* cinematic vignette + bottom-anchored fade for legibility */}
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(130%_90%_at_50%_-15%,transparent_55%,rgba(15,24,19,0.55))]" aria-hidden />
-        <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_top,rgba(15,24,19,0.97),rgba(15,24,19,0.2)_52%,rgba(15,24,19,0.62))]" aria-hidden />
+        {/* cinematic vignette + bottom fade that resolves to the page ground so the hero
+            dissolves into the body instead of hard-cutting to it */}
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(130%_90%_at_50%_-15%,transparent_52%,rgba(14,21,18,0.55))]" aria-hidden />
+        <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_top,#0e1512_0%,rgba(14,21,18,0.55)_16%,rgba(14,21,18,0.12)_45%,rgba(14,21,18,0.66)_100%)]" aria-hidden />
 
         <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col justify-between px-6 pb-6 pt-24">
           <div className="flex items-center justify-between">
@@ -230,7 +231,7 @@ export default function CourseDetailClient({ slug, initialCourse }: { slug: stri
 
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              {course.isFeatured && <span className="rounded-full bg-[var(--gold)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#16221b]">★ Featured</span>}
+              {course.isFeatured && <span className="rounded-full bg-[var(--gold)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#141b16]">★ Featured</span>}
               <span className="rounded-full bg-black/40 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white backdrop-blur-sm">{feeLabel}</span>
               {course.courseType && <span className="rounded-full bg-black/40 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white backdrop-blur-sm">{course.courseType}</span>}
             </div>
@@ -253,12 +254,12 @@ export default function CourseDetailClient({ slug, initialCourse }: { slug: stri
       </div>
 
       {/* ===== sticky section nav ===== */}
-      <div className="sticky top-16 z-30 border-b border-black/[0.07] bg-[#faf8f3]/90 backdrop-blur-md">
+      <div className="sticky top-16 z-30 border-b border-[var(--c-line)] bg-[var(--c-bg)]/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-6">
           {SECTIONS.map((s) => {
             const active = activeSection === s.id;
             return (
-              <a key={s.id} href={`#${s.id}`} className={`relative whitespace-nowrap px-3.5 py-3.5 text-sm font-semibold transition-colors ${active ? "text-[#16221b]" : "text-[#46554c] hover:text-[#16221b]"}`}>
+              <a key={s.id} href={`#${s.id}`} className={`relative whitespace-nowrap px-3.5 py-3.5 text-sm font-semibold transition-colors ${active ? "text-[var(--c-ink)]" : "text-[var(--c-body)] hover:text-[var(--c-ink)]"}`}>
                 {s.label}
                 {active && <span className="absolute inset-x-2.5 bottom-0 h-[3px] rounded-full bg-[var(--gold)]" />}
               </a>
@@ -272,15 +273,15 @@ export default function CourseDetailClient({ slug, initialCourse }: { slug: stri
         <main className="min-w-0 space-y-10">
           {/* OVERVIEW */}
           <section id="overview" className="scroll-mt-32">
-            {course.description && <p className="leading-relaxed text-[#46554c]">{course.description}</p>}
+            {course.description && <p className="leading-relaxed text-[var(--c-body)]">{course.description}</p>}
 
             {/* at-a-glance chips — Type & Fee already live in the hero, so only the extras here */}
             {(course.terrain || course.manualDifficulty || amenities.length > 0) && (
               <div className="mt-5 flex flex-wrap gap-2">
                 {[["Terrain", course.terrain], ["Difficulty", course.manualDifficulty]].filter(([, v]) => v).map(([k, v]) => (
-                  <span key={k} className="rounded-full border border-black/8 bg-white px-3 py-1.5 text-sm shadow-sm"><span className="text-[#8a968d]">{k}:</span> <span className="font-semibold text-[#16221b] capitalize">{v}</span></span>
+                  <span key={k} className="rounded-full border border-[var(--c-line)] bg-[var(--c-card)] px-3 py-1.5 text-sm shadow-sm"><span className="text-[var(--c-muted)]">{k}:</span> <span className="font-semibold text-[var(--c-ink)] capitalize">{v}</span></span>
                 ))}
-                {amenities.map((a) => <span key={a} className="rounded-full bg-black/[0.05] px-3 py-1.5 text-sm font-medium text-[#46554c]">{a}</span>)}
+                {amenities.map((a) => <span key={a} className="rounded-full bg-[var(--c-raise)] px-3 py-1.5 text-sm font-medium text-[var(--c-body)]">{a}</span>)}
               </div>
             )}
 
@@ -301,7 +302,7 @@ export default function CourseDetailClient({ slug, initialCourse }: { slug: stri
                       </div>
                     </div>
                   </div>
-                  {mineRecord ? <span className="rounded-full bg-[var(--gold)]/15 px-4 py-2 text-sm font-bold text-[var(--gold)]">👑 You hold the record</span> : <Link href="/login" className="shrink-0 rounded-full bg-[var(--gold)] px-6 py-3 text-sm font-bold text-[#16221b] transition-all hover:-translate-y-0.5 hover:bg-[var(--gold-bright)]">Beat this score →</Link>}
+                  {mineRecord ? <span className="rounded-full bg-[var(--gold)]/15 px-4 py-2 text-sm font-bold text-[var(--gold)]">👑 You hold the record</span> : <Link href="/login" className="shrink-0 rounded-full bg-[var(--gold)] px-6 py-3 text-sm font-bold text-[#141b16] transition-all hover:-translate-y-0.5 hover:bg-[var(--gold-bright)]">Beat this score →</Link>}
                 </div>
               );
             })()}
@@ -315,38 +316,38 @@ export default function CourseDetailClient({ slug, initialCourse }: { slug: stri
                 <div className="flex flex-wrap items-center gap-4 text-sm">
                   {myRounds.length > 0 && (
                     <label className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-[#9a7a3a]">My round:</span>
-                      <select value={roundIdx} onChange={(e) => setRoundIdx(Number(e.target.value))} className="rounded-full border border-black/10 bg-white px-3 py-1.5 text-xs font-semibold text-[#16221b] shadow-sm outline-none focus:border-[var(--gold)]">
+                      <span className="text-xs font-semibold text-[var(--gold)]">My round:</span>
+                      <select value={roundIdx} onChange={(e) => setRoundIdx(Number(e.target.value))} className="rounded-full border border-[var(--c-line)] bg-[var(--c-card)] px-3 py-1.5 text-xs font-semibold text-[var(--c-ink)] shadow-sm outline-none focus:border-[var(--gold)]">
                         {myRounds.map((r, i) => <option key={r.roundId} value={i}>{fmtDate(r.date)} · {fmt(r.relativeToPar)}</option>)}
                       </select>
                     </label>
                   )}
-                  <span className="text-[#8a968d]">{geoHoles.length} holes mapped</span>
+                  <span className="text-[var(--c-muted)]">{geoHoles.length} holes mapped</span>
                 </div>
               </div>
-              <div className="overflow-hidden rounded-2xl border border-black/8 shadow-sm">
+              <div className="overflow-hidden rounded-2xl border border-[var(--c-line)] shadow-sm">
                 <CourseHoleMap holes={sortedHoles} highlightHole={activeHole} flight={flightThrows} onHole={setActiveHole} className="h-[460px] w-full" />
               </div>
               {activeRoundHole && activeRoundHole.throws.length > 0 ? (
-                <div className="mt-3 rounded-2xl border border-black/8 bg-white p-4 shadow-sm">
+                <div className="mt-3 rounded-2xl border border-[var(--c-line)] bg-[var(--c-card)] p-4 shadow-sm">
                   <div className="mb-3 flex items-center justify-between">
-                    <span className="font-bold text-[#16221b]">Hole {activeHole} · your shots</span>
-                    <span className="text-sm text-[#8a968d]">{activeRoundHole.score} on par {activeRoundHole.par} <span className="font-bold" style={{ color: scoreColor(activeRoundHole.score - activeRoundHole.par) }}>({fmt(activeRoundHole.score - activeRoundHole.par)})</span></span>
+                    <span className="font-bold text-[var(--c-ink)]">Hole {activeHole} · your shots</span>
+                    <span className="text-sm text-[var(--c-muted)]">{activeRoundHole.score} on par {activeRoundHole.par} <span className="font-bold" style={{ color: scoreColor(activeRoundHole.score - activeRoundHole.par) }}>({fmt(activeRoundHole.score - activeRoundHole.par)})</span></span>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     {activeRoundHole.throws.map((t, i) => (
                       <div key={i} className="flex items-center gap-2">
-                        <div className="flex items-center gap-2 rounded-xl border border-black/5 bg-black/[0.02] px-3 py-2">
+                        <div className="flex items-center gap-2 rounded-xl border border-[var(--c-line)] bg-[var(--c-raise)] px-3 py-2">
                           <span className="grid h-6 w-6 place-items-center rounded-full text-[11px] font-bold text-white" style={{ background: shotColor(t.result) }}>{i + 1}</span>
-                          <div className="leading-tight"><div className="text-xs font-bold text-[#16221b]">{t.discName && t.discName !== "Score" ? t.discName : t.result}</div><div className="text-[11px] text-[#8a968d]">{t.distance ? `${fmtDist(t.distance, metric)} · ` : ""}{t.result}</div></div>
+                          <div className="leading-tight"><div className="text-xs font-bold text-[var(--c-ink)]">{t.discName && t.discName !== "Score" ? t.discName : t.result}</div><div className="text-[11px] text-[var(--c-muted)]">{t.distance ? `${fmtDist(t.distance, metric)} · ` : ""}{t.result}</div></div>
                         </div>
-                        {i < activeRoundHole.throws.length - 1 && <span className="text-[#cbd2cc]">→</span>}
+                        {i < activeRoundHole.throws.length - 1 && <span className="text-[var(--c-muted)]">→</span>}
                       </div>
                     ))}
                   </div>
                 </div>
               ) : (
-                <p className="mt-2 text-xs text-[#8a968d]">Each line is a hole, tee → basket. Tap a hole {myRounds.length > 0 ? "to replay your shots (projected from real throw distances)" : "on the map or scorecard to highlight it"}.</p>
+                <p className="mt-2 text-xs text-[var(--c-muted)]">Each line is a hole, tee → basket. Tap a hole {myRounds.length > 0 ? "to replay your shots (projected from real throw distances)" : "on the map or scorecard to highlight it"}.</p>
               )}
             </section>
           )}
@@ -357,35 +358,35 @@ export default function CourseDetailClient({ slug, initialCourse }: { slug: stri
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <h2 className="font-[family-name:var(--font-heading)] text-xl font-bold tracking-tight">Hole-by-hole</h2>
                 {hasLayouts && (
-                  <div className="inline-flex flex-wrap gap-1 rounded-full border border-black/10 bg-white p-1 shadow-sm">
+                  <div className="inline-flex flex-wrap gap-1 rounded-full border border-[var(--c-line)] bg-[var(--c-card)] p-1 shadow-sm">
                     {layoutOptions.map((l) => (
-                      <button key={l.id} onClick={() => setLayoutId(l.id)} className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${activeLayout.id === l.id ? "bg-[var(--gold)] text-[#16221b]" : "text-[#46554c] hover:text-[#16221b]"}`}>{l.name}</button>
+                      <button key={l.id} onClick={() => setLayoutId(l.id)} className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${activeLayout.id === l.id ? "bg-[var(--gold)] text-[#141b16]" : "text-[var(--c-body)] hover:text-[var(--c-ink)]"}`}>{l.name}</button>
                     ))}
                   </div>
                 )}
               </div>
               {hasLayouts && (
-                <div className="mb-3 flex flex-wrap gap-x-6 gap-y-1 text-sm text-[#6b7a70]">
-                  <span><span className="font-bold text-[#16221b]">{activeHoles.length}</span> holes</span>
-                  <span>Par <span className="font-bold text-[#16221b]">{activeLayout.par}</span></span>
-                  <span><span className="font-bold text-[#16221b]">{fmtDist(activeLayout.distanceFt, metric)}</span></span>
-                  {layoutAvg != null && <span>Community avg <span className="font-bold" style={{ color: layoutAvg < 0 ? "#3a9d57" : "#46554c" }}>{fmt(Math.round(layoutAvg))}</span></span>}
+                <div className="mb-3 flex flex-wrap gap-x-6 gap-y-1 text-sm text-[var(--c-muted)]">
+                  <span><span className="font-bold text-[var(--c-ink)]">{activeHoles.length}</span> holes</span>
+                  <span>Par <span className="font-bold text-[var(--c-ink)]">{activeLayout.par}</span></span>
+                  <span><span className="font-bold text-[var(--c-ink)]">{fmtDist(activeLayout.distanceFt, metric)}</span></span>
+                  {layoutAvg != null && <span>Community avg <span className="font-bold" style={{ color: layoutAvg < 0 ? "#5fcf80" : "#c9c3b4" }}>{fmt(Math.round(layoutAvg))}</span></span>}
                 </div>
               )}
-              <div className="overflow-hidden rounded-2xl border border-black/8 bg-white shadow-sm">
+              <div className="overflow-hidden rounded-2xl border border-[var(--c-line)] bg-[var(--c-card)] shadow-sm">
                 {(() => { const maxD = Math.max(1, ...activeHoles.map((h) => h.distance || 0)); return activeHoles.map((h) => {
                   const pct = Math.max(8, ((h.distance || 0) / maxD) * 100);
                   return (
-                    <div key={h.holeNumber} onMouseEnter={() => setActiveHole(h.holeNumber)} onMouseLeave={() => setActiveHole(null)} className={`flex items-center gap-3 border-b border-black/5 px-4 py-2.5 transition-colors last:border-0 ${activeHole === h.holeNumber ? "bg-[var(--gold)]/[0.12]" : "hover:bg-black/[0.02]"}`}>
-                      <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold ${activeHole === h.holeNumber ? "bg-[var(--gold)] text-[#16221b]" : "bg-[#16221b] text-[var(--cream)]"}`}>{h.holeNumber}</span>
+                    <div key={h.holeNumber} onMouseEnter={() => setActiveHole(h.holeNumber)} onMouseLeave={() => setActiveHole(null)} className={`flex items-center gap-3 border-b border-[var(--c-line)] px-4 py-2.5 transition-colors last:border-0 ${activeHole === h.holeNumber ? "bg-[var(--gold)]/[0.12]" : "hover:bg-[var(--c-raise)]"}`}>
+                      <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold ${activeHole === h.holeNumber ? "bg-[var(--gold)] text-[#141b16]" : "bg-[var(--c-chip)] text-[var(--c-ink)]"}`}>{h.holeNumber}</span>
                       <span className="w-12 shrink-0 text-sm font-bold">Par {h.par}</span>
-                      <div className="hidden min-w-0 flex-1 sm:block"><div className="h-1.5 overflow-hidden rounded-full bg-black/[0.06]"><div className="h-full rounded-full bg-[var(--gold)]/70" style={{ width: `${pct}%` }} /></div></div>
-                      <span className="w-16 shrink-0 text-right text-sm text-[#46554c]">{h.distance > 0 ? fmtDist(h.distance, metric) : "—"}</span>
-                      <span className="hidden w-28 shrink-0 truncate text-right text-xs text-[#8a968d] md:block">{[h.fairwayShape, h.elevation].filter((x) => x && x !== "Flat").join(" · ") || h.holeType || ""}</span>
+                      <div className="hidden min-w-0 flex-1 sm:block"><div className="h-1.5 overflow-hidden rounded-full bg-[var(--c-raise)]"><div className="h-full rounded-full bg-[var(--gold)]/70" style={{ width: `${pct}%` }} /></div></div>
+                      <span className="w-16 shrink-0 text-right text-sm text-[var(--c-body)]">{h.distance > 0 ? fmtDist(h.distance, metric) : "—"}</span>
+                      <span className="hidden w-28 shrink-0 truncate text-right text-xs text-[var(--c-muted)] md:block">{[h.fairwayShape, h.elevation].filter((x) => x && x !== "Flat").join(" · ") || h.holeType || ""}</span>
                     </div>
                   );
                 }); })()}
-                <div className="flex items-center gap-3 bg-black/[0.03] px-4 py-3 text-sm font-bold">
+                <div className="flex items-center gap-3 bg-[var(--c-raise)] px-4 py-3 text-sm font-bold">
                   <span className="grid h-7 w-7 shrink-0 place-items-center">Σ</span>
                   <span className="w-12 shrink-0">Par {activeLayout.par}</span>
                   <div className="hidden flex-1 sm:block" />
@@ -408,35 +409,35 @@ export default function CourseDetailClient({ slug, initialCourse }: { slug: stri
               <h2 className="font-[family-name:var(--font-heading)] text-xl font-bold tracking-tight">Leaderboard</h2>
               <div className="flex items-center gap-3">
                 {hasLayouts && (
-                  <div className="inline-flex flex-wrap gap-1 rounded-full border border-black/10 bg-white p-1 shadow-sm">
+                  <div className="inline-flex flex-wrap gap-1 rounded-full border border-[var(--c-line)] bg-[var(--c-card)] p-1 shadow-sm">
                     {layoutOptions.map((l) => (
-                      <button key={l.id} onClick={() => setLayoutId(l.id)} className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${activeLayout.id === l.id ? "bg-[var(--gold)] text-[#16221b]" : "text-[#46554c] hover:text-[#16221b]"}`}>{l.name}</button>
+                      <button key={l.id} onClick={() => setLayoutId(l.id)} className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${activeLayout.id === l.id ? "bg-[var(--gold)] text-[#141b16]" : "text-[var(--c-body)] hover:text-[var(--c-ink)]"}`}>{l.name}</button>
                     ))}
                   </div>
                 )}
-                {players > 0 && <span className="text-sm text-[#8a968d]">{players} player{players === 1 ? "" : "s"}</span>}
+                {players > 0 && <span className="text-sm text-[var(--c-muted)]">{players} player{players === 1 ? "" : "s"}</span>}
               </div>
             </div>
             {scopedScores.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-black/10 bg-white p-8 text-center text-sm text-[#6b7a70]">No scores logged on this layout yet — <Link href="/login" className="font-bold text-[#9a7a3a] hover:underline">be the first</Link>.</div>
+              <div className="rounded-2xl border border-dashed border-[var(--c-line)] bg-[var(--c-card)] p-8 text-center text-sm text-[var(--c-muted)]">No scores logged on this layout yet — <Link href="/login" className="font-bold text-[var(--gold)] hover:underline">be the first</Link>.</div>
             ) : (
-              <div className="overflow-hidden rounded-2xl border border-black/8 bg-white shadow-sm">
+              <div className="overflow-hidden rounded-2xl border border-[var(--c-line)] bg-[var(--c-card)] shadow-sm">
                 {scopedScores.slice(0, 25).map((s, i) => {
                   const rk = s.playerUid ? ranks.get(s.playerUid) : undefined;
                   const mine = user && s.playerUid === user.uid;
                   return (
-                    <div key={`${s.playerId}-${s.date}-${i}`} className={`flex items-center gap-3 border-b border-black/5 px-4 py-3 last:border-0 ${mine ? "bg-[var(--gold)]/[0.08]" : ""}`}>
-                      <span className="w-6 shrink-0 text-center text-sm font-bold text-[#9a7a3a]">{i < 3 ? MEDALS[i] : i + 1}</span>
+                    <div key={`${s.playerId}-${s.date}-${i}`} className={`flex items-center gap-3 border-b border-[var(--c-line)] px-4 py-3 last:border-0 ${mine ? "bg-[var(--gold)]/[0.08]" : ""}`}>
+                      <span className="w-6 shrink-0 text-center text-sm font-bold text-[var(--gold)]">{i < 3 ? MEDALS[i] : i + 1}</span>
                       <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--bg-mid)] text-xs font-bold text-[var(--cream)]">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         {rk?.photo ? <img src={rk.photo} alt="" loading="lazy" className="h-full w-full object-cover" /> : (s.playerName || "?").charAt(0).toUpperCase()}
                       </span>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
-                          {s.playerHandle ? <Link href={`/u/${s.playerHandle}`} className="truncate text-sm font-bold text-[#16221b] hover:text-[#9a7a3a]">{s.playerName}</Link> : <span className="truncate text-sm font-bold text-[#16221b]">{s.playerName}</span>}
+                          {s.playerHandle ? <Link href={`/u/${s.playerHandle}`} className="truncate text-sm font-bold text-[var(--c-ink)] hover:text-[var(--gold)]">{s.playerName}</Link> : <span className="truncate text-sm font-bold text-[var(--c-ink)]">{s.playerName}</span>}
                           {rk && <span className="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold" style={{ background: `${rk.color}22`, color: rk.color }}>{rk.tier}</span>}
                         </div>
-                        <div className="truncate text-xs text-[#8a968d]">{(s.username || s.playerHandle) ? `@${s.username || s.playerHandle} · ` : ""}{s.holesPlayed} holes{s.date ? ` · ${fmtDate(s.date)}` : ""}</div>
+                        <div className="truncate text-xs text-[var(--c-muted)]">{(s.username || s.playerHandle) ? `@${s.username || s.playerHandle} · ` : ""}{s.holesPlayed} holes{s.date ? ` · ${fmtDate(s.date)}` : ""}</div>
                       </div>
                       <span className="font-[family-name:var(--font-heading)] text-lg font-extrabold" style={{ color: scoreColor(s.relativeToPar) }}>{fmt(s.relativeToPar)}</span>
                     </div>
@@ -452,7 +453,7 @@ export default function CourseDetailClient({ slug, initialCourse }: { slug: stri
               <h2 className="mb-4 font-[family-name:var(--font-heading)] text-xl font-bold tracking-tight">Photos</h2>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                 {course.galleryPhotoUrls.filter((u) => /^https?:\/\//.test(u)).slice(0, 12).map((u, i) => (
-                  <a key={i} href={u} target="_blank" rel="noopener" className={`group relative overflow-hidden rounded-2xl bg-black/5 ring-1 ring-inset ring-black/5 ${i === 0 ? "col-span-2 row-span-2 aspect-square" : "aspect-square"}`}>
+                  <a key={i} href={u} target="_blank" rel="noopener" className={`group relative overflow-hidden rounded-2xl bg-[var(--c-raise)] ring-1 ring-inset ring-[var(--c-line)] ${i === 0 ? "col-span-2 row-span-2 aspect-square" : "aspect-square"}`}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={u} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                   </a>
@@ -471,22 +472,22 @@ export default function CourseDetailClient({ slug, initialCourse }: { slug: stri
         {/* ===== STICKY SIDEBAR ===== */}
         <aside className="space-y-4 lg:sticky lg:top-24">
           {/* your status */}
-          <div className="rounded-2xl border border-black/8 bg-white p-5 shadow-sm">
-            <div className="text-[10px] font-bold uppercase tracking-widest text-[#9a7a3a]">Your status</div>
+          <div className="rounded-2xl border border-[var(--c-line)] bg-[var(--c-card)] p-5 shadow-sm">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--gold)]">Your status</div>
             {myScore ? (
               <>
                 <div className="mt-1 font-[family-name:var(--font-heading)] text-3xl font-extrabold" style={{ color: scoreColor(myScore.relativeToPar) }}>{fmt(myScore.relativeToPar)}</div>
-                <div className="text-sm text-[#8a968d]">your best{myScore.holesPlayed ? ` · ${myScore.holesPlayed} holes` : ""}</div>
+                <div className="text-sm text-[var(--c-muted)]">your best{myScore.holesPlayed ? ` · ${myScore.holesPlayed} holes` : ""}</div>
               </>
             ) : (
-              <p className="mt-1 text-sm text-[#46554c]">{user ? "You haven't logged a round here yet." : "Sign in to track your scores & climb the leaderboard."}</p>
+              <p className="mt-1 text-sm text-[var(--c-body)]">{user ? "You haven't logged a round here yet." : "Sign in to track your scores & climb the leaderboard."}</p>
             )}
-            <Link href="/login" className="mt-3 block rounded-full bg-[#16221b] px-5 py-2.5 text-center text-sm font-bold text-[var(--cream)] transition-colors hover:bg-[#22332a]">{myScore ? "Log another round" : "Play & track on Radius"}</Link>
+            <Link href="/login" className="mt-3 block rounded-full bg-[var(--gold)] px-5 py-2.5 text-center text-sm font-bold text-[#141b16] transition-colors hover:bg-[var(--gold-bright)]">{myScore ? "Log another round" : "Play & track on Radius"}</Link>
           </div>
 
           {/* quick records */}
-          <div className="rounded-2xl border border-black/8 bg-white p-5 shadow-sm">
-            <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-[#9a7a3a]">Course stats</div>
+          <div className="rounded-2xl border border-[var(--c-line)] bg-[var(--c-card)] p-5 shadow-sm">
+            <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-[var(--gold)]">Course stats</div>
             <dl className="space-y-2.5 text-sm">
               <Row k="Players" v={players || "—"} />
               {course.communityScoreCount != null && <Row k="Rounds logged" v={course.communityScoreCount} />}
@@ -500,14 +501,14 @@ export default function CourseDetailClient({ slug, initialCourse }: { slug: stri
 
           {/* score distribution */}
           {players > 0 && (
-            <div className="rounded-2xl border border-black/8 bg-white p-5 shadow-sm">
-              <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-[#9a7a3a]">Score distribution</div>
+            <div className="rounded-2xl border border-[var(--c-line)] bg-[var(--c-card)] p-5 shadow-sm">
+              <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-[var(--gold)]">Score distribution</div>
               <div className="space-y-1.5">
                 {distBuckets.map((b) => (
                   <div key={b.l} className="flex items-center gap-2 text-xs">
-                    <span className="w-16 shrink-0 text-right text-[#46554c]">{b.l}</span>
-                    <div className="h-3 flex-1 overflow-hidden rounded bg-black/[0.05]"><div className="h-full rounded bg-[var(--gold)]" style={{ width: `${(b.n / maxBucket) * 100}%` }} /></div>
-                    <span className="w-5 shrink-0 font-semibold text-[#46554c]">{b.n}</span>
+                    <span className="w-16 shrink-0 text-right text-[var(--c-body)]">{b.l}</span>
+                    <div className="h-3 flex-1 overflow-hidden rounded bg-[var(--c-raise)]"><div className="h-full rounded bg-[var(--gold)]" style={{ width: `${(b.n / maxBucket) * 100}%` }} /></div>
+                    <span className="w-5 shrink-0 font-semibold text-[var(--c-body)]">{b.n}</span>
                   </div>
                 ))}
               </div>
@@ -516,9 +517,9 @@ export default function CourseDetailClient({ slug, initialCourse }: { slug: stri
 
           {/* directions */}
           {hasGeo && (
-            <a href={`https://www.google.com/maps/dir/?api=1&destination=${course.latitude},${course.longitude}`} target="_blank" rel="noopener" className="flex items-center justify-between gap-3 rounded-2xl border border-black/8 bg-white p-4 shadow-sm transition-colors hover:border-[var(--gold)]">
-              <div className="flex items-center gap-2.5"><span className="grid h-9 w-9 place-items-center rounded-xl bg-[#16221b] text-[var(--gold)]"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 21s-7-5.2-7-11a7 7 0 0 1 14 0c0 5.8-7 11-7 11z" /><circle cx="12" cy="10" r="2.5" /></svg></span><div><div className="text-sm font-bold text-[#16221b]">Get directions</div><div className="text-xs text-[#8a968d]">{course.city}{course.state ? `, ${course.state}` : ""}</div></div></div>
-              <svg className="h-4 w-4 shrink-0 text-[#9a7a3a]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>
+            <a href={`https://www.google.com/maps/dir/?api=1&destination=${course.latitude},${course.longitude}`} target="_blank" rel="noopener" className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--c-line)] bg-[var(--c-card)] p-4 shadow-sm transition-colors hover:border-[var(--gold)]">
+              <div className="flex items-center gap-2.5"><span className="grid h-9 w-9 place-items-center rounded-xl bg-[var(--gold-dim)] text-[var(--gold)]"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 21s-7-5.2-7-11a7 7 0 0 1 14 0c0 5.8-7 11-7 11z" /><circle cx="12" cy="10" r="2.5" /></svg></span><div><div className="text-sm font-bold text-[var(--c-ink)]">Get directions</div><div className="text-xs text-[var(--c-muted)]">{course.city}{course.state ? `, ${course.state}` : ""}</div></div></div>
+              <svg className="h-4 w-4 shrink-0 text-[var(--gold)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>
             </a>
           )}
         </aside>
@@ -532,5 +533,5 @@ function HeroStat({ label, value }: { label: string; value: string | number }) {
   return <div><div className="font-[family-name:var(--font-heading)] text-2xl font-extrabold leading-none text-white">{value}</div><div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-[rgba(245,237,225,0.7)]">{label}</div></div>;
 }
 function Row({ k, v, c }: { k: string; v: string | number; c?: string }) {
-  return <div className="flex items-center justify-between"><dt className="text-[#8a968d]">{k}</dt><dd className="font-bold" style={c ? { color: c } : undefined}>{v}</dd></div>;
+  return <div className="flex items-center justify-between"><dt className="text-[var(--c-muted)]">{k}</dt><dd className="font-bold" style={c ? { color: c } : undefined}>{v}</dd></div>;
 }

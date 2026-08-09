@@ -67,6 +67,19 @@ html { scroll-behavior: smooth; }
 .events-scope code {
   font-family: var(--font-mono-stack);
 }
+
+/* Dark theme for the course pages — scoped tokens so the conversion is a token
+   swap, not a rewrite, and never leaks to the rest of the site. */
+.courses-scope {
+  --c-bg: #0e1512;      /* page ground */
+  --c-card: #17211c;    /* raised surface (was white) */
+  --c-line: rgba(244,241,232,0.10);   /* hairlines (was black/8) */
+  --c-raise: rgba(255,255,255,0.045); /* faint fill (was black/[0.02–0.06]) */
+  --c-chip: rgba(255,255,255,0.09);   /* neutral chip (was #16221b on light) */
+  --c-ink: #f1ede2;                   /* primary text (was #16221b) */
+  --c-body: rgba(241,237,226,0.72);   /* secondary text (was #46554c) */
+  --c-muted: rgba(241,237,226,0.46);  /* tertiary text (was #8a968d/#6b7a70) */
+}
 .events-scope :focus-visible {
   outline: 2px solid var(--gold);
   outline-offset: 2px;
