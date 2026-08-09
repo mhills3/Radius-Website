@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
-import { getFeed, createPost, getReactionMap, setReaction, getTrendingDiscs, hotScore, type FeedPost, type TrendingDisc, type CourseTag, type DiscTag } from "@/lib/feed";
+import { getFeed, createPost, getReactionMap, setReaction, getTrendingDiscs, hotScore, type FeedPost, type TrendingDisc, type CourseTag, type DiscTag, type SharedRound } from "@/lib/feed";
+import RoundPicker from "@/components/community/RoundPicker";
 import CourseTagPicker from "@/components/community/CourseTagPicker";
 import DiscTagPicker from "@/components/community/DiscTagPicker";
 import UserTagPicker from "@/components/community/UserTagPicker";
@@ -184,6 +185,8 @@ export default function CommunityPage() {
   const [taggedDisc, setTaggedDisc] = useState<DiscTag | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [discPickerOpen, setDiscPickerOpen] = useState(false);
+  const [roundPickerOpen, setRoundPickerOpen] = useState(false);
+  const [sharedRound, setSharedRound] = useState<SharedRound | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [taggedUsers, setTaggedUsers] = useState<MentionUser[]>([]);
@@ -361,13 +364,13 @@ export default function CommunityPage() {
     e.target.value = "";
   };
   const submitPost = async () => {
-    if (!user || (!text.trim() && !imageFile) || posting) return;
+    if (!user || (!text.trim() && !imageFile && !sharedRound) || posting) return;
     setPosting(true);
     try {
       let imageUrl: string | undefined;
       if (imageFile) imageUrl = await uploadPostImage(user.uid, imageFile);
-      const post = await createPost(user.uid, text.trim(), { course: taggedCourse ?? undefined, disc: taggedDisc ?? undefined, imageUrl, mentions: taggedUsers });
-      if (post) { setPosts((prev) => [post, ...prev]); setText(""); setTaggedCourse(null); setTaggedDisc(null); setImageFile(null); setImagePreview(null); setTaggedUsers([]); }
+      const post = await createPost(user.uid, text.trim(), { course: taggedCourse ?? undefined, disc: taggedDisc ?? undefined, imageUrl, mentions: taggedUsers, round: sharedRound ?? undefined });
+      if (post) { setPosts((prev) => [post, ...prev]); setText(""); setTaggedCourse(null); setTaggedDisc(null); setImageFile(null); setImagePreview(null); setTaggedUsers([]); setSharedRound(null); }
     } finally { setPosting(false); }
   };
   const onReact = (id: string, type: string) => {
@@ -410,6 +413,22 @@ export default function CommunityPage() {
               <button onClick={() => { setImageFile(null); setImagePreview(null); }} aria-label="Remove photo" className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-black/60 text-sm text-white hover:bg-black/80">✕</button>
             </div>
           )}
+          {sharedRound && (
+            <div className="mt-2.5 flex items-center gap-3 overflow-hidden rounded-xl bg-[var(--gold)]/[0.1] p-3">
+              <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-[var(--bg-deep)] text-lg text-[var(--gold)]">
+                {sharedRound.cover ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={sharedRound.cover} alt="" className="h-full w-full object-cover" />
+                ) : "⛳"}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-bold text-[var(--cream)]">{sharedRound.courseName}</div>
+                <div className="text-xs text-[var(--sage-dim)]">Sharing a round · {sharedRound.holesPlayed} holes{sharedRound.birdies ? ` · ${sharedRound.birdies} birdie${sharedRound.birdies === 1 ? "" : "s"}` : ""}</div>
+              </div>
+              <span className="font-[family-name:var(--font-heading)] text-xl font-extrabold" style={{ color: sharedRound.scoreToPar < 0 ? "#5fcf80" : sharedRound.scoreToPar === 0 ? "var(--cream)" : "#f08c8c" }}>{sharedRound.scoreToPar === 0 ? "E" : sharedRound.scoreToPar > 0 ? `+${sharedRound.scoreToPar}` : sharedRound.scoreToPar}</span>
+              <button onClick={() => setSharedRound(null)} aria-label="Remove round" className="shrink-0 text-[var(--gold)]/70 hover:text-[var(--gold)]">✕</button>
+            </div>
+          )}
           {(taggedCourse || taggedDisc || taggedUsers.length > 0) && (
             <div className="mt-2 flex flex-wrap gap-1.5">
               {taggedCourse && (
@@ -425,12 +444,13 @@ export default function CommunityPage() {
           )}
           <div className="mt-2 flex items-center justify-between">
             <div className="flex flex-wrap gap-1.5">
+              <button onClick={() => setRoundPickerOpen(true)} className="inline-flex items-center gap-1.5 rounded-full bg-[var(--gold)]/15 px-3 py-1.5 text-xs font-bold text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/25">⛳ Share a round</button>
               <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-[var(--sage)] transition-colors hover:bg-white/[0.1] hover:text-[var(--cream)]">📷 Photo<input type="file" accept="image/*" onChange={onPickImage} className="hidden" /></label>
               <button onClick={() => setUserPickerOpen(true)} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-[var(--sage)] transition-colors hover:bg-white/[0.1] hover:text-[var(--cream)]">👤 {taggedUsers.length ? `People (${taggedUsers.length})` : "People"}</button>
               <button onClick={() => setPickerOpen(true)} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-[var(--sage)] transition-colors hover:bg-white/[0.1] hover:text-[var(--cream)]">⛳ {taggedCourse ? "Course ✓" : "Course"}</button>
               <button onClick={() => setDiscPickerOpen(true)} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-[var(--sage)] transition-colors hover:bg-white/[0.1] hover:text-[var(--cream)]">🥏 {taggedDisc ? "Disc ✓" : "Disc"}</button>
             </div>
-            <button onClick={submitPost} disabled={(!text.trim() && !imageFile) || posting} className="rounded-full bg-[var(--gold)] px-6 py-2 text-sm font-bold text-[#141b16] transition-colors hover:bg-[var(--gold-bright)] disabled:cursor-not-allowed disabled:opacity-50">{posting ? "Posting…" : "Post"}</button>
+            <button onClick={submitPost} disabled={(!text.trim() && !imageFile && !sharedRound) || posting} className="rounded-full bg-[var(--gold)] px-6 py-2 text-sm font-bold text-[#141b16] transition-colors hover:bg-[var(--gold-bright)] disabled:cursor-not-allowed disabled:opacity-50">{posting ? "Posting…" : "Post"}</button>
           </div>
         </div>
       ) : (
@@ -441,6 +461,7 @@ export default function CommunityPage() {
       )}
       {pickerOpen && <CourseTagPicker onSelect={setTaggedCourse} onClose={() => setPickerOpen(false)} />}
       {discPickerOpen && <DiscTagPicker onSelect={setTaggedDisc} onClose={() => setDiscPickerOpen(false)} />}
+      {roundPickerOpen && user && <RoundPicker uid={user.uid} onSelect={setSharedRound} onClose={() => setRoundPickerOpen(false)} />}
       {userPickerOpen && <UserTagPicker exclude={taggedUsers.map((u) => u.id)} onSelect={(u) => { setTaggedUsers((arr) => (arr.some((x) => x.id === u.id) ? arr : [...arr, u])); setText((t) => `${t}${t && !/\s$/.test(t) ? " " : ""}@${u.username} `); }} onClose={() => setUserPickerOpen(false)} />}
     </>
   );

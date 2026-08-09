@@ -39,6 +39,9 @@ export interface FeedPost {
   taggedCourseName?: string;
   taggedUsers?: { id: string; name: string; username: string }[];
   linkedCourseName?: string;
+  linkedCourseSlug?: string;
+  linkedCourseCover?: string;
+  linkedBirdies?: number | null;
   scoreToPar?: number | null;
   holesPlayed?: number | null;
   reactions?: Record<string, number>;
@@ -89,6 +92,9 @@ export async function getFeed(max = 40, before?: number): Promise<FeedPost[]> {
           taggedCourseName: p.taggedCourseName ?? undefined,
           taggedUsers: Array.isArray(p.taggedUsers) ? (p.taggedUsers as { id: string; name: string; username: string }[]) : undefined,
           linkedCourseName: p.linkedCourseName ?? p.courseName ?? undefined,
+          linkedCourseSlug: p.linkedCourseSlug ?? p.taggedCourseSlug ?? undefined,
+          linkedCourseCover: safeHttp(p.linkedCourseCover),
+          linkedBirdies: typeof p.linkedBirdies === "number" ? p.linkedBirdies : null,
           scoreToPar: p.linkedScoreToPar ?? p.scoreToPar ?? null,
           holesPlayed: p.linkedHolesPlayed ?? p.holesPlayed ?? null,
           reactions: p.reactions && typeof p.reactions === "object" ? (p.reactions as Record<string, number>) : undefined,
@@ -194,13 +200,15 @@ export async function setReaction(uid: string, postId: string, newType: string, 
 export interface CourseTag { id: string; slug: string; name: string }
 export interface DiscTag { name: string; brand: string; slug: string }
 
-export async function createPost(uid: string, text: string, opts?: { course?: CourseTag; disc?: DiscTag; imageUrl?: string; mentions?: MentionUser[] }): Promise<FeedPost | null> {
+export interface SharedRound { courseName: string; scoreToPar: number; holesPlayed: number; birdies?: number; cover?: string; slug?: string; courseId?: string }
+export async function createPost(uid: string, text: string, opts?: { course?: CourseTag; disc?: DiscTag; imageUrl?: string; mentions?: MentionUser[]; round?: SharedRound }): Promise<FeedPost | null> {
   const profile = await getProfileLite(uid);
   if (!profile) return null;
   const course = opts?.course;
   const disc = opts?.disc;
   const imageUrl = opts?.imageUrl;
   const mentions = opts?.mentions ?? [];
+  const round = opts?.round;
   const id =
     typeof crypto !== "undefined" && crypto.randomUUID
       ? crypto.randomUUID()
@@ -219,14 +227,17 @@ export async function createPost(uid: string, text: string, opts?: { course?: Co
     taggedDiscBrand: disc?.brand ?? null,
     taggedDiscSlug: disc?.slug ?? null,
     taggedDiscFlight: null,
-    taggedCourseId: course?.id ?? null,
-    taggedCourseSlug: course?.slug ?? null,
-    taggedCourseName: course?.name ?? null,
+    taggedCourseId: course?.id ?? round?.courseId ?? null,
+    taggedCourseSlug: course?.slug ?? round?.slug ?? null,
+    taggedCourseName: course?.name ?? (round ? round.courseName : null),
     taggedUserIds: mentions.map((m) => m.id),
     taggedUsers: mentions.map((m) => ({ id: m.id, name: m.name, username: m.username })),
-    linkedCourseName: null,
-    linkedScoreToPar: null,
-    linkedHolesPlayed: null,
+    linkedCourseName: round?.courseName ?? null,
+    linkedCourseSlug: round?.slug ?? null,
+    linkedCourseCover: round?.cover ?? null,
+    linkedBirdies: round?.birdies ?? null,
+    linkedScoreToPar: round ? round.scoreToPar : null,
+    linkedHolesPlayed: round ? round.holesPlayed : null,
     linkURL: null,
     likeCount: 0,
     commentCount: 0,
@@ -251,10 +262,16 @@ export async function createPost(uid: string, text: string, opts?: { course?: Co
     taggedDiscName: disc?.name,
     taggedDiscBrand: disc?.brand,
     taggedDiscSlug: disc?.slug,
-    taggedCourseId: course?.id,
-    taggedCourseSlug: course?.slug,
-    taggedCourseName: course?.name,
+    taggedCourseId: course?.id ?? round?.courseId,
+    taggedCourseSlug: course?.slug ?? round?.slug,
+    taggedCourseName: course?.name ?? round?.courseName,
     taggedUsers: mentions.map((m) => ({ id: m.id, name: m.name, username: m.username })),
+    linkedCourseName: round?.courseName,
+    linkedCourseSlug: round?.slug,
+    linkedCourseCover: round?.cover,
+    linkedBirdies: round?.birdies ?? null,
+    scoreToPar: round ? round.scoreToPar : null,
+    holesPlayed: round ? round.holesPlayed : null,
   };
 }
 

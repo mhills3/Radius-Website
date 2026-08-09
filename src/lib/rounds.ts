@@ -278,6 +278,24 @@ export async function getDecodedRoundsForCanonical(canonicalId: string): Promise
   return fetchDecodedRounds(canonicalId);
 }
 
+export interface RecentRound { roundId: string; courseName: string; date: number; relativeToPar: number; holesPlayed: number; birdies: number }
+/** A user's most recent completed rounds — for the "Share a round" composer picker. */
+export async function getRecentRounds(uid: string, max = 12): Promise<RecentRound[]> {
+  const rounds = await getDecodedRounds(uid).catch(() => [] as DecodedRound[]);
+  return rounds
+    .filter((r) => r.isComplete && !!r.courseName)
+    .sort((a, b) => b.date - a.date)
+    .slice(0, max)
+    .map((r) => ({
+      roundId: r.roundId,
+      courseName: r.courseName,
+      date: r.date,
+      relativeToPar: r.relativeToPar,
+      holesPlayed: r.holesPlayed,
+      birdies: r.holes.filter((h) => h.played && h.score > 0 && h.score < h.par).length,
+    }));
+}
+
 export interface RoundMeta {
   roundId?: string;
   date: number;

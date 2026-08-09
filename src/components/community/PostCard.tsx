@@ -51,16 +51,28 @@ export default function PostCard({ post, rank, myReaction, onReact, onOpen }: { 
 
       {post.text && <MentionText text={post.text} tagged={post.taggedUsers} className="mt-2 whitespace-pre-wrap text-[15px] leading-snug text-[var(--text-body)]" />}
 
-      {post.linkedCourseName && (
-        <Link href={post.taggedCourseSlug ? `/courses/${post.taggedCourseSlug}` : "#"} onClick={(e) => { if (!post.taggedCourseSlug) e.preventDefault(); e.stopPropagation(); }} className="mt-2 flex items-center gap-2.5 rounded-lg bg-white/[0.04] p-2.5 transition-colors hover:bg-white/[0.06]">
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-[var(--gold-dim)] text-base text-[var(--gold)]">⛳</span>
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-bold text-[var(--cream)]">{post.linkedCourseName}</div>
-            <div className="text-[11px] text-[var(--sage-dim)]">Round{post.holesPlayed ? ` · ${post.holesPlayed} holes` : ""}</div>
-          </div>
-          {post.scoreToPar != null && <span className="font-[family-name:var(--font-heading)] text-xl font-extrabold" style={{ color: scoreColor(post.scoreToPar) }}>{fmtScore(post.scoreToPar)}</span>}
-        </Link>
-      )}
+      {post.linkedCourseName && (() => {
+        const slug = post.linkedCourseSlug || post.taggedCourseSlug;
+        return (
+          <Link href={slug ? `/courses/${slug}` : "#"} onClick={(e) => { if (!slug) e.preventDefault(); e.stopPropagation(); }} className="group/round mt-2 block overflow-hidden rounded-xl">
+            <div className="relative h-32 w-full overflow-hidden bg-[radial-gradient(circle_at_30%_25%,rgba(246,193,101,0.35),var(--bg-deep))]">
+              {post.linkedCourseCover && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={post.linkedCourseCover} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover/round:scale-[1.05]" />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
+              <span className="absolute left-3 top-3 rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white backdrop-blur-sm">⛳ Round</span>
+              <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-3">
+                <div className="min-w-0">
+                  <div className="truncate font-[family-name:var(--font-heading)] text-[15px] font-extrabold text-white drop-shadow">{post.linkedCourseName}</div>
+                  <div className="text-xs text-white/85 drop-shadow">{post.holesPlayed ? `${post.holesPlayed} holes` : "Round"}{post.linkedBirdies ? ` · ${post.linkedBirdies} birdie${post.linkedBirdies === 1 ? "" : "s"}` : ""}</div>
+                </div>
+                {post.scoreToPar != null && <span className="shrink-0 font-[family-name:var(--font-heading)] text-3xl font-black leading-none drop-shadow" style={{ color: scoreColor(post.scoreToPar) }}>{fmtScore(post.scoreToPar)}</span>}
+              </div>
+            </div>
+          </Link>
+        );
+      })()}
 
       {post.taggedDiscName && (
         post.taggedDiscSlug ? (
