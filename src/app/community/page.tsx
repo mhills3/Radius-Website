@@ -67,7 +67,7 @@ function HeroMosaic({ images }: { images: string[] }) {
   const tiles = images.length >= 70 ? images : Array.from({ length: 84 }, (_, i) => images[i % images.length]);
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="hero-drift grid h-[150%] w-[120%] grid-cols-8 gap-1 opacity-[0.6] blur-[2px] sm:grid-cols-10 md:grid-cols-12 lg:grid-cols-[repeat(14,minmax(0,1fr))]">
+      <div className="hero-drift grid h-[150%] w-[120%] grid-cols-8 gap-1 opacity-[0.78] blur-[1.5px] sm:grid-cols-10 md:grid-cols-12 lg:grid-cols-[repeat(14,minmax(0,1fr))]">
         {tiles.map((src, i) => (
           // eslint-disable-next-line @next/next/no-img-element
           <img key={i} src={src} alt="" loading="lazy" decoding="async" className="aspect-square w-full rounded-md object-cover" onError={(e) => { e.currentTarget.style.visibility = "hidden"; }} />
@@ -533,8 +533,8 @@ export default function CommunityPage() {
           the footer (which follows this page in the layout) is NOT covered by it. */}
       <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[var(--bg-deep)]">
         <HeroMosaic images={mosaicImages} />
-        <div className="absolute inset-0 bg-[var(--bg-deep)]/85" />
-        <div className="absolute inset-0 bg-[radial-gradient(120%_70%_at_50%_-10%,transparent_45%,rgba(11,17,14,0.72))]" />
+        <div className="absolute inset-0 bg-[var(--bg-deep)]/70" />
+        <div className="absolute inset-0 bg-[radial-gradient(120%_70%_at_50%_-10%,transparent_50%,rgba(11,17,14,0.6))]" />
         <div className="absolute -right-40 -top-44 h-[28rem] w-[28rem] rounded-full bg-[radial-gradient(circle,rgba(246,193,101,0.12),transparent_70%)]" />
       </div>
 
