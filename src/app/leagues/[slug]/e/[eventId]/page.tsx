@@ -969,24 +969,27 @@ export default function LeagueEventPage() {
                     return (
                       <>
                         {played.length > 0 && (
-                          <div className="mt-5 border-t border-[rgba(232,181,96,0.2)] pt-4">
-                            <div className="mb-2 font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--cream-38)]">{event.roundCount > 1 ? "Final round card" : "Winning card"}{played.length < event.holes ? ` · thru ${played.length}` : ""}</div>
-                            <div className="grid grid-cols-9 gap-1.5">
+                          <button onClick={() => { setScorecardEdit(false); setScorecardOpen(true); }} className="group mt-5 block w-full border-t border-[rgba(232,181,96,0.2)] pt-4 text-left">
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--cream-38)]">{event.roundCount > 1 ? "Final round" : "Winning card"}{played.length < event.holes ? ` · thru ${played.length}` : ""}</span>
+                              <span className="inline-flex items-center gap-1 font-mono text-[10px] font-bold uppercase tracking-wide text-[var(--gold)] transition-colors group-hover:text-[var(--gold-bright)]">{finalized ? "View winning scorecard" : "View scorecard"} <span aria-hidden className="transition-transform group-hover:translate-x-0.5">→</span></span>
+                            </div>
+                            <div className="mt-2.5 flex gap-1">
                               {played.map(({ h, i }) => {
                                 const par = pars![i] ?? 3;
-                                const tone = h <= par - 2 ? "bg-[var(--gold)] text-[#141B16]"
-                                  : h === par - 1 ? "bg-[var(--blue)] text-[#141B16]"
-                                  : h === par ? "bg-white/[0.06] text-[var(--cream)]"
-                                  : "border border-[var(--hair-strong)] text-[var(--cream-38)]";
-                                return <span key={i} title={`Hole ${i + 1} · par ${par}`} className={`grid h-9 place-items-center rounded-lg font-mono text-[13.5px] font-bold ${tone}`}>{h}</span>;
+                                const tone = h <= par - 2 ? "bg-[var(--gold)]"
+                                  : h === par - 1 ? "bg-[var(--blue)]"
+                                  : h === par ? "bg-white/[0.16]"
+                                  : "bg-white/[0.05] ring-1 ring-inset ring-[var(--hair-strong)]";
+                                return <span key={i} title={`Hole ${i + 1} · par ${par} · ${h}`} className={`h-2.5 min-w-[6px] flex-1 rounded-full ${tone}`} />;
                               })}
                             </div>
                             <div className="mt-2.5 flex items-center gap-4 font-mono text-[9px] uppercase tracking-[0.12em] text-[var(--cream-38)]">
                               <span className="flex items-center gap-1.5"><i className="h-2 w-2 rounded-[3px] bg-[var(--gold)]" />Eagle</span>
                               <span className="flex items-center gap-1.5"><i className="h-2 w-2 rounded-[3px] bg-[var(--blue)]" />Birdie</span>
-                              <span className="flex items-center gap-1.5"><i className="h-2 w-2 rounded-[3px] bg-white/[0.12]" />Par</span>
+                              <span className="flex items-center gap-1.5"><i className="h-2 w-2 rounded-[3px] bg-white/[0.16]" />Par</span>
                             </div>
-                          </div>
+                          </button>
                         )}
                         {(hotRound != null || birdies > 0 || (w.payout ?? 0) > 0) && (
                           <div className="mt-5 flex flex-wrap gap-x-6 gap-y-3 border-t border-[rgba(232,181,96,0.2)] pt-4">
@@ -1234,7 +1237,7 @@ export default function LeagueEventPage() {
           <>
           <div className={`${card} overflow-hidden`}>
             <div className="flex items-center gap-3.5 bg-[var(--forest)] px-4 py-2 font-mono text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[var(--cream-38)]">
-              <span className="w-8">Pos</span><span className="flex-1">Player</span><span className="hidden w-[184px] text-right sm:block">{tournamentOver ? "F · B" : "Last 9"}</span><span className="w-14 text-right">Thru</span><span className="w-20 text-right">Total</span>
+              <span className="w-8">Pos</span><span className="flex-1">Player</span><span className="hidden w-[184px] text-right sm:block">{tournamentOver ? (event.roundCount > 1 ? Array.from({ length: event.roundCount }, (_, r) => `R${r + 1}`).join(" · ") : "F · B") : "Last 9"}</span><span className="w-14 text-right">Thru</span><span className="w-20 text-right">Total</span>
             </div>
             {[...ranked, ...unscored].map((e, i) => {
               const isRanked = ranked.includes(e);
@@ -1324,7 +1327,9 @@ export default function LeagueEventPage() {
                   ) : (
                     <span className="flex items-center gap-3.5">
                       <span className="hidden w-[184px] items-center justify-end gap-[5px] sm:flex">
-                        {!liveRound && typeof e.score === "number" ? (
+                        {tournamentOver && event.roundCount > 1 ? (
+                          typeof e.score === "number" ? <span className="font-mono text-xs tabular-nums text-[var(--cream-60)]">{Array.from({ length: event.roundCount }, (_, r) => e.roundScores?.[r] || "–").join("  ·  ")}</span> : null
+                        ) : !liveRound && typeof e.score === "number" ? (
                           (() => { const hs = e.holeScores ?? []; const f = hs.slice(0, 9).filter((h) => h > 0).reduce((a, b) => a + b, 0); const b = hs.slice(9, 18).filter((h) => h > 0).reduce((a, b) => a + b, 0); return (f || b) ? <span className="font-mono text-xs text-[var(--cream-60)]">F {f || "–"} · B {b || "–"}</span> : null; })()
                         ) : last9.length > 0 && (
                           <>
