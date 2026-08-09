@@ -80,6 +80,15 @@ html { scroll-behavior: smooth; }
   --c-body: rgba(241,237,226,0.72);   /* secondary text (was #46554c) */
   --c-muted: rgba(241,237,226,0.46);  /* tertiary text (was #8a968d/#6b7a70) */
 }
+/* Dark Mapbox course popups so the map tooltip matches the dark theme. */
+.courses-scope .mapboxgl-popup-content {
+  background: #17211c;
+  border: 1px solid rgba(244,241,232,0.12);
+  box-shadow: 0 14px 34px -12px rgba(0,0,0,0.7);
+  padding: 0;
+  border-radius: 12px;
+}
+.courses-scope .mapboxgl-popup-tip { border-top-color: #17211c; border-bottom-color: #17211c; }
 .events-scope :focus-visible {
   outline: 2px solid var(--gold);
   outline-offset: 2px;

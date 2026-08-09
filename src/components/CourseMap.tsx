@@ -170,10 +170,10 @@ export default function CourseMap({
           const f = e.features[0];
           const p = f.properties;
           const photo = p.photo ? `<img src="${p.photo}" style="width:100%;height:90px;object-fit:cover;border-radius:10px 10px 0 0;display:block" alt="">` : "";
-          const rating = Number(p.rating) > 0 ? `<span style="color:#9a7a3a;font-size:0.72rem;font-weight:700">★ ${Number(p.rating).toFixed(1)}</span>` : "";
+          const rating = Number(p.rating) > 0 ? `<span style="color:#f0c377;font-size:0.72rem;font-weight:700">★ ${Number(p.rating).toFixed(1)}</span>` : "";
           new mapboxgl.Popup({ offset: 14, closeButton: false, maxWidth: "230px" })
             .setLngLat(f.geometry.coordinates)
-            .setHTML(`<a href="/courses/${p.slug}" style="display:block;text-decoration:none;border-radius:12px;overflow:hidden">${photo}<div style="padding:8px 10px 10px"><strong style="font-family:Sora,sans-serif;color:#16221b;font-size:0.95rem">${esc(p.name)}</strong><div style="color:#6b7a70;font-size:0.75rem;margin-top:1px">${esc(p.loc || "")}</div><div style="margin-top:5px;display:flex;gap:8px;align-items:center"><span style="color:#16221b;font-size:0.75rem;font-weight:700">${p.holeCount} holes · Par ${p.par}</span>${rating}</div><div style="margin-top:7px;background:#16221b;color:#F5EDE1;border-radius:999px;padding:5px 0;text-align:center;font-size:0.72rem;font-weight:700">View course →</div></div></a>`)
+            .setHTML(`<a href="/courses/${p.slug}" style="display:block;text-decoration:none;border-radius:12px;overflow:hidden">${photo}<div style="padding:8px 10px 10px"><strong style="font-family:Sora,sans-serif;color:#f1ede2;font-size:0.95rem">${esc(p.name)}</strong><div style="color:rgba(241,237,226,0.55);font-size:0.75rem;margin-top:1px">${esc(p.loc || "")}</div><div style="margin-top:5px;display:flex;gap:8px;align-items:center"><span style="color:#f1ede2;font-size:0.75rem;font-weight:700">${p.holeCount} holes · Par ${p.par}</span>${rating}</div><div style="margin-top:7px;background:#E8B560;color:#141b16;border-radius:999px;padding:5px 0;text-align:center;font-size:0.72rem;font-weight:700">View course →</div></div></a>`)
             .addTo(map);
           onSelectRef.current?.(p.cid);
         });
