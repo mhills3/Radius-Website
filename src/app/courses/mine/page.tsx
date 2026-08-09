@@ -10,17 +10,17 @@ const fmtDate = (ms?: number) => (ms ? new Date(ms).toLocaleDateString("en-US", 
 
 function statusOf(c: Course): { label: string; dot: string; cls: string } {
   const rs = (c.reviewStatus || "").toLowerCase();
-  if (c.isDraft === true || rs === "draft") return { label: "Draft", dot: "#9a7a3a", cls: "text-[#9a7a3a] bg-[#9a7a3a]/10" };
-  if (rs.includes("pending")) return { label: "In review", dot: "#2b6fd6", cls: "text-[#2b6fd6] bg-[#2b6fd6]/10" };
-  if (rs === "rejected") return { label: "Needs changes", dot: "#d9473f", cls: "text-[#d9473f] bg-[#d9473f]/10" };
-  return { label: "Live", dot: "#3a8a52", cls: "text-[#3a8a52] bg-[#3a8a52]/10" };
+  if (c.isDraft === true || rs === "draft") return { label: "Draft", dot: "#E8B560", cls: "text-[var(--gold)] bg-[var(--gold)]/12" };
+  if (rs.includes("pending")) return { label: "In review", dot: "#8FBDE3", cls: "text-[#8FBDE3] bg-[#8FBDE3]/12" };
+  if (rs === "rejected") return { label: "Needs changes", dot: "#f08c8c", cls: "text-[#f08c8c] bg-[#f08c8c]/12" };
+  return { label: "Live", dot: "#5fcf80", cls: "text-[#5fcf80] bg-[#5fcf80]/12" };
 }
 
 function Stat({ label, value, gold }: { label: string; value: string | number; gold?: boolean }) {
   return (
     <div className="px-3 text-center first:pl-0 last:pr-0">
-      <div className={`font-[family-name:var(--font-heading)] text-lg font-extrabold ${gold ? "text-[#9a7a3a]" : "text-[#16221b]"}`}>{value}</div>
-      <div className="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-[#9aa39a]">{label}</div>
+      <div className={`font-[family-name:var(--font-heading)] text-lg font-extrabold `}>{value}</div>
+      <div className="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-[var(--c-muted)]">{label}</div>
     </div>
   );
 }
@@ -58,23 +58,23 @@ export default function MyCoursesPage() {
   }, [courses]);
 
   return (
-    <div className="min-h-screen bg-[#faf8f3] text-[#16221b]">
+    <div className="courses-scope min-h-screen bg-[var(--c-bg)] text-[var(--c-ink)]">
       <div className="mx-auto max-w-4xl px-6 pt-24 pb-16">
-        <Link href="/courses" className="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-[#6b7a70] transition-colors hover:text-[#16221b]">
+        <Link href="/courses" className="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--c-muted)] transition-colors hover:text-[var(--c-ink)]">
           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
           Back to courses
         </Link>
-        <div className="mb-1 text-[11px] font-bold uppercase tracking-[0.2em] text-[#9a7a3a]">Course builder</div>
+        <div className="mb-1 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">Course builder</div>
         <div className="flex items-end justify-between gap-4">
           <div className="min-w-0">
             <h1 className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-[-0.02em]">My courses &amp; layouts</h1>
-            <p className="mt-2 text-sm text-[#46554c]">Every course and layout you&apos;ve built — review their stats and edit the details.</p>
+            <p className="mt-2 text-sm text-[var(--c-body)]">Every course and layout you&apos;ve built — review their stats and edit the details.</p>
           </div>
           {user && (
             <Link href="/courses/new" className="group relative hidden shrink-0 overflow-hidden rounded-2xl shadow-[0_12px_28px_-12px_rgba(15,24,19,0.65)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_38px_-12px_rgba(15,24,19,0.85)] md:block">
               <span className="absolute -inset-x-10 inset-y-0 bg-[linear-gradient(110deg,transparent_30%,rgba(246,193,101,0.45),transparent_70%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-              <span className="relative flex items-center gap-3 rounded-2xl bg-gradient-to-br from-[#243a2e] to-[#16221b] px-5 py-3 ring-1 ring-[var(--gold)]/30 transition-colors group-hover:ring-[var(--gold)]/60">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[var(--gold-bright)] to-[var(--gold)] text-[#16221b] shadow-[inset_0_1px_2px_rgba(255,255,255,0.45)]">
+              <span className="relative flex items-center gap-3 rounded-2xl bg-[linear-gradient(135deg,rgba(232,181,96,0.14),var(--c-card)_58%)] px-5 py-3 ring-1 ring-[var(--gold)]/30 transition-colors group-hover:ring-[var(--gold)]/60">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[var(--gold-bright)] to-[var(--gold)] text-[#141b16] shadow-[inset_0_1px_2px_rgba(255,255,255,0.45)]">
                   <span className="h-7 w-7 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: "url(/basket-icon.svg)" }} />
                 </span>
                 <span className="text-left">
@@ -86,19 +86,19 @@ export default function MyCoursesPage() {
             </Link>
           )}
         </div>
-        {user && summary && <p className="mt-3 text-xs font-medium text-[#9aa39a]">{summary}</p>}
+        {user && summary && <p className="mt-3 text-xs font-medium text-[var(--c-muted)]">{summary}</p>}
 
         {loading || courses === null ? (
-          <div className="mt-8 space-y-4">{[0, 1].map((i) => <div key={i} className="h-44 animate-pulse rounded-3xl bg-black/5" />)}</div>
+          <div className="mt-8 space-y-4">{[0, 1].map((i) => <div key={i} className="h-44 animate-pulse rounded-3xl bg-[var(--c-raise)]" />)}</div>
         ) : !user ? (
-          <div className="mt-8 rounded-3xl border border-black/8 bg-white p-12 text-center"><p className="text-[#46554c]"><Link href="/login" className="font-bold text-[#9a7a3a] hover:underline">Sign in</Link> to manage your courses.</p></div>
+          <div className="mt-8 rounded-3xl border border-[var(--c-line)] bg-[var(--c-card)] p-12 text-center"><p className="text-[var(--c-body)]"><Link href="/login" className="font-bold text-[var(--gold)] hover:underline">Sign in</Link> to manage your courses.</p></div>
         ) : courses.length === 0 ? (
-          <div className="mt-8 rounded-3xl border border-dashed border-black/12 bg-white/60 p-14 text-center">
+          <div className="mt-8 rounded-3xl border border-dashed border-[var(--c-line)] bg-[var(--c-card)]/60 p-14 text-center">
             <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-[var(--gold)]/15"><span className="h-8 w-8 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: "url(/basket-icon.svg)" }} /></div>
             <p className="mt-4 font-[family-name:var(--font-heading)] text-xl font-extrabold">You haven&apos;t built any courses yet</p>
-            <p className="mx-auto mt-1.5 max-w-sm text-sm text-[#8a968d]">Map your local course hole by hole — it&apos;ll show up here with community stats once it&apos;s live.</p>
-            <Link href="/courses/new" className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#16221b] px-6 py-3 text-sm font-bold text-[var(--cream)] transition-colors hover:bg-[#22332a]">
-              <span className="h-5 w-5 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: "url(/basket-icon.svg)", filter: "brightness(0) invert(1)" }} />
+            <p className="mx-auto mt-1.5 max-w-sm text-sm text-[var(--c-muted)]">Map your local course hole by hole — it&apos;ll show up here with community stats once it&apos;s live.</p>
+            <Link href="/courses/new" className="mt-6 inline-flex items-center gap-2 rounded-full bg-[var(--gold)] px-6 py-3 text-sm font-bold text-[#141b16] transition-colors hover:bg-[var(--gold-bright)]">
+              <span className="h-5 w-5 bg-contain bg-center bg-no-repeat" style={{ backgroundImage: "url(/basket-icon.svg)", filter: "brightness(0)" }} />
               Build a course
             </Link>
           </div>
@@ -112,9 +112,9 @@ export default function MyCoursesPage() {
               const effectiveType = isDraftCourse ? (c.plannedCourseType ?? c.courseType) : c.courseType;
               const isPrivate = (effectiveType || "").trim().toLowerCase() === "private";
               return (
-                <div key={c.id} className="group overflow-hidden rounded-3xl border border-black/[0.06] bg-white shadow-[0_1px_3px_rgba(15,24,19,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-22px_rgba(15,24,19,0.38)]">
+                <div key={c.id} className="group overflow-hidden rounded-3xl border border-[var(--c-line)] bg-[var(--c-card)] shadow-[0_1px_3px_rgba(15,24,19,0.04)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-22px_rgba(15,24,19,0.38)]">
                   <div className="flex gap-5 p-5">
-                    <div className="relative h-28 w-40 shrink-0 overflow-hidden rounded-2xl bg-[var(--bg-deep)] ring-1 ring-black/[0.06]">
+                    <div className="relative h-28 w-40 shrink-0 overflow-hidden rounded-2xl bg-[var(--bg-deep)] ring-1 ring-[var(--c-line)]">
                       {c.coverPhotoUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={c.coverPhotoUrl} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.07]" />
@@ -130,18 +130,18 @@ export default function MyCoursesPage() {
                           {status.label}
                         </span>
                       </div>
-                      <div className="mt-1 flex items-center gap-1.5 text-xs text-[#8a968d]">
+                      <div className="mt-1 flex items-center gap-1.5 text-xs text-[var(--c-muted)]">
                         <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 21s-7-5.2-7-11a7 7 0 0 1 14 0c0 5.8-7 11-7 11z" /><circle cx="12" cy="10" r="2.5" /></svg>
                         <span className="truncate">{[c.city, c.state].filter(Boolean).join(", ") || "Location not set"}</span>
-                        {isPrivate && <span className="ml-1 rounded bg-black/[0.06] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#6b7a70]">Private</span>}
-                        {c.isFeatured && <span className="rounded bg-[var(--gold)]/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#9a7a3a]">★ Featured</span>}
+                        {isPrivate && <span className="ml-1 rounded bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[var(--c-muted)]">Private</span>}
+                        {c.isFeatured && <span className="rounded bg-[var(--gold)]/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[var(--gold)]">★ Featured</span>}
                       </div>
-                      <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-[#46554c]">{c.description || "No description yet."}</p>
-                      <div className="mt-auto pt-2 text-[11px] text-[#a3a89f]">Created {fmtDate(c.dateCreated)}</div>
+                      <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-[var(--c-body)]">{c.description || "No description yet."}</p>
+                      <div className="mt-auto pt-2 text-[11px] text-[var(--c-muted)]">Created {fmtDate(c.dateCreated)}</div>
                     </div>
                   </div>
 
-                  <div className="mx-5 flex items-center justify-between rounded-2xl bg-[#f6f2ea] px-2 py-3 ring-1 ring-black/[0.04] [&>div]:flex-1 divide-x divide-black/[0.06]">
+                  <div className="mx-5 flex items-center justify-between rounded-2xl bg-[var(--c-raise)] px-2 py-3 ring-1 ring-[var(--c-line)] [&>div]:flex-1 divide-x divide-[var(--c-line)]">
                     <Stat label="Rating" value={c.rating ? `★ ${c.rating.toFixed(1)}` : "—"} gold={!!c.rating} />
                     <Stat label="Reviews" value={c.reviewCount ?? 0} />
                     <Stat label="Rounds" value={c.communityScoreCount ?? 0} />
@@ -149,24 +149,24 @@ export default function MyCoursesPage() {
                   </div>
 
                   <div className="flex items-center justify-end gap-1.5 p-3">
-                    <button onClick={() => toggleStats(c.id)} className="mr-auto inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold text-[#9a7a3a] transition-colors hover:bg-[var(--gold)]/10 hover:text-[#16221b]">
+                    <button onClick={() => toggleStats(c.id)} className="mr-auto inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/10 hover:text-[var(--c-ink)]">
                       <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18M8 16v-5M13 16V8M18 16v-9" /></svg>
                       {statsOpen.has(c.id) ? "Hide analytics" : "Analytics"}
                     </button>
-                    <Link href={`/courses/${slugify(c.name, c.id)}`} className="rounded-full px-4 py-2 text-sm font-semibold text-[#46554c] transition-colors hover:bg-black/[0.04] hover:text-[#16221b]">View page</Link>
+                    <Link href={`/courses/${slugify(c.name, c.id)}`} className="rounded-full px-4 py-2 text-sm font-semibold text-[var(--c-body)] transition-colors hover:bg-[var(--c-raise)] hover:text-[var(--c-ink)]">View page</Link>
                     {!isPubliclyListed(c) && (
-                      <button onClick={() => publish(c)} disabled={publishing === c.id} className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-b from-[var(--gold-bright)] to-[var(--gold)] px-4 py-2 text-sm font-bold text-[#16221b] shadow-[0_4px_14px_-6px_rgba(246,193,101,0.7)] transition-opacity hover:opacity-90 disabled:opacity-60">
+                      <button onClick={() => publish(c)} disabled={publishing === c.id} className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-b from-[var(--gold-bright)] to-[var(--gold)] px-4 py-2 text-sm font-bold text-[#141b16] shadow-[0_4px_14px_-6px_rgba(246,193,101,0.7)] transition-opacity hover:opacity-90 disabled:opacity-60">
                         <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
                         {publishing === c.id ? "Publishing…" : "Publish"}
                       </button>
                     )}
-                    <Link href={`/courses/${slugify(c.name, c.id)}/edit`} className="inline-flex items-center gap-1.5 rounded-full bg-[#16221b] px-5 py-2 text-sm font-bold text-[var(--cream)] transition-colors hover:bg-[#22332a]">
+                    <Link href={`/courses/${slugify(c.name, c.id)}/edit`} className="inline-flex items-center gap-1.5 rounded-full bg-[var(--c-chip)] px-5 py-2 text-sm font-bold text-[var(--c-ink)] transition-colors hover:bg-white/[0.14]">
                       <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
                       Edit course
                     </Link>
                   </div>
 
-                  {statsOpen.has(c.id) && <div className="border-t border-black/[0.06] bg-[#faf8f3] p-4"><CourseAnalytics course={c} /></div>}
+                  {statsOpen.has(c.id) && <div className="border-t border-[var(--c-line)] bg-[var(--c-bg)] p-4"><CourseAnalytics course={c} /></div>}
                 </div>
               );
             })}

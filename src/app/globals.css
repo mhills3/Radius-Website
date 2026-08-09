@@ -103,6 +103,10 @@ html { scroll-behavior: smooth; }
 /* Map fills the viewport under the fixed nav — push Mapbox's own controls clear of it so they're clickable. */
 .courses-scope .mapboxgl-ctrl-top-right,
 .courses-scope .mapboxgl-ctrl-top-left { top: 128px; }
+/* Premium view swap: fade the incoming list/map view in (opacity only — safe for sticky/fixed children). */
+@keyframes courseViewIn { from { opacity: 0; } to { opacity: 1; } }
+.course-view-in { animation: courseViewIn 300ms ease-out both; }
+@media (prefers-reduced-motion: reduce) { .course-view-in { animation: none; } }
 .events-scope :focus-visible {
   outline: 2px solid var(--gold);
   outline-offset: 2px;

@@ -262,7 +262,7 @@ export default function CoursesPage() {
     <div className="courses-scope min-h-screen bg-[var(--c-bg)] text-[var(--c-ink)]">
       {view === "map" ? (
         /* ===== Map-first: the map is the foundation; header, controls & results float on it ===== */
-        <div className="relative h-[100svh] w-full overflow-hidden">
+        <div key="map" className="course-view-in relative h-[100svh] w-full overflow-hidden">
           <div className="absolute inset-0">
             {mapMode === "coverage" ? (
               <CoverageMap stateCounts={stateCounts} countryCounts={countryCounts} />
@@ -330,7 +330,7 @@ export default function CoursesPage() {
           </div>
         </div>
       ) : (
-        <>
+        <div key="list" className="course-view-in">
           {/* ===== dissolving photo hero ===== */}
           <div className="relative isolate overflow-hidden">
             <Image src="/course/courses-hero.jpg" alt="" fill sizes="100vw" quality={88} className="-z-10 object-cover object-center" />
@@ -513,7 +513,7 @@ export default function CoursesPage() {
             </aside>
           </div>
         </div>
-        </>
+        </div>
       )}
     </div>
   );

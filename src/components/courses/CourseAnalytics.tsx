@@ -5,7 +5,7 @@ import Link from "next/link";
 import { getCourseScores, type Course, type CourseScore } from "@/lib/courses";
 
 const fmtPar = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`);
-const parColor = (n: number) => (n < 0 ? "#1ab859" : n === 0 ? "#46554c" : n <= 5 ? "#ea8b3a" : "#dc2626");
+const parColor = (n: number) => (n < 0 ? "#5fcf80" : n === 0 ? "#c9c3b4" : n <= 5 ? "#ea8b3a" : "#f08c8c");
 
 const BUCKETS: { label: string; test: (n: number) => boolean }[] = [
   { label: "Under par", test: (n) => n < 0 },
@@ -25,7 +25,7 @@ export default function CourseAnalytics({ course }: { course: Course }) {
     return () => { alive = false; };
   }, [course.id]);
 
-  if (scores === null) return <div className="h-40 animate-pulse rounded-xl bg-black/5" />;
+  if (scores === null) return <div className="h-40 animate-pulse rounded-xl bg-[var(--c-raise)]" />;
 
   const players = scores.length;
   const avg = players ? Math.round(scores.reduce((s, x) => s + x.relativeToPar, 0) / players) : 0;
@@ -34,7 +34,7 @@ export default function CourseAnalytics({ course }: { course: Course }) {
   const maxBucket = Math.max(1, ...dist.map((d) => d.n));
 
   if (players === 0) {
-    return <p className="text-sm text-[#8a968d]">No rounds logged here yet. Once players post scores, you&apos;ll see distribution and leaders.</p>;
+    return <p className="text-sm text-[var(--c-muted)]">No rounds logged here yet. Once players post scores, you&apos;ll see distribution and leaders.</p>;
   }
 
   return (
@@ -46,35 +46,35 @@ export default function CourseAnalytics({ course }: { course: Course }) {
           { label: "Course record", value: best ? fmtPar(best.relativeToPar) : "—" },
           { label: "Rating", value: course.rating ? `★ ${course.rating.toFixed(1)}` : "—" },
         ].map((s) => (
-          <div key={s.label} className="rounded-xl border border-black/8 bg-white p-3 text-center">
-            <div className="font-[family-name:var(--font-heading)] text-xl font-extrabold text-[#16221b]">{s.value}</div>
-            <div className="text-[10px] font-bold uppercase tracking-wide text-[#8a968d]">{s.label}</div>
+          <div key={s.label} className="rounded-xl border border-[var(--c-line)] bg-[var(--c-card)] p-3 text-center">
+            <div className="font-[family-name:var(--font-heading)] text-xl font-extrabold text-[var(--c-ink)]">{s.value}</div>
+            <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--c-muted)]">{s.label}</div>
           </div>
         ))}
       </div>
 
       <div>
-        <div className="mb-2 text-xs font-bold uppercase tracking-wide text-[#8a968d]">Score distribution</div>
+        <div className="mb-2 text-xs font-bold uppercase tracking-wide text-[var(--c-muted)]">Score distribution</div>
         <div className="space-y-1.5">
           {dist.map((d) => (
             <div key={d.label} className="flex items-center gap-2 text-xs">
-              <span className="w-20 shrink-0 text-right text-[#46554c]">{d.label}</span>
-              <div className="h-4 flex-1 overflow-hidden rounded bg-black/[0.05]"><div className="h-full rounded bg-[var(--gold)]" style={{ width: `${(d.n / maxBucket) * 100}%` }} /></div>
-              <span className="w-6 shrink-0 font-semibold text-[#46554c]">{d.n}</span>
+              <span className="w-20 shrink-0 text-right text-[var(--c-body)]">{d.label}</span>
+              <div className="h-4 flex-1 overflow-hidden rounded bg-[var(--c-raise)]"><div className="h-full rounded bg-[var(--gold)]" style={{ width: `${(d.n / maxBucket) * 100}%` }} /></div>
+              <span className="w-6 shrink-0 font-semibold text-[var(--c-body)]">{d.n}</span>
             </div>
           ))}
         </div>
       </div>
 
       <div>
-        <div className="mb-2 text-xs font-bold uppercase tracking-wide text-[#8a968d]">Top players</div>
-        <div className="divide-y divide-black/[0.06] rounded-xl border border-black/8 bg-white">
+        <div className="mb-2 text-xs font-bold uppercase tracking-wide text-[var(--c-muted)]">Top players</div>
+        <div className="divide-y divide-black/[0.06] rounded-xl border border-[var(--c-line)] bg-[var(--c-card)]">
           {scores.slice(0, 10).map((s, i) => (
             <div key={s.playerUid || s.playerName || i} className="flex items-center gap-3 px-3 py-2">
-              <span className="w-5 shrink-0 text-center text-sm font-bold text-[#9a7a3a]">{i + 1}</span>
+              <span className="w-5 shrink-0 text-center text-sm font-bold text-[var(--gold)]">{i + 1}</span>
               <div className="min-w-0 flex-1">
-                {s.playerHandle ? <Link href={`/u/${s.playerHandle}`} className="truncate text-sm font-semibold text-[#16221b] hover:text-[#9a7a3a]">{s.playerName || `@${s.playerHandle}`}</Link> : <span className="truncate text-sm font-semibold text-[#16221b]">{s.playerName || "Player"}</span>}
-                <span className="ml-2 text-xs text-[#8a968d]">{s.holesPlayed ? `${s.holesPlayed} holes` : ""}</span>
+                {s.playerHandle ? <Link href={`/u/${s.playerHandle}`} className="truncate text-sm font-semibold text-[var(--c-ink)] hover:text-[var(--gold)]">{s.playerName || `@${s.playerHandle}`}</Link> : <span className="truncate text-sm font-semibold text-[var(--c-ink)]">{s.playerName || "Player"}</span>}
+                <span className="ml-2 text-xs text-[var(--c-muted)]">{s.holesPlayed ? `${s.holesPlayed} holes` : ""}</span>
               </div>
               <span className="shrink-0 font-[family-name:var(--font-heading)] text-base font-extrabold" style={{ color: parColor(s.relativeToPar) }}>{fmtPar(s.relativeToPar)}</span>
             </div>
