@@ -9,7 +9,7 @@ import RoundPicker from "@/components/community/RoundPicker";
 import CourseTagPicker from "@/components/community/CourseTagPicker";
 import DiscTagPicker from "@/components/community/DiscTagPicker";
 import UserTagPicker from "@/components/community/UserTagPicker";
-import { getLeaderboard, getLeaderboardWithRegion, type MentionUser, type LeaderRow, type GeoLeaderRow } from "@/lib/leaderboard";
+import { getLeaderboard, getLeaderboardWithRegion, getMostActivePlayers, type MentionUser, type LeaderRow, type GeoLeaderRow, type ActiveRow } from "@/lib/leaderboard";
 import { followUser, unfollowUser } from "@/lib/follow";
 import { createNotification } from "@/lib/notifications";
 import { uploadPostImage } from "@/lib/postImage";
@@ -51,14 +51,23 @@ function PostSkeleton() {
   );
 }
 
-// Radius system announcement — celebrates real contributors publicly (milestone visual language).
-function SystemPost({ icon, children }: { icon: string; children: React.ReactNode }) {
+// Radius system announcement — reads like a real feed post (Radius as the author, the celebrated
+// player tagged). Honest current-standings milestone; auto-generated + interactive versions need a backend.
+function SystemPost({ user, children }: { user: { name: string; username: string }; children: React.ReactNode }) {
   return (
-    <div className="mb-3 flex items-start gap-3 rounded-xl bg-[linear-gradient(135deg,rgba(232,181,96,0.15),rgba(255,255,255,0.03)_62%)] p-3.5 shadow-[0_16px_40px_-24px_rgba(0,0,0,0.65)]">
-      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--gold)] text-lg text-[#141b16]">{icon}</span>
-      <div className="min-w-0 flex-1">
-        <div className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--gold)]">Radius</div>
-        <div className="mt-0.5 text-sm leading-snug text-[var(--cream)]">{children}</div>
+    <div className="mb-3 rounded-xl bg-[linear-gradient(135deg,rgba(232,181,96,0.13),rgba(255,255,255,0.03)_62%)] p-3.5 shadow-[0_16px_40px_-24px_rgba(0,0,0,0.65)]">
+      <div className="flex items-center gap-2.5">
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--gold)] text-base text-[#141b16]">🏆</span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm font-bold text-[var(--cream)]">Radius</span>
+            <span className="rounded-full bg-[var(--gold)]/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[var(--gold)]">Announcement</span>
+          </div>
+          <div className="text-[11px] text-[var(--sage-dim)]">Community highlight</div>
+        </div>
+      </div>
+      <div className="mt-2 text-[15px] leading-snug text-[var(--cream)]">
+        <Link href={`/u/${user.username}`} className="font-bold hover:text-[var(--gold)]">{user.name}</Link> {children}
       </div>
     </div>
   );
@@ -216,7 +225,8 @@ export default function CommunityPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [newThread, setNewThread] = useState(false);
   const [newMeetup, setNewMeetup] = useState(false);
-  const [heroMode, setHeroMode] = useState<"builders" | "contributors">("builders");
+  const [heroMode, setHeroMode] = useState<"builders" | "players" | "active">("builders");
+  const [activePlayers, setActivePlayers] = useState<ActiveRow[]>([]);
   // Return mechanics: unread dots on the tabs + a "N new posts" pill.
   const [seen, setSeen] = useState<{ feed: number; forums: number }>({ feed: 0, forums: 0 });
   const [pendingNew, setPendingNew] = useState<FeedPost[]>([]);
@@ -238,6 +248,7 @@ export default function CommunityPage() {
     getTopBuilders(12).then((b) => { if (!alive) return; setBuilders(b); getRanksFor(b.map((x) => x.id).filter(Boolean)).then((r) => alive && setBuilderRanks(r)).catch(() => {}); }).catch(() => {});
     // Right-rail action modules: region-aware players + courses that need a cover.
     getLeaderboardWithRegion(150).then((rows) => alive && setGeoRows(rows)).catch(() => {});
+    getMostActivePlayers(12).then((rows) => alive && setActivePlayers(rows)).catch(() => {});
     getAllCourses().then((cs) => { if (alive) setImproveCourses(cs.filter((c) => !c.coverPhotoUrl && c.name).slice(0, 400)); }).catch(() => {});
     return () => { alive = false; };
   }, []);
@@ -365,20 +376,20 @@ export default function CommunityPage() {
   }, [topPlayers, builders, builderRanks, posts]);
   // Hero podium — top builders (courses mapped), up to 3 pages of 3.
   const builderPodium = useMemo(() => builders.filter((b) => b.count > 0).slice(0, 9).map((b) => ({ id: b.id, name: b.name, username: b.username, count: b.count, photo: builderRanks.get(b.id)?.photo, cover: b.cover })), [builders, builderRanks]);
-  // Top contributors — derived honestly from the loaded feed (posts in the last 7 days). Below the
-  // threshold (needs 3+ people and real activity) it's empty, so the BUILDERS/CONTRIBUTORS toggle hides.
-  const contributorPodium = useMemo(() => {
-    const byId = new Map<string, { id: string; name: string; username?: string; photo?: string; cover?: string; count: number }>();
-    posts.filter((p) => p.authorId).forEach((p) => {
-      const id = p.authorId as string;
-      const e = byId.get(id) || { id, name: p.authorName || "Player", username: p.authorHandle || undefined, photo: p.authorPhotoUrl, count: 0 };
-      e.count++;
-      if (!e.photo && p.authorPhotoUrl) e.photo = p.authorPhotoUrl;
-      byId.set(id, e);
-    });
-    const list = [...byId.values()].sort((a, b) => b.count - a.count).slice(0, 9);
-    return list.length >= 3 ? list : []; // needs a podium's worth of distinct posters, else builders-only
-  }, [posts]);
+  // Top players by Game IQ (geoRows is already ordered by gameIQ desc).
+  const playerPodium = useMemo(() => geoRows.filter((r) => r.username && r.gameIQ > 0).slice(0, 9).map((r) => ({ id: r.id, name: r.name, username: r.username, count: r.gameIQ, photo: r.photo })), [geoRows]);
+  // Most active players by total rounds logged.
+  const activePodium = useMemo(() => activePlayers.filter((r) => r.username && r.rounds > 0).slice(0, 9).map((r) => ({ id: r.id, name: r.name, username: r.username, count: r.rounds, photo: r.photo })), [activePlayers]);
+  // A milestone builder (not #1) who has crossed a round-number of mapped courses — the highest tier they've cleared.
+  const builderMilestone = useMemo(() => {
+    const tiers = [100, 50, 25];
+    for (const b of builders.slice(1)) {
+      if (!b.username) continue;
+      const tier = tiers.find((t) => b.count >= t);
+      if (tier) return { name: b.name, username: b.username, tier };
+    }
+    return null;
+  }, [builders]);
   // Pulse — honest 7-day counts from the loaded feed. Metrics below a floor of 10 hide; fewer than two hides the strip.
   const pulse = useMemo(() => {
     const wk = Date.now() - 7 * 86400_000;
@@ -519,16 +530,15 @@ export default function CommunityPage() {
             <Pulse metrics={pulse} />
           </div>
           <div className="flex flex-1 flex-col items-center justify-center gap-7 pb-4">
-            {contributorPodium.length > 0 && (
-              <div className="inline-flex rounded-full bg-white/[0.06] p-1 backdrop-blur-md">
-                {([["builders", "Builders"], ["contributors", "Contributors"]] as const).map(([k, label]) => (
-                  <button key={k} onClick={() => setHeroMode(k)} className={`rounded-full px-4 py-1.5 font-mono text-[11px] font-bold uppercase tracking-wide transition-colors ${heroMode === k ? "bg-[var(--gold)] text-[#141b16]" : "text-[var(--text-body)] hover:text-[var(--cream)]"}`}>{label}</button>
-                ))}
-              </div>
-            )}
+            <div className="inline-flex rounded-full bg-white/[0.06] p-1 backdrop-blur-md">
+              {([["builders", "Builders"], ["players", "Top players"], ["active", "Most active"]] as const).map(([k, label]) => (
+                <button key={k} onClick={() => setHeroMode(k)} className={`rounded-full px-4 py-1.5 font-mono text-[11px] font-bold uppercase tracking-wide transition-colors ${heroMode === k ? "bg-[var(--gold)] text-[#141b16]" : "text-[var(--text-body)] hover:text-[var(--cream)]"}`}>{label}</button>
+              ))}
+            </div>
             {(() => {
-              const useContrib = heroMode === "contributors" && contributorPodium.length > 0;
-              return <Podium items={useContrib ? contributorPodium : builderPodium} metric={useContrib ? "posts" : "courses mapped"} />;
+              const items = heroMode === "players" ? playerPodium : heroMode === "active" ? activePodium : builderPodium;
+              const metric = heroMode === "players" ? "Game IQ" : heroMode === "active" ? "rounds played" : "courses mapped";
+              return <Podium items={items} metric={metric} />;
             })()}
           </div>
         </div>
@@ -599,10 +609,14 @@ export default function CommunityPage() {
                 {sort === "following" && user && !loading && feedList.length === 0 && <p className={`${card} p-8 text-center text-sm text-[var(--sage-dim)]`}>You&apos;re not following anyone with posts yet. Find players on the <Link href="/leaderboard" className="font-bold text-[var(--gold)] hover:underline">leaderboard</Link> and tap Follow.</p>}
 
                 {sort !== "following" && !loading && builders[0]?.username && (
-                  <SystemPost icon="🏆"><Link href={`/u/${builders[0].username}`} className="font-bold hover:text-[var(--gold)]">{builders[0].name}</Link> is the community&apos;s #1 course builder with <span className="font-bold text-[var(--gold)]">{builders[0].count}</span> courses mapped. Congratulations! 🎉</SystemPost>
+                  <SystemPost user={{ name: builders[0].name, username: builders[0].username }}>
+                    is the community&apos;s <span className="font-bold text-[var(--gold)]">#1 course builder</span> with <span className="font-bold text-[var(--gold)]">{builders[0].count}</span> courses mapped. Congratulations! 🎉
+                  </SystemPost>
                 )}
-                {sort !== "following" && !loading && contributorPodium[0]?.username && contributorPodium[0].count >= 3 && (
-                  <SystemPost icon="✍️"><Link href={`/u/${contributorPodium[0].username}`} className="font-bold hover:text-[var(--gold)]">{contributorPodium[0].name}</Link> is on a roll — most active poster this week with <span className="font-bold text-[var(--gold)]">{contributorPodium[0].count}</span> posts.</SystemPost>
+                {sort !== "following" && !loading && builderMilestone && (
+                  <SystemPost user={{ name: builderMilestone.name, username: builderMilestone.username! }}>
+                    has mapped <span className="font-bold text-[var(--gold)]">{builderMilestone.tier}+</span> courses 🏗️ — huge contribution to the community.
+                  </SystemPost>
                 )}
 
                 {sort !== "following" && !loading && featured && (

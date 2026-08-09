@@ -318,6 +318,48 @@ export async function getPostsTaggingCourse(courseId: string, max = 20): Promise
   }
 }
 
+/** A user's own posts, newest first — for their public profile feed. */
+export async function getPostsByAuthor(canonicalId: string, max = 30): Promise<FeedPost[]> {
+  try {
+    const snap = await getDocs(query(collection(db, "posts"), where("createdById", "==", canonicalId), limit(max)));
+    return snap.docs
+      .map((d) => {
+        const p = d.data();
+        if (p.isDeleted) return null;
+        return {
+          id: d.id as string,
+          text: (p.text ?? "") as string,
+          authorName: (p.authorName ?? "Radius player") as string,
+          authorHandle: (p.authorHandle as string | undefined)?.replace(/^@+/, "") || undefined,
+          authorPhotoUrl: safeHttp(p.authorPhotoUrl),
+          authorId: (p.createdById ?? p.authorId) as string | undefined,
+          createdAt: (p.createdAt ?? p.lastUpdated ?? 0) as number,
+          likeCount: (p.likeCount ?? 0) as number,
+          commentCount: (p.commentCount ?? 0) as number,
+          imageUrl: safeHttp(p.imageUrl ?? p.postImageUrl),
+          taggedDiscName: p.taggedDiscName ?? undefined,
+          taggedDiscBrand: p.taggedDiscBrand ?? undefined,
+          taggedDiscSlug: p.taggedDiscSlug ?? undefined,
+          taggedCourseId: p.taggedCourseId ?? undefined,
+          taggedCourseSlug: p.taggedCourseSlug ?? undefined,
+          taggedCourseName: p.taggedCourseName ?? undefined,
+          taggedUsers: Array.isArray(p.taggedUsers) ? (p.taggedUsers as { id: string; name: string; username: string }[]) : undefined,
+          linkedCourseName: p.linkedCourseName ?? p.courseName ?? undefined,
+          linkedCourseSlug: p.linkedCourseSlug ?? p.taggedCourseSlug ?? undefined,
+          linkedCourseCover: safeHttp(p.linkedCourseCover),
+          linkedBirdies: typeof p.linkedBirdies === "number" ? p.linkedBirdies : null,
+          scoreToPar: p.linkedScoreToPar ?? p.scoreToPar ?? null,
+          holesPlayed: p.linkedHolesPlayed ?? p.holesPlayed ?? null,
+          reactions: p.reactions && typeof p.reactions === "object" ? (p.reactions as Record<string, number>) : undefined,
+        } as FeedPost;
+      })
+      .filter((p): p is FeedPost => !!p && (!!p.text.trim() || !!p.imageUrl || !!p.linkedCourseName))
+      .sort((a, b) => b.createdAt - a.createdAt);
+  } catch {
+    return [];
+  }
+}
+
 // ---- Trending discs (aggregate discTrends throwCounts community-wide) ----
 export interface TrendingDisc {
   name: string;

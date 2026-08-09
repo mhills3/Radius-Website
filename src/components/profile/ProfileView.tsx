@@ -2,8 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { getDashboard, type Dashboard } from "@/lib/account";
+import { getPostsByAuthor, type FeedPost } from "@/lib/feed";
+import PostCard from "@/components/community/PostCard";
+import { type RankInfo } from "@/lib/community";
 import { getBagNames, getDiscCatalog, getCustomDiscs, normCat } from "@/lib/bag";
 import { buildDiscs, customToDiscData, type DiscData } from "@/lib/discs";
 import { slugify } from "@/lib/courses";
@@ -23,12 +27,15 @@ const fmtDate = (ms: number) => (ms ? new Date(ms).toLocaleDateString("en-US", {
 
 export default function ProfileView({ canonicalId, identity }: { canonicalId: string; identity: { name: string; username: string; photo?: string; bio?: string; homeCourseName?: string; homeCourseId?: string } }) {
   const { user: viewer } = useAuth();
+  const router = useRouter();
   const [data, setData] = useState<Dashboard | null>(null);
   const [bag, setBag] = useState<DiscData[]>([]);
+  const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     getDashboard(canonicalId).then(setData).catch(() => setData(null)).finally(() => setLoading(false));
+    getPostsByAuthor(canonicalId, 20).then(setPosts).catch(() => setPosts([]));
     Promise.all([getBagNames(canonicalId), getDiscCatalog(), getCustomDiscs(canonicalId)])
       .then(([names, rows, custom]) => {
         const byName = new Map(buildDiscs(rows).map((d) => [d.name.toLowerCase(), d]));
@@ -132,6 +139,18 @@ export default function ProfileView({ canonicalId, identity }: { canonicalId: st
                   <p className="mt-1 text-sm text-[var(--text-body)]">Radius rates every round by how well you scored, putted, and avoided trouble — rolled into one number.</p>
                 </div>
               </div>
+
+              {/* Posts — makes the profile feel like a social feed */}
+              {posts.length > 0 && (
+                <div className={`${card} overflow-hidden`}>
+                  <div className="px-5 pt-5 text-[10px] font-bold uppercase tracking-widest text-[var(--gold)]">Posts</div>
+                  <div className="px-5">
+                    {posts.map((p) => (
+                      <PostCard key={p.id} post={p} rank={{ name: identity.name, photo: identity.photo, username: identity.username, tier: rank.tier, color: rank.color, iq } as RankInfo} myReaction={undefined} onReact={() => router.push(`/community/post/${p.id}`)} onOpen={() => router.push(`/community/post/${p.id}`)} />
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* In the bag */}
               {bag.length > 0 && (

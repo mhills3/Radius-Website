@@ -90,6 +90,24 @@ export interface LeaderRow {
   level: number;
 }
 
+export interface ActiveRow { id: string; name: string; username?: string; photo?: string; rounds: number }
+/** Most-active players by total rounds logged (roundsPlayed). Powers the "Most active" hero podium. */
+export async function getMostActivePlayers(max = 12): Promise<ActiveRow[]> {
+  try {
+    const [snap, aliases] = await Promise.all([
+      getDocs(query(collection(db, "users"), orderBy("roundsPlayed", "desc"), limit(Math.max(max * 3, 40)))),
+      getAliasIds(),
+    ]);
+    const rows = snap.docs
+      .filter((d) => !aliases.has(d.id))
+      .map((d) => { const u = d.data(); return { id: d.id, name: (u.name as string) || "", username: (u.username as string) || undefined, photo: safeHttp(u.profileImageUrl), rounds: Number(u.roundsPlayed) || 0, hidden: u.hideWebProfile === true }; })
+      .filter((r) => r.rounds > 0 && r.name && !r.hidden && validHandle(r.username));
+    return dedupeByHandle(rows).slice(0, max).map((r) => ({ id: r.id, name: r.name, username: r.username, photo: r.photo, rounds: r.rounds }));
+  } catch {
+    return [];
+  }
+}
+
 export async function getLeaderboard(max = 60): Promise<LeaderRow[]> {
   try {
     const [snap, aliases] = await Promise.all([
