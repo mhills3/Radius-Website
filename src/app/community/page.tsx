@@ -639,9 +639,6 @@ function CommunityInner() {
 
             {tab === "forums" && (
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-[var(--sage-dim)]">{shownThreads.length} thread{shownThreads.length === 1 ? "" : "s"}{category !== "All" ? ` in ${category}` : ""}</span>
-                </div>
                 {loading && [0, 1, 2].map((i) => <PostSkeleton key={i} />)}
                 {!loading && shownThreads.length === 0 && <p className={`py-10 text-center text-sm text-[var(--sage-dim)]`}>No threads in {category}. Start one!</p>}
                 {!loading && shownThreads.map((t) => (
