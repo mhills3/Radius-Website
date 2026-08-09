@@ -52,10 +52,10 @@ export default async function ThreadPage({ params }: Props) {
   return (
     <div className="min-h-screen bg-[var(--bg-deep)] text-[var(--cream)]">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <div className="mx-auto max-w-2xl px-6 py-10">
-        <Link href="/community" className="inline-flex items-center gap-1.5 text-sm font-bold text-[var(--gold)] hover:underline">← Forums</Link>
+      <div className="mx-auto max-w-4xl px-6 py-10">
+        <Link href="/community?tab=forums" className="inline-flex items-center gap-1.5 text-sm font-bold text-[var(--gold)] hover:underline">← Forums</Link>
 
-        <article className="mt-5 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6">
+        <article className="mt-6">
           <span className="rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide" style={{ background: `${catColor(t.category)}26`, color: catColor(t.category) }}>{t.category}</span>
           <h1 className="mt-3 font-[family-name:var(--font-heading)] text-3xl font-extrabold leading-tight tracking-[-0.02em]">{t.title}</h1>
           <div className="mt-2 flex items-center gap-2 text-sm text-[var(--sage-dim)]">

@@ -31,11 +31,11 @@ function VoteBar({ score, myVote, onVote, small }: { score: number; myVote: numb
   return (
     <div className="inline-flex items-center gap-0.5">
       <button onClick={() => onVote(1)} aria-label="Upvote" className={`${btn} ${myVote === 1 ? "text-[var(--gold)]" : "text-[var(--sage)] hover:bg-white/[0.06] hover:text-[var(--cream)]"}`}>
-        <svg viewBox="0 0 24 24" fill={myVote === 1 ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinejoin="round" className={icon}><path d="M12 5l7 8H5z" /></svg>
+        <svg viewBox="0 0 24 24" fill={myVote === 1 ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinejoin="round" className={icon}><path d="M12 7l6 10H6z" /></svg>
       </button>
       <span className={`min-w-[1.5ch] text-center font-bold ${small ? "text-xs" : "text-sm"}`} style={{ color: score > 0 ? "var(--gold)" : score < 0 ? "#8FBDE3" : "var(--cream)" }}>{score}</span>
       <button onClick={() => onVote(-1)} aria-label="Downvote" className={`${btn} ${myVote === -1 ? "text-[#8FBDE3]" : "text-[var(--sage)] hover:bg-white/[0.06] hover:text-[var(--cream)]"}`}>
-        <svg viewBox="0 0 24 24" fill={myVote === -1 ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinejoin="round" className={icon}><path d="M12 19l-7-8h14z" /></svg>
+        <svg viewBox="0 0 24 24" fill={myVote === -1 ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinejoin="round" className={icon}><path d="M12 17l-6-10h12z" /></svg>
       </button>
     </div>
   );
