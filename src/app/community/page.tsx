@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
 import { getFeed, createPost, ensureSystemPost, softDeleteSystemPost, getReactionMap, setReaction, hotScore, SYSTEM_AUTHOR_ID, type FeedPost, type CourseTag, type DiscTag, type SharedRound } from "@/lib/feed";
@@ -77,18 +77,15 @@ function HeroMosaic({ images }: { images: string[] }) {
   );
 }
 
-export default function CommunityPage() {
+function CommunityInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, profile } = useAuth();
-  // Initialize the tab from the URL (?tab=forums) so returning from a thread lands back on Forums,
-  // not the feed. The tab is mirrored into the URL below.
-  const [tab, setTab] = useState<Tab>(() => {
-    if (typeof window !== "undefined") {
-      const t = new URLSearchParams(window.location.search).get("tab");
-      if (t === "feed" || t === "forums" || t === "meetups") return t as Tab;
-    }
-    return "feed";
-  });
+  // The active tab lives in the URL (?tab=forums) so Back/Forward just work — returning from a
+  // thread lands on the tab you were on. Deriving from useSearchParams keeps it reactive to history.
+  const tabParam = searchParams.get("tab");
+  const tab: Tab = tabParam === "forums" ? "forums" : tabParam === "meetups" ? "meetups" : "feed";
+  const changeTab = (t: Tab) => router.replace(t === "feed" ? "/community" : `/community?tab=${t}`, { scroll: false });
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [threads, setThreads] = useState<Thread[]>([]);
   const [meetups, setMeetups] = useState<Meetup[]>([]);
@@ -129,14 +126,6 @@ export default function CommunityPage() {
   const [seen, setSeen] = useState<{ feed: number; forums: number }>({ feed: 0, forums: 0 });
   const [pendingNew, setPendingNew] = useState<FeedPost[]>([]);
   const [scrolledDown, setScrolledDown] = useState(false);
-
-  // Mirror the active tab into the URL (Forums → ?tab=forums) via the Next router (so its history
-  // tracking stays intact) — this is what makes Back from a thread return to the tab you were on.
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const url = tab === "feed" ? "/community" : `/community?tab=${tab}`;
-    if (window.location.pathname + window.location.search !== url) router.replace(url, { scroll: false });
-  }, [tab, router]);
 
   useEffect(() => {
     let alive = true;
@@ -566,7 +555,7 @@ export default function CommunityPage() {
               const active = tab === t.key;
               const unread = !active && ((t.key === "feed" && unreadFeed) || (t.key === "forums" && unreadForums));
               return (
-                <button key={t.key} onClick={() => setTab(t.key)} className={`relative inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold transition-all ${active ? "bg-gradient-to-b from-[var(--gold-bright)] to-[var(--gold)] text-[#141b16] shadow-[0_6px_16px_-6px_rgba(232,181,96,0.7)]" : "text-[var(--text-body)] hover:text-[var(--cream)]"}`}>
+                <button key={t.key} onClick={() => changeTab(t.key)} className={`relative inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold transition-all ${active ? "bg-gradient-to-b from-[var(--gold-bright)] to-[var(--gold)] text-[#141b16] shadow-[0_6px_16px_-6px_rgba(232,181,96,0.7)]" : "text-[var(--text-body)] hover:text-[var(--cream)]"}`}>
                   {t.key === "feed" ? (
                     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h16M4 12h16M4 18h10" /></svg>
                   ) : (
@@ -754,8 +743,16 @@ export default function CommunityPage() {
       {composerModal}
       {open && <PostDetail post={open} uid={user?.uid} myReaction={reactionMap[open.id]} onReact={(t) => onReact(open.id, t)} onClose={() => setOpen(null)} onCommented={() => bumpComment(open.id)} />}
       {openThread && <ThreadDetail thread={openThread} rank={openThread.authorId ? ranks.get(openThread.authorId) : undefined} uid={user?.uid} onClose={() => setOpenThread(null)} />}
-      {newThread && user && <NewThreadModal uid={user.uid} onCreated={(t) => { setThreads((prev) => [t, ...prev]); setNewThread(false); setTab("forums"); setOpenThread(t); }} onClose={() => setNewThread(false)} />}
+      {newThread && user && <NewThreadModal uid={user.uid} onCreated={(t) => { setThreads((prev) => [t, ...prev]); setNewThread(false); changeTab("forums"); setOpenThread(t); }} onClose={() => setNewThread(false)} />}
       {newMeetup && user && <NewMeetupModal uid={user.uid} onCreated={(m) => { setMeetups((prev) => [m, ...prev]); setNewMeetup(false); }} onClose={() => setNewMeetup(false)} />}
     </div>
+  );
+}
+
+export default function CommunityPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[var(--bg-deep)]" />}>
+      <CommunityInner />
+    </Suspense>
   );
 }
