@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
 import { getFeed, createPost, getReactionMap, setReaction, hotScore, type FeedPost, type CourseTag, type DiscTag, type SharedRound } from "@/lib/feed";
 import RoundPicker from "@/components/community/RoundPicker";
+import { getPlayedCourses } from "@/lib/rounds";
 import CourseTagPicker from "@/components/community/CourseTagPicker";
 import DiscTagPicker from "@/components/community/DiscTagPicker";
 import UserTagPicker from "@/components/community/UserTagPicker";
@@ -24,6 +25,13 @@ import MeetupCard from "@/components/community/MeetupCard";
 import HighlightsBar from "@/components/community/HighlightsBar";
 import NewThreadModal from "@/components/community/NewThreadModal";
 import NewMeetupModal from "@/components/community/NewMeetupModal";
+
+function milesBetween(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const R = 3958.8, dLat = ((b.lat - a.lat) * Math.PI) / 180, dLng = ((b.lng - a.lng) * Math.PI) / 180;
+  const la1 = (a.lat * Math.PI) / 180, la2 = (b.lat * Math.PI) / 180;
+  const x = Math.sin(dLat / 2) ** 2 + Math.cos(la1) * Math.cos(la2) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+}
 
 type Tab = "feed" | "forums" | "meetups";
 type Sort = "hot" | "new" | "top" | "following";
@@ -55,7 +63,7 @@ function PostSkeleton() {
 // player tagged). Honest current-standings milestone; auto-generated + interactive versions need a backend.
 function SystemPost({ user, children }: { user: { name: string; username: string }; children: React.ReactNode }) {
   return (
-    <div className="mb-3 rounded-xl bg-[linear-gradient(135deg,rgba(232,181,96,0.13),rgba(255,255,255,0.03)_62%)] p-3.5 shadow-[0_16px_40px_-24px_rgba(0,0,0,0.65)]">
+    <div className="border-b border-white/[0.055] border-l-2 border-l-[var(--gold)]/45 py-3.5 pl-3">
       <div className="flex items-center gap-2.5">
         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--gold)] text-base text-[#141b16]">🏆</span>
         <div className="min-w-0 flex-1">
@@ -202,6 +210,9 @@ export default function CommunityPage() {
   const [geoRows, setGeoRows] = useState<GeoLeaderRow[]>([]);
   const [improveCourses, setImproveCourses] = useState<Course[]>([]);
   const [myCid, setMyCid] = useState<string | null>(null);
+  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
+  const [playedNames, setPlayedNames] = useState<Set<string>>(new Set());
+  const [composerExpanded, setComposerExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [reactionMap, setReactionMap] = useState<Record<string, string>>({});
   const [following, setFollowing] = useState<Set<string>>(new Set());
@@ -249,14 +260,23 @@ export default function CommunityPage() {
     // Right-rail action modules: region-aware players + courses that need a cover.
     getLeaderboardWithRegion(150).then((rows) => alive && setGeoRows(rows)).catch(() => {});
     getMostActivePlayers(12).then((rows) => alive && setActivePlayers(rows)).catch(() => {});
-    getAllCourses().then((cs) => { if (alive) setImproveCourses(cs.filter((c) => !c.coverPhotoUrl && c.name).slice(0, 400)); }).catch(() => {});
+    // Courses that need help: no cover, or no reviews yet. Keep coords for nearest-to-you sorting.
+    getAllCourses().then((cs) => { if (alive) setImproveCourses(cs.filter((c) => c.name && (!c.coverPhotoUrl || !c.reviewCount)).slice(0, 1200)); }).catch(() => {});
+    // Best-effort current location so "near you" is actually near you (falls back to home-course region).
+    if (typeof navigator !== "undefined" && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => alive && setUserLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => {}, { enableHighAccuracy: false, timeout: 8000, maximumAge: 600000 }
+      );
+    }
     return () => { alive = false; };
   }, []);
   useEffect(() => {
     if (user) {
       getReactionMap(user.uid).then(setReactionMap).catch(() => {});
       myCanonicalId(user.uid).then((cid) => { setMyCid(cid); return getFollowingIds(cid); }).then(setFollowing).catch(() => {});
-    } else { setReactionMap({}); setFollowing(new Set()); setMyCid(null); }
+      getPlayedCourses(user.uid).then((m) => setPlayedNames(new Set(m.keys()))).catch(() => {});
+    } else { setReactionMap({}); setFollowing(new Set()); setMyCid(null); setPlayedNames(new Set()); }
   }, [user]);
   const toggleFollow = (targetId: string) => {
     if (!user) { router.push("/login"); return; }
@@ -266,15 +286,36 @@ export default function CommunityPage() {
   };
   // The signed-in player's region (from their leaderboard row) drives the "near you" modules.
   const myRegion = useMemo(() => geoRows.find((r) => r.id === myCid) ?? undefined, [geoRows, myCid]);
+  // My anchor point: real geolocation if granted, else my home-course coordinates.
+  const myLoc = useMemo(() => userLoc ?? (myRegion?.lat != null && myRegion?.lng != null ? { lat: myRegion.lat, lng: myRegion.lng } : null), [userLoc, myRegion]);
   const playersNearYou = useMemo(() => {
-    if (!myRegion || (!myRegion.state && !myRegion.country)) return [];
-    return geoRows.filter((r) => r.id !== myCid && !following.has(r.id) && r.username && (myRegion.state ? r.state === myRegion.state : r.country === myRegion.country)).slice(0, 5);
-  }, [geoRows, myRegion, myCid, following]);
+    const pool = geoRows.filter((r) => r.id !== myCid && !following.has(r.id) && r.username);
+    if (myLoc) {
+      const withDist = pool.filter((r) => r.lat != null && r.lng != null).map((r) => ({ r, d: milesBetween(myLoc, { lat: r.lat!, lng: r.lng! }) })).sort((a, b) => a.d - b.d);
+      if (withDist.length >= 3) return withDist.slice(0, 8).map((x) => ({ ...x.r, dist: x.d }));
+    }
+    // Fallback: same state, then same country (never just one when the region has players).
+    const st = myRegion?.state ? pool.filter((r) => r.state === myRegion.state) : [];
+    const co = myRegion?.country ? pool.filter((r) => r.country === myRegion.country) : [];
+    return (st.length >= 3 ? st : co.length >= 3 ? co : pool).slice(0, 8).map((r) => ({ ...r, dist: undefined as number | undefined }));
+  }, [geoRows, myCid, following, myLoc, myRegion]);
+  // Courses to improve, nearest first, each with a concrete reason to act.
   const nearbyImprove = useMemo(() => {
-    if (!myRegion?.state) return improveCourses.slice(0, 4); // no region → just surface any that need a cover
-    const inState = improveCourses.filter((c) => c.state === myRegion.state);
-    return (inState.length >= 3 ? inState : improveCourses).slice(0, 4);
-  }, [improveCourses, myRegion]);
+    const withReason = improveCourses.map((c) => {
+      const played = playedNames.has(c.name.trim().toLowerCase());
+      const reason = !c.coverPhotoUrl ? "No cover photo yet" : played ? "You've played here — leave a review" : "No reviews yet — be the first";
+      const action = !c.coverPhotoUrl ? "Add cover" : "Review";
+      const d = myLoc && c.latitude != null && c.longitude != null ? milesBetween(myLoc, { lat: c.latitude, lng: c.longitude }) : Infinity;
+      return { c, reason, action, d };
+    });
+    // Prioritize played-but-unreviewed courses, then sort by distance.
+    withReason.sort((a, b) => {
+      const ap = playedNames.has(a.c.name.trim().toLowerCase()) && a.c.coverPhotoUrl ? 0 : 1;
+      const bp = playedNames.has(b.c.name.trim().toLowerCase()) && b.c.coverPhotoUrl ? 0 : 1;
+      return ap - bp || a.d - b.d;
+    });
+    return withReason.slice(0, 4);
+  }, [improveCourses, playedNames, myLoc]);
 
   // Load the last-seen marks (per device) so we can show unread dots on the tabs.
   useEffect(() => {
@@ -417,7 +458,7 @@ export default function CommunityPage() {
       let imageUrl: string | undefined;
       if (imageFile) imageUrl = await uploadPostImage(user.uid, imageFile);
       const post = await createPost(user.uid, text.trim(), { course: taggedCourse ?? undefined, disc: taggedDisc ?? undefined, imageUrl, mentions: taggedUsers, round: sharedRound ?? undefined });
-      if (post) { setPosts((prev) => [post, ...prev]); setText(""); setTaggedCourse(null); setTaggedDisc(null); setImageFile(null); setImagePreview(null); setTaggedUsers([]); setSharedRound(null); }
+      if (post) { setPosts((prev) => [post, ...prev]); setText(""); setTaggedCourse(null); setTaggedDisc(null); setImageFile(null); setImagePreview(null); setTaggedUsers([]); setSharedRound(null); setComposerExpanded(false); }
     } finally { setPosting(false); }
   };
   const onReact = (id: string, type: string) => {
@@ -443,15 +484,27 @@ export default function CommunityPage() {
   const composer = (
     <>
       {user ? (
-        <div className={`${card} p-4`}>
-          <div className="flex gap-3">
-            <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--bg-mid)] text-sm font-bold text-[var(--cream)] ring-1 ring-white/10">
+        <div className="border-b border-white/[0.055] py-3.5">
+          {!composerExpanded ? (
+            <button onClick={() => setComposerExpanded(true)} className="flex w-full items-center gap-2.5 text-left">
+              <span className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--bg-mid)] text-sm font-bold text-[var(--cream)] ring-1 ring-white/10">
+                {profile?.profileImageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={profile.profileImageUrl} alt="" className="h-8 w-8 object-cover" />
+                ) : ((profile?.name || "?").charAt(0).toUpperCase())}
+              </span>
+              <span className="flex-1 rounded-full bg-white/[0.05] px-4 py-2.5 text-[15px] text-[var(--sage-dim)] transition-colors hover:bg-white/[0.08]">What&apos;s your disc golf story today?</span>
+            </button>
+          ) : (
+          <>
+          <div className="flex gap-2.5">
+            <span className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--bg-mid)] text-sm font-bold text-[var(--cream)] ring-1 ring-white/10">
               {profile?.profileImageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={profile.profileImageUrl} alt="" className="h-9 w-9 object-cover" />
+                <img src={profile.profileImageUrl} alt="" className="h-8 w-8 object-cover" />
               ) : ((profile?.name || "?").charAt(0).toUpperCase())}
             </span>
-            <textarea value={text} onChange={(e) => setText(e.target.value)} rows={2} placeholder="What's your disc golf story today?" className="w-full resize-none bg-transparent pt-1.5 text-[15px] text-[var(--cream)] placeholder-[var(--sage-dim)] outline-none" />
+            <textarea autoFocus value={text} onChange={(e) => setText(e.target.value)} rows={2} placeholder="What's your disc golf story today?" className="w-full resize-none bg-transparent pt-1 text-[15px] text-[var(--cream)] placeholder-[var(--sage-dim)] outline-none" />
           </div>
           {imagePreview && (
             <div className="relative mt-2 inline-block">
@@ -499,10 +552,12 @@ export default function CommunityPage() {
             </div>
             <button onClick={submitPost} disabled={(!text.trim() && !imageFile && !sharedRound) || posting} className="rounded-full bg-[var(--gold)] px-6 py-2 text-sm font-bold text-[#141b16] transition-colors hover:bg-[var(--gold-bright)] disabled:cursor-not-allowed disabled:opacity-50">{posting ? "Posting…" : "Post"}</button>
           </div>
+          </>
+          )}
         </div>
       ) : (
-        <div className={`flex items-center gap-3 ${card} px-5 py-4`}>
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--bg-mid)] text-sm font-bold text-[var(--cream)]">+</span>
+        <div className="flex items-center gap-2.5 border-b border-white/[0.055] py-3.5">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--bg-mid)] text-sm font-bold text-[var(--cream)]">+</span>
           <p className="text-sm text-[var(--text-body)]"><Link href="/login" className="font-bold text-[var(--gold)] hover:underline">Sign in</Link> to share a round or join the conversation.</p>
         </div>
       )}
@@ -544,13 +599,10 @@ export default function CommunityPage() {
         </div>
       </section>
 
-      {/* ===== SECTION 2 — composer, immediately below the hero (no header, no band) ===== */}
-      <div className="relative z-10 mx-auto -mt-2 w-full max-w-2xl px-6">{composer}</div>
-
-      {/* ===== SECTION 3 — video rail, directly after the composer (best-looking content stays near top) ===== */}
+      {/* ===== SECTION 2 — video rail, directly after the hero ===== */}
       <div className="mx-auto max-w-7xl px-6 pt-10"><HighlightsBar /></div>
 
-      {/* ===== SECTION 4 — feed (sticky tabs) ===== */}
+      {/* ===== SECTION 3 — feed (sticky tabs; composer sits at the top of the feed column) ===== */}
       <div className="mx-auto max-w-7xl px-6 pb-10 pt-6">
         <div className="sticky top-[58px] z-30 -mx-6 mb-5 bg-[var(--bg-deep)]/80 px-6 py-2.5 backdrop-blur-md">
           <div className="inline-flex rounded-full bg-white/[0.06] p-1 shadow-[0_10px_28px_-18px_rgba(0,0,0,0.7)]">
@@ -570,30 +622,30 @@ export default function CommunityPage() {
           <aside className="hidden lg:block">
             <div className="sticky top-24 space-y-4">
               {tab === "feed" && (
-                <div className={`${card} p-2`}>
+                <div className="space-y-0.5">
                   {(["hot", "top", "new", "following"] as Sort[]).map((s) => (
-                    <button key={s} onClick={() => setSort(s)} className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors ${sort === s ? "bg-white/[0.06] text-[var(--cream)]" : "text-[var(--sage)] hover:text-[var(--cream)]"}`}><span>{s === "hot" ? "🔥" : s === "top" ? "⭐" : s === "new" ? "🕑" : "👥"}</span>{s === "hot" ? "Hot" : s === "top" ? "Top" : s === "new" ? "Latest" : "Following"}</button>
+                    <button key={s} onClick={() => setSort(s)} className={`flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm font-semibold transition-colors ${sort === s ? "text-[var(--gold)]" : "text-[var(--sage)] hover:text-[var(--cream)]"}`}><span>{s === "hot" ? "🔥" : s === "top" ? "⭐" : s === "new" ? "🕑" : "👥"}</span>{s === "hot" ? "Hot" : s === "top" ? "Top" : s === "new" ? "Latest" : "Following"}</button>
                   ))}
                 </div>
               )}
               {tab === "forums" && (
-                <div className={`${card} p-2`}>
-                  <div className="px-3 pb-1 pt-1 text-[10px] font-bold uppercase tracking-wide text-[var(--gold)]">Categories</div>
+                <div className="space-y-0.5">
+                  <div className="px-2 pb-1 text-[10px] font-bold uppercase tracking-wide text-[var(--gold)]">Categories</div>
                   {FORUM_CATEGORIES.map((c) => (
-                    <button key={c} onClick={() => setCategory(c)} className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${category === c ? "bg-white/[0.06] text-[var(--cream)]" : "text-[var(--sage)] hover:text-[var(--cream)]"}`}>{c !== "All" && <span className="h-2.5 w-2.5 rounded-full" style={{ background: categoryColor(c) }} />}{c}</button>
+                    <button key={c} onClick={() => setCategory(c)} className={`flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm font-semibold transition-colors ${category === c ? "text-[var(--gold)]" : "text-[var(--sage)] hover:text-[var(--cream)]"}`}>{c !== "All" && <span className="h-2.5 w-2.5 rounded-full" style={{ background: categoryColor(c) }} />}{c}</button>
                   ))}
                 </div>
               )}
-              <div className={`${card} p-4`}>
-                <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-[var(--gold)]">Hot discussions</div>
+              <div className="pt-2">
+                <div className="mb-3 px-2 text-[10px] font-bold uppercase tracking-widest text-[var(--gold)]">Hot discussions</div>
                 <div className="space-y-3">
                   {hotThreads.map((t) => (
-                    <button key={t.id} onClick={() => setOpenThread(t)} className="block w-full text-left">
+                    <button key={t.id} onClick={() => setOpenThread(t)} className="block w-full px-2 text-left">
                       <div className="line-clamp-2 text-sm font-semibold leading-snug text-[var(--cream)] hover:text-[var(--gold)]">{t.title}</div>
                       <div className="mt-0.5 text-xs text-[var(--sage-dim)]">▲ {t.score} · {t.replyCount} repl{t.replyCount === 1 ? "y" : "ies"}</div>
                     </button>
                   ))}
-                  {hotThreads.length === 0 && <p className="text-sm text-[var(--sage-dim)]">—</p>}
+                  {hotThreads.length === 0 && <p className="px-2 text-sm text-[var(--sage-dim)]">—</p>}
                 </div>
               </div>
             </div>
@@ -601,12 +653,14 @@ export default function CommunityPage() {
 
           {/* CENTER */}
           <div className="min-w-0">
+            {/* Composer — first element in the feed column, matching post width */}
+            {composer}
             {tab === "feed" && (
               <div className="space-y-0">
-                {loading && <div className="space-y-3">{[0, 1, 2].map((i) => <PostSkeleton key={i} />)}</div>}
+                {loading && <div className="mt-3 space-y-3">{[0, 1, 2].map((i) => <PostSkeleton key={i} />)}</div>}
 
-                {sort === "following" && !user && <p className={`${card} p-8 text-center text-sm text-[var(--sage-dim)]`}><Link href="/login" className="font-bold text-[var(--gold)] hover:underline">Sign in</Link> to see rounds from players you follow.</p>}
-                {sort === "following" && user && !loading && feedList.length === 0 && <p className={`${card} p-8 text-center text-sm text-[var(--sage-dim)]`}>You&apos;re not following anyone with posts yet. Find players on the <Link href="/leaderboard" className="font-bold text-[var(--gold)] hover:underline">leaderboard</Link> and tap Follow.</p>}
+                {sort === "following" && !user && <p className={`py-10 text-center text-sm text-[var(--sage-dim)]`}><Link href="/login" className="font-bold text-[var(--gold)] hover:underline">Sign in</Link> to see rounds from players you follow.</p>}
+                {sort === "following" && user && !loading && feedList.length === 0 && <p className={`py-10 text-center text-sm text-[var(--sage-dim)]`}>You&apos;re not following anyone with posts yet. Find players on the <Link href="/leaderboard" className="font-bold text-[var(--gold)] hover:underline">leaderboard</Link> and tap Follow.</p>}
 
                 {sort !== "following" && !loading && builders[0]?.username && (
                   <SystemPost user={{ name: builders[0].name, username: builders[0].username }}>
@@ -620,13 +674,13 @@ export default function CommunityPage() {
                 )}
 
                 {sort !== "following" && !loading && featured && (
-                  <div className="relative mb-3 rounded-2xl bg-[var(--gold)]/[0.07] p-2 shadow-[0_20px_50px_-26px_rgba(232,181,96,0.45)]">
-                    <div className="absolute -top-2.5 left-4 z-10 rounded-full bg-[var(--gold)] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#141b16]">📌 Featured</div>
+                  <div className="border-l-2 border-[var(--gold)]/45 pl-3">
+                    <div className="flex items-center gap-1.5 pt-3 text-[10px] font-bold uppercase tracking-wide text-[var(--gold)]">📌 Featured</div>
                     <PostCard post={featured} rank={featured.authorId ? ranks.get(featured.authorId) : undefined} myReaction={reactionMap[featured.id]} onReact={(t) => onReact(featured.id, t)} onOpen={() => setOpen(featured)} />
                   </div>
                 )}
 
-                {sort !== "following" && !loading && feedList.length === 0 && !featured && <p className={`${card} p-8 text-center text-sm text-[var(--sage-dim)]`}>No posts yet.</p>}
+                {sort !== "following" && !loading && feedList.length === 0 && !featured && <p className={`py-10 text-center text-sm text-[var(--sage-dim)]`}>No posts yet.</p>}
                 {!loading && feedList.map((p) => (
                   <PostCard key={p.id} post={p} rank={p.authorId ? ranks.get(p.authorId) : undefined} myReaction={reactionMap[p.id]} onReact={(t) => onReact(p.id, t)} onOpen={() => setOpen(p)} />
                 ))}
@@ -645,7 +699,7 @@ export default function CommunityPage() {
                   </button>
                 </div>
                 {loading && [0, 1, 2].map((i) => <PostSkeleton key={i} />)}
-                {!loading && shownThreads.length === 0 && <p className={`${card} p-8 text-center text-sm text-[var(--sage-dim)]`}>No threads in {category}. Start one!</p>}
+                {!loading && shownThreads.length === 0 && <p className={`py-10 text-center text-sm text-[var(--sage-dim)]`}>No threads in {category}. Start one!</p>}
                 {!loading && shownThreads.map((t) => (
                   <ThreadCard key={t.id} thread={t} rank={t.authorId ? ranks.get(t.authorId) : undefined} onOpen={() => setOpenThread(t)} />
                 ))}
@@ -662,24 +716,24 @@ export default function CommunityPage() {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   {loading && [0, 1].map((i) => <div key={i} className={`h-44 animate-pulse ${card}`} />)}
-                  {!loading && meetups.length === 0 && <p className={`${card} p-8 text-center text-sm text-[var(--sage-dim)] sm:col-span-2`}>No meetups yet — host the first.</p>}
+                  {!loading && meetups.length === 0 && <p className={`py-10 text-center text-sm text-[var(--sage-dim)] sm:col-span-2`}>No meetups yet — host the first.</p>}
                   {!loading && meetups.map((m) => <MeetupCard key={m.id} meetup={m} />)}
                 </div>
               </div>
             )}
           </div>
 
-          {/* RIGHT RAIL */}
+          {/* RIGHT RAIL — borderless modules (label + list) */}
           <aside className="hidden lg:block">
-            <div className="sticky top-24 space-y-4">
+            <div className="sticky top-24 space-y-8">
               {/* Players near you — grows the follow graph */}
-              <div className={`${card} p-4`}>
+              <div>
                 <div className="mb-3 flex items-center justify-between">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--gold)]">📍 Players near you</span>
                   <Link href="/leaderboard" className="text-[11px] font-bold text-[var(--gold)] hover:underline">All →</Link>
                 </div>
                 {playersNearYou.length === 0 ? (
-                  <p className="text-sm text-[var(--sage-dim)]">{myRegion ? "You already follow the locals 🎉 Find more on the leaderboard." : "Set a home course in the Radius app to find players near you."}</p>
+                  <p className="text-sm text-[var(--sage-dim)]">Finding players in your area…</p>
                 ) : (
                   <div className="space-y-2.5">
                     {playersNearYou.map((p) => (
@@ -690,7 +744,7 @@ export default function CommunityPage() {
                         </Link>
                         <div className="min-w-0 flex-1">
                           <Link href={`/u/${p.username}`} className="block truncate text-sm font-semibold text-[var(--cream)] hover:text-[var(--gold)]">{p.name}</Link>
-                          <div className="truncate text-[11px] text-[var(--sage-dim)]">{p.state || p.country}</div>
+                          <div className="truncate text-[11px] text-[var(--sage-dim)]">{p.dist != null ? `${p.dist < 10 ? p.dist.toFixed(1) : Math.round(p.dist)} mi away` : (p.state || p.country || "")}</div>
                         </div>
                         <button onClick={() => toggleFollow(p.id)} className="shrink-0 rounded-full bg-[#8FBDE3]/15 px-3 py-1 text-xs font-bold text-[#8FBDE3] transition-colors hover:bg-[#8FBDE3]/25">Follow</button>
                       </div>
@@ -698,27 +752,27 @@ export default function CommunityPage() {
                   </div>
                 )}
               </div>
-              {/* Courses to improve — drives contribution */}
+              {/* Courses to improve — drives contribution; each has a concrete reason + action */}
               {nearbyImprove.length > 0 && (
-                <div className={`${card} p-4`}>
-                  <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-[var(--gold)]">🛠️ Courses to improve{myRegion?.state ? ` in ${myRegion.state}` : ""}</div>
-                  <div className="space-y-2.5">
-                    {nearbyImprove.map((c) => (
+                <div>
+                  <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-[var(--gold)]">🛠️ Courses to improve near you</div>
+                  <div className="space-y-3">
+                    {nearbyImprove.map(({ c, reason, action, d }) => (
                       <div key={c.id} className="flex items-center gap-2.5">
                         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--gold-dim)] text-base text-[var(--gold)]">⛳</span>
                         <div className="min-w-0 flex-1">
                           <div className="truncate text-sm font-semibold text-[var(--cream)]">{c.name}</div>
-                          <div className="truncate text-[11px] text-[var(--sage-dim)]">{[c.city, c.state].filter(Boolean).join(", ") || "Add a cover photo"}</div>
+                          <div className="truncate text-[11px] text-[var(--sage-dim)]">{reason}{d !== Infinity ? ` · ${d < 10 ? d.toFixed(1) : Math.round(d)} mi` : (c.state ? ` · ${c.state}` : "")}</div>
                         </div>
-                        <Link href={`/courses/${slugify(c.name, c.id)}`} className="shrink-0 rounded-full bg-[var(--gold)]/15 px-3 py-1 text-xs font-bold text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/25">Improve</Link>
+                        <Link href={`/courses/${slugify(c.name, c.id)}`} className="shrink-0 rounded-full bg-[var(--gold)]/15 px-3 py-1 text-xs font-bold text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/25">{action}</Link>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
               {!user && (
-                <div className="rounded-2xl bg-[var(--bg-mid)] p-5">
-                  <div className="font-[family-name:var(--font-heading)] text-lg font-bold">Your hub for disc golf</div>
+                <div>
+                  <div className="font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">Your hub for disc golf</div>
                   <p className="mt-1 text-sm text-[var(--text-body)]">Rounds, gear talk, forums, and meetups — all in one place.</p>
                   <Link href="/login" className="mt-4 inline-block rounded-full bg-[var(--gold)] px-5 py-2.5 text-sm font-bold text-[#141b16] hover:bg-[var(--gold-bright)]">Join free</Link>
                 </div>

@@ -130,12 +130,14 @@ export async function getLeaderboard(max = 60): Promise<LeaderRow[]> {
   }
 }
 
-export interface GeoLeaderRow extends LeaderRow { state?: string; country?: string }
+export interface GeoLeaderRow extends LeaderRow { state?: string; country?: string; lat?: number; lng?: number }
 
-type Region = { state?: string; country?: string };
+type Region = { state?: string; country?: string; lat?: number; lng?: number };
 const regionOfCourse = (c: { state?: string; latitude?: number; longitude?: number }): Region => ({
   state: isUSState(c.state) ? c.state : undefined,
   country: countryOf({ state: c.state, latitude: c.latitude, longitude: c.longitude }),
+  lat: typeof c.latitude === "number" ? c.latitude : undefined,
+  lng: typeof c.longitude === "number" ? c.longitude : undefined,
 });
 const hasRegion = (r?: Region) => !!(r && (r.state || r.country));
 
@@ -180,7 +182,7 @@ export async function getLeaderboardWithRegion(max = 250): Promise<GeoLeaderRow[
       const rk = rankForIQ(r.gameIQ);
       const homeReg = r.homeCourseId ? byId.get(r.homeCourseId) : undefined;
       const reg = hasRegion(homeReg) ? homeReg : (r.playedCourse ? byName.get(r.playedCourse) : undefined);
-      return { id: r.id, name: r.name, username: r.username, photo: r.photo, gameIQ: r.gameIQ, tier: rk.tier, color: rk.color, level: rk.level, state: reg?.state, country: reg?.country };
+      return { id: r.id, name: r.name, username: r.username, photo: r.photo, gameIQ: r.gameIQ, tier: rk.tier, color: rk.color, level: rk.level, state: reg?.state, country: reg?.country, lat: reg?.lat, lng: reg?.lng };
     });
   } catch {
     return [];
