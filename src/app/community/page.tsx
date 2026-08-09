@@ -51,6 +51,19 @@ function PostSkeleton() {
   );
 }
 
+// Radius system announcement — celebrates real contributors publicly (milestone visual language).
+function SystemPost({ icon, children }: { icon: string; children: React.ReactNode }) {
+  return (
+    <div className="mb-3 flex items-start gap-3 rounded-xl bg-[linear-gradient(135deg,rgba(232,181,96,0.15),rgba(255,255,255,0.03)_62%)] p-3.5 shadow-[0_16px_40px_-24px_rgba(0,0,0,0.65)]">
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--gold)] text-lg text-[#141b16]">{icon}</span>
+      <div className="min-w-0 flex-1">
+        <div className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--gold)]">Radius</div>
+        <div className="mt-0.5 text-sm leading-snug text-[var(--cream)]">{children}</div>
+      </div>
+    </div>
+  );
+}
+
 // Counts up 0 → value on mount (community-wide numbers get this treatment, in blue).
 function CountUp({ to, className }: { to: number; className?: string }) {
   const [n, setN] = useState(0);
@@ -584,6 +597,13 @@ export default function CommunityPage() {
 
                 {sort === "following" && !user && <p className={`${card} p-8 text-center text-sm text-[var(--sage-dim)]`}><Link href="/login" className="font-bold text-[var(--gold)] hover:underline">Sign in</Link> to see rounds from players you follow.</p>}
                 {sort === "following" && user && !loading && feedList.length === 0 && <p className={`${card} p-8 text-center text-sm text-[var(--sage-dim)]`}>You&apos;re not following anyone with posts yet. Find players on the <Link href="/leaderboard" className="font-bold text-[var(--gold)] hover:underline">leaderboard</Link> and tap Follow.</p>}
+
+                {sort !== "following" && !loading && builders[0]?.username && (
+                  <SystemPost icon="🏆"><Link href={`/u/${builders[0].username}`} className="font-bold hover:text-[var(--gold)]">{builders[0].name}</Link> is the community&apos;s #1 course builder with <span className="font-bold text-[var(--gold)]">{builders[0].count}</span> courses mapped. Congratulations! 🎉</SystemPost>
+                )}
+                {sort !== "following" && !loading && contributorPodium[0]?.username && contributorPodium[0].count >= 3 && (
+                  <SystemPost icon="✍️"><Link href={`/u/${contributorPodium[0].username}`} className="font-bold hover:text-[var(--gold)]">{contributorPodium[0].name}</Link> is on a roll — most active poster this week with <span className="font-bold text-[var(--gold)]">{contributorPodium[0].count}</span> posts.</SystemPost>
+                )}
 
                 {sort !== "following" && !loading && featured && (
                   <div className="relative mb-3 rounded-2xl bg-[var(--gold)]/[0.07] p-2 shadow-[0_20px_50px_-26px_rgba(232,181,96,0.45)]">
