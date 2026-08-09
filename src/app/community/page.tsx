@@ -136,8 +136,8 @@ export default function CommunityPage() {
     getTopBuilders(12).then((b) => { if (!alive) return; setBuilders(b); getRanksFor(b.map((x) => x.id).filter(Boolean)).then((r) => alive && setBuilderRanks(r)).catch(() => {}); }).catch(() => {});
     // Right-rail action modules: region-aware players + courses that need a cover.
     getLeaderboardWithRegion(150).then((rows) => alive && setGeoRows(rows)).catch(() => {});
-    // Courses that need help: no cover, or no reviews yet. Keep coords for nearest-to-you sorting.
-    getAllCourses().then((cs) => { if (alive) setImproveCourses(cs.filter((c) => c.name && (!c.coverPhotoUrl || !c.reviewCount)).slice(0, 1200)); }).catch(() => {});
+    // Courses that need help: no cover, no reviews, or only one layout. Keep coords for nearest sort.
+    getAllCourses().then((cs) => { if (alive) setImproveCourses(cs.filter((c) => c.name && (!c.coverPhotoUrl || !c.reviewCount || Object.keys(c.layoutAverages || {}).length < 2)).slice(0, 1500)); }).catch(() => {});
     // Best-effort current location so "near you" is actually near you (falls back to home-course region).
     if (typeof navigator !== "undefined" && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -175,22 +175,31 @@ export default function CommunityPage() {
     const co = myRegion?.country ? pool.filter((r) => r.country === myRegion.country) : [];
     return (st.length >= 3 ? st : co.length >= 3 ? co : pool).slice(0, 8).map((r) => ({ ...r, dist: undefined as number | undefined }));
   }, [geoRows, myCid, following, myLoc, myRegion]);
-  // Courses to improve, nearest first, each with a concrete reason to act.
+  // Courses to improve — a MIX of task types (one clean line each), nearest first. We classify each
+  // course by its single most-useful next task, then round-robin across the task buckets so the rail
+  // always shows variety: at least one "leave a review", one "add a cover photo", one "add a layout".
   const nearbyImprove = useMemo(() => {
-    const withReason = improveCourses.map((c) => {
-      const played = playedNames.has(c.name.trim().toLowerCase());
-      const reason = !c.coverPhotoUrl ? "No cover photo yet" : played ? "You've played here — leave a review" : "No reviews yet — be the first";
-      const action = !c.coverPhotoUrl ? "Add cover" : "Review";
-      const d = myLoc && c.latitude != null && c.longitude != null ? milesBetween(myLoc, { lat: c.latitude, lng: c.longitude }) : Infinity;
-      return { c, reason, action, d };
-    });
-    // Prioritize played-but-unreviewed courses, then sort by distance.
-    withReason.sort((a, b) => {
-      const ap = playedNames.has(a.c.name.trim().toLowerCase()) && a.c.coverPhotoUrl ? 0 : 1;
-      const bp = playedNames.has(b.c.name.trim().toLowerCase()) && b.c.coverPhotoUrl ? 0 : 1;
-      return ap - bp || a.d - b.d;
-    });
-    return withReason.slice(0, 4);
+    type Kind = "review" | "cover" | "layout";
+    const dist = (c: Course) => (myLoc && c.latitude != null && c.longitude != null ? milesBetween(myLoc, { lat: c.latitude, lng: c.longitude }) : Infinity);
+    const classify = (c: Course): { kind: Kind; reason: string; action: string } | null => {
+      if (!c.coverPhotoUrl) return { kind: "cover", reason: "Add a cover photo", action: "Add cover" };
+      if (!c.reviewCount) return { kind: "review", reason: playedNames.has(c.name.trim().toLowerCase()) ? "You've played here — leave a review" : "Be the first to review it", action: "Review" };
+      if (Object.keys(c.layoutAverages || {}).length < 2) return { kind: "layout", reason: "Add an alternate layout", action: "Add layout" };
+      return null;
+    };
+    const buckets: Record<Kind, { c: Course; reason: string; action: string; d: number }[]> = { review: [], cover: [], layout: [] };
+    for (const c of improveCourses) { const cl = classify(c); if (cl) buckets[cl.kind].push({ c, ...cl, d: dist(c) }); }
+    (Object.keys(buckets) as Kind[]).forEach((k) => buckets[k].sort((a, b) => a.d - b.d));
+    // Round-robin across task types so the four slots stay diverse (review → cover → layout → …).
+    const order: Kind[] = ["review", "cover", "layout"];
+    const idx: Record<Kind, number> = { review: 0, cover: 0, layout: 0 };
+    const out: { c: Course; reason: string; action: string; d: number }[] = [];
+    while (out.length < 4) {
+      let added = false;
+      for (const k of order) { if (out.length >= 4) break; if (idx[k] < buckets[k].length) { out.push(buckets[k][idx[k]++]); added = true; } }
+      if (!added) break;
+    }
+    return out;
   }, [improveCourses, playedNames, myLoc]);
 
   // Load the last-seen marks (per device) so we can show unread dots on the tabs.
@@ -234,6 +243,14 @@ export default function CommunityPage() {
   // infinite scroll
   const sentinel = useRef<HTMLDivElement | null>(null);
   const loadMoreRef = useRef<() => void>(() => {});
+  const composerRef = useRef<HTMLDivElement | null>(null);
+  // Floating "+ Post" — jump to the composer and expand it from anywhere on the page.
+  const openComposer = () => {
+    if (!user) { router.push("/login"); return; }
+    setTab("feed");
+    setComposerExpanded(true);
+    requestAnimationFrame(() => composerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
   const loadMore = async () => {
     if (loadingMore || !hasMore || tab !== "feed" || posts.length === 0) return;
     setLoadingMore(true);
@@ -259,24 +276,26 @@ export default function CommunityPage() {
 
   // Radius milestone posts (real, interactive) are pinned at the top of the feed on their own —
   // keep them out of the regular sort/featured/list so they render once, prominently.
-  const nonSystemPosts = useMemo(() => posts.filter((p) => !p.isSystem), [posts]);
-  const systemPosts = useMemo(() => posts.filter((p) => p.isSystem).sort((a, b) => b.createdAt - a.createdAt).slice(0, 3), [posts]);
+  // Radius milestone posts flow through the SAME feed algorithm as everyone else's — sorted by hot
+  // score, so they decay with age and don't stay pinned forever.
   const sortedPosts = useMemo(() => {
-    const a = [...nonSystemPosts];
+    const a = [...posts];
     if (sort === "new") a.sort((x, y) => y.createdAt - x.createdAt);
     else if (sort === "top") a.sort((x, y) => y.likeCount - x.likeCount);
     else a.sort((x, y) => hotScore(y) - hotScore(x));
     return a;
-  }, [nonSystemPosts, sort]);
+  }, [posts, sort]);
   // Featured post rotates on a rhythm (every 6h) through the most-engaging posts, so the
-  // spotlight isn't always the same post visit-to-visit.
+  // spotlight isn't always the same post visit-to-visit. Radius system posts aren't eligible for
+  // the spotlight (they're not a person's post) — they just ride the normal feed.
   const featured = useMemo(() => {
-    if (!nonSystemPosts.length) return null;
-    const ranked = [...nonSystemPosts].sort((a, b) => (b.likeCount + b.commentCount * 2) - (a.likeCount + a.commentCount * 2));
+    const pool0 = posts.filter((p) => !p.isSystem);
+    if (!pool0.length) return null;
+    const ranked = [...pool0].sort((a, b) => (b.likeCount + b.commentCount * 2) - (a.likeCount + a.commentCount * 2));
     const pool = ranked.slice(0, Math.min(5, ranked.length));
     const bucket = Math.floor(Date.now() / (6 * 60 * 60 * 1000));
     return pool[bucket % pool.length];
-  }, [nonSystemPosts]);
+  }, [posts]);
   const feedList = useMemo(() => {
     if (sort === "following") return sortedPosts.filter((p) => p.authorId && following.has(p.authorId));
     return sortedPosts.filter((p) => !featured || p.id !== featured.id);
@@ -466,9 +485,11 @@ export default function CommunityPage() {
   );
 
   return (
-    <div className="relative min-h-screen bg-[var(--bg-deep)] text-[var(--cream)]">
-      {/* Ambient, slowly-drifting mosaic behind ALL content — the old hero photo, now page texture. */}
-      <div aria-hidden className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+    <div className="relative min-h-screen text-[var(--cream)]">
+      {/* Ambient, slowly-drifting mosaic behind ALL page content — the old hero photo, now page
+          texture. Sits at -z-10 with its own solid base so page content (z-10) shows over it while
+          the footer (which follows this page in the layout) is NOT covered by it. */}
+      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[var(--bg-deep)]">
         <HeroMosaic images={mosaicImages} />
         <div className="absolute inset-0 bg-[var(--bg-deep)]/85" />
         <div className="absolute inset-0 bg-[radial-gradient(120%_70%_at_50%_-10%,transparent_45%,rgba(11,17,14,0.72))]" />
@@ -538,17 +559,13 @@ export default function CommunityPage() {
           {/* CENTER */}
           <div className="min-w-0">
             {/* Composer — first element in the feed column, matching post width */}
-            {composer}
+            <div ref={composerRef} className="scroll-mt-[160px]">{composer}</div>
             {tab === "feed" && (
               <div className="space-y-0">
                 {loading && <div className="mt-3 space-y-3">{[0, 1, 2].map((i) => <PostSkeleton key={i} />)}</div>}
 
                 {sort === "following" && !user && <p className={`py-10 text-center text-sm text-[var(--sage-dim)]`}><Link href="/login" className="font-bold text-[var(--gold)] hover:underline">Sign in</Link> to see rounds from players you follow.</p>}
                 {sort === "following" && user && !loading && feedList.length === 0 && <p className={`py-10 text-center text-sm text-[var(--sage-dim)]`}>You&apos;re not following anyone with posts yet. Find players on the <Link href="/leaderboard" className="font-bold text-[var(--gold)] hover:underline">leaderboard</Link> and tap Follow.</p>}
-
-                {sort !== "following" && !loading && systemPosts.map((p) => (
-                  <PostCard key={p.id} post={p} myReaction={reactionMap[p.id]} onReact={(t) => onReact(p.id, t)} onOpen={() => setOpen(p)} />
-                ))}
 
                 {sort !== "following" && !loading && featured && (
                   <div className="border-l-2 border-[var(--gold)]/45 pl-3">
@@ -639,7 +656,7 @@ export default function CommunityPage() {
                         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--gold-dim)] text-base text-[var(--gold)]">⛳</span>
                         <div className="min-w-0 flex-1">
                           <div className="truncate text-sm font-semibold text-[var(--cream)]">{c.name}</div>
-                          <div className="truncate text-[11px] text-[var(--sage-dim)]">{reason}{c.city || c.state ? ` · ${[c.city, c.state].filter(Boolean).join(", ")}` : ""}</div>
+                          <div className="truncate text-[11px] text-[var(--sage-dim)]">{reason}</div>
                         </div>
                         <Link href={`/courses/${slugify(c.name, c.id)}`} className="shrink-0 rounded-full bg-[var(--gold)]/15 px-3 py-1 text-xs font-bold text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/25">{action}</Link>
                       </div>
@@ -666,6 +683,13 @@ export default function CommunityPage() {
           {pendingNew.length} new post{pendingNew.length === 1 ? "" : "s"}
         </button>
       )}
+
+      {/* Floating "+ Post" — always available, jumps to & opens the composer */}
+      <button onClick={openComposer} aria-label="Create a post" className="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 rounded-full bg-[var(--gold)] px-5 py-3 text-sm font-bold text-[#141b16] shadow-[0_16px_40px_-12px_rgba(0,0,0,0.75)] transition-transform hover:-translate-y-0.5 hover:bg-[var(--gold-bright)]">
+        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+        Post
+      </button>
+
       {open && <PostDetail post={open} uid={user?.uid} myReaction={reactionMap[open.id]} onReact={(t) => onReact(open.id, t)} onClose={() => setOpen(null)} onCommented={() => bumpComment(open.id)} />}
       {openThread && <ThreadDetail thread={openThread} rank={openThread.authorId ? ranks.get(openThread.authorId) : undefined} uid={user?.uid} onClose={() => setOpenThread(null)} />}
       {newThread && user && <NewThreadModal uid={user.uid} onCreated={(t) => { setThreads((prev) => [t, ...prev]); setNewThread(false); setTab("forums"); setOpenThread(t); }} onClose={() => setNewThread(false)} />}
