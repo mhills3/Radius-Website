@@ -185,7 +185,7 @@ export default function CoursesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#faf8f3] text-[#16221b]">
+    <div className="courses-scope min-h-screen bg-[var(--c-bg)] text-[var(--c-ink)]">
       {/* hero — photo backed (DSC_8535 basket) */}
       <div className="relative isolate z-10 overflow-hidden bg-[var(--bg-deep)] text-[var(--cream)]">
         <Image src="/course/courses-hero.jpg" alt="" fill sizes="100vw" quality={88} className="-z-10 object-cover object-center" />
@@ -236,24 +236,24 @@ export default function CoursesPage() {
       {view === "map" ? (
         /* ===== Split discovery (AllTrails/Zillow style) ===== */
         <div className="mx-auto grid max-w-[1600px] grid-cols-1 lg:h-[calc(100vh-205px)] lg:grid-cols-[400px_1fr]">
-          <div className="order-2 flex min-h-0 flex-col border-r border-black/[0.06] bg-[#faf8f3] lg:order-1">
-            <div className="border-b border-black/[0.06] px-4 py-3">
+          <div className="order-2 flex min-h-0 flex-col border-r border-[var(--c-line)] bg-[var(--c-bg)] lg:order-1">
+            <div className="border-b border-[var(--c-line)] px-4 py-3">
               <div className="flex items-baseline gap-1.5">
-                <span className="font-[family-name:var(--font-heading)] text-base font-extrabold text-[#16221b]">{(viewportFiltering ? visibleCourses.length : (anyFilter ? filtered.length : (totalCount || filtered.length))).toLocaleString()}</span>
-                <span className="text-sm text-[#8a968d]">{(viewportFiltering ? visibleCourses.length : (anyFilter ? filtered.length : (totalCount || filtered.length))) === 1 ? "course" : "courses"}{viewportFiltering ? " in view" : stateFilter ? ` in ${stateFilter}` : userLoc ? " near you" : ""}</span>
+                <span className="font-[family-name:var(--font-heading)] text-base font-extrabold text-[var(--c-ink)]">{(viewportFiltering ? visibleCourses.length : (anyFilter ? filtered.length : (totalCount || filtered.length))).toLocaleString()}</span>
+                <span className="text-sm text-[var(--c-muted)]">{(viewportFiltering ? visibleCourses.length : (anyFilter ? filtered.length : (totalCount || filtered.length))) === 1 ? "course" : "courses"}{viewportFiltering ? " in view" : stateFilter ? ` in ${stateFilter}` : userLoc ? " near you" : ""}</span>
               </div>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto">
             {loading ? (
-              <div className="space-y-2 p-3">{[0, 1, 2, 3, 4].map((i) => <div key={i} className="h-20 animate-pulse rounded-xl bg-black/5" />)}</div>
+              <div className="space-y-2 p-3">{[0, 1, 2, 3, 4].map((i) => <div key={i} className="h-20 animate-pulse rounded-xl bg-[var(--c-raise)]" />)}</div>
             ) : (
-              <div className="divide-y divide-black/[0.05]">
+              <div className="divide-y divide-[var(--c-line)]">
                 {visibleCourses.map((c) => {
                   const d = distOf(c);
                   const active = highlightId === c.id;
                   return (
-                    <Link key={c.id} href={`/courses/${slugify(c.name, c.id)}`} onMouseEnter={() => setHighlightId(c.id)} onMouseLeave={() => setHighlightId(null)} className={`group flex items-center gap-3.5 px-4 py-3 transition-colors ${active ? "bg-[var(--gold)]/[0.1]" : "hover:bg-black/[0.025]"}`}>
-                      <div className="relative h-[68px] w-[68px] shrink-0 overflow-hidden rounded-xl bg-[var(--bg-deep)] ring-1 ring-black/[0.06]">
+                    <Link key={c.id} href={`/courses/${slugify(c.name, c.id)}`} onMouseEnter={() => setHighlightId(c.id)} onMouseLeave={() => setHighlightId(null)} className={`group flex items-center gap-3.5 px-4 py-3 transition-colors ${active ? "bg-[var(--gold)]/[0.1]" : "hover:bg-[var(--c-raise)]"}`}>
+                      <div className="relative h-[68px] w-[68px] shrink-0 overflow-hidden rounded-xl bg-[var(--bg-deep)] ring-1 ring-[var(--c-line)]">
                         {c.coverPhotoUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={c.coverPhotoUrl} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.06]" />
@@ -263,24 +263,24 @@ export default function CoursesPage() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
-                          <h3 className="truncate font-[family-name:var(--font-heading)] text-[15px] font-bold leading-tight text-[#16221b] group-hover:text-[#9a7a3a]">{c.name}</h3>
-                          {c.rating ? <span className="shrink-0 text-xs font-bold text-[#9a7a3a]">★ {c.rating.toFixed(1)}</span> : null}
+                          <h3 className="truncate font-[family-name:var(--font-heading)] text-[15px] font-bold leading-tight text-[var(--c-ink)] group-hover:text-[var(--gold)]">{c.name}</h3>
+                          {c.rating ? <span className="shrink-0 text-xs font-bold text-[var(--gold)]">★ {c.rating.toFixed(1)}</span> : null}
                         </div>
-                        <div className="mt-1 flex items-center gap-1 truncate text-xs text-[#8a968d]">
+                        <div className="mt-1 flex items-center gap-1 truncate text-xs text-[var(--c-muted)]">
                           <svg className="h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 21s-7-5.2-7-11a7 7 0 0 1 14 0c0 5.8-7 11-7 11z" /><circle cx="12" cy="10" r="2.5" /></svg>
                           <span className="truncate">{[c.city, c.state].filter(Boolean).join(", ")}</span>
                         </div>
                         <div className="mt-1.5 flex items-center gap-2 text-xs">
-                          <span className="font-semibold text-[#46554c]">{c.holeCount} holes · Par {c.par}</span>
-                          {playedOf(c) && <span className="rounded-md bg-[#5fcf80]/15 px-1.5 py-0.5 text-[10px] font-bold text-[#1d8f48]">✓ PLAYED</span>}
-                          {d != null && <span className="ml-auto rounded-full bg-[#2b6fd6]/10 px-2 py-0.5 text-[11px] font-bold text-[#2b6fd6]">{d < 10 ? d.toFixed(1) : Math.round(d)} mi</span>}
+                          <span className="font-semibold text-[var(--c-body)]">{c.holeCount} holes · Par {c.par}</span>
+                          {playedOf(c) && <span className="rounded-md bg-[#5fcf80]/15 px-1.5 py-0.5 text-[10px] font-bold text-[#5fcf80]">✓ PLAYED</span>}
+                          {d != null && <span className="ml-auto rounded-full bg-[#8FBDE3]/12 px-2 py-0.5 text-[11px] font-bold text-[#8FBDE3]">{d < 10 ? d.toFixed(1) : Math.round(d)} mi</span>}
                         </div>
                       </div>
-                      <svg className="h-4 w-4 shrink-0 text-black/15 transition-colors group-hover:text-[#9a7a3a]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>
+                      <svg className="h-4 w-4 shrink-0 text-white/15 transition-colors group-hover:text-[var(--gold)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>
                     </Link>
                   );
                 })}
-                {visibleCourses.length === 0 && <p className="p-8 text-center text-sm text-[#6b7a70]">{viewportFiltering ? "No courses in this area — zoom out to see more." : "No courses match."}</p>}
+                {visibleCourses.length === 0 && <p className="p-8 text-center text-sm text-[var(--c-muted)]">{viewportFiltering ? "No courses in this area — zoom out to see more." : "No courses match."}</p>}
               </div>
             )}
             </div>
@@ -291,9 +291,9 @@ export default function CoursesPage() {
             ) : (
               <CourseMap courses={filtered} filterActive={anyFilter} highlightId={highlightId} flyTo={flyTo} userLoc={userLoc} onSelect={setHighlightId} onLocate={setUserLoc} onBoundsChange={setMapBounds} mode={mapMode} className="h-full w-full" />
             )}
-            <div className="absolute left-4 top-4 z-10 inline-flex rounded-full bg-white/95 p-1 shadow-[0_6px_20px_-4px_rgba(0,0,0,0.3)] ring-1 ring-black/5 backdrop-blur">
+            <div className="absolute left-4 top-4 z-10 inline-flex rounded-full bg-[var(--c-card)]/95 p-1 shadow-[0_10px_30px_-8px_rgba(0,0,0,0.6)] ring-1 ring-[var(--c-line)] backdrop-blur">
               {(["pins", "heat", "coverage"] as const).map((m) => (
-                <button key={m} onClick={() => setMapMode(m)} className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors ${mapMode === m ? "bg-[#16221b] text-white" : "text-[#46554c] hover:text-[#16221b]"}`}>{m === "pins" ? "📍 Pins" : m === "heat" ? "🔥 Heatmap" : "🗺️ Coverage"}</button>
+                <button key={m} onClick={() => setMapMode(m)} className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors ${mapMode === m ? "bg-[var(--gold)] text-[#141b16]" : "text-[var(--c-body)] hover:text-[var(--c-ink)]"}`}>{m === "pins" ? "📍 Pins" : m === "heat" ? "🔥 Heatmap" : "🗺️ Coverage"}</button>
               ))}
             </div>
           </div>
@@ -305,18 +305,18 @@ export default function CoursesPage() {
               {!loading && !anyFilter && (
                 <>
                   {courseOfDay && (
-                    <Link href={`/courses/${slugify(courseOfDay.name, courseOfDay.id)}`} className="group mb-10 block overflow-hidden rounded-3xl border border-black/8 shadow-sm">
+                    <Link href={`/courses/${slugify(courseOfDay.name, courseOfDay.id)}`} className="group mb-10 block overflow-hidden rounded-3xl border border-[var(--c-line)] shadow-sm">
                       <div className="relative aspect-[21/9] w-full overflow-hidden bg-[var(--bg-deep)]">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={courseOfDay.coverPhotoUrl} alt={courseOfDay.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                        <div className="absolute left-5 top-5 rounded-full bg-[var(--gold)] px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-[#16221b]">☀️ Course of the day</div>
+                        <div className="absolute left-5 top-5 rounded-full bg-[var(--gold)] px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-[#141b16]">☀️ Course of the day</div>
                         <div className="absolute bottom-5 left-5 right-5 flex flex-wrap items-end justify-between gap-3 text-white">
                           <div>
                             <h2 className="font-[family-name:var(--font-heading)] text-2xl font-extrabold drop-shadow md:text-3xl">{courseOfDay.name}</h2>
                             <div className="mt-1 text-sm text-white/90 drop-shadow">📍 {[courseOfDay.city, courseOfDay.state].filter(Boolean).join(", ")} · {courseOfDay.holeCount} holes · Par {courseOfDay.par}{courseOfDay.rating ? ` · ★ ${courseOfDay.rating.toFixed(1)}` : ""}</div>
                           </div>
-                          <span className="rounded-full bg-white/95 px-5 py-2.5 text-sm font-bold text-[#16221b] transition-transform group-hover:-translate-y-0.5">Explore →</span>
+                          <span className="rounded-full bg-white/95 px-5 py-2.5 text-sm font-bold text-[#141b16] transition-transform group-hover:-translate-y-0.5">Explore →</span>
                         </div>
                       </div>
                     </Link>
@@ -333,9 +333,9 @@ export default function CoursesPage() {
                 <>
                   {anyFilter && <h2 className="mb-4 mt-2 font-[family-name:var(--font-heading)] text-xl font-bold tracking-tight">{filtered.length} result{filtered.length === 1 ? "" : "s"}</h2>}
                   {loading ? (
-                    <div className="grid gap-5 sm:grid-cols-2">{[0, 1, 2, 3].map((i) => <div key={i} className="h-72 animate-pulse rounded-2xl bg-black/5" />)}</div>
+                    <div className="grid gap-5 sm:grid-cols-2">{[0, 1, 2, 3].map((i) => <div key={i} className="h-72 animate-pulse rounded-2xl bg-[var(--c-raise)]" />)}</div>
                   ) : filtered.length === 0 ? (
-                    <p className="rounded-2xl border border-black/8 bg-white p-12 text-center text-sm text-[#6b7a70]">No courses match your filters.</p>
+                    <p className="rounded-2xl border border-[var(--c-line)] bg-[var(--c-card)] p-12 text-center text-sm text-[var(--c-muted)]">No courses match your filters.</p>
                   ) : (
                     <div className="grid gap-5 sm:grid-cols-2">{filtered.map((c) => <CourseCard key={c.id} course={c} played={playedOf(c)} />)}</div>
                   )}
@@ -363,29 +363,29 @@ export default function CoursesPage() {
                     </div>
                   </Link>
                 )}
-                <div className="rounded-2xl border border-black/8 bg-white p-4 shadow-sm">
-                  <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-[#9a7a3a]">🏗️ Top builders</div>
+                <div className="rounded-2xl border border-[var(--c-line)] bg-[var(--c-card)] p-4 shadow-sm">
+                  <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-[var(--gold)]">🏗️ Top builders</div>
                   <div className="space-y-3">
-                    {builders.length === 0 && <p className="text-sm text-[#8a968d]">—</p>}
+                    {builders.length === 0 && <p className="text-sm text-[var(--c-muted)]">—</p>}
                     {builders.map((b, i) => {
                       const legend = b.count >= 100; // 100+ courses built → "Legend" treatment
                       return (
                       <div key={b.name + i} className="flex items-center gap-3">
-                        <span className="w-3 shrink-0 text-xs font-bold text-[#9a7a3a]">{i + 1}</span>
-                        <span className={`grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full text-xs font-bold text-[#9a7a3a] ${legend ? "bg-gradient-to-br from-[var(--gold-bright)] to-[var(--gold)] ring-2 ring-[var(--gold)]/40" : "bg-[var(--gold)]/15"}`}>
+                        <span className="w-3 shrink-0 text-xs font-bold text-[var(--gold)]">{i + 1}</span>
+                        <span className={`grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full text-xs font-bold text-[var(--gold)] ${legend ? "bg-gradient-to-br from-[var(--gold-bright)] to-[var(--gold)] ring-2 ring-[var(--gold)]/40" : "bg-[var(--gold)]/15"}`}>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           {b.id && builderRanks.get(b.id)?.photo ? <img src={builderRanks.get(b.id)!.photo} alt="" loading="lazy" className="h-full w-full object-cover" /> : b.name.charAt(0).toUpperCase()}
                         </span>
                         <span className="flex min-w-0 flex-1 items-center gap-1">
                           {legend && (
-                            <svg className="h-3.5 w-3.5 shrink-0 text-[#c79a3a]" viewBox="0 0 24 24" fill="currentColor" aria-label="Legend"><path d="M5 19h14l1.5-10-4.5 3.5L12 6l-4 6.5L3.5 9 5 19z" /></svg>
+                            <svg className="h-3.5 w-3.5 shrink-0 text-[var(--gold-bright)]" viewBox="0 0 24 24" fill="currentColor" aria-label="Legend"><path d="M5 19h14l1.5-10-4.5 3.5L12 6l-4 6.5L3.5 9 5 19z" /></svg>
                           )}
                           <span className="flex min-w-0 flex-col">
-                            <span className={`min-w-0 truncate text-sm leading-tight ${legend ? "bg-gradient-to-r from-[#9a7a3a] to-[#d4a94a] bg-clip-text font-extrabold text-transparent" : "font-semibold text-[#16221b]"}`} title={legend ? `${b.name} · Legend builder (${b.count} courses)` : b.name}>{b.name}</span>
-                            {b.username && <span className="min-w-0 truncate text-[11px] leading-tight text-[#8a968d]">@{b.username}</span>}
+                            <span className={`min-w-0 truncate text-sm leading-tight ${legend ? "bg-gradient-to-r from-[#9a7a3a] to-[#d4a94a] bg-clip-text font-extrabold text-transparent" : "font-semibold text-[var(--c-ink)]"}`} title={legend ? `${b.name} · Legend builder (${b.count} courses)` : b.name}>{b.name}</span>
+                            {b.username && <span className="min-w-0 truncate text-[11px] leading-tight text-[var(--c-muted)]">@{b.username}</span>}
                           </span>
                         </span>
-                        <span className={`shrink-0 text-xs font-bold ${legend ? "text-[#c79a3a]" : "text-[#6b7a70]"}`}>{b.count}</span>
+                        <span className={`shrink-0 text-xs font-bold ${legend ? "text-[var(--gold-bright)]" : "text-[var(--c-muted)]"}`}>{b.count}</span>
                       </div>
                       );
                     })}
@@ -393,15 +393,15 @@ export default function CoursesPage() {
                 </div>
 
                 {mostPlayed.length > 0 && (
-                  <div className="rounded-2xl border border-black/8 bg-white p-4 shadow-sm">
-                    <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-[#9a7a3a]">🔥 Most popular</div>
+                  <div className="rounded-2xl border border-[var(--c-line)] bg-[var(--c-card)] p-4 shadow-sm">
+                    <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-[var(--gold)]">🔥 Most popular</div>
                     <div className="space-y-3">
                       {mostPlayed.map((c, i) => {
                         const top = i === 0; // #1 most-played gets the crown + gold treatment
                         return (
                           <Link key={c.id} href={`/courses/${slugify(c.name, c.id)}`} className="group flex items-center gap-3">
-                            <span className="w-3 shrink-0 text-xs font-bold text-[#9a7a3a]">{i + 1}</span>
-                            <span className={`relative h-8 w-8 shrink-0 overflow-hidden rounded-lg bg-[var(--bg-deep)] ${top ? "ring-2 ring-[var(--gold)]/50" : "ring-1 ring-black/[0.06]"}`}>
+                            <span className="w-3 shrink-0 text-xs font-bold text-[var(--gold)]">{i + 1}</span>
+                            <span className={`relative h-8 w-8 shrink-0 overflow-hidden rounded-lg bg-[var(--bg-deep)] ${top ? "ring-2 ring-[var(--gold)]/50" : "ring-1 ring-[var(--c-line)]"}`}>
                               {c.coverPhotoUrl ? (
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img src={c.coverPhotoUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
@@ -410,50 +410,50 @@ export default function CoursesPage() {
                               )}
                             </span>
                             <span className="flex min-w-0 flex-1 items-center gap-1">
-                              {top && <svg className="h-3.5 w-3.5 shrink-0 text-[#c79a3a]" viewBox="0 0 24 24" fill="currentColor" aria-label="Most played"><path d="M5 19h14l1.5-10-4.5 3.5L12 6l-4 6.5L3.5 9 5 19z" /></svg>}
+                              {top && <svg className="h-3.5 w-3.5 shrink-0 text-[var(--gold-bright)]" viewBox="0 0 24 24" fill="currentColor" aria-label="Most played"><path d="M5 19h14l1.5-10-4.5 3.5L12 6l-4 6.5L3.5 9 5 19z" /></svg>}
                               <span className="min-w-0">
-                                <span className={`block truncate text-sm leading-tight ${top ? "bg-gradient-to-r from-[#9a7a3a] to-[#d4a94a] bg-clip-text font-extrabold text-transparent" : "font-semibold text-[#16221b] group-hover:text-[#9a7a3a]"}`}>{c.name}</span>
-                                <span className="block truncate text-[11px] text-[#8a968d]">{[c.city, c.state].filter(Boolean).join(", ")}</span>
+                                <span className={`block truncate text-sm leading-tight ${top ? "bg-gradient-to-r from-[#9a7a3a] to-[#d4a94a] bg-clip-text font-extrabold text-transparent" : "font-semibold text-[var(--c-ink)] group-hover:text-[var(--gold)]"}`}>{c.name}</span>
+                                <span className="block truncate text-[11px] text-[var(--c-muted)]">{[c.city, c.state].filter(Boolean).join(", ")}</span>
                               </span>
                             </span>
-                            <span className={`shrink-0 text-xs font-bold ${top ? "text-[#c79a3a]" : "text-[#6b7a70]"}`}>{(c.communityScoreCount ?? 0).toLocaleString()}</span>
+                            <span className={`shrink-0 text-xs font-bold ${top ? "text-[var(--gold-bright)]" : "text-[var(--c-muted)]"}`}>{(c.communityScoreCount ?? 0).toLocaleString()}</span>
                           </Link>
                         );
                       })}
                     </div>
-                    <p className="mt-3 text-[10px] text-[#a3a89f]">By rounds logged on Radius</p>
+                    <p className="mt-3 text-[10px] text-[var(--c-muted)]">By rounds logged on Radius</p>
                   </div>
                 )}
 
-                <div className="rounded-2xl border border-black/8 bg-white p-4 shadow-sm">
-                  <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-[#9a7a3a]">🗺️ Top states</div>
+                <div className="rounded-2xl border border-[var(--c-line)] bg-[var(--c-card)] p-4 shadow-sm">
+                  <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-[var(--gold)]">🗺️ Top states</div>
                   <div className="space-y-2.5">
                     {topStates.map(([st, n]) => (
                       <Link key={st} href={`/courses/state/${st}`} className="flex items-center gap-2.5 text-sm group">
-                        <span className="w-7 shrink-0 font-bold text-[#16221b] group-hover:text-[#9a7a3a]">{st}</span>
-                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-black/[0.06]"><div className="h-full rounded-full bg-[var(--gold)]" style={{ width: `${Math.max(8, (n / maxStateCount) * 100)}%` }} /></div>
-                        <span className="w-8 shrink-0 text-right text-xs font-semibold text-[#6b7a70]">{n}</span>
+                        <span className="w-7 shrink-0 font-bold text-[var(--c-ink)] group-hover:text-[var(--gold)]">{st}</span>
+                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--c-raise)]"><div className="h-full rounded-full bg-[var(--gold)]" style={{ width: `${Math.max(8, (n / maxStateCount) * 100)}%` }} /></div>
+                        <span className="w-8 shrink-0 text-right text-xs font-semibold text-[var(--c-muted)]">{n}</span>
                       </Link>
                     ))}
-                    {topStates.length === 0 && <p className="text-sm text-[#8a968d]">—</p>}
+                    {topStates.length === 0 && <p className="text-sm text-[var(--c-muted)]">—</p>}
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-black/8 bg-white p-4 shadow-sm">
-                  <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-[#9a7a3a]">🌍 Countries</div>
+                <div className="rounded-2xl border border-[var(--c-line)] bg-[var(--c-card)] p-4 shadow-sm">
+                  <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-[var(--gold)]">🌍 Countries</div>
                   <div className="space-y-2">
                     {topCountries.map(([cn, n], i) => (
                       <div key={cn} className="flex items-center gap-2.5 text-sm">
-                        <span className="w-3 shrink-0 text-xs font-bold text-[#9a7a3a]">{i + 1}</span>
-                        <span className="flex-1 truncate font-semibold text-[#16221b]">{FLAG[cn] ?? "📍"} {cn}</span>
-                        <span className="shrink-0 text-xs font-semibold text-[#6b7a70]">{n}</span>
+                        <span className="w-3 shrink-0 text-xs font-bold text-[var(--gold)]">{i + 1}</span>
+                        <span className="flex-1 truncate font-semibold text-[var(--c-ink)]">{FLAG[cn] ?? "📍"} {cn}</span>
+                        <span className="shrink-0 text-xs font-semibold text-[var(--c-muted)]">{n}</span>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-black/8 bg-white p-4 shadow-sm">
-                  <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-[#9a7a3a]">📊 By the numbers</div>
+                <div className="rounded-2xl border border-[var(--c-line)] bg-[var(--c-card)] p-4 shadow-sm">
+                  <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-[var(--gold)]">📊 By the numbers</div>
                   <div className="space-y-2.5 text-sm">
                     <Num label="Holes mapped" value={totalHoles.toLocaleString()} />
                     <Num label="Avg holes / course" value={courses.length ? Math.round(totalHoles / courses.length) : 0} />
@@ -462,7 +462,7 @@ export default function CoursesPage() {
                     <Num label="Added this month" value={`+${addedThisMonth}`} />
                     {longest && <Num label="Longest course" value={fmtDist(longest.distanceFt, metric)} />}
                   </div>
-                  {longest && <p className="mt-2 truncate text-xs text-[#8a968d]">🏆 {longest.name}</p>}
+                  {longest && <p className="mt-2 truncate text-xs text-[var(--c-muted)]">🏆 {longest.name}</p>}
                 </div>
               </div>
             </aside>
@@ -478,7 +478,7 @@ const FLAG: Record<string, string> = {
 };
 
 function Num({ label, value }: { label: string; value: string | number }) {
-  return <div className="flex items-center justify-between"><span className="text-[#6b7a70]">{label}</span><span className="font-bold text-[#16221b]">{value}</span></div>;
+  return <div className="flex items-center justify-between"><span className="text-[var(--c-muted)]">{label}</span><span className="font-bold text-[var(--c-ink)]">{value}</span></div>;
 }
 
 function Row({ title, subtitle, items, played }: { title: string; subtitle?: string; items: Course[]; played?: Map<string, PlayedStat> }) {
@@ -486,7 +486,7 @@ function Row({ title, subtitle, items, played }: { title: string; subtitle?: str
     <section className="mb-10">
       <div className="mb-4">
         <h2 className="font-[family-name:var(--font-heading)] text-xl font-bold tracking-tight">{title}</h2>
-        {subtitle && <p className="text-sm text-[#8a968d]">{subtitle}</p>}
+        {subtitle && <p className="text-sm text-[var(--c-muted)]">{subtitle}</p>}
       </div>
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{items.map((c) => <CourseCard key={c.id} course={c} played={played?.get(c.name.trim().toLowerCase())} />)}</div>
     </section>

@@ -24,7 +24,7 @@ export default function CourseCard({ course, played }: { course: Course; played?
   const loc = [course.city, course.state].filter(Boolean).join(", ");
   const lengthK = course.distanceFt ? fmtDist(course.distanceFt, metric) : null;
   return (
-    <Link href={`/courses/${slugify(course.name, course.id)}`} className="group flex flex-col overflow-hidden rounded-2xl border border-black/8 bg-white shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_18px_40px_-16px_rgba(0,0,0,0.28)]">
+    <Link href={`/courses/${slugify(course.name, course.id)}`} className="group flex flex-col overflow-hidden rounded-2xl border border-[var(--c-line)] bg-[var(--c-card)] shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_18px_40px_-16px_rgba(0,0,0,0.28)]">
       <div className="relative aspect-[16/10] overflow-hidden bg-[var(--bg-deep)]">
         {course.coverPhotoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -40,7 +40,7 @@ export default function CourseCard({ course, played }: { course: Course; played?
         {played ? (
           <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-[#16221b]/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#5fcf80] backdrop-blur-sm">✓ Played{played.best != null ? ` · best ${fmt(played.best)}` : ""}</span>
         ) : course.isFeatured ? (
-          <span className="absolute left-3 top-3 rounded-full bg-[var(--gold)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#16221b]">★ Featured</span>
+          <span className="absolute left-3 top-3 rounded-full bg-[var(--gold)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#141b16]">★ Featured</span>
         ) : null}
         <span className="absolute right-3 top-3 rounded-full bg-black/45 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white backdrop-blur-sm">{course.isFree ? "Free" : course.isPublic ? "Public" : "Private"}</span>
         <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between">
@@ -52,24 +52,24 @@ export default function CourseCard({ course, played }: { course: Course; played?
         </div>
       </div>
       <div className="flex flex-1 flex-col p-4">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-[#46554c]">
-          <span className="font-bold text-[#16221b]">{course.holeCount} holes</span>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-[var(--c-body)]">
+          <span className="font-bold text-[var(--c-ink)]">{course.holeCount} holes</span>
           {course.par ? <span>· Par {course.par}</span> : null}
           {lengthK && <span>· {lengthK}</span>}
         </div>
         {(course.amenities?.length || course.terrain) && (
           <div className="mt-3 flex flex-wrap gap-1.5">
-            {course.terrain && <span className="rounded-full bg-black/[0.04] px-2.5 py-1 text-[11px] font-medium text-[#46554c]">{course.terrain}</span>}
+            {course.terrain && <span className="rounded-full bg-[var(--c-raise)] px-2.5 py-1 text-[11px] font-medium text-[var(--c-body)]">{course.terrain}</span>}
             {course.amenities?.slice(0, 2).map((a) => (
-              <span key={a} className="rounded-full bg-black/[0.04] px-2.5 py-1 text-[11px] font-medium text-[#46554c]">{a}</span>
+              <span key={a} className="rounded-full bg-[var(--c-raise)] px-2.5 py-1 text-[11px] font-medium text-[var(--c-body)]">{a}</span>
             ))}
           </div>
         )}
         {((course.reviewCount ?? 0) > 0 || (course.communityScoreCount ?? 0) > 0) ? (
-          <div className="mt-3 flex items-center gap-2 border-t border-black/5 pt-3 text-xs text-[#8a968d]">
+          <div className="mt-3 flex items-center gap-2 border-t border-[var(--c-line)] pt-3 text-xs text-[var(--c-muted)]">
             {(course.rating ?? 0) > 0 && <Stars rating={course.rating ?? 0} />}
             {course.reviewCount ? <span>{course.reviewCount} review{course.reviewCount === 1 ? "" : "s"}</span> : null}
-            {(course.reviewCount ?? 0) > 0 && (course.communityScoreCount ?? 0) > 0 ? <span className="text-black/20">·</span> : null}
+            {(course.reviewCount ?? 0) > 0 && (course.communityScoreCount ?? 0) > 0 ? <span className="text-[var(--c-muted)]">·</span> : null}
             {(course.communityScoreCount ?? 0) > 0 ? (
               <span className="inline-flex items-center gap-1">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
