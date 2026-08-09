@@ -1329,13 +1329,13 @@ export default function LeagueEventPage() {
                       <span className={`hidden items-center justify-end gap-[5px] sm:flex ${tournamentOver && event.roundCount > 1 ? "w-[200px]" : "w-[184px]"}`}>
                         {tournamentOver && event.roundCount > 1 ? (
                           typeof e.score === "number" ? (
-                            <span className="flex items-baseline justify-end gap-1.5 font-mono text-xs tabular-nums">
+                            <span className="flex items-baseline justify-end gap-2 font-mono tabular-nums">
                               {Array.from({ length: event.roundCount }, (_, r) => {
                                 const rs = e.roundScores?.[r];
                                 return rs
-                                  ? <span key={r} className="inline-flex items-baseline gap-1"><span className="text-[var(--cream)]">{rs}</span>{parTotal != null && <span className="text-[10px] text-[var(--cream-38)]">{signed(rs - parTotal)}</span>}</span>
-                                  : <span key={r} className="text-[var(--cream-38)]">–</span>;
-                              }).flatMap((el, idx) => idx === 0 ? [el] : [<span key={`sep${idx}`} className="text-[var(--cream-38)]">·</span>, el])}
+                                  ? <span key={r} className="inline-flex items-baseline gap-1"><span className="text-sm font-bold text-[var(--cream)]">{parTotal != null ? signed(rs - parTotal) : rs}</span>{parTotal != null && <span className="text-[10px] text-[var(--cream-38)]">({rs})</span>}</span>
+                                  : <span key={r} className="text-xs text-[var(--cream-38)]">–</span>;
+                              }).flatMap((el, idx) => idx === 0 ? [el] : [<span key={`sep${idx}`} className="text-xs text-[var(--cream-38)]">·</span>, el])}
                             </span>
                           ) : null
                         ) : !liveRound && typeof e.score === "number" ? (
