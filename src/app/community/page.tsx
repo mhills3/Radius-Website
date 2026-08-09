@@ -406,25 +406,31 @@ export default function CommunityPage() {
 
   const avatarInitial = (profile?.name || "?").charAt(0).toUpperCase();
   // Ghost icon-button for the composer's attach toolbar; goes gold when its attachment is active.
-  const attachBtn = (on: boolean) => `relative grid h-9 w-9 place-items-center rounded-full transition-colors ${on ? "bg-[var(--gold)]/15 text-[var(--gold)]" : "text-[var(--sage)] hover:bg-white/[0.07] hover:text-[var(--cream)]"}`;
-  // Collapsed entry at the top of the feed — opens the centered compose modal.
+  const attachBtn = (on: boolean) => `group relative grid h-9 w-9 place-items-center rounded-full transition-colors ${on ? "bg-[var(--gold)]/15 text-[var(--gold)]" : "text-[var(--sage)] hover:bg-white/[0.07] hover:text-[var(--cream)]"}`;
+  // Label that appears on hover above an icon-only attach button.
+  const tip = (label: string) => (
+    <span className="pointer-events-none absolute -top-9 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-md bg-[var(--bg-mid)] px-2 py-1 text-[11px] font-semibold text-[var(--cream)] opacity-0 shadow-lg ring-1 ring-white/10 transition-opacity duration-150 group-hover:opacity-100">{label}</span>
+  );
+  // Collapsed entry at the top of the column. On Forums it starts a THREAD (a specific kind of
+  // post); on Feed it opens the centered compose modal.
+  const onForums = tab === "forums";
   const composerBar = user ? (
-    <button onClick={openComposer} className="flex w-full items-center gap-2.5 border-b border-white/[0.055] py-3.5 text-left">
+    <button onClick={onForums ? () => setNewThread(true) : openComposer} className="flex w-full items-center gap-2.5 border-b border-white/[0.055] py-3.5 text-left">
       <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--bg-mid)] text-sm font-bold text-[var(--cream)] ring-1 ring-white/10">
         {profile?.profileImageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={profile.profileImageUrl} alt="" className="h-9 w-9 object-cover" />
         ) : avatarInitial}
       </span>
-      <span className="flex-1 rounded-full bg-white/[0.05] px-4 py-2.5 text-[15px] text-[var(--sage-dim)] transition-colors hover:bg-white/[0.08]">What&apos;s your disc golf story today?</span>
+      <span className="flex-1 rounded-full bg-white/[0.05] px-4 py-2.5 text-[15px] text-[var(--sage-dim)] transition-colors hover:bg-white/[0.08]">{onForums ? "Start a new thread…" : "What's your disc golf story today?"}</span>
       <span className="hidden shrink-0 items-center gap-1.5 rounded-full bg-[var(--gold)] px-4 py-2 text-sm font-bold text-[#141b16] sm:inline-flex">
-        <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>Post
+        <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>{onForums ? "New thread" : "Post"}
       </span>
     </button>
   ) : (
     <div className="flex items-center gap-2.5 border-b border-white/[0.055] py-3.5">
       <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--bg-mid)] text-sm font-bold text-[var(--cream)]">+</span>
-      <p className="text-sm text-[var(--text-body)]"><Link href="/login" className="font-bold text-[var(--gold)] hover:underline">Sign in</Link> to share a round or join the conversation.</p>
+      <p className="text-sm text-[var(--text-body)]"><Link href="/login" className="font-bold text-[var(--gold)] hover:underline">Sign in</Link> to {onForums ? "start a thread or join the conversation" : "share a round or join the conversation"}.</p>
     </div>
   );
 
@@ -490,20 +496,24 @@ export default function CommunityPage() {
               Share a round
             </button>
             <span aria-hidden className="mx-1 h-5 w-px bg-white/10" />
-            {/* Icon-only attach tools — camera, people, course, disc */}
-            <label title="Add a photo" className={`${attachBtn(!!imageFile)} cursor-pointer`}>
+            {/* Icon-only attach tools — camera, people, course, disc — each with a hover tooltip */}
+            <label aria-label="Add a photo" className={`${attachBtn(!!imageFile)} cursor-pointer`}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]"><path d="M3 8.5A1.5 1.5 0 0 1 4.5 7H7l1.4-1.8A1 1 0 0 1 9.2 5h5.6a1 1 0 0 1 .8.4L17 7h2.5A1.5 1.5 0 0 1 21 8.5v9A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5z" /><circle cx="12" cy="13" r="3.2" /></svg>
               <input type="file" accept="image/*" onChange={onPickImage} className="hidden" />
+              {tip("Add a photo")}
             </label>
-            <button onClick={() => setUserPickerOpen(true)} title="Tag people" className={attachBtn(taggedUsers.length > 0)}>
+            <button onClick={() => setUserPickerOpen(true)} aria-label="Tag people" className={attachBtn(taggedUsers.length > 0)}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]"><circle cx="9" cy="8" r="3.2" /><path d="M3.2 19.5a5.8 5.8 0 0 1 11.6 0" /><path d="M16 5.3a3.2 3.2 0 0 1 0 5.9M17.8 13.6a5.8 5.8 0 0 1 3 5.2" /></svg>
               {taggedUsers.length > 0 && <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-[var(--gold)] px-1 text-[9px] font-bold text-[#141b16]">{taggedUsers.length}</span>}
+              {tip("Tag people")}
             </button>
-            <button onClick={() => setPickerOpen(true)} title="Tag a course" className={attachBtn(!!taggedCourse)}>
+            <button onClick={() => setPickerOpen(true)} aria-label="Tag a course" className={attachBtn(!!taggedCourse)}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]"><path d="M12 21s-6.5-5.5-6.5-10.5a6.5 6.5 0 1 1 13 0C18.5 15.5 12 21 12 21z" /><circle cx="12" cy="10.5" r="2.3" /></svg>
+              {tip("Tag a course")}
             </button>
-            <button onClick={() => setDiscPickerOpen(true)} title="Tag a disc" className={attachBtn(!!taggedDisc)}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]"><ellipse cx="12" cy="12" rx="9" ry="4.4" /><ellipse cx="12" cy="12" rx="3.4" ry="1.5" /></svg>
+            <button onClick={() => setDiscPickerOpen(true)} aria-label="Tag a disc" className={attachBtn(!!taggedDisc)}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]"><ellipse cx="12" cy="14.2" rx="8.4" ry="3" /><path d="M4 13.6C5.4 11.2 8.4 10 12 10s6.6 1.2 8 3.6" /><path d="M9.2 13.4c.5-.7 1.6-1.2 2.8-1.2s2.3.5 2.8 1.2" /></svg>
+              {tip("Tag a disc")}
             </button>
           </div>
           <button onClick={submitPost} disabled={(!text.trim() && !imageFile && !sharedRound) || posting} className="shrink-0 rounded-full bg-[var(--gold)] px-6 py-2 text-sm font-bold text-[#141b16] transition-colors hover:bg-[var(--gold-bright)] disabled:cursor-not-allowed disabled:opacity-50">{posting ? "Posting…" : "Post"}</button>
@@ -626,9 +636,6 @@ export default function CommunityPage() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-[var(--sage-dim)]">{shownThreads.length} thread{shownThreads.length === 1 ? "" : "s"}{category !== "All" ? ` in ${category}` : ""}</span>
-                  <button onClick={() => (user ? setNewThread(true) : router.push("/login"))} className="inline-flex items-center gap-1.5 rounded-full bg-[var(--gold)] px-4 py-2 text-xs font-bold text-[#16221b] transition-colors hover:bg-[var(--gold-bright)]">
-                    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>New thread
-                  </button>
                 </div>
                 {loading && [0, 1, 2].map((i) => <PostSkeleton key={i} />)}
                 {!loading && shownThreads.length === 0 && <p className={`py-10 text-center text-sm text-[var(--sage-dim)]`}>No threads in {category}. Start one!</p>}
@@ -722,10 +729,10 @@ export default function CommunityPage() {
         </button>
       )}
 
-      {/* Floating "+ Post" — always available, jumps to & opens the composer */}
-      <button onClick={openComposer} aria-label="Create a post" className="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 rounded-full bg-[var(--gold)] px-5 py-3 text-sm font-bold text-[#141b16] shadow-[0_16px_40px_-12px_rgba(0,0,0,0.75)] transition-transform hover:-translate-y-0.5 hover:bg-[var(--gold-bright)]">
+      {/* Floating action — starts a thread on Forums, a post on Feed */}
+      <button onClick={onForums ? () => (user ? setNewThread(true) : router.push("/login")) : openComposer} aria-label={onForums ? "Start a new thread" : "Create a post"} className="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 rounded-full bg-[var(--gold)] px-5 py-3 text-sm font-bold text-[#141b16] shadow-[0_16px_40px_-12px_rgba(0,0,0,0.75)] transition-transform hover:-translate-y-0.5 hover:bg-[var(--gold-bright)]">
         <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
-        Post
+        {onForums ? "New thread" : "Post"}
       </button>
 
       {composerModal}
