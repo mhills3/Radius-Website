@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
-import { getFeed, createPost, getReactionMap, setReaction, hotScore, type FeedPost, type CourseTag, type DiscTag, type SharedRound } from "@/lib/feed";
+import { getFeed, createPost, ensureSystemPost, getReactionMap, setReaction, hotScore, SYSTEM_AUTHOR_ID, type FeedPost, type CourseTag, type DiscTag, type SharedRound } from "@/lib/feed";
 import RoundPicker from "@/components/community/RoundPicker";
 import { getPlayedCourses } from "@/lib/rounds";
 import CourseTagPicker from "@/components/community/CourseTagPicker";
@@ -55,28 +55,6 @@ function PostSkeleton() {
         <div className="flex-1 space-y-2"><div className="h-3 w-28 animate-pulse rounded bg-white/[0.06]" /><div className="h-2.5 w-20 animate-pulse rounded bg-white/[0.04]" /></div>
       </div>
       <div className="mt-3 space-y-2"><div className="h-3 w-3/4 animate-pulse rounded bg-white/[0.06]" /><div className="h-3 w-1/2 animate-pulse rounded bg-white/[0.04]" /></div>
-    </div>
-  );
-}
-
-// Radius system announcement — reads like a real feed post (Radius as the author, the celebrated
-// player tagged). Honest current-standings milestone; auto-generated + interactive versions need a backend.
-function SystemPost({ user, children }: { user: { name: string; username: string }; children: React.ReactNode }) {
-  return (
-    <div className="border-b border-white/[0.055] border-l-2 border-l-[var(--gold)]/45 py-3.5 pl-3">
-      <div className="flex items-center gap-2.5">
-        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--gold)] text-base text-[#141b16]">🏆</span>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
-            <span className="text-sm font-bold text-[var(--cream)]">Radius</span>
-            <span className="rounded-full bg-[var(--gold)]/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[var(--gold)]">Announcement</span>
-          </div>
-          <div className="text-[11px] text-[var(--sage-dim)]">Community highlight</div>
-        </div>
-      </div>
-      <div className="mt-2 text-[15px] leading-snug text-[var(--cream)]">
-        <Link href={`/u/${user.username}`} className="font-bold hover:text-[var(--gold)]">{user.name}</Link> {children}
-      </div>
     </div>
   );
 }
@@ -381,22 +359,26 @@ export default function CommunityPage() {
     return () => obs.disconnect();
   }, [loading, tab]);
 
+  // Radius milestone posts (real, interactive) are pinned at the top of the feed on their own —
+  // keep them out of the regular sort/featured/list so they render once, prominently.
+  const nonSystemPosts = useMemo(() => posts.filter((p) => !p.isSystem), [posts]);
+  const systemPosts = useMemo(() => posts.filter((p) => p.isSystem).sort((a, b) => b.createdAt - a.createdAt).slice(0, 3), [posts]);
   const sortedPosts = useMemo(() => {
-    const a = [...posts];
+    const a = [...nonSystemPosts];
     if (sort === "new") a.sort((x, y) => y.createdAt - x.createdAt);
     else if (sort === "top") a.sort((x, y) => y.likeCount - x.likeCount);
     else a.sort((x, y) => hotScore(y) - hotScore(x));
     return a;
-  }, [posts, sort]);
+  }, [nonSystemPosts, sort]);
   // Featured post rotates on a rhythm (every 6h) through the most-engaging posts, so the
   // spotlight isn't always the same post visit-to-visit.
   const featured = useMemo(() => {
-    if (!posts.length) return null;
-    const ranked = [...posts].sort((a, b) => (b.likeCount + b.commentCount * 2) - (a.likeCount + a.commentCount * 2));
+    if (!nonSystemPosts.length) return null;
+    const ranked = [...nonSystemPosts].sort((a, b) => (b.likeCount + b.commentCount * 2) - (a.likeCount + a.commentCount * 2));
     const pool = ranked.slice(0, Math.min(5, ranked.length));
     const bucket = Math.floor(Date.now() / (6 * 60 * 60 * 1000));
     return pool[bucket % pool.length];
-  }, [posts]);
+  }, [nonSystemPosts]);
   const feedList = useMemo(() => {
     if (sort === "following") return sortedPosts.filter((p) => p.authorId && following.has(p.authorId));
     return sortedPosts.filter((p) => !featured || p.id !== featured.id);
@@ -421,16 +403,42 @@ export default function CommunityPage() {
   const playerPodium = useMemo(() => geoRows.filter((r) => r.username && r.gameIQ > 0).slice(0, 9).map((r) => ({ id: r.id, name: r.name, username: r.username, count: r.gameIQ, photo: r.photo })), [geoRows]);
   // Most active players by total rounds logged.
   const activePodium = useMemo(() => activePlayers.filter((r) => r.username && r.rounds > 0).slice(0, 9).map((r) => ({ id: r.id, name: r.name, username: r.username, count: r.rounds, photo: r.photo })), [activePlayers]);
-  // A milestone builder (not #1) who has crossed a round-number of mapped courses — the highest tier they've cleared.
-  const builderMilestone = useMemo(() => {
+  // Radius milestone posts. We create them as REAL `posts` docs with a deterministic id, so the
+  // first signed-in visitor after a threshold is crossed writes it once (Firestore rules allow any
+  // authed write; no server needed) and everyone else no-ops. Being real posts, they're likeable +
+  // commentable through the same paths as any post. Honest: each reflects a genuinely-crossed tier.
+  useEffect(() => {
+    if (!user || builders.length === 0) return;
     const tiers = [100, 50, 25];
+    const picks: { b: Builder; tier: number; lead: boolean }[] = [];
+    const top = builders[0];
+    const t0 = top?.username ? tiers.find((t) => top.count >= t) : undefined;
+    if (top?.username && t0) picks.push({ b: top, tier: t0, lead: true });
     for (const b of builders.slice(1)) {
       if (!b.username) continue;
-      const tier = tiers.find((t) => b.count >= t);
-      if (tier) return { name: b.name, username: b.username, tier };
+      const t = tiers.find((x) => b.count >= x);
+      if (t) { picks.push({ b, tier: t, lead: false }); break; }
     }
-    return null;
-  }, [builders]);
+    if (picks.length === 0) return;
+    let alive = true;
+    Promise.all(picks.map(({ b, tier, lead }) => ensureSystemPost({
+      id: `sys_builder_${tier}_${b.id}`,
+      text: lead
+        ? `🏆 @${b.username} just crossed ${tier} courses mapped — the community's #1 course builder. Congrats! 🎉`
+        : `🏗️ @${b.username} just crossed ${tier} courses mapped on Radius — a huge contribution to the community!`,
+      user: { id: b.id, name: b.name, username: b.username },
+    }))).then((res) => {
+      if (!alive) return;
+      const made = res.filter((p): p is FeedPost => !!p);
+      if (!made.length) return;
+      setPosts((prev) => {
+        const have = new Set(prev.map((p) => p.id));
+        const add = made.filter((p) => !have.has(p.id));
+        return add.length ? [...add, ...prev] : prev;
+      });
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, [user, builders]);
   // Pulse — honest 7-day counts from the loaded feed. Metrics below a floor of 10 hide; fewer than two hides the strip.
   const pulse = useMemo(() => {
     const wk = Date.now() - 7 * 86400_000;
@@ -468,7 +476,7 @@ export default function CommunityPage() {
     setPosts((prev) => prev.map((p) => (p.id === id ? reactPost(p, old, type) : p)));
     setOpen((o) => (o && o.id === id ? reactPost(o, old, type) : o));
     setReaction(user.uid, id, type, old).catch(() => { if (user) getReactionMap(user.uid).then(setReactionMap).catch(() => {}); });
-    if (!old) { const author = posts.find((p) => p.id === id)?.authorId; if (author) createNotification({ recipientId: author, actor: user.uid, type: "like", postId: id }); }
+    if (!old) { const author = posts.find((p) => p.id === id)?.authorId; if (author && author !== SYSTEM_AUTHOR_ID) createNotification({ recipientId: author, actor: user.uid, type: "like", postId: id }); }
   };
   const bumpComment = (id: string) => {
     setPosts((prev) => prev.map((p) => (p.id === id ? { ...p, commentCount: p.commentCount + 1 } : p)));
@@ -662,16 +670,9 @@ export default function CommunityPage() {
                 {sort === "following" && !user && <p className={`py-10 text-center text-sm text-[var(--sage-dim)]`}><Link href="/login" className="font-bold text-[var(--gold)] hover:underline">Sign in</Link> to see rounds from players you follow.</p>}
                 {sort === "following" && user && !loading && feedList.length === 0 && <p className={`py-10 text-center text-sm text-[var(--sage-dim)]`}>You&apos;re not following anyone with posts yet. Find players on the <Link href="/leaderboard" className="font-bold text-[var(--gold)] hover:underline">leaderboard</Link> and tap Follow.</p>}
 
-                {sort !== "following" && !loading && builders[0]?.username && (
-                  <SystemPost user={{ name: builders[0].name, username: builders[0].username }}>
-                    is the community&apos;s <span className="font-bold text-[var(--gold)]">#1 course builder</span> with <span className="font-bold text-[var(--gold)]">{builders[0].count}</span> courses mapped. Congratulations! 🎉
-                  </SystemPost>
-                )}
-                {sort !== "following" && !loading && builderMilestone && (
-                  <SystemPost user={{ name: builderMilestone.name, username: builderMilestone.username! }}>
-                    has mapped <span className="font-bold text-[var(--gold)]">{builderMilestone.tier}+</span> courses 🏗️ — huge contribution to the community.
-                  </SystemPost>
-                )}
+                {sort !== "following" && !loading && systemPosts.map((p) => (
+                  <PostCard key={p.id} post={p} myReaction={reactionMap[p.id]} onReact={(t) => onReact(p.id, t)} onOpen={() => setOpen(p)} />
+                ))}
 
                 {sort !== "following" && !loading && featured && (
                   <div className="border-l-2 border-[var(--gold)]/45 pl-3">
@@ -744,7 +745,7 @@ export default function CommunityPage() {
                         </Link>
                         <div className="min-w-0 flex-1">
                           <Link href={`/u/${p.username}`} className="block truncate text-sm font-semibold text-[var(--cream)] hover:text-[var(--gold)]">{p.name}</Link>
-                          <div className="truncate text-[11px] text-[var(--sage-dim)]">{p.dist != null ? `${p.dist < 10 ? p.dist.toFixed(1) : Math.round(p.dist)} mi away` : (p.state || p.country || "")}</div>
+                          <div className="truncate text-[11px] text-[var(--sage-dim)]">{p.state || p.country || (p.username ? `@${p.username}` : "")}</div>
                         </div>
                         <button onClick={() => toggleFollow(p.id)} className="shrink-0 rounded-full bg-[#8FBDE3]/15 px-3 py-1 text-xs font-bold text-[#8FBDE3] transition-colors hover:bg-[#8FBDE3]/25">Follow</button>
                       </div>
@@ -757,12 +758,12 @@ export default function CommunityPage() {
                 <div>
                   <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-[var(--gold)]">🛠️ Courses to improve near you</div>
                   <div className="space-y-3">
-                    {nearbyImprove.map(({ c, reason, action, d }) => (
+                    {nearbyImprove.map(({ c, reason, action }) => (
                       <div key={c.id} className="flex items-center gap-2.5">
                         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--gold-dim)] text-base text-[var(--gold)]">⛳</span>
                         <div className="min-w-0 flex-1">
                           <div className="truncate text-sm font-semibold text-[var(--cream)]">{c.name}</div>
-                          <div className="truncate text-[11px] text-[var(--sage-dim)]">{reason}{d !== Infinity ? ` · ${d < 10 ? d.toFixed(1) : Math.round(d)} mi` : (c.state ? ` · ${c.state}` : "")}</div>
+                          <div className="truncate text-[11px] text-[var(--sage-dim)]">{reason}{c.city || c.state ? ` · ${[c.city, c.state].filter(Boolean).join(", ")}` : ""}</div>
                         </div>
                         <Link href={`/courses/${slugify(c.name, c.id)}`} className="shrink-0 rounded-full bg-[var(--gold)]/15 px-3 py-1 text-xs font-bold text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/25">{action}</Link>
                       </div>

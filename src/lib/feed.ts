@@ -45,7 +45,14 @@ export interface FeedPost {
   scoreToPar?: number | null;
   holesPlayed?: number | null;
   reactions?: Record<string, number>;
+  isSystem?: boolean;
 }
+
+// System (Radius) author identity for milestone/announcement posts. These are REAL posts docs
+// (deterministic ids → created once) so they flow through the same feed/like/comment paths as
+// any user post — the only difference is who "wrote" them.
+export const SYSTEM_AUTHOR_ID = "radius-system";
+export const SYSTEM_AUTHOR_NAME = "Radius";
 
 // Reaction palette (web-side; total still tracked by likeCount for app parity).
 export const REACTIONS: { key: string; emoji: string; label: string }[] = [
@@ -98,11 +105,70 @@ export async function getFeed(max = 40, before?: number): Promise<FeedPost[]> {
           scoreToPar: p.linkedScoreToPar ?? p.scoreToPar ?? null,
           holesPlayed: p.linkedHolesPlayed ?? p.holesPlayed ?? null,
           reactions: p.reactions && typeof p.reactions === "object" ? (p.reactions as Record<string, number>) : undefined,
+          isSystem: p.isSystem === true || (p.createdById ?? p.authorId) === SYSTEM_AUTHOR_ID,
         } as FeedPost;
       })
       .filter((p): p is FeedPost => !!p && (!!p.text.trim() || !!p.imageUrl));
   } catch {
     return [];
+  }
+}
+
+export interface SystemMilestone {
+  id: string; // deterministic doc id, e.g. "sys_builder25_<uid>" — created once, idempotent
+  text: string; // announcement copy; may contain an @username the tagged user resolves
+  user: { id: string; name: string; username?: string };
+}
+
+/**
+ * Ensure a Radius announcement/milestone post exists as a REAL `posts` doc. Because the id is
+ * deterministic and we only write when it's missing, the first signed-in visitor after a milestone
+ * creates it and everyone else no-ops — no duplicates, no server. It then behaves like any post:
+ * likeable (setReaction) and commentable (addComment) through the existing paths.
+ * Requires an authenticated caller (Firestore rules). Returns the FeedPost, or null on failure.
+ */
+export async function ensureSystemPost(m: SystemMilestone): Promise<FeedPost | null> {
+  try {
+    const ref = doc(db, "posts", m.id);
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      const p = snap.data();
+      if (p.isDeleted) return null;
+      return {
+        id: m.id,
+        text: (p.text ?? m.text) as string,
+        authorName: (p.authorName ?? SYSTEM_AUTHOR_NAME) as string,
+        authorId: SYSTEM_AUTHOR_ID,
+        createdAt: (p.createdAt ?? p.lastUpdated ?? 0) as number,
+        likeCount: (p.likeCount ?? 0) as number,
+        commentCount: (p.commentCount ?? 0) as number,
+        taggedUsers: Array.isArray(p.taggedUsers) ? (p.taggedUsers as { id: string; name: string; username: string }[]) : undefined,
+        reactions: p.reactions && typeof p.reactions === "object" ? (p.reactions as Record<string, number>) : undefined,
+        isSystem: true,
+      };
+    }
+    const now = Date.now();
+    const tagged = [{ id: m.user.id, name: m.user.name, username: m.user.username ?? "" }];
+    await setDoc(ref, {
+      id: m.id,
+      authorName: SYSTEM_AUTHOR_NAME,
+      authorHandle: null,
+      authorId: SYSTEM_AUTHOR_ID,
+      createdById: SYSTEM_AUTHOR_ID,
+      authorPhotoUrl: null,
+      isSystem: true,
+      text: m.text,
+      taggedUserIds: [m.user.id],
+      taggedUsers: tagged,
+      likeCount: 0,
+      commentCount: 0,
+      feedType: "trending",
+      createdAt: now,
+      lastUpdated: now,
+    });
+    return { id: m.id, text: m.text, authorName: SYSTEM_AUTHOR_NAME, authorId: SYSTEM_AUTHOR_ID, createdAt: now, likeCount: 0, commentCount: 0, taggedUsers: tagged, isSystem: true };
+  } catch {
+    return null;
   }
 }
 

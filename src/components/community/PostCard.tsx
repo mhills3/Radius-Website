@@ -26,6 +26,34 @@ function Avatar({ url, name, size = 32 }: { url?: string; name: string; size?: n
 
 export default function PostCard({ post, rank, myReaction, onReact, onOpen }: { post: FeedPost; rank?: RankInfo; myReaction?: string; onReact: (type: string) => void; onOpen: () => void }) {
   const [zoom, setZoom] = useState(false);
+
+  // Radius milestone/announcement — real post, but wears a distinct gold identity (trophy + badge)
+  // instead of a user author row. Still fully likeable + commentable.
+  if (post.isSystem) {
+    return (
+      <article className="border-b border-white/[0.055] border-l-2 border-l-[var(--gold)]/45 py-3.5 pl-3">
+        <div className="flex items-center gap-2.5">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--gold)] text-base text-[#141b16]">🏆</span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm font-bold text-[var(--cream)]">Radius</span>
+              <span className="rounded-full bg-[var(--gold)]/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[var(--gold)]">Announcement</span>
+            </div>
+            <div className="text-[11px] text-[var(--sage-dim)]">Community highlight · {timeAgo(post.createdAt)}</div>
+          </div>
+        </div>
+        {post.text && <MentionText text={post.text} tagged={post.taggedUsers} className="mt-2 whitespace-pre-wrap text-[15px] leading-snug text-[var(--cream)]" />}
+        <div className="mt-1.5 flex items-center gap-0.5 text-[13px]">
+          <ReactionBar count={post.likeCount} reactions={post.reactions} myReaction={myReaction} onReact={onReact} />
+          <button onClick={onOpen} className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium text-[var(--sage)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)]">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.5L3 21l2-5.6A8.5 8.5 0 1 1 21 11.5z" /></svg>
+            {post.commentCount >= 3 ? `${post.commentCount}` : "Comment"}
+          </button>
+        </div>
+      </article>
+    );
+  }
+
   // Author identity is clickable — link by handle (denormalized on the post, else the author's
   // current user doc via rank); avatar falls back to the current profile photo the same way.
   const handle = post.authorHandle || rank?.username;
