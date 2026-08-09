@@ -405,6 +405,8 @@ export default function CommunityPage() {
   ];
 
   const avatarInitial = (profile?.name || "?").charAt(0).toUpperCase();
+  // Ghost icon-button for the composer's attach toolbar; goes gold when its attachment is active.
+  const attachBtn = (on: boolean) => `relative grid h-9 w-9 place-items-center rounded-full transition-colors ${on ? "bg-[var(--gold)]/15 text-[var(--gold)]" : "text-[var(--sage)] hover:bg-white/[0.07] hover:text-[var(--cream)]"}`;
   // Collapsed entry at the top of the feed — opens the centered compose modal.
   const composerBar = user ? (
     <button onClick={openComposer} className="flex w-full items-center gap-2.5 border-b border-white/[0.055] py-3.5 text-left">
@@ -480,15 +482,31 @@ export default function CommunityPage() {
             ))}
           </div>
         )}
-        <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-3">
-          <div className="flex flex-wrap gap-1.5">
-            <button onClick={() => setRoundPickerOpen(true)} className="inline-flex items-center gap-1.5 rounded-full bg-[var(--gold)]/15 px-3 py-1.5 text-xs font-bold text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/25">⛳ Share a round</button>
-            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-[var(--sage)] transition-colors hover:bg-white/[0.1] hover:text-[var(--cream)]">📷 Photo<input type="file" accept="image/*" onChange={onPickImage} className="hidden" /></label>
-            <button onClick={() => setUserPickerOpen(true)} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-[var(--sage)] transition-colors hover:bg-white/[0.1] hover:text-[var(--cream)]">👤 {taggedUsers.length ? `People (${taggedUsers.length})` : "People"}</button>
-            <button onClick={() => setPickerOpen(true)} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-[var(--sage)] transition-colors hover:bg-white/[0.1] hover:text-[var(--cream)]">⛳ {taggedCourse ? "Course ✓" : "Course"}</button>
-            <button onClick={() => setDiscPickerOpen(true)} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-[var(--sage)] transition-colors hover:bg-white/[0.1] hover:text-[var(--cream)]">🥏 {taggedDisc ? "Disc ✓" : "Disc"}</button>
+        <div className="mt-3 flex items-center justify-between gap-3 border-t border-white/10 pt-3">
+          <div className="flex items-center gap-1">
+            {/* Share a round — the flagship attach, so it keeps a label */}
+            <button onClick={() => setRoundPickerOpen(true)} title="Share a round" className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[13px] font-semibold transition-colors ${sharedRound ? "bg-[var(--gold)]/15 text-[var(--gold)]" : "text-[var(--gold)] hover:bg-[var(--gold)]/12"}`}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]"><path d="M5 21V4M5 4h11l-2.2 3.5L16 11H5" /></svg>
+              Share a round
+            </button>
+            <span aria-hidden className="mx-1 h-5 w-px bg-white/10" />
+            {/* Icon-only attach tools — camera, people, course, disc */}
+            <label title="Add a photo" className={`${attachBtn(!!imageFile)} cursor-pointer`}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]"><path d="M3 8.5A1.5 1.5 0 0 1 4.5 7H7l1.4-1.8A1 1 0 0 1 9.2 5h5.6a1 1 0 0 1 .8.4L17 7h2.5A1.5 1.5 0 0 1 21 8.5v9A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5z" /><circle cx="12" cy="13" r="3.2" /></svg>
+              <input type="file" accept="image/*" onChange={onPickImage} className="hidden" />
+            </label>
+            <button onClick={() => setUserPickerOpen(true)} title="Tag people" className={attachBtn(taggedUsers.length > 0)}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]"><circle cx="9" cy="8" r="3.2" /><path d="M3.2 19.5a5.8 5.8 0 0 1 11.6 0" /><path d="M16 5.3a3.2 3.2 0 0 1 0 5.9M17.8 13.6a5.8 5.8 0 0 1 3 5.2" /></svg>
+              {taggedUsers.length > 0 && <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-[var(--gold)] px-1 text-[9px] font-bold text-[#141b16]">{taggedUsers.length}</span>}
+            </button>
+            <button onClick={() => setPickerOpen(true)} title="Tag a course" className={attachBtn(!!taggedCourse)}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]"><path d="M12 21s-6.5-5.5-6.5-10.5a6.5 6.5 0 1 1 13 0C18.5 15.5 12 21 12 21z" /><circle cx="12" cy="10.5" r="2.3" /></svg>
+            </button>
+            <button onClick={() => setDiscPickerOpen(true)} title="Tag a disc" className={attachBtn(!!taggedDisc)}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]"><ellipse cx="12" cy="12" rx="9" ry="4.4" /><ellipse cx="12" cy="12" rx="3.4" ry="1.5" /></svg>
+            </button>
           </div>
-          <button onClick={submitPost} disabled={(!text.trim() && !imageFile && !sharedRound) || posting} className="rounded-full bg-[var(--gold)] px-6 py-2 text-sm font-bold text-[#141b16] transition-colors hover:bg-[var(--gold-bright)] disabled:cursor-not-allowed disabled:opacity-50">{posting ? "Posting…" : "Post"}</button>
+          <button onClick={submitPost} disabled={(!text.trim() && !imageFile && !sharedRound) || posting} className="shrink-0 rounded-full bg-[var(--gold)] px-6 py-2 text-sm font-bold text-[#141b16] transition-colors hover:bg-[var(--gold-bright)] disabled:cursor-not-allowed disabled:opacity-50">{posting ? "Posting…" : "Post"}</button>
         </div>
       </div>
       {pickerOpen && <CourseTagPicker onSelect={setTaggedCourse} onClose={() => setPickerOpen(false)} />}

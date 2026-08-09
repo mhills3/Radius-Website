@@ -202,9 +202,11 @@ export default function LeaguesPage() {
 
   const [courseMeta, setCourseMetaMap] = useState<Map<string, CourseMeta>>(new Map());
   useEffect(() => {
-    const ids = upcoming.map((e) => e.courseId).filter((x): x is string => !!x);
+    // Cover art for every event we render — upcoming AND past. Past loads lazily, so without
+    // pastEvents here their cards fell back to the contour art with no cover photo.
+    const ids = [...new Set([...upcoming, ...pastEvents].map((e) => e.courseId).filter((x): x is string => !!x))];
     if (ids.length) getCourseMeta(ids).then(setCourseMetaMap).catch(() => {});
-  }, [upcoming]);
+  }, [upcoming, pastEvents]);
   // Where filter: browser geolocation + radius; distance shown on cards once located.
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null);
   const [locBusy, setLocBusy] = useState(false);
