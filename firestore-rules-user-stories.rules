@@ -1,0 +1,76 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// RADIUS STORIES (userStories) — rules + Storage + TTL, 2026-08-10
+//
+// DEPLOY REALITY CHECK: while the live Stage-1 catch-all
+// (`match /{document=**} { allow write: if request.auth != null }`) exists,
+// Firestore story writes ALREADY WORK for signed-in users — this Firestore
+// block is the Stage-2 section to merge when the catch-all is removed (same
+// status as firestore-rules-leagues-draft.rules). The two steps that DO block
+// stories today are (2) Storage and (3) TTL below.
+//
+// Contract (iOS FirestoreService.swift is the source of truth):
+//   userStories/{id} = { authorId (CANONICAL id), authorName, authorHandle,
+//     imageUrl, caption, courseName?, createdAt (ms), expiresAt (TIMESTAMP,
+//     createdAt + 24h), viewers: [canonicalId], likes: [canonicalId] }
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── (1) FIRESTORE — merge into the Stage-2 draft ────────────────────────────
+
+    // Same helper the leagues draft uses (one get() per evaluation).
+    function canonicalId() {
+      return exists(/databases/$(database)/documents/canonicalIds/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/canonicalIds/$(request.auth.uid)).data.canonicalId
+        : request.auth.uid;
+    }
+
+    match /userStories/{storyId} {
+      // Anyone may read; clients filter expiresAt > now themselves and TTL
+      // deletes the doc shortly after expiry anyway.
+      allow read: if true;
+
+      // Create: your own story, with a sane 24h expiry stamp. authorId must
+      // be YOUR canonical id, expiresAt a timestamp no more than ~25h out
+      // (clock-skew headroom), and the image URL present.
+      allow create: if request.auth != null
+        && request.resource.data.authorId == canonicalId()
+        && request.resource.data.expiresAt is timestamp
+        && request.resource.data.expiresAt > request.time
+        && request.resource.data.expiresAt < request.time + duration.value(25, 'h')
+        && request.resource.data.imageUrl is string;
+
+      // Update: EITHER the author editing their own story, OR any signed-in
+      // user merge-writing ONLY the viewers/likes arrays (view receipts and
+      // hearts). Nothing else is touchable by non-authors.
+      allow update: if request.auth != null
+        && (
+          resource.data.authorId == canonicalId()
+          || request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['viewers', 'likes'])
+        );
+
+      // Delete: author only (TTL handles expiry server-side).
+      allow delete: if request.auth != null
+        && resource.data.authorId == canonicalId();
+    }
+
+// ── (2) STORAGE — add to the Storage rules in the Firebase console ──────────
+// (Storage > Rules). Path matches iOS: userStories/{authUid}/{imageId}.jpg
+//
+//   match /userStories/{uid}/{imageId} {
+//     allow read: if true;
+//     allow write: if request.auth != null
+//       && request.auth.uid == uid
+//       && request.resource.size < 5 * 1024 * 1024
+//       && request.resource.contentType.matches('image/.*');
+//   }
+//
+// THIS is the step most likely blocking story posting today — if the live
+// Storage rules are path-scoped (posts/, discPhotos/, …), the userStories/
+// path has no allow and uploads 403.
+
+// ── (3) TTL POLICY — the entire cleanup mechanism, no Cloud Function ────────
+// Console → Firestore → Time-to-live (TTL) → Create policy:
+//   Collection group: userStories
+//   Timestamp field:  expiresAt
+// Docs are deleted within ~24h of expiry (Google's TTL sweep is not instant;
+// clients already filter expiresAt > now, so the lag is invisible).
