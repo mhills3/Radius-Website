@@ -92,7 +92,7 @@ export default function Nav() {
   const links = user
     ? [
         { href: "/dashboard", label: "Dashboard" },
-        { href: "/bag", label: "My Bag" },
+        { href: "/bag", label: "My Game" },
         { href: "/leagues", label: "Events" },
         { href: "/community", label: "Community" },
         { href: "/courses", label: "Courses" },
@@ -148,7 +148,7 @@ export default function Nav() {
                       </div>
                     </div>
                     <Link href="/dashboard" onClick={() => setUserMenu(false)} className="flex items-center gap-2.5 px-4 py-3 text-sm font-semibold text-[var(--text-body)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)]"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" /></svg>Dashboard</Link>
-                    <Link href="/bag" onClick={() => setUserMenu(false)} className="flex items-center gap-2.5 px-4 py-3 text-sm font-semibold text-[var(--text-body)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)]"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 7V5a3 3 0 0 1 3-3h6a3 3 0 0 1 3 3v2M4 7h16l-1 14H5L4 7z" /></svg>My Bag</Link>
+                    <Link href="/bag" onClick={() => setUserMenu(false)} className="flex items-center gap-2.5 px-4 py-3 text-sm font-semibold text-[var(--text-body)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)]"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 7V5a3 3 0 0 1 3-3h6a3 3 0 0 1 3 3v2M4 7h16l-1 14H5L4 7z" /></svg>My Game</Link>
                     {profile?.writer && (
                       <Link href="/stories/mine" onClick={() => setUserMenu(false)} className="flex items-center gap-2.5 px-4 py-3 text-sm font-semibold text-[var(--gold)] transition-colors hover:bg-white/[0.05]"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>Write a story</Link>
                     )}

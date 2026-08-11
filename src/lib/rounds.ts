@@ -146,6 +146,91 @@ export function computeRoundStats(round: DecodedRound): RoundStats {
   };
 }
 
+// ---- Career aggregation (across all rounds) — powers the web "My Game → Overview/Improve" ----
+export interface CareerStats {
+  rounds: number;          // complete rounds counted
+  holes: number;
+  throws: number;
+  avgToPar: number | null; // mean relativeToPar across rounds
+  bestRoundToPar: number | null;
+  throwQuality: number | null; // 0..100
+  fairwayPct: number | null;
+  obRate: number | null;
+  scramblePct: number | null;
+  c1: { made: number; att: number; pct: number | null };
+  c2: { made: number; att: number; pct: number | null };
+  birdies: number; pars: number; bogeys: number; doublePlus: number;
+  avgDriveFt: number | null;
+  missLeft: number; missRight: number;
+  discs: { name: string; count: number; quality: number }[];
+  scoreTrend: { date: number; toPar: number }[]; // chronological, one point per complete round
+}
+
+/** Aggregate the per-round metrics across all complete rounds — attempt-weighted from raw throws so
+ *  career percentages are exact (not an average of per-round percentages). */
+export function computeCareerStats(rounds: DecodedRound[]): CareerStats {
+  const complete = rounds.filter((r) => r.isComplete);
+  const successOf = (key: string) => RESULTS.find((r) => r.key === key)?.success ?? 40;
+  let throws = 0, qSum = 0, holes = 0;
+  let teeCount = 0, fairwayHits = 0, ob = 0;
+  let c1m = 0, c1a = 0, c2m = 0, c2a = 0;
+  let birdies = 0, pars = 0, bogeys = 0, doublePlus = 0;
+  let troubleHoles = 0, troubleSaved = 0;
+  let driveSum = 0, driveN = 0, missLeft = 0, missRight = 0;
+  const discMap = new Map<string, { count: number; sum: number }>();
+
+  for (const r of complete) {
+    for (const h of r.holes.filter((x) => x.played)) {
+      holes++;
+      const rel = h.score - h.par;
+      if (rel < 0) birdies++; else if (rel === 0) pars++; else if (rel === 1) bogeys++; else doublePlus++;
+      const holeThrows = h.throws.filter((t) => t.discName !== "Score");
+      let hadTrouble = false;
+      holeThrows.forEach((t, i) => {
+        const raw = t.result;
+        const key = resultKey(raw);
+        throws++; qSum += successOf(key);
+        const name = t.discName || "Unknown";
+        const d = discMap.get(name) ?? { count: 0, sum: 0 };
+        d.count++; d.sum += successOf(key); discMap.set(name, d);
+        if (i === 0) {
+          teeCount++;
+          if (["Fairway", "Circle 1", "Circle 2", "Basket"].includes(key)) fairwayHits++;
+          if (typeof t.distance === "number" && t.distance > 0) { driveSum += t.distance; driveN++; }
+        }
+        if (key === "OB") ob++;
+        if (isMissKey(key) || key === "OB") hadTrouble = true;
+        if (raw === "Miss Left") missLeft++;
+        if (raw === "Miss Right") missRight++;
+        if (t.distanceToBasket != null && t.distanceToBasket <= 33) { c1a++; if (t.madeIt) c1m++; }
+        else if (t.distanceToBasket != null && t.distanceToBasket >= 34 && t.distanceToBasket <= 66) { c2a++; if (t.madeIt) c2m++; }
+      });
+      if (hadTrouble) { troubleHoles++; if (rel <= 0) troubleSaved++; }
+    }
+  }
+
+  const rels = complete.map((r) => r.relativeToPar);
+  const discs = [...discMap.entries()].map(([name, d]) => ({ name, count: d.count, quality: d.count ? d.sum / d.count : 0 })).sort((a, b) => b.count - a.count);
+  return {
+    rounds: complete.length,
+    holes,
+    throws,
+    avgToPar: rels.length ? rels.reduce((s, x) => s + x, 0) / rels.length : null,
+    bestRoundToPar: rels.length ? Math.min(...rels) : null,
+    throwQuality: throws ? qSum / throws : null,
+    fairwayPct: teeCount ? fairwayHits / teeCount : null,
+    obRate: throws ? ob / throws : null,
+    scramblePct: troubleHoles ? troubleSaved / troubleHoles : null,
+    c1: { made: c1m, att: c1a, pct: c1a ? c1m / c1a : null },
+    c2: { made: c2m, att: c2a, pct: c2a ? c2m / c2a : null },
+    birdies, pars, bogeys, doublePlus,
+    avgDriveFt: driveN ? driveSum / driveN : null,
+    missLeft, missRight,
+    discs,
+    scoreTrend: complete.map((r) => ({ date: r.date, toPar: r.relativeToPar })).sort((a, b) => a.date - b.date),
+  };
+}
+
 // Throw-result palette (iOS ThrowResult, exact colors).
 export const RESULTS: { key: string; label: string; color: string; success: number }[] = [
   { key: "Basket", label: "Made", color: "#1ab859", success: 100 },
