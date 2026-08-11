@@ -867,6 +867,18 @@ export async function removeEntry(eventId: string, entryId: string): Promise<voi
   await setDoc(doc(db, "leagueEvents", eventId), { entryCount: entries.length }, { merge: true });
 }
 
+/** Delete an event entirely (director action). Firestore doesn't cascade, so clear the event's
+ *  subcollections (entries / cards / messages) first, then the event doc. */
+export async function deleteEvent(eventId: string): Promise<void> {
+  for (const sub of ["entries", "cards", "messages"]) {
+    try {
+      const snap = await getDocs(collection(db, "leagueEvents", eventId, sub));
+      await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
+    } catch { /* best-effort cleanup */ }
+  }
+  await deleteDoc(doc(db, "leagueEvents", eventId));
+}
+
 // ---- Entries (check-in) ----
 
 /** Registration window: absent registrationCloseAt means it closes at event start. */

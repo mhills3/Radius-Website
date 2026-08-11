@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, getEntries, updateEntry, checkInEntry, getCards, generateGroups, setCardTeeTime, setCardStartHole, shiftEventTeeTimesByRound, moveEntryToCard, getCourseHoleCount, updateEventDetails, createEvents, computeStandings, updateLeagueSettings, setAcePot, setMemberRoles, setMemberDivision, setLeagueLogo, isLeagueAdmin, subscribeLeagueTeams, createLeagueTeam, updateLeagueTeam, deleteLeagueTeam, subscribeLeagueMatches, generateSchedule, setMatchResult, computeMatchStandings, generateBracket, advanceBracket, LEAGUE_FORMATS, TEAM_SIZES, START_FORMATS, isTeamFormat, SUGGESTED_DIVISIONS, type League, type LeagueEvent, type LeagueMember, type EventEntry, type EventCard, type StandingRow, type LeagueTeam, type LeagueMatch } from "@/lib/leagues";
+import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, getEntries, updateEntry, checkInEntry, getCards, generateGroups, setCardTeeTime, setCardStartHole, shiftEventTeeTimesByRound, moveEntryToCard, getCourseHoleCount, updateEventDetails, createEvents, deleteEvent, computeStandings, updateLeagueSettings, setAcePot, setMemberRoles, setMemberDivision, setLeagueLogo, isLeagueAdmin, subscribeLeagueTeams, createLeagueTeam, updateLeagueTeam, deleteLeagueTeam, subscribeLeagueMatches, generateSchedule, setMatchResult, computeMatchStandings, generateBracket, advanceBracket, LEAGUE_FORMATS, TEAM_SIZES, START_FORMATS, isTeamFormat, SUGGESTED_DIVISIONS, type League, type LeagueEvent, type LeagueMember, type EventEntry, type EventCard, type StandingRow, type LeagueTeam, type LeagueMatch } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
 import { storage } from "@/lib/firebase";
 import { getDownloadURL, ref as storageRef, uploadBytes } from "firebase/storage";
@@ -323,6 +323,17 @@ export default function LeagueManagePage() {
       const fresh = await getLeagueEvents(league.id); setEvents(fresh);
       setEditEvent(false); // collapse back to the clean summary
       setEventSaved(true); setTimeout(() => setEventSaved(false), 2500);
+    } finally { setBusy(false); }
+  };
+
+  const [confirmDel, setConfirmDel] = useState(false);
+  const deleteThisEvent = async () => {
+    if (!league || !primaryEvent || busy) return;
+    setBusy(true);
+    try {
+      await deleteEvent(primaryEvent.id);
+      const fresh = await getLeagueEvents(league.id); setEvents(fresh);
+      setEditEvent(false); setConfirmDel(false);
     } finally { setBusy(false); }
   };
 
@@ -823,6 +834,24 @@ export default function LeagueManagePage() {
                   <div className="mt-5 flex items-center gap-3">
                     <button onClick={saveEvent} disabled={!ed.date || busy} className={btnGold}>{busy ? "Saving…" : "Save event"}</button>
                     <button onClick={() => setEditEvent(false)} className={btnGhost}>Cancel</button>
+                  </div>
+
+                  {/* Danger zone — delete this event */}
+                  <div className="mt-8 border-t border-[#e0473f]/25 pt-5">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#f08c8c]">Danger zone</div>
+                        <p className="mt-1 text-[13px] text-[var(--cream-60)]">Permanently delete this {NOUN.toLowerCase()} — scores, entries and tee sheet. This can&apos;t be undone.</p>
+                      </div>
+                      {confirmDel ? (
+                        <div className="flex items-center gap-2">
+                          <button onClick={deleteThisEvent} disabled={busy} className="rounded-full bg-[#e0473f] px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-[#c93b34] disabled:opacity-50">{busy ? "Deleting…" : "Yes, delete"}</button>
+                          <button onClick={() => setConfirmDel(false)} disabled={busy} className={btnGhost}>Keep</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setConfirmDel(true)} className="shrink-0 rounded-full border border-[#e0473f]/40 px-4 py-2 text-xs font-bold text-[#f08c8c] transition-colors hover:bg-[#e0473f]/10">Delete {NOUN.toLowerCase()}</button>
+                      )}
+                    </div>
                   </div>
                 </div>
               ) : (
