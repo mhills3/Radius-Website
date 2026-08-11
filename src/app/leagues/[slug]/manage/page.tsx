@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { getLeagueBySlug, getLeagueEvents, getLeagueMembers, getEntries, updateEntry, checkInEntry, getCards, generateGroups, setCardTeeTime, setCardStartHole, shiftEventTeeTimesByRound, moveEntryToCard, getCourseHoleCount, updateEventDetails, createEvents, deleteEvent, computeStandings, updateLeagueSettings, setAcePot, setMemberRoles, setMemberDivision, setLeagueLogo, isLeagueAdmin, subscribeLeagueTeams, createLeagueTeam, updateLeagueTeam, deleteLeagueTeam, subscribeLeagueMatches, generateSchedule, setMatchResult, computeMatchStandings, generateBracket, advanceBracket, LEAGUE_FORMATS, TEAM_SIZES, START_FORMATS, isTeamFormat, SUGGESTED_DIVISIONS, type League, type LeagueEvent, type LeagueMember, type EventEntry, type EventCard, type StandingRow, type LeagueTeam, type LeagueMatch } from "@/lib/leagues";
 import { resolveCanonicalId } from "@/lib/account";
@@ -33,6 +33,7 @@ const fmtToPar = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`);
 export default function LeagueManagePage() {
   const { slug } = useParams<{ slug: string }>();
   const { user } = useAuth();
+  const router = useRouter();
   const [league, setLeague] = useState<League | null | undefined>(undefined);
   const [brandNote, setBrandNote] = useState("");
   const [events, setEvents] = useState<LeagueEvent[]>([]);
@@ -332,9 +333,9 @@ export default function LeagueManagePage() {
     setBusy(true);
     try {
       await deleteEvent(primaryEvent.id);
-      const fresh = await getLeagueEvents(league.id); setEvents(fresh);
-      setEditEvent(false); setConfirmDel(false);
-    } finally { setBusy(false); }
+      setConfirmDel(false);
+      router.push("/leagues"); // leave the just-deleted event's director tools → Events home
+    } catch { setBusy(false); }
   };
 
   const toggleCheckIn = async (memberId: string) => {
