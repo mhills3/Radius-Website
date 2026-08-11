@@ -58,5 +58,5 @@ export default function MyGameBag({ uid }: { uid: string }) {
     );
   }
 
-  return <BagView bag={bag} uid={uid} switcher={picker} />;
+  return <BagView bag={bag} uid={uid} switcher={picker} embedded />;
 }

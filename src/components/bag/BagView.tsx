@@ -156,7 +156,7 @@ function Cell({ v }: { v?: number }) {
   return <div className="text-center text-sm text-[var(--text-body)]">{v != null ? v : "—"}</div>;
 }
 
-export default function BagView({ bag, uid, switcher }: { bag: Bag; uid: string; switcher?: React.ReactNode }) {
+export default function BagView({ bag, uid, switcher, embedded = false }: { bag: Bag; uid: string; switcher?: React.ReactNode; embedded?: boolean }) {
   const { rating } = bag;
   const pro = usePro();
   const [discs, setDiscs] = useState<FlightDisc[]>(bag.discs);
@@ -305,15 +305,19 @@ export default function BagView({ bag, uid, switcher }: { bag: Bag; uid: string;
   const b = rating.breakdown;
 
   return (
-    <div className="min-h-screen bg-[var(--bg-deep)] text-[var(--cream)]">
-      <div className="mx-auto max-w-6xl px-6 pb-20 pt-12">
-        <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">Your arsenal</div>
-            <h1 className="font-[family-name:var(--font-heading)] text-5xl font-extrabold tracking-[-0.03em]">My Bag</h1>
+    <div className={embedded ? "text-[var(--cream)]" : "min-h-screen bg-[var(--bg-deep)] text-[var(--cream)]"}>
+      <div className={embedded ? "pb-8" : "mx-auto max-w-6xl px-6 pb-20 pt-12"}>
+        {embedded ? (
+          switcher ? <div className="mb-4 flex justify-end">{switcher}</div> : null
+        ) : (
+          <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">Your arsenal</div>
+              <h1 className="font-[family-name:var(--font-heading)] text-5xl font-extrabold tracking-[-0.03em]">My Bag</h1>
+            </div>
+            {switcher}
           </div>
-          {switcher}
-        </div>
+        )}
 
         {/* HERO */}
         <div className={`fade-up relative mb-4 overflow-hidden ${card}`}>
