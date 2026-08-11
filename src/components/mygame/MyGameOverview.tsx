@@ -77,6 +77,18 @@ export default function MyGameOverview({ uid }: { uid: string }) {
     return cands.map((c) => ({ ...c, gap: c.benchmark - c.value })).sort((a, b) => b.gap - a.gap)[0];
   }, [career]);
 
+  // "Where your strokes go" — every benchmarked skill, ranked worst-first.
+  const skills = useMemo(() => {
+    if (!career) return [];
+    const raw = [
+      career.c1.pct != null ? { label: "Putting", value: career.c1.pct, benchmark: 0.7, sub: `${career.c1.made}/${career.c1.att} inside 33 ft` } : null,
+      career.fairwayPct != null ? { label: "Off the tee", value: career.fairwayPct, benchmark: 0.6, sub: "tees in play" } : null,
+      career.obRate != null ? { label: "Avoiding OB", value: 1 - career.obRate, benchmark: 0.92, sub: `${Math.round(career.obRate * 100)}% OB rate` } : null,
+      career.scramblePct != null ? { label: "Scrambling", value: career.scramblePct, benchmark: 0.4, sub: "saves after trouble" } : null,
+    ].filter((s): s is { label: string; value: number; benchmark: number; sub: string } => s != null);
+    return raw.map((s) => ({ ...s, gap: s.benchmark - s.value })).sort((a, b) => b.gap - a.gap);
+  }, [career]);
+
   if (dash === undefined || rounds === null) {
     return <div className="flex min-h-[40vh] items-center justify-center text-[var(--sage)]"><svg className="h-6 w-6 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg></div>;
   }
@@ -143,6 +155,31 @@ export default function MyGameOverview({ uid }: { uid: string }) {
               <EvidenceTile label="Avg Drive" value={career!.avgDriveFt ? `${Math.round(career!.avgDriveFt)}` : "—"} unit={career!.avgDriveFt ? "ft" : undefined} sub="off the tee" />
               <EvidenceTile label="Miss Pattern" value={career!.missLeft + career!.missRight === 0 ? "—" : career!.missLeft >= career!.missRight ? "Left" : "Right"} sub={career!.missLeft + career!.missRight ? `${career!.missLeft}L · ${career!.missRight}R` : "No data yet"} />
             </div>
+
+            {skills.length > 0 && (
+              <div>
+                <div className={eyebrow}>Where your strokes go</div>
+                <div className="mt-3 space-y-2.5">
+                  {skills.map((s, i) => {
+                    const worst = i === 0;
+                    const color = worst ? "#e0733f" : "var(--cream)";
+                    return (
+                      <div key={s.label} className={`rounded-2xl border p-3.5 ${worst ? "border-[#e0733f]/30 bg-[#e0733f]/[0.06]" : "border-white/[0.07] bg-white/[0.02]"}`}>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="flex items-center gap-2 text-sm font-bold text-[var(--cream)]">
+                            {s.label}
+                            {worst && <span className="rounded-full bg-[#e0733f]/20 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-[#eb9166]">Biggest leak</span>}
+                          </span>
+                          <span className={`${HEAD} text-lg font-black`} style={{ color }}>{Math.round(s.value * 100)}%</span>
+                        </div>
+                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/[0.06]"><div className="h-full rounded-full" style={{ width: `${Math.min(100, s.value * 100)}%`, background: worst ? "#e0733f" : "var(--gold)" }} /></div>
+                        <div className="mt-1 text-[11px] text-[var(--sage-dim)]">{s.sub}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </ProGate>
       )}
