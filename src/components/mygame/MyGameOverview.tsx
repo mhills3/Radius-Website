@@ -73,9 +73,6 @@ function MiniLine({ points, color = "var(--gold)" }: { points: number[]; color?:
     </svg>
   );
 }
-function ProgBar({ frac, color = "var(--gold)" }: { frac: number; color?: string }) {
-  return <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.08]"><div className="h-full rounded-full" style={{ width: `${Math.max(0, Math.min(1, frac)) * 100}%`, background: color }} /></div>;
-}
 function RangeBar({ min, max, avg }: { min: number; max: number; avg: number }) {
   const lo = 140, hi = Math.max(420, max + 20), span = hi - lo || 1;
   const x = (v: number) => Math.max(0, Math.min(100, ((v - lo) / span) * 100));
@@ -104,7 +101,7 @@ function LRBar({ left, right }: { left: number; right: number }) {
 function StatCard({ icon, label, accent = "var(--gold)", value, unit, viz, sub, locked, lockedText }: { icon: ReactNode; label: string; accent?: string; value?: string; unit?: string; viz?: ReactNode; sub?: string; locked?: boolean; lockedText?: string }) {
   const dim = locked ? "var(--sage-dim)" : accent;
   return (
-    <div className={`flex flex-col rounded-[20px] p-4 ${locked ? "border border-dashed border-white/15 bg-white/[0.01]" : "border border-white/[0.07] bg-white/[0.03]"}`}>
+    <div className={`flex min-h-[126px] flex-col rounded-[20px] p-4 ${locked ? "border border-dashed border-white/15 bg-white/[0.01]" : "border border-white/[0.07] bg-white/[0.03]"}`}>
       <div className="flex items-center gap-2" style={{ color: dim }}>
         <span className="[&>svg]:h-[15px] [&>svg]:w-[15px]">{icon}</span>
         <span className={eyebrow} style={{ color: dim }}>{label}</span>
@@ -239,7 +236,6 @@ export default function MyGameOverview({ uid }: { uid: string }) {
                 sub={career!.c1.att ? `${career!.c1.made} of ${career!.c1.att}` : "No data yet"} />
               <StatCard icon={<IcFlag />} label="Fairway Hit"
                 value={sg && sg.teeAttempts ? `${sg.teeFairwayPct}` : "—"} unit={sg && sg.teeAttempts ? "%" : undefined}
-                viz={sg && sg.teeAttempts ? <ProgBar frac={sg.teeFairwayPct / 100} /> : undefined}
                 sub={sg && sg.teeAttempts ? `${sg.teeObPct}% OB · ${sg.teeAttempts} tees` : "No data yet"} />
               <StatCard icon={<IcArrow />} label="Avg Drive"
                 value={sg && sg.driveCount ? `${sg.driveAvg}` : "—"} unit={sg && sg.driveCount ? "ft" : undefined}
@@ -252,7 +248,7 @@ export default function MyGameOverview({ uid }: { uid: string }) {
                   sub={`${career!.missLeft}L · ${career!.missRight}R`} />
               ) : (
                 <StatCard icon={<IcCrosshair />} label="Miss Pattern" locked lockedText="Unlocks after 8 measured drives"
-                  viz={<ProgBar frac={(sg?.driveCount ?? 0) / 8} />} sub={`${sg?.driveCount ?? 0} of 8`} />
+                  sub={`${sg?.driveCount ?? 0} of 8 measured`} />
               )}
             </div>
 
