@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { type DecodedRound } from "@/lib/rounds";
 import { rankForIQ, rankLabel, rankProgress } from "@/lib/rank";
+import { flightMapImageUrl } from "@/lib/flightMap";
 import LevelBadge from "@/components/scorecard/LevelBadge";
 
 // ---- palette (matches app Theme) ----
@@ -281,30 +282,14 @@ function RankHero({ before, after }: { before: number; after: number }) {
   );
 }
 
-// ---- Flight map (SVG normalized flight path — no satellite; shows shot shape from GPS coords) ----
+// ---- Flight map: Mapbox satellite tile with each hole's flight path in gold ----
 function FlightMap({ round }: { round: DecodedRound }) {
-  const holes = round.holes.filter((h) => h.played && realThrows(h).some((t) => t.lat != null && t.lng != null));
-  const pts = holes.flatMap((h) => realThrows(h).flatMap((t) => {
-    const arr: { lat: number; lng: number; ob: boolean }[] = [];
-    if (t.lat != null && t.lng != null) arr.push({ lat: t.lat, lng: t.lng, ob: t.result === "OB" });
-    if (t.landLat != null && t.landLng != null) arr.push({ lat: t.landLat, lng: t.landLng, ob: t.result === "OB" });
-    return arr;
-  }));
-  const baskets = holes.map((h) => { const t = realThrows(h).find((x) => x.targetLat != null && x.targetLng != null); return t ? { lat: t.targetLat!, lng: t.targetLng! } : null; }).filter(Boolean) as { lat: number; lng: number }[];
-  const allPts = [...pts, ...baskets];
-  if (allPts.length < 2) return <p className="text-[12px] text-white/40">Not enough GPS-tracked shots to map.</p>;
-  const lats = allPts.map((p) => p.lat), lngs = allPts.map((p) => p.lng);
-  const minLat = Math.min(...lats), maxLat = Math.max(...lats), minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
-  const W = 300, H = 220, pad = 18;
-  const x = (lng: number) => pad + ((lng - minLng) / (maxLng - minLng || 1)) * (W - 2 * pad);
-  const y = (lat: number) => pad + (1 - (lat - minLat) / (maxLat - minLat || 1)) * (H - 2 * pad);
+  const url = flightMapImageUrl(round, 640, 380);
+  if (!url) return <p className="text-[12px] text-white/40">Not enough GPS-tracked shots to map.</p>;
   return (
-    <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-[#141d16]">
-      <svg viewBox={`0 0 ${W} ${H}`} className="h-[220px] w-full">
-        {holes.map((h, hi) => { const line = realThrows(h).flatMap((t) => t.lat != null && t.lng != null ? [`${x(t.lng)},${y(t.lat)}`] : []); return line.length >= 2 ? <polyline key={hi} points={line.join(" ")} fill="none" stroke="rgba(246,193,101,0.55)" strokeWidth="1.5" strokeDasharray="3 4" strokeLinejoin="round" /> : null; })}
-        {baskets.map((b, i) => (<g key={`b${i}`}><circle cx={x(b.lng)} cy={y(b.lat)} r="14" fill="none" stroke="rgba(246,193,101,0.25)" /><circle cx={x(b.lng)} cy={y(b.lat)} r="3.5" fill="var(--gold)" /></g>))}
-        {pts.map((p, i) => <circle key={i} cx={x(p.lng)} cy={y(p.lat)} r="3" fill={p.ob ? "#e0473f" : "var(--gold)"} />)}
-      </svg>
+    <div className="overflow-hidden rounded-xl border border-white/[0.08] bg-[#141d16]">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={url} alt="Flight map" className="block h-auto w-full" />
       <div className="px-3 py-2 text-[10px] text-white/40">Your shots this round · tee → basket</div>
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { type DecodedRound } from "@/lib/rounds";
+import { flightMapImageUrl } from "@/lib/flightMap";
 
 const HEAD = "font-[family-name:var(--font-heading)]";
 const MONO = { fontFamily: "var(--font-mono-stack, 'JetBrains Mono', monospace)" } as const;
@@ -19,6 +20,8 @@ export default function RoundPreviewCard({ round, cover, onClick }: { round: Dec
   for (const h of played) for (const t of h.throws) { if (t.discName === "Score" || t.discName === "Throw" || !t.discName) continue; counts.set(t.discName, (counts.get(t.discName) ?? 0) + 1); }
   const topDiscs = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
   const dotColors = ["#E8B560", "#E8B560", "#E0873F"];
+  // GPS rounds show a satellite flight map behind the card; otherwise the course cover.
+  const media = flightMapImageUrl(round, 760, 300) ?? cover;
 
   return (
     <button onClick={onClick} className="group block w-full overflow-hidden rounded-[18px] border border-white/[0.06] bg-[#141d16] text-left transition-colors hover:border-white/[0.12]">
@@ -29,9 +32,9 @@ export default function RoundPreviewCard({ round, cover, onClick }: { round: Dec
       </div>
       {/* media */}
       <div className="relative h-[150px] w-full overflow-hidden bg-[radial-gradient(circle_at_35%_30%,#2E4034,#16211B)]">
-        {cover && (
+        {media && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={cover} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
+          <img src={media} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
         )}
         <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, rgba(15,23,18,0.55) 0%, rgba(15,23,18,0.12) 30%, rgba(15,23,18,0.12) 70%, rgba(15,23,18,0.55) 100%), linear-gradient(to top, rgba(15,23,18,0.55), transparent 45%)" }} />
         {/* score left */}
