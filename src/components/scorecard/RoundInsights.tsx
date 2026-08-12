@@ -7,7 +7,6 @@ import { flightMapImageUrl } from "@/lib/flightMap";
 import LevelBadge from "@/components/scorecard/LevelBadge";
 
 // ---- palette (matches app Theme) ----
-const BIRDIE = "#38995f", BOGEY = "#cc5750", DOUBLE = "#9e3533", GOLD = "var(--gold)", PARN = "#9fb0a4";
 const HEAD = "font-[family-name:var(--font-heading)]";
 const MONO = { fontFamily: "var(--font-mono-stack, 'JetBrains Mono', monospace)" } as const;
 const ft = (n: number) => `${Math.round(n)} ft`;
@@ -18,9 +17,6 @@ const isTrouble = (r: string) => r === "OB" || r === "Miss Left" || r === "Miss 
 const realThrows = (h: DecodedRound["holes"][number]) => h.throws.filter((t) => t.discName !== "Score" && t.discName !== "Throw");
 
 // ---------- section shell ----------
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <div className={`${HEAD} text-[12px] font-semibold uppercase tracking-[0.14em] text-white/45`}>{children}</div>;
-}
 
 function Disclosure({ icon, title, defaultOpen, children }: { icon: React.ReactNode; title: string; defaultOpen?: boolean; children: React.ReactNode }) {
   const [open, setOpen] = useState(!!defaultOpen);
@@ -119,34 +115,14 @@ export default function RoundInsights({ round, history }: { round: DecodedRound;
     return { grid, total: misses.length };
   }, [all]);
 
-  const dist = useMemo(() => {
-    let ace = 0, eagle = 0, bir = 0, par = 0, bog = 0, dbl = 0;
-    for (const h of played) { const d = h.score - h.par; if (h.score === 1) ace++; else if (d <= -2) eagle++; else if (d === -1) bir++; else if (d === 0) par++; else if (d === 1) bog++; else dbl++; }
-    return [
-      (ace + eagle) > 0 ? { label: ace ? "Eagle/Ace" : "Eagle", n: ace + eagle, c: GOLD } : null,
-      { label: "Birdie", n: bir, c: BIRDIE },
-      { label: "Par", n: par, c: PARN },
-      { label: "Bogey", n: bog, c: BOGEY },
-      dbl > 0 ? { label: "Double+", n: dbl, c: DOUBLE } : null,
-    ].filter(Boolean) as { label: string; n: number; c: string }[];
-  }, [played]);
-
   const hasIQ = typeof round.iqBefore === "number" && typeof round.iqAfter === "number";
   const cond = [round.weatherSummary, round.temperatureSummary, round.windSummary].filter(Boolean) as string[];
   const gps = all.some((x) => x.t.lat != null && x.t.lng != null);
 
   return (
     <div className="space-y-5">
-      {/* ===== TOP: IQ promotion card OR score distribution ===== */}
-      {hasIQ ? <RankHero before={round.iqBefore!} after={round.iqAfter!} /> : dist.length > 0 && (
-        <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
-          <SectionLabel>Score distribution</SectionLabel>
-          <div className="mt-3 flex h-3 overflow-hidden rounded-full">{dist.map((d, i) => d.n > 0 ? <div key={i} style={{ flex: d.n, background: d.c }} /> : null)}</div>
-          <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2">{dist.map((d) => (
-            <span key={d.label} className="inline-flex items-center gap-1.5"><span className="h-[7px] w-[7px] rounded-full" style={{ background: d.c }} /><span className={`${HEAD} text-[13px] font-bold text-[var(--cream)]`} style={MONO}>{d.n}</span><span className="text-[11px] text-white/50">{d.label}</span></span>
-          ))}</div>
-        </div>
-      )}
+      {/* ===== TOP: IQ promotion card (only when the round carries a Game IQ change) ===== */}
+      {hasIQ && <RankHero before={round.iqBefore!} after={round.iqAfter!} />}
 
       {/* ===== What cost you ===== */}
       {costliest && (

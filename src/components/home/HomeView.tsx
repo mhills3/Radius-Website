@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
 import { getDecodedRounds, computeCareerStats, type DecodedRound } from "@/lib/rounds";
 import { getAllCourses, slugify, type Course } from "@/lib/courses";
+import { getPutterDiscNames } from "@/lib/bag";
 import { getUpcomingEvents, type LeagueEvent } from "@/lib/leagues";
 import { getFeed, type FeedPost } from "@/lib/feed";
 import Scorecard from "@/components/dashboard/Scorecard";
@@ -87,6 +88,7 @@ export default function HomeView({ uid }: { uid: string }) {
   const [feed, setFeed] = useState<FeedPost[]>([]);
   const [loc, setLoc] = useState<{ lat: number; lng: number } | null>(null);
   const [open, setOpen] = useState<DecodedRound | null>(null);
+  const [putterNames, setPutterNames] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let alive = true;
@@ -94,6 +96,7 @@ export default function HomeView({ uid }: { uid: string }) {
     getAllCourses().then((c) => alive && setCourses(c)).catch(() => {});
     getUpcomingEvents(60).then((e) => alive && setEvents(e)).catch(() => {});
     getFeed(20).then((f) => alive && setFeed(f)).catch(() => {});
+    getPutterDiscNames().then((s) => alive && setPutterNames(s)).catch(() => {});
     if (typeof navigator !== "undefined" && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition((p) => alive && setLoc({ lat: p.coords.latitude, lng: p.coords.longitude }), () => {}, { enableHighAccuracy: false, timeout: 8000, maximumAge: 600000 });
     }
@@ -102,7 +105,7 @@ export default function HomeView({ uid }: { uid: string }) {
 
   const complete = useMemo(() => (rounds ? [...rounds].filter((r) => r.isComplete).sort((a, b) => b.date - a.date) : []), [rounds]);
   const last = complete[0];
-  const career = useMemo(() => (rounds ? computeCareerStats(rounds) : null), [rounds]);
+  const career = useMemo(() => (rounds ? computeCareerStats(rounds, putterNames) : null), [rounds, putterNames]);
   const byName = useMemo(() => { const m = new Map<string, Course>(); courses.forEach((c) => { const k = c.name.trim().toLowerCase(); if (!m.has(k)) m.set(k, c); }); return m; }, [courses]);
   const cover = last ? byName.get(last.courseName.trim().toLowerCase())?.coverPhotoUrl : undefined;
   const firstName = (profile?.name || "Player").split(" ")[0];

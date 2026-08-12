@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { getDashboard, type Dashboard } from "@/lib/account";
 import { getDecodedRounds, computeCareerStats, type DecodedRound, type CareerStats } from "@/lib/rounds";
 import { getAllCourses, type Course } from "@/lib/courses";
+import { getPutterDiscNames } from "@/lib/bag";
 import { rankForIQ, rankLabel, rankProgress } from "@/lib/rank";
 import { usePro } from "@/lib/usePro";
 import ProGate from "@/components/ProGate";
@@ -50,6 +51,7 @@ export default function MyGameOverview({ uid }: { uid: string }) {
   const [rounds, setRounds] = useState<DecodedRound[] | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
   const [open, setOpen] = useState<DecodedRound | null>(null);
+  const [putterNames, setPutterNames] = useState<Set<string>>(new Set());
   const coverOf = useMemo(() => { const m = new Map<string, string>(); courses.forEach((c) => { const k = c.name.trim().toLowerCase(); if (c.coverPhotoUrl && !m.has(k)) m.set(k, c.coverPhotoUrl); }); return m; }, [courses]);
 
   useEffect(() => {
@@ -57,10 +59,11 @@ export default function MyGameOverview({ uid }: { uid: string }) {
     getDashboard(uid).then((d) => alive && setDash(d)).catch(() => alive && setDash(null));
     getDecodedRounds(uid).then((r) => alive && setRounds(r)).catch(() => alive && setRounds([]));
     getAllCourses().then((c) => alive && setCourses(c)).catch(() => {});
+    getPutterDiscNames().then((s) => alive && setPutterNames(s)).catch(() => {});
     return () => { alive = false; };
   }, [uid]);
 
-  const career: CareerStats | null = useMemo(() => (rounds ? computeCareerStats(rounds) : null), [rounds]);
+  const career: CareerStats | null = useMemo(() => (rounds ? computeCareerStats(rounds, putterNames) : null), [rounds, putterNames]);
   const iq = dash?.iqCurrent ?? 0;
   const rank = rankForIQ(iq);
   const nextRank = rank.nextIQ != null ? rankForIQ(rank.nextIQ) : null;

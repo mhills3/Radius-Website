@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { getDecodedRounds, computeCareerStats, type DecodedRound, type CareerStats } from "@/lib/rounds";
+import { getPutterDiscNames } from "@/lib/bag";
 import { usePro } from "@/lib/usePro";
 import ProGate from "@/components/ProGate";
 
@@ -52,9 +53,10 @@ function PracticeTile({ title, sub }: { title: string; sub: string }) {
 export default function MyGameImprove({ uid }: { uid: string }) {
   const pro = usePro();
   const [rounds, setRounds] = useState<DecodedRound[] | null>(null);
-  useEffect(() => { let alive = true; getDecodedRounds(uid).then((r) => alive && setRounds(r)).catch(() => alive && setRounds([])); return () => { alive = false; }; }, [uid]);
+  const [putterNames, setPutterNames] = useState<Set<string>>(new Set());
+  useEffect(() => { let alive = true; getDecodedRounds(uid).then((r) => alive && setRounds(r)).catch(() => alive && setRounds([])); getPutterDiscNames().then((s) => alive && setPutterNames(s)).catch(() => {}); return () => { alive = false; }; }, [uid]);
 
-  const career = useMemo(() => (rounds ? computeCareerStats(rounds) : null), [rounds]);
+  const career = useMemo(() => (rounds ? computeCareerStats(rounds, putterNames) : null), [rounds, putterNames]);
   const skills = useMemo(() => (career ? skillsFrom(career) : []), [career]);
   const ranked = useMemo(() => [...skills].map((s) => ({ ...s, gap: s.benchmark - s.value })).sort((a, b) => b.gap - a.gap), [skills]);
   const leak = ranked[0];

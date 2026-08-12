@@ -162,6 +162,14 @@ export async function getDiscCatalog(): Promise<DbDisc[]> {
   return (await loadDiscDb()).list;
 }
 
+/** Names of every putter-category disc in the catalog — mirrors iOS `putterDiscNames`
+ *  (DiscDatabase.allDiscs.filter { category == .putter }). Used to classify putts on rounds where
+ *  the throw isn't lie-stamped (e.g. GPS putts, which carry no putt lie). */
+export async function getPutterDiscNames(): Promise<Set<string>> {
+  const cat = await getDiscCatalog();
+  return new Set(cat.filter((d) => normCat(d.category) === "PUTTER").map((d) => d.name));
+}
+
 // Decode a base64 string as UTF-8. `atob` alone yields a Latin-1 "binary string", which
 // corrupts multibyte UTF-8 (accents/diacritics → mojibake like "bílý" → "bÃ­lÃ½"); reinterpret
 // the decoded bytes through TextDecoder so disc names/nicknames keep their real characters.

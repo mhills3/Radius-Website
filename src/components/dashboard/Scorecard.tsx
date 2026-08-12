@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { type DecodedRound, computeRoundStats, type RoundStats } from "@/lib/rounds";
+import { getPutterDiscNames } from "@/lib/bag";
 import { useAuth } from "@/components/AuthProvider";
 import { usePro } from "@/lib/usePro";
 import ProGate from "@/components/ProGate";
@@ -77,17 +78,19 @@ export default function Scorecard({ round, onClose, rounds }: { round: DecodedRo
   const [tab, setTab] = useState<Tab>("scorecard");
   const pro = usePro();
   const { profile } = useAuth();
+  const [putterNames, setPutterNames] = useState<Set<string>>(new Set());
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+  useEffect(() => { let alive = true; getPutterDiscNames().then((s) => alive && setPutterNames(s)).catch(() => {}); return () => { alive = false; }; }, []);
 
   const scHoles = round.holes.filter((h) => h.played).map((h) => ({ holeNumber: h.holeNumber, par: h.par, score: h.score, distance: h.distance || undefined }));
   const rel = round.relativeToPar;
   const relColor = rel < 0 ? "#5fb87a" : rel === 0 ? "var(--cream)" : "#e0473f";
 
-  const stats: RoundStats = useMemo(() => computeRoundStats(round), [round]);
+  const stats: RoundStats = useMemo(() => computeRoundStats(round, putterNames), [round, putterNames]);
 
   const TABS: { key: Tab; label: string }[] = [
     { key: "scorecard", label: "Scorecard" },
@@ -98,7 +101,7 @@ export default function Scorecard({ round, onClose, rounds }: { round: DecodedRo
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/65 animate-[fadeIn_0.2s_ease]" onClick={onClose} />
-      <div className="relative max-h-[88vh] w-full max-w-5xl overflow-y-auto rounded-3xl border border-white/10 bg-[var(--bg-mid)] p-7 animate-[fadeIn_0.25s_ease]">
+      <div className="relative max-h-[88vh] w-full max-w-5xl overflow-y-auto rounded-3xl border border-white/10 bg-[#111813] p-7 animate-[fadeIn_0.25s_ease]">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-[0.16em] text-[var(--gold)]">

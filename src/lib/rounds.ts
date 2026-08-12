@@ -223,7 +223,7 @@ export interface CareerStats {
 
 /** Aggregate the per-round metrics across all complete rounds — attempt-weighted from raw throws so
  *  career percentages are exact (not an average of per-round percentages). */
-export function computeCareerStats(rounds: DecodedRound[]): CareerStats {
+export function computeCareerStats(rounds: DecodedRound[], putterNames: Set<string> = new Set()): CareerStats {
   const complete = rounds.filter((r) => r.isComplete);
   const successOf = (key: string) => RESULTS.find((r) => r.key === key)?.success ?? 40;
   let throws = 0, qSum = 0, holes = 0;
@@ -265,7 +265,7 @@ export function computeCareerStats(rounds: DecodedRound[]): CareerStats {
           const stamp = t.lie ?? "";
           const stampedPutt = stamp.startsWith("putt") || stamp === "tap-in";
           const standardPutt = t.lat == null && (t.distance ?? 0) === 0 && (raw === "Basket" || raw === "Miss Left");
-          if (stampedPutt || standardPutt) {
+          if (stampedPutt || standardPutt || putterNames.has(t.discName)) {
             const made = Boolean(t.madeIt) || raw === "Basket";
             if (startD >= 15 && startD < 33) { c1a++; if (made) c1m++; }
             else if (startD >= 33) { c2a++; if (made) c2m++; }
