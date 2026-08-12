@@ -45,11 +45,12 @@ function ToParLine({ round, w, h }: { round: DecodedRound; w: number; h: number 
   return (
     <svg viewBox={`0 0 ${w} ${h}`} width="100%" height={h} preserveAspectRatio="none" className="block">
       <defs>
-        <clipPath id="tpl-under"><rect x="0" y="0" width={w} height={base} /></clipPath>
-        <clipPath id="tpl-over"><rect x="0" y={base} width={w} height={h - base} /></clipPath>
+        {/* the par axis maps under-par below it, over-par above — so top = over (red), bottom = under (green) */}
+        <clipPath id="tpl-over"><rect x="0" y="0" width={w} height={base} /></clipPath>
+        <clipPath id="tpl-under"><rect x="0" y={base} width={w} height={h - base} /></clipPath>
       </defs>
-      <path d={area} fill="rgba(143,191,154,0.16)" clipPath="url(#tpl-under)" />
-      <path d={area} fill="rgba(232,181,96,0.15)" clipPath="url(#tpl-over)" />
+      <path d={area} fill="rgba(224,102,102,0.18)" clipPath="url(#tpl-over)" />
+      <path d={area} fill="rgba(143,191,154,0.20)" clipPath="url(#tpl-under)" />
       <line x1="0" y1={base} x2={w} y2={base} stroke="rgba(244,241,232,0.22)" strokeWidth="1" strokeDasharray="3 5" />
       <polyline points={pts} fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
       <circle cx={w} cy={y(cum[cum.length - 1])} r="3.4" fill="var(--gold)" />
@@ -195,15 +196,15 @@ export default function HomeView({ uid }: { uid: string }) {
             {workOn && (
               <div className={`border-b ${divider} pb-8`}>
                 <div className={`${label} mb-3`}>What to work on</div>
-                <p className={`${BODY} max-w-xl text-[19px] leading-relaxed text-[var(--cream)]`}>{workOn}</p>
-                <Link href="/bag?tab=improve" className="mt-4 inline-block text-[12.5px] font-semibold text-[var(--gold)]">Open Improve →</Link>
+                <p className={`${HEAD} max-w-xl text-[22px] font-semibold leading-[1.32] text-[var(--cream)]`}>{workOn}</p>
+                <Link href="/bag?tab=improve" className="mt-4 inline-block text-[13px] font-semibold text-[var(--gold)]">Open Improve →</Link>
               </div>
             )}
 
             <div className={`${workOn ? "pt-8" : ""}`}>
               <div className="mb-3 flex items-baseline justify-between">
                 <span className={label}>Recent rounds</span>
-                <Link href="/bag" className={`${BODY} text-[11.5px] text-[var(--sage)] hover:text-[var(--cream)]`}>View all</Link>
+                <Link href="/bag" className={`${BODY} text-[12.5px] text-[var(--sage)] hover:text-[var(--cream)]`}>View all</Link>
               </div>
               {complete.length === 0 ? (
                 <p className="text-sm text-[var(--sage-dim)]">No rounds yet — play one in the Radius app.</p>
@@ -221,11 +222,11 @@ export default function HomeView({ uid }: { uid: string }) {
           <aside className="min-w-0">
             {/* Play a course — a section, not a card; copy adapts to the player */}
             <div className={`border-b ${divider} pb-5`}>
-              <div className={`${HEAD} text-[15px] font-bold text-[var(--cream)]`}>{courseNudge.title}</div>
-              <p className={`${BODY} mt-1 text-[12.5px] leading-snug text-[var(--sage)]`}>{courseNudge.body}</p>
-              <div className="mt-3 flex items-center gap-4">
-                <Link href="/courses" className="text-[12.5px] font-semibold text-[var(--gold)]">Find a course →</Link>
-                <Link href="/courses/new" className="text-[12.5px] font-semibold text-[var(--sage)] hover:text-[var(--cream)]">Add a course</Link>
+              <div className={`${HEAD} text-[17px] font-bold text-[var(--cream)]`}>{courseNudge.title}</div>
+              <p className={`${BODY} mt-1.5 text-[13.5px] leading-snug text-[var(--sage)]`}>{courseNudge.body}</p>
+              <div className="mt-3.5 flex items-center gap-4">
+                <Link href="/courses" className="text-[13.5px] font-semibold text-[var(--gold)]">Find a course →</Link>
+                <Link href="/courses/new" className="text-[13.5px] font-semibold text-[var(--sage)] hover:text-[var(--cream)]">Add a course</Link>
               </div>
             </div>
 
@@ -233,11 +234,11 @@ export default function HomeView({ uid }: { uid: string }) {
             <div className={`mt-5 border-b ${divider} pb-5`}>
               <div className={`${label} mb-4`}>Your game</div>
               <div className="grid grid-cols-3 gap-1">
-                <StatRing label="C1X Putt" value={career?.c1.pct != null ? `${Math.round(career.c1.pct * 100)}` : "—"} unit={career?.c1.pct != null ? "%" : undefined} frac={career?.c1.pct ?? null} />
+                <StatRing label="C1X Putt" value={career && career.c1.att >= 3 && career.c1.pct != null ? `${Math.round(career.c1.pct * 100)}` : "—"} unit={career && career.c1.att >= 3 && career.c1.pct != null ? "%" : undefined} frac={career && career.c1.att >= 3 ? career.c1.pct : null} />
                 <StatRing label="Avg Drive" value={career?.avgDriveFt ? `${Math.round(career.avgDriveFt)}` : "—"} unit={career?.avgDriveFt ? "ft" : undefined} frac={career?.avgDriveFt ? career.avgDriveFt / 400 : null} />
                 <StatRing label="Fairway" value={career?.fairwayPct != null ? `${Math.round(career.fairwayPct * 100)}` : "—"} unit={career?.fairwayPct != null ? "%" : undefined} frac={career?.fairwayPct ?? null} />
               </div>
-              <Link href="/bag" className="mt-4 inline-block text-[12px] font-semibold text-[var(--gold)]">Open My Game →</Link>
+              <Link href="/bag" className="mt-4 inline-block text-[13px] font-semibold text-[var(--gold)]">Open My Game →</Link>
             </div>
 
             {/* Near you */}
@@ -252,8 +253,8 @@ export default function HomeView({ uid }: { uid: string }) {
                         <span className="text-[12px] font-bold leading-none text-[var(--cream)]" style={MONO}>{new Date(e.date).getDate()}</span>
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[12.5px] font-semibold text-[var(--cream)]">{e.name}</span>
-                        <span className="mt-0.5 block truncate text-[9.5px] text-[var(--sage-dim)]" style={MONO}>{e.courseName} · {miLabel(mi)}</span>
+                        <span className="block truncate text-[13.5px] font-semibold text-[var(--cream)]">{e.name}</span>
+                        <span className="mt-0.5 block truncate text-[10.5px] text-[var(--sage-dim)]" style={MONO}>{e.courseName} · {miLabel(mi)}</span>
                       </span>
                     </Link>
                   ))}
@@ -266,8 +267,8 @@ export default function HomeView({ uid }: { uid: string }) {
                         </span>
                       )}
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[12.5px] font-semibold text-[var(--cream)]">{c.name}</span>
-                        <span className="mt-0.5 block text-[9.5px] text-[var(--sage-dim)]" style={MONO}>{miLabel(mi)} · {playedNames.has(c.name.trim().toLowerCase()) ? "played" : "new to you"}</span>
+                        <span className="block truncate text-[13.5px] font-semibold text-[var(--cream)]">{c.name}</span>
+                        <span className="mt-0.5 block text-[10.5px] text-[var(--sage-dim)]" style={MONO}>{miLabel(mi)} · {playedNames.has(c.name.trim().toLowerCase()) ? "played" : "new to you"}</span>
                       </span>
                     </Link>
                   ))}
@@ -281,7 +282,7 @@ export default function HomeView({ uid }: { uid: string }) {
               <div className="mt-5">
                 <div className="mb-3 flex items-baseline justify-between">
                   <span className={label}>The scene</span>
-                  <Link href="/community" className={`${BODY} text-[11px] text-[var(--gold)] hover:text-[var(--gold-bright)]`}>More</Link>
+                  <Link href="/community" className={`${BODY} text-[12px] text-[var(--gold)] hover:text-[var(--gold-bright)]`}>More</Link>
                 </div>
                 <div className="space-y-3.5">
                   {scene.map((p) => (
@@ -291,14 +292,14 @@ export default function HomeView({ uid }: { uid: string }) {
                         {p.authorPhotoUrl ? <img src={p.authorPhotoUrl} alt="" className="h-full w-full object-cover" /> : (p.authorName || "?").charAt(0)}
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[12px] font-semibold text-[var(--cream)]">{p.authorName}</span>
+                        <span className="block truncate text-[13.5px] font-semibold text-[var(--cream)]">{p.authorName}</span>
                         {p.linkedCourseName
-                          ? <span className="mt-0.5 block truncate text-[9.5px] text-[var(--sage-dim)]" style={MONO}>{p.linkedCourseName}</span>
-                          : <span className={`${BODY} mt-0.5 block truncate text-[10px] text-[var(--sage-dim)]`}>{p.text || "posted an update"}</span>}
+                          ? <span className="mt-0.5 block truncate text-[10.5px] text-[var(--sage-dim)]" style={MONO}>{p.linkedCourseName}</span>
+                          : <span className={`${BODY} mt-0.5 block truncate text-[11px] text-[var(--sage-dim)]`}>{p.text || "posted an update"}</span>}
                       </span>
                       {p.scoreToPar != null
-                        ? <span className="w-9 shrink-0 text-right text-[13px] font-bold" style={{ ...MONO, color: scoreColor(p.scoreToPar) }}>{fmtToPar(p.scoreToPar)}</span>
-                        : <span className="w-9 shrink-0 text-right text-[9.5px] text-[var(--sage-dim)]" style={MONO}>{timeAgo(p.createdAt)}</span>}
+                        ? <span className="w-9 shrink-0 text-right text-[14px] font-bold" style={{ ...MONO, color: scoreColor(p.scoreToPar) }}>{fmtToPar(p.scoreToPar)}</span>
+                        : <span className="w-9 shrink-0 text-right text-[10.5px] text-[var(--sage-dim)]" style={MONO}>{timeAgo(p.createdAt)}</span>}
                     </Link>
                   ))}
                 </div>

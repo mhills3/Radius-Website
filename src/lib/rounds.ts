@@ -209,8 +209,19 @@ export function computeCareerStats(rounds: DecodedRound[]): CareerStats {
         if (isMissKey(key) || key === "OB") hadTrouble = true;
         if (raw === "Miss Left") missLeft++;
         if (raw === "Miss Right") missRight++;
-        if (t.distanceToBasket != null && t.distanceToBasket <= 33) { c1a++; if (t.madeIt) c1m++; }
-        else if (t.distanceToBasket != null && t.distanceToBasket >= 34 && t.distanceToBasket <= 66) { c2a++; if (t.madeIt) c2m++; }
+        // C1X (15–33 ft) + C2 (33–66 ft) putting — mirrors iOS ShotInsightsSummary, re-cut 2026-08-09:
+        // putts only (not every close throw), tap-ins (<15 ft) excluded, a make counts a basket.
+        const startD = t.distanceToBasket;
+        if (startD != null && startD <= 66 && t.lie !== "tee") {
+          const stamp = t.lie ?? "";
+          const stampedPutt = stamp.startsWith("putt") || stamp === "tap-in";
+          const standardPutt = t.lat == null && (t.distance ?? 0) === 0 && (raw === "Basket" || raw === "Miss Left");
+          if (stampedPutt || standardPutt) {
+            const made = Boolean(t.madeIt) || raw === "Basket";
+            if (startD >= 15 && startD < 33) { c1a++; if (made) c1m++; }
+            else if (startD >= 33) { c2a++; if (made) c2m++; }
+          }
+        }
       });
       if (hadTrouble) { troubleHoles++; if (rel <= 0) troubleSaved++; }
     }
