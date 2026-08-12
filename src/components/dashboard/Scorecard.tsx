@@ -9,13 +9,54 @@ import RoundInsights from "@/components/scorecard/RoundInsights";
 
 const fmtScore = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`);
 const fmtDate = (ms: number) => (ms ? new Date(ms).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" }) : "");
-const pct = (v: number | null) => (v == null ? "—" : `${Math.round(v * 100)}%`);
+// Best/Worst hole label, matching iOS: positive gets a "+", zero/negative print bare ("H7 (0)", "H8 (-1)").
+const fmtHoleRel = (n: number) => (n > 0 ? `+${n}` : `${n}`);
 
-function Metric({ label, value, color }: { label: string; value: string; color: string }) {
+// iOS AppTheme palette (Theme 2.swift) for the Stats rings.
+const RING = { green: "#389A6B", red: "#CC5750", sage: "#A8B391", gold: "#F6C165", ink: "#F0EDE3" };
+
+// PercentRing (Theme 2.swift): faint full track + a value-length arc from 12 o'clock clockwise, big
+// truncated % centered with a small superscript, label below. 0% still draws a round-cap sliver.
+function Gauge({ value, label, tint }: { value: number | null; label: string; tint: string }) {
+  const size = 112, sw = 8, r = (size - sw) / 2 - 1, C = 2 * Math.PI * r;
+  const has = value != null;
+  const frac = has ? Math.max(0.0001, Math.min(value, 1)) : 0;
+  const shown = has ? Math.floor(value * 100) : null; // iOS Int() truncation
   return (
-    <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] px-3.5 py-3">
-      <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--sage-dim)]">{label}</div>
-      <div className="mt-1 font-[family-name:var(--font-heading)] text-2xl font-extrabold leading-none" style={{ color }}>{value}</div>
+    <div className="flex flex-col items-center gap-2.5">
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="block">
+        <g transform={`translate(${size / 2} ${size / 2}) rotate(-90)`}>
+          <circle r={r} fill="none" stroke={`rgba(255,255,255,${has ? 0.12 : 0.07})`} strokeWidth={sw} />
+          {has && <circle r={r} fill="none" stroke={tint} strokeWidth={sw} strokeLinecap="round" strokeDasharray={`${frac * C} ${C}`} />}
+        </g>
+        <text x={size / 2} y={size / 2} textAnchor="middle" dominantBaseline="central">
+          {shown == null
+            ? <tspan style={{ fontSize: 30, fontWeight: 800, fontFamily: "var(--font-heading)", fill: "rgba(255,255,255,0.35)" }}>––</tspan>
+            : <>
+                <tspan style={{ fontSize: 31, fontWeight: 800, fontFamily: "var(--font-heading)", fill: RING.ink }}>{shown}</tspan>
+                <tspan dx="1" dy="-9" style={{ fontSize: 14, fontWeight: 700, fontFamily: "var(--font-heading)", fill: "rgba(255,255,255,0.5)" }}>%</tspan>
+              </>}
+        </text>
+      </svg>
+      <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/45">{label}</div>
+    </div>
+  );
+}
+
+function SectionRule({ children }: { children: string }) {
+  return (
+    <div className="mb-5 mt-8 flex items-center gap-3 first:mt-0">
+      <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/45">{children}</span>
+      <span className="h-px flex-1 bg-white/10" />
+    </div>
+  );
+}
+
+function ScoreCard({ big, label, color }: { big: string; label: string; color: string }) {
+  return (
+    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] px-2 py-4 text-center">
+      <div className="font-[family-name:var(--font-heading)] text-[20px] font-black leading-none" style={{ color }}>{big}</div>
+      <div className="mt-1.5 text-[12.5px] text-[var(--sage)]">{label}</div>
     </div>
   );
 }
@@ -80,24 +121,43 @@ export default function Scorecard({ round, onClose, rounds }: { round: DecodedRo
         {tab === "scorecard" && <ScorecardTable holes={scHoles} />}
 
         {tab === "stats" && (
-          <div className="space-y-5">
-            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-              <Metric label="Throw Quality" value={stats.throwQuality == null ? "—" : `${Math.round(stats.throwQuality)}`} color="var(--gold)" />
-              <Metric label="Fairway %" value={pct(stats.fairwayPct)} color="#33c773" />
-              <Metric label="OB Rate" value={pct(stats.obRate)} color="#e0473f" />
-              <Metric label="Green Hit" value={pct(stats.greenHitPct)} color="#5fb87a" />
-              <Metric label="Scramble" value={pct(stats.scramblePct)} color="var(--gold)" />
-              <Metric label="Total Throws" value={`${stats.throws}`} color="var(--cream)" />
-              <Metric label="C1 Putting" value={pct(stats.c1Pct)} color="#33c773" />
-              <Metric label="C2 Putting" value={pct(stats.c2Pct)} color="#4d94fa" />
-              <Metric label="Best Hole" value={stats.bestHole ? `H${stats.bestHole.holeNumber} (${fmtScore(stats.bestHole.rel)})` : "—"} color="#5fb87a" />
-            </div>
-            {stats.worstHole && (
-              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-                <Metric label="Worst Hole" value={`H${stats.worstHole.holeNumber} (${fmtScore(stats.worstHole.rel)})`} color="#e0473f" />
+          <div className="mx-auto max-w-[440px]">
+            <SectionRule>Performance</SectionRule>
+            <div className="flex items-center justify-between rounded-2xl border border-white/[0.08] bg-white/[0.02] px-5 py-5">
+              <div className="min-w-0">
+                <div className="text-[12px] font-bold uppercase tracking-[0.14em] text-white/45">Throw Quality</div>
+                <div className="mt-1.5 text-[13.5px] text-[var(--sage)]">Composite shot grade this round</div>
               </div>
-            )}
-            <p className="text-xs text-[var(--sage-dim)]">Putting splits need throw-distance data — older or imported rounds may show “—”.</p>
+              <div className="flex shrink-0 items-baseline gap-1">
+                <span className="font-[family-name:var(--font-heading)] text-[46px] font-black leading-none" style={{ color: RING.ink }}>{stats.throwQuality == null ? "––" : Math.floor(stats.throwQuality)}</span>
+                <span className="text-[15px] font-bold text-white/45">/100</span>
+              </div>
+            </div>
+
+            <SectionRule>Driving</SectionRule>
+            <div className="grid grid-cols-2 justify-items-center gap-2">
+              <Gauge value={stats.fairwayPct} label="Fairway" tint={RING.green} />
+              <Gauge value={stats.obRate} label="OB Rate" tint={(stats.obRate ?? 1) <= 0 ? RING.green : RING.red} />
+            </div>
+
+            <SectionRule>Approach</SectionRule>
+            <div className="grid grid-cols-2 justify-items-center gap-2">
+              <Gauge value={stats.greenHitPct} label="Green Hit" tint={RING.sage} />
+              <Gauge value={stats.scramblePct} label="Scramble" tint={RING.gold} />
+            </div>
+
+            <SectionRule>Putting</SectionRule>
+            <div className="grid grid-cols-2 justify-items-center gap-2">
+              <Gauge value={stats.c1Pct} label="C1 Putt" tint={RING.green} />
+              <Gauge value={stats.c2Pct} label="C2 Putt" tint={RING.sage} />
+            </div>
+
+            <SectionRule>Scoring</SectionRule>
+            <div className="grid grid-cols-3 gap-2.5">
+              <ScoreCard big={`${stats.throws}`} label="Throws" color={RING.ink} />
+              <ScoreCard big={stats.bestHole ? `H${stats.bestHole.holeNumber} (${fmtHoleRel(stats.bestHole.rel)})` : "—"} label="Best Hole" color="#5fb87a" />
+              <ScoreCard big={stats.worstHole ? `H${stats.worstHole.holeNumber} (${fmtHoleRel(stats.worstHole.rel)})` : "—"} label="Worst Hole" color={RING.red} />
+            </div>
           </div>
         )}
 

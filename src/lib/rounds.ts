@@ -70,7 +70,7 @@ function isMissKey(k: string): boolean {
   return k === "Miss";
 }
 
-export function computeRoundStats(round: DecodedRound): RoundStats {
+export function computeRoundStats(round: DecodedRound, putterNames: Set<string> = new Set()): RoundStats {
   const played = round.holes.filter((h) => h.played);
   // Flatten throws, excluding "Score" pseudo-throws, tagging each with its hole.
   const all: { t: DecodedThrow; key: string; hole: number }[] = [];
@@ -99,21 +99,66 @@ export function computeRoundStats(round: DecodedRound): RoundStats {
   const obThrows = all.filter((x) => x.key === "OB").length;
   const obRate = n === 0 ? null : obThrows / n;
 
-  const greenHits = field.filter((x) => ["Basket", "Circle 1", "Circle 2"].includes(x.key)).length;
-  const greenHitPct = field.length === 0 ? null : greenHits / field.length;
+  // Green in regulation — iOS Round.greenHitRate: a hole "hits" when the player reaches a putt lie
+  // (<=66 ft) with strokes-before-first-putt <= par-2 (or an under-par throw-in). strokes counts every
+  // log incl. "Score" placeholders, exactly like iOS.
+  let girEligible = 0, girHits = 0;
+  for (const h of played) {
+    const logs = h.throws;
+    if (!logs.some((l) => l.discName !== "Score" || l.lie === "tap-in")) continue;
+    let strokesBeforeFirstPutt: number | null = null, strokes = 0, prevDtb: number | null = null;
+    for (const log of logs) {
+      const dtb = log.distanceToBasket;
+      const isPutt =
+        log.lie === "putt-c1" || log.lie === "putt-c2" || log.lie === "tap-in" ||
+        (putterNames.has(log.discName) && dtb != null && dtb <= 66) ||
+        (log.lat != null && log.lie == null && dtb != null && dtb <= 66) ||
+        (log.lat == null && log.discName !== "Score" && prevDtb != null && prevDtb <= 66);
+      if (isPutt && strokesBeforeFirstPutt == null) strokesBeforeFirstPutt = strokes;
+      strokes++;
+      if (log.discName !== "Score") prevDtb = dtb ?? null;
+    }
+    girEligible++;
+    if (strokesBeforeFirstPutt != null) { if (strokesBeforeFirstPutt <= h.par - 2) girHits++; }
+    else if (h.score > 0 && h.score <= h.par - 1) girHits++;
+  }
+  const greenHitPct = girEligible === 0 ? null : girHits / girEligible;
 
   // Scramble: holes with a miss/OB throw that still scored par-or-better. No trouble = 0.5.
   const relByHole = new Map(played.map((h) => [h.holeNumber, h.score - h.par]));
   const trouble = [...byHole.entries()].filter(([, arr]) => arr.some((x) => isMissKey(x.key) || x.key === "OB")).map(([h]) => h);
   const scramblePct = n === 0 ? null : trouble.length === 0 ? 0.5 : trouble.filter((h) => (relByHole.get(h) ?? 1) <= 0).length / trouble.length;
 
-  // C1 ≤33ft, C2 34–66ft; "made" via madeIt flag.
-  const c1 = all.filter((x) => x.t.distanceToBasket != null && x.t.distanceToBasket <= 33);
-  const c2 = all.filter((x) => x.t.distanceToBasket != null && x.t.distanceToBasket >= 34 && x.t.distanceToBasket <= 66);
-  const c1Made = c1.filter((x) => x.t.madeIt).length;
-  const c2Made = c2.filter((x) => x.t.madeIt).length;
-  const c1Pct = c1.length === 0 ? null : c1Made / c1.length;
-  const c2Pct = c2.length === 0 ? null : c2Made / c2.length;
+  // C1 (<=33 ft) / C2 (34–66 ft) putting — iOS Round.puttTally. Classify each real throw as a putt by:
+  // (a) a putting-putter disc + its distance, (b) an explicit putt/tap-in lie, (c) a GPS release
+  // distance, or (d) the previous throw's landing distance (when the current log has no GPS). This is
+  // NOT "every throw within 33 ft" — approach shots that land close are excluded. A make = madeIt.
+  let c1m = 0, c1a = 0, c2m = 0, c2a = 0;
+  for (const h of played) {
+    let prevRealDtb: number | null = null, prevRealPutter = false;
+    for (const cur of h.throws) {
+      if (cur.discName === "Score") continue;
+      const dtb = cur.distanceToBasket;
+      let ring: "c1" | "c2" | null = null;
+      if (putterNames.has(cur.discName) && dtb != null) {
+        ring = dtb <= 33 ? "c1" : dtb <= 66 ? "c2" : null;
+      } else if (cur.lie === "putt-c1" || cur.lie === "tap-in") {
+        ring = "c1";
+      } else if (cur.lie === "putt-c2") {
+        ring = "c2";
+      } else if (cur.lat != null && cur.lie == null && dtb != null) {
+        ring = dtb <= 33 ? "c1" : dtb <= 66 ? "c2" : null;
+      } else if (cur.lat == null && prevRealDtb != null && !prevRealPutter) {
+        ring = prevRealDtb <= 33 ? "c1" : prevRealDtb <= 66 ? "c2" : null;
+      }
+      if (ring === "c1") { c1a++; if (cur.madeIt) c1m++; }
+      else if (ring === "c2") { c2a++; if (cur.madeIt) c2m++; }
+      prevRealDtb = dtb ?? null;
+      prevRealPutter = putterNames.has(cur.discName);
+    }
+  }
+  const c1Pct = c1a === 0 ? null : c1m / c1a;
+  const c2Pct = c2a === 0 ? null : c2m / c2a;
 
   const throwQuality = n === 0 ? null : all.reduce((s, x) => s + successOf(x.key), 0) / n;
 
