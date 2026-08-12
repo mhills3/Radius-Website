@@ -290,10 +290,7 @@ export default function HomeView({ uid }: { uid: string }) {
             {/* The scene */}
             {showScene && (
               <div className="mt-5">
-                <div className="mb-3 flex items-baseline justify-between">
-                  <span className={label}>The scene</span>
-                  <Link href="/community" className={`${BODY} text-[12px] text-[var(--gold)] hover:text-[var(--gold-bright)]`}>More</Link>
-                </div>
+                <div className={`${label} mb-3`}>The scene</div>
                 <div className="space-y-3.5">
                   {scene.map((p) => (
                     <Link key={p.id} href="/community" className="flex items-center gap-2.5">
@@ -313,6 +310,10 @@ export default function HomeView({ uid }: { uid: string }) {
                     </Link>
                   ))}
                 </div>
+                <Link href="/community" className="group mt-4 flex items-center justify-center gap-1.5 rounded-[10px] border border-[var(--hair-strong)] py-2.5 text-[12px] font-semibold text-[var(--sage)] transition-colors hover:border-[var(--gold)]/45 hover:bg-[var(--gold)]/[0.05] hover:text-[var(--gold)]">
+                  See more in Community
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                </Link>
               </div>
             )}
           </aside>
