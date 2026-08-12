@@ -3,13 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { getDashboard, type Dashboard } from "@/lib/account";
 import { getDecodedRounds, computeCareerStats, type DecodedRound, type CareerStats } from "@/lib/rounds";
+import { getAllCourses, type Course } from "@/lib/courses";
 import { rankForIQ, rankLabel, rankProgress } from "@/lib/rank";
 import { usePro } from "@/lib/usePro";
 import ProGate from "@/components/ProGate";
 import DualRing from "@/components/mygame/DualRing";
 import Scorecard from "@/components/dashboard/Scorecard";
+import RoundPreviewCard from "@/components/scorecard/RoundPreviewCard";
 
-const fmtToPar = (n: number | null | undefined) => (n == null ? "—" : n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`);
 const fmtToParAvg = (n: number | null) => (n == null ? "—" : `${n > 0 ? "+" : ""}${n.toFixed(1)}`);
 const pct = (v: number | null | undefined) => (v == null ? "—" : `${Math.round(v * 100)}%`);
 const scoreColor = (n: number | null) => (n == null ? "var(--cream)" : n < 0 ? "#5fcf80" : n === 0 ? "var(--cream)" : "#f08c8c");
@@ -47,12 +48,15 @@ export default function MyGameOverview({ uid }: { uid: string }) {
   const pro = usePro();
   const [dash, setDash] = useState<Dashboard | null | undefined>(undefined);
   const [rounds, setRounds] = useState<DecodedRound[] | null>(null);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [open, setOpen] = useState<DecodedRound | null>(null);
+  const coverOf = useMemo(() => { const m = new Map<string, string>(); courses.forEach((c) => { const k = c.name.trim().toLowerCase(); if (c.coverPhotoUrl && !m.has(k)) m.set(k, c.coverPhotoUrl); }); return m; }, [courses]);
 
   useEffect(() => {
     let alive = true;
     getDashboard(uid).then((d) => alive && setDash(d)).catch(() => alive && setDash(null));
     getDecodedRounds(uid).then((r) => alive && setRounds(r)).catch(() => alive && setRounds([]));
+    getAllCourses().then((c) => alive && setCourses(c)).catch(() => {});
     return () => { alive = false; };
   }, [uid]);
 
@@ -196,20 +200,14 @@ export default function MyGameOverview({ uid }: { uid: string }) {
       )}
 
       {/* Recent rounds (free) */}
-      <div className={card}>
+      <div>
         <div className={`${eyebrow} mb-3`}>Recent rounds</div>
         {recent.length === 0 ? (
           <p className="text-sm text-[var(--sage-dim)]">No rounds yet — play one in the Radius app and it&apos;ll appear here.</p>
         ) : (
-          <div className="divide-y divide-white/[0.05]">
+          <div className="space-y-4">
             {recent.map((r) => (
-              <button key={r.roundId} onClick={() => setOpen(r)} className="flex w-full items-center justify-between gap-3 py-2.5 text-left transition-colors hover:opacity-80">
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold text-[var(--cream)]">{r.courseName}</div>
-                  <div className="text-xs text-[var(--sage-dim)]">{new Date(r.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} · {r.holesPlayed} holes</div>
-                </div>
-                <span className={`${HEAD} shrink-0 text-xl font-black`} style={{ color: scoreColor(r.relativeToPar) }}>{fmtToPar(r.relativeToPar)}</span>
-              </button>
+              <RoundPreviewCard key={r.roundId} round={r} cover={coverOf.get(r.courseName.trim().toLowerCase())} onClick={() => setOpen(r)} />
             ))}
           </div>
         )}
