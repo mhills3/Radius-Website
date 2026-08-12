@@ -221,6 +221,53 @@ export interface CareerStats {
   scoreTrend: { date: number; toPar: number }[]; // chronological, one point per complete round
 }
 
+// iOS ShotInsightsSummary putt-band tally (RecommendationEngine, re-cut 2026-08-09 + reconciled
+// 2026-08-12). C1X = bands 1+2 (15–33 ft), C2 = band 3 (33–66 ft). The 2026-08-12 fix: a "legacy
+// landing" row (no GPS, empty lie, distance 0, result Circle 1/2) stores its LANDING bucket in
+// distanceToBasket (C1→20, C2→50), NOT a putt start — reading it as a start manufactured fake missed
+// 20/50-ft putts that collapsed C1X (the "iOS 48% artifact"). Such rows are dropped from the tally
+// (unless the previous row is itself a legacy landing, which then supplies the real start). Also drops
+// a hole's first row when it's a made basket stamped dtb=15 with no GPS (a throw-in, not a 15-ft putt).
+function puttBandTally(round: DecodedRound, putterNames: Set<string>): { c1m: number; c1a: number; c2m: number; c2a: number } {
+  let c1m = 0, c1a = 0, c2m = 0, c2a = 0;
+  const isLegacyLanding = (t: DecodedThrow) =>
+    t.lat == null && !(t.lie ?? "") && (t.distance ?? 0) === 0 && (t.result === "Circle 1" || t.result === "Circle 2");
+  for (const h of round.holes) {
+    if (!h.played) continue;
+    const logs = h.throws.filter((t) => t.discName !== "Score" && t.distanceToBasket != null);
+    logs.forEach((log, i) => {
+      const prev = logs[i - 1];
+      const legacy = isLegacyLanding(log);
+      let startD: number;
+      if (legacy) {
+        if (i > 0 && prev && isLegacyLanding(prev) && prev.distanceToBasket != null) startD = prev.distanceToBasket;
+        else return; // legacy landing → not a putt start
+      } else if (log.distanceToBasket != null) {
+        startD = log.distanceToBasket;
+      } else return;
+
+      const lieStamp = log.lie ?? "";
+      const isTee = lieStamp === "tee";
+      const stampedPutt = lieStamp.startsWith("putt") || lieStamp === "tap-in";
+      const standardPutt = log.lat == null && (log.distance ?? 0) === 0 && (log.result === "Basket" || log.result === "Miss Left");
+      const isPutt = startD <= 66 && !isTee && (stampedPutt || standardPutt || putterNames.has(log.discName));
+      if (!isPutt) return;
+
+      const fabricatedThrowIn = i === 0 && log.result === "Basket" && log.distanceToBasket === 15 && log.lat == null;
+      if (fabricatedThrowIn) return;
+
+      let puttStart = startD;
+      if (puttStart === 0 && lieStamp !== "tap-in" && i > 0 && prev && isLegacyLanding(prev) && prev.distanceToBasket != null) puttStart = prev.distanceToBasket;
+
+      const made = Boolean(log.madeIt) || log.result === "Basket";
+      const bandIdx = puttStart < 15 ? 0 : puttStart < 22 ? 1 : puttStart < 33 ? 2 : 3;
+      if (bandIdx === 1 || bandIdx === 2) { c1a++; if (made) c1m++; }
+      else if (bandIdx === 3) { c2a++; if (made) c2m++; }
+    });
+  }
+  return { c1m, c1a, c2m, c2a };
+}
+
 /** Aggregate the per-round metrics across all complete rounds — attempt-weighted from raw throws so
  *  career percentages are exact (not an average of per-round percentages). */
 export function computeCareerStats(rounds: DecodedRound[], putterNames: Set<string> = new Set()): CareerStats {
@@ -258,22 +305,13 @@ export function computeCareerStats(rounds: DecodedRound[], putterNames: Set<stri
         if (isMissKey(key) || key === "OB") hadTrouble = true;
         if (raw === "Miss Left") missLeft++;
         if (raw === "Miss Right") missRight++;
-        // C1X (15–33 ft) + C2 (33–66 ft) putting — mirrors iOS ShotInsightsSummary, re-cut 2026-08-09:
-        // putts only (not every close throw), tap-ins (<15 ft) excluded, a make counts a basket.
-        const startD = t.distanceToBasket;
-        if (startD != null && startD <= 66 && t.lie !== "tee") {
-          const stamp = t.lie ?? "";
-          const stampedPutt = stamp.startsWith("putt") || stamp === "tap-in";
-          const standardPutt = t.lat == null && (t.distance ?? 0) === 0 && (raw === "Basket" || raw === "Miss Left");
-          if (stampedPutt || standardPutt || putterNames.has(t.discName)) {
-            const made = Boolean(t.madeIt) || raw === "Basket";
-            if (startD >= 15 && startD < 33) { c1a++; if (made) c1m++; }
-            else if (startD >= 33) { c2a++; if (made) c2m++; }
-          }
-        }
       });
       if (hadTrouble) { troubleHoles++; if (rel <= 0) troubleSaved++; }
     }
+    // C1X (15–33 ft) + C2 (33–66 ft) putting — iOS ShotInsightsSummary putt bands, incl. the 2026-08-12
+    // legacy-landing reconciliation (fixes the "iOS 48% was the artifact" bug).
+    const tb = puttBandTally(r, putterNames);
+    c1m += tb.c1m; c1a += tb.c1a; c2m += tb.c2m; c2a += tb.c2a;
   }
 
   const rels = complete.map((r) => r.relativeToPar);
