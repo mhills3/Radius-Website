@@ -278,7 +278,16 @@ export interface StrokesGained {
   approachCount: number; proximityAvgFt: number; shortCount: number;
   scrambleOpps: number; scrambled: number; scramblePct: number;
   puttAttemptsTotal: number; c1xPct: number; c1xTrend: number[];
+  roundsWithShotData: number;
+  puttBands: PuttBand[];        // 4 bands: 0–15 / 15–22 / 22–33 / C2
+  proxBands: ProxBand[];        // 67–100 / 100–150 / 150–200 / 200–300 ft
+  teeDiscs: DiscStat[];         // avg = tee-shot distance
+  approachDiscs: DiscStat[];    // avg = leave distance
+  missZones: Record<string, number>; // putt-miss zone counts (e.g. "high-left")
 }
+export interface PuttBand { label: string; made: number; attempts: number }
+export interface ProxBand { label: string; count: number; avg: number }
+export interface DiscStat { name: string; count: number; avg: number; inPlayPct?: number }
 export interface RankedCategory { id: string; name: string; evidence: string; sg: number; eligible: boolean; progress: string }
 
 const legacyLandingRow = (t: DecodedThrow) =>
@@ -305,6 +314,12 @@ export function computeStrokesGained(rounds: DecodedRound[], putterNames: Set<st
   let scrambleOpps = 0, scrambled = 0;
   let puttAtt = 0, c1xMade = 0, c1xAtt = 0;
   const c1xTrend: number[] = [];
+  const bandMade = [0, 0, 0, 0], bandAtt = [0, 0, 0, 0];
+  const PROX_BANDS = [[67, 100], [100, 150], [150, 200], [200, 300]];
+  const proxSum = [0, 0, 0, 0], proxCnt = [0, 0, 0, 0];
+  const teeDiscMap = new Map<string, { dist: number; count: number; inPlay: number; distCount: number }>();
+  const apDiscMap = new Map<string, { leave: number; count: number }>();
+  const missZones: Record<string, number> = {};
 
   // rounds are chronological (oldest first) so the trend reads left→right
   for (const r of [...complete].sort((a, b) => a.date - b.date)) {
@@ -324,9 +339,14 @@ export function computeStrokesGained(rounds: DecodedRound[], putterNames: Set<st
         const isTeeShot = log.lie === "tee" || (log.lie == null && i === 0);
         if (!isTeeShot) return;
         teeAttempts++;
+        const inPlay = log.result === "Fairway" || log.result === "Circle 1" || log.result === "Circle 2" || log.result === "Basket";
         if (log.result === "OB") teeOB++;
         if (log.result === "Fairway" || log.result === "Circle 1" || log.result === "Circle 2") teeFairway++;
-        if ((log.distance ?? 0) >= 100) { const d = log.distance!; driveTotal += d; driveCount++; driveLong = Math.max(driveLong, d); driveShort = driveShort === 0 ? d : Math.min(driveShort, d); }
+        const dn = log.discName || "Unknown";
+        const td = teeDiscMap.get(dn) ?? { dist: 0, count: 0, inPlay: 0, distCount: 0 };
+        td.count++; if (inPlay) td.inPlay++;
+        if ((log.distance ?? 0) >= 100) { const d = log.distance!; driveTotal += d; driveCount++; driveLong = Math.max(driveLong, d); driveShort = driveShort === 0 ? d : Math.min(driveShort, d); td.dist += d; td.distCount++; }
+        teeDiscMap.set(dn, td);
       });
       // DTB chain — strokes gained, proximity, putt bands.
       const logs = h.throws.filter((t) => t.discName !== "Score" && t.distanceToBasket != null);
@@ -362,11 +382,20 @@ export function computeStrokesGained(rounds: DecodedRound[], putterNames: Set<st
             const bandIdx = puttStart < 15 ? 0 : puttStart < 22 ? 1 : puttStart < 33 ? 2 : 3;
             const made = Boolean(log.madeIt) || log.result === "Basket";
             puttAtt++;
+            bandAtt[bandIdx]++; if (made) bandMade[bandIdx]++;
+            if (!made && log.missZone) missZones[log.missZone] = (missZones[log.missZone] ?? 0) + 1;
             if (bandIdx === 1 || bandIdx === 2) { c1xAtt++; roundC1xAtt++; if (made) { c1xMade++; roundC1xMade++; } }
           }
         }
 
-        if (!isTee && !isPutt && startD <= 300 && endD != null && endD <= 66) { proximityTotal += endD; approachCount++; }
+        if (!isTee && !isPutt && startD <= 300 && endD != null && endD <= 66) {
+          proximityTotal += endD; approachCount++;
+          const bi = PROX_BANDS.findIndex(([lo, hi]) => startD >= lo && startD < hi);
+          if (bi >= 0) { proxSum[bi] += endD; proxCnt[bi]++; }
+          const dn = log.discName || "Unknown";
+          const ad = apDiscMap.get(dn) ?? { leave: 0, count: 0 };
+          ad.leave += endD; ad.count++; apDiscMap.set(dn, ad);
+        }
 
         if (endD != null) {
           const cost = log.result === "OB" ? 2 : 1;
@@ -398,6 +427,12 @@ export function computeStrokesGained(rounds: DecodedRound[], putterNames: Set<st
     scramblePct: scrambleOpps ? Math.round((scrambled / scrambleOpps) * 100) : 0,
     puttAttemptsTotal: puttAtt,
     c1xPct: c1xAtt ? Math.round((c1xMade / c1xAtt) * 100) : 0,
+    roundsWithShotData: sgRounds,
+    puttBands: ["0–15", "15–22", "22–33", "C2"].map((label, i) => ({ label, made: bandMade[i], attempts: bandAtt[i] })),
+    proxBands: ["67–100 ft", "100–150 ft", "150–200 ft", "200–300 ft"].map((label, i) => ({ label, count: proxCnt[i], avg: proxCnt[i] ? Math.round(proxSum[i] / proxCnt[i]) : 0 })),
+    teeDiscs: [...teeDiscMap.entries()].map(([name, d]) => ({ name, count: d.count, avg: d.distCount ? Math.round(d.dist / d.distCount) : 0, inPlayPct: d.count ? Math.round((d.inPlay / d.count) * 100) : 0 })).sort((a, b) => b.count - a.count),
+    approachDiscs: [...apDiscMap.entries()].map(([name, d]) => ({ name, count: d.count, avg: d.count ? Math.round(d.leave / d.count) : 0 })).sort((a, b) => b.count - a.count),
+    missZones,
   };
 }
 

@@ -9,6 +9,7 @@ import { rankForIQ, rankLabel, rankProgress } from "@/lib/rank";
 import { usePro } from "@/lib/usePro";
 import ProGate from "@/components/ProGate";
 import DualRing from "@/components/mygame/DualRing";
+import StrokesDetail, { type StrokesCategory } from "@/components/mygame/StrokesDetail";
 import Scorecard from "@/components/dashboard/Scorecard";
 import RoundPreviewCard from "@/components/scorecard/RoundPreviewCard";
 
@@ -128,6 +129,7 @@ export default function MyGameOverview({ uid }: { uid: string }) {
   const [rounds, setRounds] = useState<DecodedRound[] | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
   const [open, setOpen] = useState<DecodedRound | null>(null);
+  const [strokesCat, setStrokesCat] = useState<StrokesCategory | null>(null);
   const [putterNames, setPutterNames] = useState<Set<string>>(new Set());
   const coverOf = useMemo(() => { const m = new Map<string, string>(); courses.forEach((c) => { const k = c.name.trim().toLowerCase(); if (c.coverPhotoUrl && !m.has(k)) m.set(k, c.coverPhotoUrl); }); return m; }, [courses]);
 
@@ -259,12 +261,12 @@ export default function MyGameOverview({ uid }: { uid: string }) {
               <div className={card}>
                 <div className={eyebrow}>Where your strokes go</div>
                 <div className="mt-4">
-                  {leaks.map((c, i) => {
+                  {leaks.filter((c) => c.id !== "short").map((c, i) => {
                     const worst = i === 0 && c.eligible;
                     return (
                       <div key={c.id}>
                         {i > 0 && <div className="ml-[62px] h-px bg-white/[0.06]" />}
-                        <div className={`flex items-center gap-3.5 py-3 ${c.eligible ? "" : "opacity-50"}`}>
+                        <button onClick={() => setStrokesCat(c.id as StrokesCategory)} className={`flex w-full items-center gap-3.5 py-3 text-left transition-opacity hover:opacity-90 ${c.eligible ? "" : "opacity-50"}`}>
                           <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl [&>svg]:h-[22px] [&>svg]:w-[22px] ${worst ? "bg-[var(--gold)]/15 text-[var(--gold)] ring-1 ring-[var(--gold)]/35" : c.eligible ? "border border-white/10 text-[var(--cream)]/80" : "border border-white/[0.07] text-white/25"}`}>{catIcon(c.id, "")}</span>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2.5">
@@ -274,7 +276,7 @@ export default function MyGameOverview({ uid }: { uid: string }) {
                             <div className="mt-0.5 truncate text-[12.5px] text-[var(--sage-dim)]" style={MONO}>{c.eligible ? c.evidence : c.progress}</div>
                           </div>
                           <IcChevron className="h-4 w-4 shrink-0 text-white/25" />
-                        </div>
+                        </button>
                       </div>
                     );
                   })}
@@ -317,6 +319,7 @@ export default function MyGameOverview({ uid }: { uid: string }) {
       </div>
 
       {open && <Scorecard round={open} rounds={rounds ?? undefined} onClose={() => setOpen(null)} />}
+      {strokesCat && sg && <StrokesDetail cat={strokesCat} sg={sg} missLeft={career?.missLeft ?? 0} missRight={career?.missRight ?? 0} onClose={() => setStrokesCat(null)} />}
     </div>
   );
 }
