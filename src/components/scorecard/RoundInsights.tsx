@@ -136,18 +136,24 @@ export default function RoundInsights({ round, history }: { round: DecodedRound;
       <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4">
         <Disclosure icon={ic.gauge} title="How it went" defaultOpen>
           <p className="font-[family-name:var(--font-body)] text-[14px] leading-relaxed text-[var(--cream)]/90">{story}</p>
-          <div className="mt-4 grid grid-cols-3 gap-x-3 gap-y-4 border-t border-white/[0.07] pt-4">
-            {[
+          {(() => {
+            const items = [
               tally.minutes != null ? { v: `${tally.minutes}`, l: "Minutes" } : null,
               tally.avgLeft != null ? { v: `${Math.round(tally.avgLeft)}`, l: "Ft left after drive" } : null,
               tally.longest > 0 ? { v: `${Math.round(tally.longest)}`, l: "Longest ft" } : null,
               tally.putts > 0 ? { v: `${tally.putts}`, l: "Putts" } : null,
               tally.ob > 0 ? { v: `${tally.ob}`, l: "OB", red: true } : null,
               tally.trouble > 0 ? { v: `${tally.scrambled}/${tally.trouble}`, l: "Scramble", green: true } : null,
-            ].filter(Boolean).map((s, i) => { const t = s as { v: string; l: string; red?: boolean; green?: boolean }; return (
-              <div key={i}><div className={`${HEAD} text-[19px] font-bold leading-none`} style={{ ...MONO, color: t.red ? "#eb9166" : t.green ? "#7fd39a" : "var(--cream)" }}>{t.v}</div><div className="mt-1.5 text-[7px] font-bold uppercase tracking-[0.1em] text-white/40">{t.l}</div></div>
-            ); })}
-          </div>
+            ].filter(Boolean) as { v: string; l: string; red?: boolean; green?: boolean }[];
+            if (!items.length) return null; // no shot data → no empty stat strip (was leaving a gap)
+            return (
+              <div className="mt-4 grid grid-cols-3 gap-x-3 gap-y-4 border-t border-white/[0.07] pt-4">
+                {items.map((t, i) => (
+                  <div key={i}><div className={`${HEAD} text-[19px] font-bold leading-none`} style={{ ...MONO, color: t.red ? "#eb9166" : t.green ? "#7fd39a" : "var(--cream)" }}>{t.v}</div><div className="mt-1.5 text-[7px] font-bold uppercase tracking-[0.1em] text-white/40">{t.l}</div></div>
+                ))}
+              </div>
+            );
+          })()}
         </Disclosure>
 
         {gps && (

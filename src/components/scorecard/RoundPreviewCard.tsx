@@ -38,14 +38,14 @@ export default function RoundPreviewCard({ round, cover, onClick }: { round: Dec
           <img src={media} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
         )}
         <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, #141d16 0%, rgba(20,29,22,0) 22%), linear-gradient(to top, rgba(15,23,18,0.88) 0%, rgba(15,23,18,0.28) 26%, transparent 52%)" }} />
-        {/* score left */}
-        <div className="absolute bottom-3.5 left-5 flex items-center gap-1.5">
-          <span className={`${HEAD} text-[40px] font-black leading-none drop-shadow`} style={{ color: scoreColor(rel) }}>{fmtToPar(rel)}</span>
+        {/* score left — vertically centered, mono */}
+        <div className="absolute left-5 top-1/2 flex -translate-y-1/2 items-center gap-1.5">
+          <span className="text-[40px] font-bold leading-none tracking-[-0.02em] drop-shadow" style={{ ...MONO, color: scoreColor(rel) }}>{fmtToPar(rel)}</span>
           {rel < 0 && <svg viewBox="0 0 12 12" className="h-3 w-3" style={{ marginTop: -16 }}><title>Under par</title><polygon points="6,1 11,10 1,10" fill="#5fcf80" /></svg>}
         </div>
         {/* total + birdies + discs right */}
         <div className="absolute bottom-3.5 right-5 text-right">
-          <div className={`${HEAD} text-[36px] font-black leading-none text-white drop-shadow`}>{round.total}</div>
+          <div className="text-[36px] font-bold leading-none tracking-[-0.02em] text-white drop-shadow" style={MONO}>{round.total}</div>
           {birdies > 0 && <div className="mt-1 text-[14px] text-white/85 drop-shadow" style={MONO}>{birdies} birdie{birdies === 1 ? "" : "s"}</div>}
           {topDiscs.length > 0 && (
             <div className="mt-2 flex justify-end">
