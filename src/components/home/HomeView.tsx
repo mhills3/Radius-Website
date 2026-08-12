@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
-import { getDecodedRounds, computeCareerStats, type DecodedRound } from "@/lib/rounds";
+import { getDecodedRounds, computeCareerStats, computeStrokesGained, rankedCategories, type DecodedRound } from "@/lib/rounds";
 import { getAllCourses, slugify, type Course } from "@/lib/courses";
 import { getPutterDiscNames } from "@/lib/bag";
 import { getUpcomingEvents, type LeagueEvent } from "@/lib/leagues";
@@ -135,21 +135,25 @@ export default function HomeView({ uid }: { uid: string }) {
     return { title: "Where to next?", body: "Find a new course to play, or add one that isn't here yet." };
   }, [nearCourses, playedNames, complete]);
 
-  // Mirrors iOS Home `workOnLine` exactly (priority: putting → OB off the tee → scramble), and NEVER a
-  // "well-rounded" line — it either names a concrete leak or tells you to track more shots.
+  // Always names the weakest area — the strokes-gained biggest leak (same #1 as "Where your strokes
+  // go"), with per-category coaching copy. Only when there's genuinely no shot data at all does it ask
+  // for a tracked round.
+  const sg = useMemo(() => (rounds ? computeStrokesGained(rounds, putterNames) : null), [rounds, putterNames]);
   const workOn = useMemo(() => {
-    if (!career) return null;
-    if (career.c1.att >= 20) {
-      const pct = Math.floor((career.c1.made * 100) / Math.max(career.c1.att, 1));
-      if (pct < 75) return `Putting is where you're losing the most — ${pct}% on makeable putts inside 33 feet.`;
+    if (!sg || !career) return null;
+    const leak = rankedCategories(sg).filter((c) => c.eligible)[0];
+    if (leak) {
+      if (leak.id === "putting") return `Putting is where you're losing the most — ${sg.c1xPct}% on makeable putts inside 33 feet.`;
+      if (leak.id === "tee") return sg.teeObPct >= 10 ? `OB is the leak off the tee — ${sg.teeObPct}% of your drives.` : `Off the tee is your biggest leak — only ${sg.teeFairwayPct}% of your drives are finding the fairway.`;
+      if (leak.id === "approach") return `Your approach game is the leak — you're leaving ${sg.proximityAvgFt}-foot putts on average.`;
+      if (leak.id === "short") return `Around the green is costing you — you're saving just ${sg.scramblePct}% after trouble.`;
     }
-    if (career.teeAttempts >= 20 && career.teeObPct != null && career.teeObPct >= 10) return `OB is the leak off the tee — ${career.teeObPct}% of your drives.`;
-    if (career.scrambleOpps >= 10 && career.scramblePct != null) {
-      const s = Math.round(career.scramblePct * 100);
-      if (s <= 35) return `Trouble turns into bogeys — you're saving just ${s}%.`;
-    }
-    return "Track your shots on your next round and your focus area builds itself.";
-  }, [career]);
+    // Not enough measured shots in any one category yet — still surface the most useful signal we have.
+    if (career.c1.att >= 3 && career.c1.pct != null) return `Sharpen your putting — you're at ${Math.round(career.c1.pct * 100)}% on makeable putts inside 33 feet.`;
+    if (career.teeAttempts >= 3 && career.fairwayPct != null) return `Off the tee — ${Math.round(career.fairwayPct * 100)}% of your drives are finding the fairway.`;
+    if (career.avgToPar != null) return `You're averaging ${career.avgToPar > 0 ? "+" : ""}${career.avgToPar.toFixed(1)} to par — track your shots to pinpoint the leak.`;
+    return "Play a shot-tracked round in the app and your focus builds itself.";
+  }, [sg, career]);
 
   if (rounds === null) {
     return <div className="flex min-h-screen items-center justify-center bg-[var(--bg-deep)] text-[var(--sage)]"><svg className="h-6 w-6 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg></div>;
