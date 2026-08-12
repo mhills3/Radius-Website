@@ -273,10 +273,11 @@ function puttBandTally(round: DecodedRound, putterNames: Set<string>): { c1m: nu
 // against a baseline expected-strokes table; per-category totals ÷ contributing rounds. Lowest = leak.
 export interface StrokesGained {
   sgDriving: number; sgApproach: number; sgShort: number; sgPutting: number; sgRounds: number;
-  teeAttempts: number; teeFairwayPct: number; teeObPct: number; driveAvg: number;
+  teeAttempts: number; teeFairwayPct: number; teeObPct: number;
+  driveAvg: number; driveCount: number; driveMin: number; driveMax: number;
   approachCount: number; proximityAvgFt: number; shortCount: number;
   scrambleOpps: number; scrambled: number; scramblePct: number;
-  puttAttemptsTotal: number; c1xPct: number;
+  puttAttemptsTotal: number; c1xPct: number; c1xTrend: number[];
 }
 export interface RankedCategory { id: string; name: string; evidence: string; sg: number; eligible: boolean; progress: string }
 
@@ -299,13 +300,16 @@ function haversineFt(lat1: number, lng1: number, lat2: number, lng2: number): nu
 export function computeStrokesGained(rounds: DecodedRound[], putterNames: Set<string> = new Set()): StrokesGained {
   const complete = rounds.filter((r) => r.isComplete);
   let sgD = 0, sgA = 0, sgS = 0, sgP = 0, sgRounds = 0;
-  let teeAttempts = 0, teeOB = 0, teeFairway = 0, driveTotal = 0, driveCount = 0;
+  let teeAttempts = 0, teeOB = 0, teeFairway = 0, driveTotal = 0, driveCount = 0, driveLong = 0, driveShort = 0;
   let approachCount = 0, proximityTotal = 0, shortCount = 0;
   let scrambleOpps = 0, scrambled = 0;
   let puttAtt = 0, c1xMade = 0, c1xAtt = 0;
+  const c1xTrend: number[] = [];
 
-  for (const r of complete) {
+  // rounds are chronological (oldest first) so the trend reads left→right
+  for (const r of [...complete].sort((a, b) => a.date - b.date)) {
     let roundContributedSG = false;
+    let roundC1xMade = 0, roundC1xAtt = 0;
     for (const h of r.holes.filter((x) => x.played)) {
       const rawThrows = h.throws.filter((t) => t.discName !== "Score");
       // Scramble: trouble off the first real throw, saved to par-or-better.
@@ -322,7 +326,7 @@ export function computeStrokesGained(rounds: DecodedRound[], putterNames: Set<st
         teeAttempts++;
         if (log.result === "OB") teeOB++;
         if (log.result === "Fairway" || log.result === "Circle 1" || log.result === "Circle 2") teeFairway++;
-        if ((log.distance ?? 0) >= 100) { driveTotal += log.distance!; driveCount++; }
+        if ((log.distance ?? 0) >= 100) { const d = log.distance!; driveTotal += d; driveCount++; driveLong = Math.max(driveLong, d); driveShort = driveShort === 0 ? d : Math.min(driveShort, d); }
       });
       // DTB chain — strokes gained, proximity, putt bands.
       const logs = h.throws.filter((t) => t.discName !== "Score" && t.distanceToBasket != null);
@@ -358,7 +362,7 @@ export function computeStrokesGained(rounds: DecodedRound[], putterNames: Set<st
             const bandIdx = puttStart < 15 ? 0 : puttStart < 22 ? 1 : puttStart < 33 ? 2 : 3;
             const made = Boolean(log.madeIt) || log.result === "Basket";
             puttAtt++;
-            if (bandIdx === 1 || bandIdx === 2) { c1xAtt++; if (made) c1xMade++; }
+            if (bandIdx === 1 || bandIdx === 2) { c1xAtt++; roundC1xAtt++; if (made) { c1xMade++; roundC1xMade++; } }
           }
         }
 
@@ -373,6 +377,7 @@ export function computeStrokesGained(rounds: DecodedRound[], putterNames: Set<st
       });
     }
     if (roundContributedSG) sgRounds++;
+    if (roundC1xAtt >= 4) c1xTrend.push(roundC1xMade / roundC1xAtt);
   }
 
   return {
@@ -385,6 +390,7 @@ export function computeStrokesGained(rounds: DecodedRound[], putterNames: Set<st
     teeFairwayPct: teeAttempts ? Math.floor((teeFairway * 100) / teeAttempts) : 0,
     teeObPct: teeAttempts ? Math.floor((teeOB * 100) / teeAttempts) : 0,
     driveAvg: driveCount ? Math.floor(driveTotal / driveCount) : 0,
+    driveCount, driveMin: driveShort, driveMax: driveLong, c1xTrend,
     approachCount,
     proximityAvgFt: approachCount ? Math.floor(proximityTotal / approachCount) : 0,
     shortCount,

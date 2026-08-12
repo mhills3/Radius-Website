@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { getDashboard, type Dashboard } from "@/lib/account";
 import { getDecodedRounds, computeCareerStats, computeStrokesGained, rankedCategories, type DecodedRound, type CareerStats } from "@/lib/rounds";
 import { getAllCourses, type Course } from "@/lib/courses";
@@ -13,7 +13,6 @@ import Scorecard from "@/components/dashboard/Scorecard";
 import RoundPreviewCard from "@/components/scorecard/RoundPreviewCard";
 
 const fmtToParAvg = (n: number | null) => (n == null ? "—" : `${n > 0 ? "+" : ""}${n.toFixed(1)}`);
-const pct = (v: number | null | undefined) => (v == null ? "—" : `${Math.round(v * 100)}%`);
 const scoreColor = (n: number | null) => (n == null ? "var(--cream)" : n < 0 ? "#5fcf80" : n === 0 ? "var(--cream)" : "#f08c8c");
 
 const HEAD = "font-[family-name:var(--font-heading)]";
@@ -45,29 +44,80 @@ function AreaChart({ points, color = "var(--gold)", h = 72 }: { points: number[]
   );
 }
 
-function EvidenceTile({ label, value, unit, sub, accent = "var(--gold)" }: { label: string; value: string; unit?: string; sub?: string; accent?: string }) {
+// --- iconography (matches the iOS stat cards / strokes-go list) ---
+const IcTarget = ({ className }: { className?: string }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3.4" /></svg>;
+const IcFlag = ({ className }: { className?: string }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M6 21V4M6 4h11l-2 3.5L17 11H6" /></svg>;
+const IcArrow = ({ className }: { className?: string }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M7 17L17 7M9 7h8v8" /></svg>;
+const IcCrosshair = ({ className }: { className?: string }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4 8V5a1 1 0 011-1h3M16 4h3a1 1 0 011 1v3M20 16v3a1 1 0 01-1 1h-3M8 20H5a1 1 0 01-1-1v-3" /><circle cx="12" cy="12" r="2.6" /></svg>;
+const IcGreen = ({ className }: { className?: string }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className={className}><path d="M4 15c4-6 12-6 16 0" /><circle cx="12" cy="16.5" r="1.3" fill="currentColor" stroke="none" /></svg>;
+const IcChevron = ({ className }: { className?: string }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M9 6l6 6-6 6" /></svg>;
+function catIcon(id: string, className: string) {
+  if (id === "tee") return <IcFlag className={className} />;
+  if (id === "approach") return <IcArrow className={className} />;
+  if (id === "short") return <IcGreen className={className} />;
+  return <IcTarget className={className} />;
+}
+
+// --- mini visualizations inside the stat cards ---
+function MiniLine({ points, color = "var(--gold)" }: { points: number[]; color?: string }) {
+  const w = 120, h = 26;
+  if (points.length < 2) return <div style={{ height: h }} />;
+  const min = Math.min(...points), max = Math.max(...points), span = max - min || 1;
+  const y = (p: number) => h - 3 - ((p - min) / span) * (h - 6);
+  const pts = points.map((p, i) => `${(i / (points.length - 1)) * w},${y(p)}`).join(" ");
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-gradient-to-b from-white/[0.05] to-white/[0.01] p-4">
-      <span className="absolute inset-x-0 top-0 h-px" style={{ background: `linear-gradient(to right, transparent, ${accent}66, transparent)` }} />
-      <div className={eyebrow} style={{ color: accent }}>{label}</div>
-      <div className="mt-2.5 flex items-baseline gap-1">
-        <span className={`${HEAD} text-[30px] font-black leading-none text-[var(--cream)]`} style={MONO}>{value}</span>
-        {unit && <span className="text-xs text-[var(--sage-dim)]" style={MONO}>{unit}</span>}
-      </div>
-      {sub && <div className="mt-2 text-[11px] text-[var(--sage-dim)]">{sub}</div>}
+    <svg viewBox={`0 0 ${w} ${h}`} width="100%" height={h} preserveAspectRatio="none" className="block overflow-visible">
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+      <circle cx="0" cy={y(points[0])} r="2.4" fill={color} /><circle cx={w} cy={y(points[points.length - 1])} r="2.4" fill={color} />
+    </svg>
+  );
+}
+function ProgBar({ frac, color = "var(--gold)" }: { frac: number; color?: string }) {
+  return <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.08]"><div className="h-full rounded-full" style={{ width: `${Math.max(0, Math.min(1, frac)) * 100}%`, background: color }} /></div>;
+}
+function RangeBar({ min, max, avg }: { min: number; max: number; avg: number }) {
+  const lo = 140, hi = Math.max(420, max + 20), span = hi - lo || 1;
+  const x = (v: number) => Math.max(0, Math.min(100, ((v - lo) / span) * 100));
+  return (
+    <div className="relative h-1.5 rounded-full bg-white/[0.08]">
+      <span className="absolute top-0 h-full rounded-full bg-[var(--gold)]/70" style={{ left: `${x(min)}%`, width: `${Math.max(2, x(max) - x(min))}%` }} />
+      <span className="absolute top-1/2 h-3 w-[2px] -translate-y-1/2 rounded bg-[var(--cream)]" style={{ left: `${x(avg)}%` }} />
     </div>
   );
 }
 
-// Arccos-style diverging strokes-gained bar: green = gaining vs the field, red (left) = losing.
-function SGBar({ sg, maxAbs }: { sg: number; maxAbs: number }) {
-  const frac = maxAbs > 0 ? Math.max(-1, Math.min(1, sg / maxAbs)) : 0;
-  const neg = frac < 0;
-  const w = Math.abs(frac) * 50;
+// Miss-pattern L/R split bar (dominant side gold).
+function LRBar({ left, right }: { left: number; right: number }) {
+  const t = left + right || 1, l = (left / t) * 50, r = (right / t) * 50;
+  const lc = left >= right ? "var(--gold)" : "rgba(255,255,255,0.25)", rc = right > left ? "var(--gold)" : "rgba(255,255,255,0.25)";
   return (
-    <div className="relative mt-2 h-1.5 overflow-hidden rounded-full bg-white/[0.05]">
+    <div className="relative h-1.5 rounded-full bg-white/[0.08]">
       <span className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-white/20" />
-      <span className="absolute top-0 h-full rounded-full" style={{ left: neg ? `${50 - w}%` : "50%", width: `${w}%`, background: neg ? "#e0733f" : "#5fcf80" }} />
+      <span className="absolute top-0 h-full rounded-l-full" style={{ left: `${50 - l}%`, width: `${l}%`, background: lc }} />
+      <span className="absolute top-0 h-full rounded-r-full" style={{ left: "50%", width: `${r}%`, background: rc }} />
+    </div>
+  );
+}
+
+// One iOS-style stat card: icon + label, big value + unit, a mini-viz, then a caption.
+function StatCard({ icon, label, accent = "var(--gold)", value, unit, viz, sub, locked, lockedText }: { icon: ReactNode; label: string; accent?: string; value?: string; unit?: string; viz?: ReactNode; sub?: string; locked?: boolean; lockedText?: string }) {
+  const dim = locked ? "var(--sage-dim)" : accent;
+  return (
+    <div className={`flex flex-col rounded-[20px] p-4 ${locked ? "border border-dashed border-white/15 bg-white/[0.01]" : "border border-white/[0.07] bg-white/[0.03]"}`}>
+      <div className="flex items-center gap-2" style={{ color: dim }}>
+        <span className="[&>svg]:h-[15px] [&>svg]:w-[15px]">{icon}</span>
+        <span className={eyebrow} style={{ color: dim }}>{label}</span>
+      </div>
+      {locked ? (
+        <div className={`${HEAD} mt-2.5 text-[19px] font-bold leading-tight text-[var(--cream)]`}>{lockedText}</div>
+      ) : (
+        <div className="mt-2.5 flex items-baseline gap-1">
+          <span className={`${HEAD} text-[32px] font-black leading-none text-[var(--cream)]`}>{value}</span>
+          {unit && <span className="text-[13px] font-bold text-[var(--sage-dim)]">{unit}</span>}
+        </div>
+      )}
+      {viz && <div className="mt-3.5">{viz}</div>}
+      {sub && <div className="mt-2.5 text-[12px] text-[var(--sage-dim)]" style={MONO}>{sub}</div>}
     </div>
   );
 }
@@ -97,21 +147,7 @@ export default function MyGameOverview({ uid }: { uid: string }) {
   const iqSeries = (dash?.iqHistory ?? []).map((p) => p.iq);
   const recent = useMemo(() => (rounds ? [...rounds].filter((r) => r.isComplete).sort((a, b) => b.date - a.date).slice(0, 8) : []), [rounds]);
 
-  // Biggest leak — the weakest of a few benchmarked skills (career %). Honest: skips missing data.
-  const leak = useMemo(() => {
-    if (!career) return null;
-    type Cand = { label: string; value: number; benchmark: number; note: (v: number) => string };
-    const raw: { label: string; value: number | null; benchmark: number; note: (v: number) => string }[] = [
-      { label: "Putting", value: career.c1.pct, benchmark: 0.7, note: (v: number) => `${Math.round(v * 100)}% on C1 putts (≤33 ft)` },
-      { label: "Off the tee", value: career.fairwayPct, benchmark: 0.6, note: (v: number) => `${Math.round(v * 100)}% of tees in play` },
-      { label: "Staying in bounds", value: career.obRate == null ? null : 1 - career.obRate, benchmark: 0.92, note: (v: number) => `${Math.round((1 - v) * 100)}% OB rate` },
-    ];
-    const cands = raw.filter((c): c is Cand => c.value != null);
-    if (!cands.length) return null;
-    return cands.map((c) => ({ ...c, gap: c.benchmark - c.value })).sort((a, b) => b.gap - a.gap)[0];
-  }, [career]);
-
-  // "Where the strokes go" — iOS strokes-gained ranking: four categories, biggest leak (lowest sg)
+  // "Where your strokes go" — iOS strokes-gained ranking: four categories, biggest leak (lowest sg)
   // first among the eligible ones. Shown only once >= 2 categories have enough measured shots.
   const sg = useMemo(() => (rounds ? computeStrokesGained(rounds, putterNames) : null), [rounds, putterNames]);
   const leaks = useMemo(() => (sg ? rankedCategories(sg) : []), [sg]);
@@ -128,7 +164,7 @@ export default function MyGameOverview({ uid }: { uid: string }) {
   const mix = career ? { birdie: career.birdies, par: career.pars, bogey: career.bogeys + career.doublePlus } : { birdie: 0, par: 0, bogey: 0 };
   const progress = rankProgress(iq, rank);
   const eligibleLeaks = leaks.filter((c) => c.eligible);
-  const sgMaxAbs = eligibleLeaks.length ? Math.max(...eligibleLeaks.map((c) => Math.abs(c.sg)), 0.01) : 0.01;
+  const insightLeak = eligibleLeaks[0];
   const iqDelta = iqSeries.length >= 2 ? iqSeries[iqSeries.length - 1] - iqSeries[0] : 0;
   const avgColor = scoreColor(career?.avgToPar ?? null);
 
@@ -183,52 +219,65 @@ export default function MyGameOverview({ uid }: { uid: string }) {
       {hasRounds && (
         <ProGate pro={pro} title="Unlock your evidence" blurb="See your putting, driving and miss patterns from every logged round with Radius Pro.">
           <div className="space-y-4">
-            {/* coaching insight — accent card */}
+            {/* coaching insight — accent card (uses the strokes-gained biggest leak) */}
             <div className="relative overflow-hidden rounded-[22px] border border-[var(--gold)]/20 p-5 sm:p-6" style={{ background: "linear-gradient(115deg, rgba(246,193,101,0.12), rgba(255,255,255,0.015) 46%)" }}>
               <div className={`${eyebrow} flex items-center gap-1.5 text-[var(--gold)]`}><span>⚡</span> Personal coaching insight</div>
-              {leak ? (
-                <p className="mt-2.5 text-[16px] leading-relaxed text-[var(--cream)]"><span className="font-bold">{leak.label}</span> is where you&apos;re losing the most — {leak.note(leak.value)}. Closing that gap is the fastest path to your next rank.</p>
+              {insightLeak ? (
+                <p className="mt-2.5 text-[16px] leading-relaxed text-[var(--cream)]"><span className="font-bold">{insightLeak.name}</span> is where you&apos;re losing the most — {insightLeak.evidence}. Closing that gap is the fastest path to your next rank.</p>
               ) : (
                 <p className="mt-2.5 text-[15px] text-[var(--text-body)]">Log a few shot-tracked rounds and your coaching insight builds itself.</p>
               )}
             </div>
 
-            {/* evidence grid */}
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <EvidenceTile label="C1 Putting" value={pct(career!.c1.pct)} sub={career!.c1.att ? `${career!.c1.made}/${career!.c1.att} makes` : "No data yet"} accent="#5fcf80" />
-              <EvidenceTile label="Fairway Hit" value={pct(career!.fairwayPct)} sub="tees in play" accent="#5fcf80" />
-              <EvidenceTile label="Avg Drive" value={career!.avgDriveFt ? `${Math.round(career!.avgDriveFt)}` : "—"} unit={career!.avgDriveFt ? "ft" : undefined} sub="off the tee" accent="var(--gold)" />
-              <EvidenceTile label="Miss Pattern" value={career!.missLeft + career!.missRight === 0 ? "—" : career!.missLeft >= career!.missRight ? "Left" : "Right"} sub={career!.missLeft + career!.missRight ? `${career!.missLeft}L · ${career!.missRight}R` : "No data yet"} accent="#e0873f" />
+            {/* stat cards — 1:1 with the iOS Overview cards (icon + value + mini-viz + caption) */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <StatCard icon={<IcTarget />} label="C1X Putting"
+                value={career!.c1.att ? `${Math.round((career!.c1.pct ?? 0) * 100)}` : "—"} unit={career!.c1.att ? "%" : undefined}
+                viz={sg && sg.c1xTrend.length >= 2 ? <MiniLine points={sg.c1xTrend} /> : undefined}
+                sub={career!.c1.att ? `${career!.c1.made} of ${career!.c1.att}` : "No data yet"} />
+              <StatCard icon={<IcFlag />} label="Fairway Hit"
+                value={sg && sg.teeAttempts ? `${sg.teeFairwayPct}` : "—"} unit={sg && sg.teeAttempts ? "%" : undefined}
+                viz={sg && sg.teeAttempts ? <ProgBar frac={sg.teeFairwayPct / 100} /> : undefined}
+                sub={sg && sg.teeAttempts ? `${sg.teeObPct}% OB · ${sg.teeAttempts} tees` : "No data yet"} />
+              <StatCard icon={<IcArrow />} label="Avg Drive"
+                value={sg && sg.driveCount ? `${sg.driveAvg}` : "—"} unit={sg && sg.driveCount ? "ft" : undefined}
+                viz={sg && sg.driveCount >= 2 ? <RangeBar min={sg.driveMin} max={sg.driveMax} avg={sg.driveAvg} /> : undefined}
+                sub={sg && sg.driveCount >= 2 ? `${sg.driveMin} – ${sg.driveMax} ft range` : sg && sg.driveCount ? `${sg.driveCount} drive${sg.driveCount === 1 ? "" : "s"}` : "No data yet"} />
+              {sg && sg.driveCount >= 8 ? (
+                <StatCard icon={<IcCrosshair />} label="Miss Pattern"
+                  value={career!.missLeft === career!.missRight ? "Even" : career!.missLeft > career!.missRight ? "Left" : "Right"}
+                  viz={<LRBar left={career!.missLeft} right={career!.missRight} />}
+                  sub={`${career!.missLeft}L · ${career!.missRight}R`} />
+              ) : (
+                <StatCard icon={<IcCrosshair />} label="Miss Pattern" locked lockedText="Unlocks after 8 measured drives"
+                  viz={<ProgBar frac={(sg?.driveCount ?? 0) / 8} />} sub={`${sg?.driveCount ?? 0} of 8`} />
+              )}
             </div>
 
-            {/* where the strokes go — Arccos-style diverging SG bars */}
+            {/* where your strokes go — iOS icon-square list */}
             {showLeaks && (
               <div className={card}>
-                <div className={eyebrow}>Where the strokes go</div>
-                <p className="mt-1 text-[12px] text-[var(--sage-dim)]">Ranked from your biggest leak down — the order is the point.</p>
-                <div className="mt-4 space-y-1.5">
+                <div className={eyebrow}>Where your strokes go</div>
+                <div className="mt-4">
                   {leaks.map((c, i) => {
                     const worst = i === 0 && c.eligible;
                     return (
-                      <div key={c.id} className={`rounded-2xl p-3.5 transition-colors ${worst ? "bg-[#e0733f]/[0.07] ring-1 ring-[#e0733f]/25" : c.eligible ? "bg-white/[0.02]" : "opacity-45"}`}>
-                        <div className="flex items-center gap-3.5">
-                          <span className={`${HEAD} w-5 shrink-0 text-center text-[16px] font-black`} style={{ ...MONO, color: worst ? "#eb9166" : "rgba(255,255,255,0.3)" }}>{i + 1}</span>
+                      <div key={c.id}>
+                        {i > 0 && <div className="ml-[62px] h-px bg-white/[0.06]" />}
+                        <div className={`flex items-center gap-3.5 py-3 ${c.eligible ? "" : "opacity-50"}`}>
+                          <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl [&>svg]:h-[22px] [&>svg]:w-[22px] ${worst ? "bg-[var(--gold)]/15 text-[var(--gold)] ring-1 ring-[var(--gold)]/35" : c.eligible ? "border border-white/10 text-[var(--cream)]/80" : "border border-white/[0.07] text-white/25"}`}>{catIcon(c.id, "")}</span>
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="text-[14px] font-bold text-[var(--cream)]">{c.name}</span>
-                              {worst && <span className="rounded-full bg-[#e0733f]/20 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-[#eb9166]">Biggest leak</span>}
+                            <div className="flex items-center gap-2.5">
+                              <span className={`${HEAD} text-[18px] font-bold ${c.eligible ? "text-[var(--cream)]" : "text-white/45"}`}>{c.name}</span>
+                              {worst && <span className="text-[10px] font-black uppercase tracking-[0.1em] text-[var(--gold)]">Biggest leak</span>}
                             </div>
-                            <div className="mt-0.5 truncate text-[11.5px] text-[var(--sage-dim)]">{c.eligible ? c.evidence : c.progress}</div>
-                            {c.eligible && <SGBar sg={c.sg} maxAbs={sgMaxAbs} />}
+                            <div className="mt-0.5 truncate text-[12.5px] text-[var(--sage-dim)]" style={MONO}>{c.eligible ? c.evidence : c.progress}</div>
                           </div>
+                          <IcChevron className="h-4 w-4 shrink-0 text-white/25" />
                         </div>
                       </div>
                     );
                   })}
-                </div>
-                <div className="mt-3 flex items-center gap-4 text-[10px] text-[var(--sage-dim)]">
-                  <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-4 rounded-full bg-[#e0733f]" /> losing strokes</span>
-                  <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-4 rounded-full bg-[#5fcf80]" /> gaining strokes</span>
                 </div>
               </div>
             )}
