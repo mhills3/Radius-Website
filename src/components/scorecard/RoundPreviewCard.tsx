@@ -19,7 +19,7 @@ export default function RoundPreviewCard({ round, cover, onClick }: { round: Dec
   const counts = new Map<string, number>();
   for (const h of played) for (const t of h.throws) { if (t.discName === "Score" || t.discName === "Throw" || !t.discName) continue; counts.set(t.discName, (counts.get(t.discName) ?? 0) + 1); }
   const topDiscs = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
-  const dotColors = ["#E8B560", "#E8B560", "#E0873F"];
+  const dotColors = ["#E8B560", "#E8B560", "#C99A46"]; // gold family only — third slightly dimmer for depth
   // GPS rounds show a satellite flight map behind the card; otherwise the course cover.
   const media = flightMapImageUrl(round, 760, 300) ?? cover;
 
@@ -30,21 +30,22 @@ export default function RoundPreviewCard({ round, cover, onClick }: { round: Dec
         <span className={`${HEAD} text-[19px] font-bold text-[#F4F1E8]`}>{round.courseName}</span>
         <span className="text-[15px] text-[#7C8B80]" style={MONO}> · {fmtDate(round.date)} · {round.holesPlayed} holes</span>
       </div>
-      {/* media */}
-      <div className="relative h-[150px] w-full overflow-hidden bg-[radial-gradient(circle_at_35%_30%,#2E4034,#16211B)]">
+      {/* media — shorter so two rounds fit above the fold; soft top edge blends into the header, corner
+          scrims keep the score/strokes legible on any photo */}
+      <div className="relative h-[116px] w-full overflow-hidden bg-[radial-gradient(circle_at_35%_30%,#2E4034,#16211B)]">
         {media && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={media} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
         )}
-        <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, rgba(15,23,18,0.55) 0%, rgba(15,23,18,0.12) 30%, rgba(15,23,18,0.12) 70%, rgba(15,23,18,0.55) 100%), linear-gradient(to top, rgba(15,23,18,0.55), transparent 45%)" }} />
+        <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, #141d16 0%, rgba(20,29,22,0) 22%), linear-gradient(to top, rgba(15,23,18,0.88) 0%, rgba(15,23,18,0.28) 26%, transparent 52%)" }} />
         {/* score left */}
-        <div className="absolute bottom-4 left-5 flex items-center gap-1.5">
-          <span className={`${HEAD} text-[44px] font-black leading-none drop-shadow`} style={{ color: scoreColor(rel) }}>{fmtToPar(rel)}</span>
-          {rel < 0 && <svg viewBox="0 0 12 12" className="h-3 w-3" style={{ marginTop: -18 }}><polygon points="6,1 11,10 1,10" fill="#5fcf80" /></svg>}
+        <div className="absolute bottom-3.5 left-5 flex items-center gap-1.5">
+          <span className={`${HEAD} text-[40px] font-black leading-none drop-shadow`} style={{ color: scoreColor(rel) }}>{fmtToPar(rel)}</span>
+          {rel < 0 && <svg viewBox="0 0 12 12" className="h-3 w-3" style={{ marginTop: -16 }}><title>Under par</title><polygon points="6,1 11,10 1,10" fill="#5fcf80" /></svg>}
         </div>
         {/* total + birdies + discs right */}
-        <div className="absolute bottom-4 right-5 text-right">
-          <div className={`${HEAD} text-[40px] font-black leading-none text-white drop-shadow`}>{round.total}</div>
+        <div className="absolute bottom-3.5 right-5 text-right">
+          <div className={`${HEAD} text-[36px] font-black leading-none text-white drop-shadow`}>{round.total}</div>
           {birdies > 0 && <div className="mt-1 text-[14px] text-white/85 drop-shadow" style={MONO}>{birdies} birdie{birdies === 1 ? "" : "s"}</div>}
           {topDiscs.length > 0 && (
             <div className="mt-2 flex justify-end">
