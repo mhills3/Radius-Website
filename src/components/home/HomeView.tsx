@@ -37,13 +37,44 @@ function ToParLine({ round, w, h }: { round: DecodedRound; w: number; h: number 
   if (cum.length < 2) return null;
   const min = Math.min(0, ...cum), max = Math.max(0, ...cum), span = max - min || 1, pad = 4;
   const y = (v: number) => pad + (1 - (v - min) / span) * (h - 2 * pad);
-  const pts = cum.map((v, i) => `${(i / (cum.length - 1)) * w},${y(v)}`).join(" ");
+  const x = (i: number) => (i / (cum.length - 1)) * w;
+  const pts = cum.map((v, i) => `${x(i)},${y(v)}`).join(" ");
+  const base = y(0);
+  // Area between the line and the par axis — split at the axis so under-par shades green, over-par gold.
+  const area = `M0,${y(cum[0])}` + cum.map((v, i) => `L${x(i)},${y(v)}`).join("") + `L${w},${base}L0,${base}Z`;
   return (
     <svg viewBox={`0 0 ${w} ${h}`} width="100%" height={h} preserveAspectRatio="none" className="block">
-      <line x1="0" y1={y(0)} x2={w} y2={y(0)} stroke="rgba(244,241,232,0.22)" strokeWidth="1" strokeDasharray="3 5" />
+      <defs>
+        <clipPath id="tpl-under"><rect x="0" y="0" width={w} height={base} /></clipPath>
+        <clipPath id="tpl-over"><rect x="0" y={base} width={w} height={h - base} /></clipPath>
+      </defs>
+      <path d={area} fill="rgba(143,191,154,0.16)" clipPath="url(#tpl-under)" />
+      <path d={area} fill="rgba(232,181,96,0.15)" clipPath="url(#tpl-over)" />
+      <line x1="0" y1={base} x2={w} y2={base} stroke="rgba(244,241,232,0.22)" strokeWidth="1" strokeDasharray="3 5" />
       <polyline points={pts} fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
       <circle cx={w} cy={y(cum[cum.length - 1])} r="3.4" fill="var(--gold)" />
     </svg>
+  );
+}
+
+// A single stat as a progress ring (matches the My Game ring language: faint track + gold arc, value
+// in the center, label beneath). `frac` (0..1) drives the arc; null value = empty ring.
+function StatRing({ value, unit, frac, label, size = 68 }: { value: string; unit?: string; frac: number | null; label: string; size?: number }) {
+  const r = size / 2 - 5, C = 2 * Math.PI * r, p = Math.max(0, Math.min(1, frac ?? 0));
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="block">
+        <g transform={`translate(${size / 2} ${size / 2})`}>
+          <circle r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="4.5" />
+          {frac != null && <circle r={r} fill="none" stroke="var(--gold)" strokeWidth="4.5" strokeLinecap="round" strokeDasharray={`${p * C} ${C}`} transform="rotate(-90)" />}
+          <text textAnchor="middle" dominantBaseline="central" y="0">
+            <tspan style={{ fontSize: 16, fontWeight: 800, fontFamily: "var(--font-mono-stack, 'JetBrains Mono', monospace)", fill: "var(--cream)" }}>{value}</tspan>
+            {unit && <tspan dx="1" style={{ fontSize: 9, fontWeight: 700, fontFamily: "var(--font-mono-stack, 'JetBrains Mono', monospace)", fill: "var(--sage-dim)" }}>{unit}</tspan>}
+          </text>
+        </g>
+      </svg>
+      <div className={`${HEAD} text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--sage-dim)]`}>{label}</div>
+    </div>
   );
 }
 
@@ -87,10 +118,18 @@ export default function HomeView({ uid }: { uid: string }) {
     return events.map((e) => { const co = coordsOf(e.courseName ? byName.get(e.courseName.trim().toLowerCase()) : undefined); return co ? { e, mi: milesBetween(loc, co) } : null; }).filter((x): x is { e: LeagueEvent; mi: number } => !!x).sort((a, b) => a.mi - b.mi).slice(0, 2);
   }, [events, loc, byName]);
   const sceneCourses = useMemo(() => nearCourses.filter((x) => !nearEvents.some((ne) => ne.e.courseName?.trim().toLowerCase() === x.c.name.trim().toLowerCase())).slice(0, nearEvents.length > 0 ? 1 : 3), [nearCourses, nearEvents]);
-  // The scene needs a couple of real entries — one lone row looks like a bug.
-  const scene = useMemo(() => feed.filter((p) => p.linkedCourseName && p.scoreToPar != null).slice(0, 3), [feed]);
-  const showScene = scene.length >= 2;
+  // The scene = latest community activity (round shares surface a score chip; everything else its course/text).
+  const scene = useMemo(() => feed.slice(0, 3), [feed]);
+  const showScene = scene.length >= 1;
   const showNear = nearEvents.length > 0 || nearCourses.length > 0;
+
+  // Cardless "play a course" prompt whose copy adapts to what we know about the player.
+  const courseNudge = useMemo(() => {
+    const unplayed = nearCourses.find((x) => !playedNames.has(x.c.name.trim().toLowerCase()));
+    if (unplayed) return { title: "A course you haven't played", body: `${unplayed.c.name} · ${miLabel(unplayed.mi)} away` };
+    if (complete.length === 0) return { title: "Find your first course", body: "Browse courses near you, or add one that's missing." };
+    return { title: "Where to next?", body: "Find a new course to play, or add one that isn't here yet." };
+  }, [nearCourses, playedNames, complete]);
 
   const workOn = useMemo(() => {
     if (!career) return null;
@@ -180,22 +219,23 @@ export default function HomeView({ uid }: { uid: string }) {
 
           {/* SIDEBAR */}
           <aside className="min-w-0">
-            <Link href="/courses" className="mb-5 block rounded-[11px] bg-[var(--gold)] py-3 text-center text-[13.5px] font-bold text-[#0F1712] transition-colors hover:bg-[var(--gold-bright)]">Find a course</Link>
-
-            {/* Your game */}
+            {/* Play a course — a section, not a card; copy adapts to the player */}
             <div className={`border-b ${divider} pb-5`}>
-              <div className={`${label} mb-3`}>Your game</div>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { v: career?.c1.pct != null ? `${Math.round(career.c1.pct * 100)}` : "—", u: career?.c1.pct != null ? "%" : "", l: "C1X Putt" },
-                  { v: career?.avgDriveFt ? `${Math.round(career.avgDriveFt)}` : "—", u: career?.avgDriveFt ? "ft" : "", l: "Avg Drive" },
-                  { v: career?.fairwayPct != null ? `${Math.round(career.fairwayPct * 100)}` : "—", u: career?.fairwayPct != null ? "%" : "", l: "Fairway" },
-                ].map((s) => (
-                  <div key={s.l}>
-                    <div className="text-[21px] font-bold leading-none" style={MONO}>{s.v}<span className="text-[11px] text-[var(--sage-dim)]">{s.u}</span></div>
-                    <div className={`${HEAD} mt-1.5 text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--sage-dim)]`}>{s.l}</div>
-                  </div>
-                ))}
+              <div className={`${HEAD} text-[15px] font-bold text-[var(--cream)]`}>{courseNudge.title}</div>
+              <p className={`${BODY} mt-1 text-[12.5px] leading-snug text-[var(--sage)]`}>{courseNudge.body}</p>
+              <div className="mt-3 flex items-center gap-4">
+                <Link href="/courses" className="text-[12.5px] font-semibold text-[var(--gold)]">Find a course →</Link>
+                <Link href="/courses/new" className="text-[12.5px] font-semibold text-[var(--sage)] hover:text-[var(--cream)]">Add a course</Link>
+              </div>
+            </div>
+
+            {/* Your game — stat rings, mirroring the app */}
+            <div className={`mt-5 border-b ${divider} pb-5`}>
+              <div className={`${label} mb-4`}>Your game</div>
+              <div className="grid grid-cols-3 gap-1">
+                <StatRing label="C1X Putt" value={career?.c1.pct != null ? `${Math.round(career.c1.pct * 100)}` : "—"} unit={career?.c1.pct != null ? "%" : undefined} frac={career?.c1.pct ?? null} />
+                <StatRing label="Avg Drive" value={career?.avgDriveFt ? `${Math.round(career.avgDriveFt)}` : "—"} unit={career?.avgDriveFt ? "ft" : undefined} frac={career?.avgDriveFt ? career.avgDriveFt / 400 : null} />
+                <StatRing label="Fairway" value={career?.fairwayPct != null ? `${Math.round(career.fairwayPct * 100)}` : "—"} unit={career?.fairwayPct != null ? "%" : undefined} frac={career?.fairwayPct ?? null} />
               </div>
               <Link href="/bag" className="mt-4 inline-block text-[12px] font-semibold text-[var(--gold)]">Open My Game →</Link>
             </div>
@@ -252,9 +292,13 @@ export default function HomeView({ uid }: { uid: string }) {
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[12px] font-semibold text-[var(--cream)]">{p.authorName}</span>
-                        <span className="mt-0.5 block truncate text-[9.5px] text-[var(--sage-dim)]" style={MONO}>{p.linkedCourseName} · {timeAgo(p.createdAt)}</span>
+                        {p.linkedCourseName
+                          ? <span className="mt-0.5 block truncate text-[9.5px] text-[var(--sage-dim)]" style={MONO}>{p.linkedCourseName}</span>
+                          : <span className={`${BODY} mt-0.5 block truncate text-[10px] text-[var(--sage-dim)]`}>{p.text || "posted an update"}</span>}
                       </span>
-                      <span className="w-9 shrink-0 text-right text-[13px] font-bold" style={{ ...MONO, color: scoreColor(p.scoreToPar ?? null) }}>{fmtToPar(p.scoreToPar)}</span>
+                      {p.scoreToPar != null
+                        ? <span className="w-9 shrink-0 text-right text-[13px] font-bold" style={{ ...MONO, color: scoreColor(p.scoreToPar) }}>{fmtToPar(p.scoreToPar)}</span>
+                        : <span className="w-9 shrink-0 text-right text-[9.5px] text-[var(--sage-dim)]" style={MONO}>{timeAgo(p.createdAt)}</span>}
                     </Link>
                   ))}
                 </div>
