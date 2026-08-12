@@ -215,7 +215,7 @@ export default function MyGameOverview({ uid }: { uid: string }) {
         )}
       </div>
 
-      {open && <Scorecard round={open} onClose={() => setOpen(null)} />}
+      {open && <Scorecard round={open} rounds={rounds ?? undefined} onClose={() => setOpen(null)} />}
     </div>
   );
 }

@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { type DecodedRound, computeRoundStats, type RoundStats } from "@/lib/rounds";
-import { rankForIQ, rankLabel } from "@/lib/rank";
 import { usePro } from "@/lib/usePro";
 import ProGate from "@/components/ProGate";
 import ScorecardTable from "@/components/scorecard/ScorecardTable";
+import RoundInsights from "@/components/scorecard/RoundInsights";
 
 const fmtScore = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`);
 const fmtDate = (ms: number) => (ms ? new Date(ms).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" }) : "");
@@ -22,7 +22,7 @@ function Metric({ label, value, color }: { label: string; value: string; color: 
 
 type Tab = "scorecard" | "stats" | "insights";
 
-export default function Scorecard({ round, onClose }: { round: DecodedRound; onClose: () => void }) {
+export default function Scorecard({ round, onClose, rounds }: { round: DecodedRound; onClose: () => void; rounds?: DecodedRound[] }) {
   const [tab, setTab] = useState<Tab>("scorecard");
   const pro = usePro();
   useEffect(() => {
@@ -36,8 +36,6 @@ export default function Scorecard({ round, onClose }: { round: DecodedRound; onC
   const relColor = rel < 0 ? "#5fb87a" : rel === 0 ? "var(--cream)" : "#e0473f";
 
   const stats: RoundStats = useMemo(() => computeRoundStats(round), [round]);
-  const hasIQ = typeof round.iqBefore === "number" && typeof round.iqAfter === "number";
-  const weatherBits = [round.temperatureSummary, round.windSummary, round.weatherSummary].filter(Boolean) as string[];
 
   const TABS: { key: Tab; label: string }[] = [
     { key: "scorecard", label: "Scorecard" },
@@ -112,89 +110,8 @@ export default function Scorecard({ round, onClose }: { round: DecodedRound; onC
         )}
 
         {tab === "insights" && (
-          <ProGate pro={pro} title="Game IQ insights" blurb="See your Game IQ change, score distribution and discs thrown with Pro.">
-          <div className="space-y-5">
-            {hasIQ ? (
-              (() => {
-                const before = round.iqBefore as number;
-                const after = round.iqAfter as number;
-                const rb = rankForIQ(before);
-                const ra = rankForIQ(after);
-                const delta = after - before;
-                const up = delta > 0;
-                const promoted = ra.level !== rb.level;
-                return (
-                  <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.05] to-transparent p-5">
-                    <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--sage-dim)]">Game IQ</div>
-                    <div className="mt-2 flex items-center gap-3">
-                      <span className="font-[family-name:var(--font-heading)] text-3xl font-extrabold text-[var(--cream)]">{before}</span>
-                      <svg className="h-5 w-5 text-[var(--sage)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-                      <span className="font-[family-name:var(--font-heading)] text-3xl font-extrabold" style={{ color: up ? "#5fb87a" : delta < 0 ? "#e0473f" : "var(--cream)" }}>{after}</span>
-                      {delta !== 0 && (
-                        <span className="rounded-full px-2 py-0.5 text-xs font-bold" style={{ background: up ? "#5fb87a22" : "#e0473f22", color: up ? "#5fb87a" : "#e0473f" }}>{up ? "+" : ""}{delta}</span>
-                      )}
-                    </div>
-                    <div className="mt-2 text-sm text-[var(--text-body)]">
-                      {promoted ? (
-                        <>Rank up — <span className="font-semibold" style={{ color: ra.color }}>{rankLabel(ra)}</span></>
-                      ) : (
-                        <span style={{ color: ra.color }} className="font-semibold">{rankLabel(ra)}</span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })()
-            ) : (
-              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4 text-sm text-[var(--sage-dim)]">Game IQ change isn’t recorded for this round.</div>
-            )}
-
-            {/* Score distribution */}
-            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5">
-              <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--sage-dim)]">Score distribution</div>
-              <div className="mt-3 flex h-3 w-full overflow-hidden rounded-full bg-white/[0.05]">
-                {[
-                  { n: stats.birdies, c: "#33c773" },
-                  { n: stats.pars, c: "#9fb0a4" },
-                  { n: stats.bogeys, c: "#e0a23f" },
-                  { n: stats.doublePlus, c: "#e0473f" },
-                ].map((s, i) => (s.n > 0 ? <div key={i} style={{ flex: s.n, background: s.c }} /> : null))}
-              </div>
-              <div className="mt-3 grid grid-cols-4 gap-2 text-center">
-                {[
-                  { label: "Birdie+", n: stats.birdies, c: "#33c773" },
-                  { label: "Par", n: stats.pars, c: "#cdd8cf" },
-                  { label: "Bogey", n: stats.bogeys, c: "#e0a23f" },
-                  { label: "Double+", n: stats.doublePlus, c: "#e0473f" },
-                ].map((s) => (
-                  <div key={s.label}>
-                    <div className="font-[family-name:var(--font-heading)] text-xl font-extrabold" style={{ color: s.c }}>{s.n}</div>
-                    <div className="text-[10px] uppercase tracking-wide text-[var(--sage-dim)]">{s.label}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {weatherBits.length > 0 && (
-              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5">
-                <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--sage-dim)]">Conditions</div>
-                <div className="mt-2 text-sm font-semibold text-[var(--cream)]">{weatherBits.join(" · ")}</div>
-              </div>
-            )}
-
-            {stats.discs.length > 0 && (
-              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5">
-                <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--sage-dim)]">Discs thrown</div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {stats.discs.map((d) => (
-                    <span key={d.name} className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-semibold text-[var(--cream)]">
-                      {d.name}
-                      <span className="text-[var(--sage-dim)]">×{d.count}</span>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+          <ProGate pro={pro} title="Game IQ insights" blurb="See your Game IQ change, flight map, putting misses and how the round went with Pro.">
+            <RoundInsights round={round} history={rounds} />
           </ProGate>
         )}
       </div>

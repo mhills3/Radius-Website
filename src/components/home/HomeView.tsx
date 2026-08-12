@@ -262,7 +262,7 @@ export default function HomeView({ uid }: { uid: string }) {
         </div>
       </div>
 
-      {open && <Scorecard round={open} onClose={() => setOpen(null)} />}
+      {open && <Scorecard round={open} rounds={complete} onClose={() => setOpen(null)} />}
     </div>
   );
 }

@@ -9,6 +9,13 @@ export interface DecodedThrow {
   distanceToBasket?: number;
   madeIt?: boolean;
   shotType?: string;
+  timestamp?: number;      // ms epoch — round duration in "How it went"
+  lat?: number; lng?: number;          // GPS release (detailed-mode rounds only) — flight map
+  targetLat?: number; targetLng?: number; // basket at throw — flight map
+  landLat?: number; landLng?: number;      // landing — flight map
+  lie?: string;
+  missZone?: string;       // putt-miss 3×3 zone e.g. "high-left"
+  missX?: number; missY?: number;      // exact normalized putt-miss tap (0..1)
 }
 export interface DecodedHole {
   holeNumber: number;
@@ -312,14 +319,24 @@ function parseRound(docId: string, data: any): Promise<DecodedRound | null> {
           distance: typeof h.holeDistance === "number" ? (h.holeDistance as number) : 0,
           score,
           played,
-          throws: tlogs.map((t) => ({
-            result: (t.result as string) ?? "Fairway",
-            discName: (t.discName as string) ?? "",
-            distance: typeof t.distance === "number" ? (t.distance as number) : undefined,
-            distanceToBasket: typeof t.distanceToBasket === "number" ? (t.distanceToBasket as number) : undefined,
-            madeIt: Boolean(t.madeIt),
-            shotType: (t.shotType as string) ?? undefined,
-          })),
+          throws: tlogs.map((t) => {
+            const num = (v: unknown) => (typeof v === "number" ? v : undefined);
+            return {
+              result: (t.result as string) ?? "Fairway",
+              discName: (t.discName as string) ?? "",
+              distance: num(t.distance),
+              distanceToBasket: num(t.distanceToBasket),
+              madeIt: Boolean(t.madeIt),
+              shotType: (t.shotType as string) ?? undefined,
+              timestamp: t.timestamp != null ? normEpoch(t.timestamp, 0) || undefined : undefined,
+              lat: num(t.lat), lng: num(t.lng),
+              targetLat: num(t.targetLat), targetLng: num(t.targetLng),
+              landLat: num(t.landLat), landLng: num(t.landLng),
+              lie: (t.lie as string) ?? undefined,
+              missZone: (t.missZone as string) ?? undefined,
+              missX: num(t.missX), missY: num(t.missY),
+            };
+          }),
         };
       });
       return {
