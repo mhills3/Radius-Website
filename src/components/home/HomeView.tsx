@@ -8,6 +8,7 @@ import { getAllCourses, slugify, type Course } from "@/lib/courses";
 import { getUpcomingEvents, type LeagueEvent } from "@/lib/leagues";
 import { getFeed, type FeedPost } from "@/lib/feed";
 import Scorecard from "@/components/dashboard/Scorecard";
+import RoundPreviewCard from "@/components/scorecard/RoundPreviewCard";
 
 const HEAD = "font-[family-name:var(--font-heading)]";
 const MONO = { fontFamily: "var(--font-mono-stack, 'JetBrains Mono', monospace)" } as const;
@@ -18,7 +19,6 @@ const fmtToPar = (n: number | null | undefined) => (n == null ? "—" : n === 0 
 const scoreColor = (n: number | null) => (n == null ? "var(--cream)" : n < 0 ? "#8FBF9A" : n === 0 ? "var(--cream)" : "var(--sage-dim)");
 const greeting = () => { const h = new Date().getHours(); return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening"; };
 const timeAgo = (ms: number) => { const d = Math.floor((Date.now() - ms) / 86400000); return d <= 0 ? "today" : d === 1 ? "1d" : d < 7 ? `${d}d` : new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric" }); };
-const shortDate = (ms: number) => new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 function milesBetween(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
   const R = 3958.8, dLat = ((b.lat - a.lat) * Math.PI) / 180, dLng = ((b.lng - a.lng) * Math.PI) / 180;
   const la1 = (a.lat * Math.PI) / 180, la2 = (b.lat * Math.PI) / 180;
@@ -42,15 +42,6 @@ function ToParLine({ round, w, h, showAxis }: { round: DecodedRound; w: number; 
       {showAxis && <circle cx={w} cy={y(cum[cum.length - 1])} r="3.4" fill="var(--gold)" />}
     </svg>
   );
-}
-
-// Up to 3 scoring-mix dots (birdie / par / bogey+) present in the round.
-function ScoreDots({ round }: { round: DecodedRound }) {
-  const played = round.holes.filter((h) => h.played);
-  const has = { b: played.some((h) => h.score - h.par < 0), p: played.some((h) => h.score - h.par === 0), o: played.some((h) => h.score - h.par > 0) };
-  const dots = [has.b && "#3EA88F", has.p && "#D6D6D0", has.o && "#B5544A"].filter(Boolean) as string[];
-  if (!dots.length) return null;
-  return <div className="flex">{dots.map((c, i) => <span key={i} className="h-5 w-5 rounded-full border-[1.5px] border-[var(--bg-deep)]" style={{ background: c, marginLeft: i ? -6 : 0 }} />)}</div>;
 }
 
 export default function HomeView({ uid }: { uid: string }) {
@@ -166,17 +157,9 @@ export default function HomeView({ uid }: { uid: string }) {
             {complete.length === 0 ? (
               <p className="mt-3 text-sm text-[var(--sage-dim)]">No rounds yet — play one in the Radius app.</p>
             ) : (
-              <div className="mt-1">
-                {complete.slice(0, 8).map((r, i, arr) => (
-                  <button key={r.roundId} onClick={() => setOpen(r)} className={`flex w-full items-center gap-4 py-3.5 text-left transition-opacity hover:opacity-80 ${i < arr.length - 1 ? `border-b ${hairline}` : ""}`}>
-                    <span className="grid h-[46px] w-[74px] shrink-0 place-items-center overflow-hidden rounded-lg bg-[#1E2A1C]"><ToParLine round={r} w={74} h={46} /></span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[14.5px] font-semibold text-[var(--cream)]">{r.courseName}</span>
-                      <span className="mt-1 block text-[10.5px] text-[var(--sage-dim)]" style={MONO}>{shortDate(r.date)} · {r.holesPlayed} holes · {r.total}</span>
-                    </span>
-                    <ScoreDots round={r} />
-                    <span className="shrink-0 text-[17px] font-bold" style={{ ...MONO, color: scoreColor(r.relativeToPar) }}>{fmtToPar(r.relativeToPar)}</span>
-                  </button>
+              <div className="mt-3 space-y-4">
+                {complete.slice(0, 6).map((r) => (
+                  <RoundPreviewCard key={r.roundId} round={r} cover={byName.get(r.courseName.trim().toLowerCase())?.coverPhotoUrl} onClick={() => setOpen(r)} />
                 ))}
               </div>
             )}
