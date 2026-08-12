@@ -31,7 +31,7 @@ export default function Scorecard({ round, onClose, rounds }: { round: DecodedRo
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const scHoles = round.holes.filter((h) => h.played).map((h) => ({ holeNumber: h.holeNumber, par: h.par, score: h.score }));
+  const scHoles = round.holes.filter((h) => h.played).map((h) => ({ holeNumber: h.holeNumber, par: h.par, score: h.score, distance: h.distance || undefined }));
   const rel = round.relativeToPar;
   const relColor = rel < 0 ? "#5fb87a" : rel === 0 ? "var(--cream)" : "#e0473f";
 
@@ -46,36 +46,28 @@ export default function Scorecard({ round, onClose, rounds }: { round: DecodedRo
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/65 animate-[fadeIn_0.2s_ease]" onClick={onClose} />
-      <div className="relative max-h-[88vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-white/10 bg-[var(--bg-mid)] p-7 animate-[fadeIn_0.25s_ease]">
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-[var(--sage-dim)]">Round detail</div>
-            <h2 className="mt-1 font-[family-name:var(--font-heading)] text-2xl font-extrabold tracking-tight text-[var(--cream)]">{round.courseName}</h2>
-            <div className="text-sm text-[var(--text-body)]">{fmtDate(round.date)}{round.holesPlayed ? ` · ${round.holesPlayed} holes` : ""}{round.isComplete ? "" : " · in progress"}</div>
+      <div className="relative max-h-[88vh] w-full max-w-5xl overflow-y-auto rounded-3xl border border-white/10 bg-[var(--bg-mid)] p-7 animate-[fadeIn_0.25s_ease]">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-[0.16em] text-[var(--gold)]">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5"><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3" /></svg>
+              Round · {round.isComplete ? "Final" : "In progress"} <span className="font-bold" style={{ color: relColor }}>· {fmtScore(rel)}</span>
+            </div>
+            <h2 className="mt-1.5 truncate font-[family-name:var(--font-heading)] text-[26px] font-black tracking-[-0.01em] text-[var(--cream)]">{round.courseName}</h2>
+            <div className="mt-1 text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--sage-dim)]">Par {round.totalPar} · {round.holesPlayed} holes · {fmtDate(round.date)}</div>
           </div>
-          <button onClick={onClose} className="rounded-full p-2 text-[var(--sage)] transition-colors hover:bg-white/10 hover:text-[var(--cream)]" aria-label="Close">
-            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          <button onClick={onClose} className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/10 text-[var(--sage)] transition-colors hover:bg-white/10 hover:text-[var(--cream)]" aria-label="Close">
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
           </button>
         </div>
 
-        <div className="my-6 flex items-end gap-6">
-          <div>
-            <div className="text-xs uppercase tracking-wide text-[var(--sage-dim)]">Score</div>
-            <div className="font-[family-name:var(--font-heading)] text-5xl font-extrabold leading-none" style={{ color: relColor }}>{fmtScore(rel)}</div>
-          </div>
-          <div className="pb-1">
-            <div className="text-xs uppercase tracking-wide text-[var(--sage-dim)]">Total</div>
-            <div className="font-[family-name:var(--font-heading)] text-2xl font-bold text-[var(--cream)]">{round.total} <span className="text-base font-normal text-[var(--sage-dim)]">/ par {round.totalPar}</span></div>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="mb-6 inline-flex rounded-full border border-white/10 bg-white/[0.03] p-1">
+        {/* Tabs — iOS pill (white active) */}
+        <div className="mb-6 mt-5 inline-flex rounded-full bg-white/[0.06] p-1">
           {TABS.map((t) => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-bold transition-colors ${tab === t.key ? "bg-[var(--gold)] text-[#16221b]" : "text-[var(--text-body)] hover:text-[var(--cream)]"}`}
+              className={`inline-flex items-center gap-1.5 rounded-full px-5 py-1.5 text-sm font-bold transition-colors ${tab === t.key ? "bg-[#F4F1E8] text-[#141b16]" : "text-[var(--text-body)] hover:text-[var(--cream)]"}`}
             >
               {t.label}
               {t.key === "insights" && !pro && (
