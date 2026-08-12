@@ -268,6 +268,145 @@ function puttBandTally(round: DecodedRound, putterNames: Set<string>): { c1m: nu
   return { c1m, c1a, c2m, c2a };
 }
 
+// ---- Strokes-gained engine — exact port of iOS ShotInsightsSummary.compute (RecommendationEngine) ----
+// Powers the "Where the strokes go" leak ranking: each shot's strokes gained = E(start) − cost − E(end)
+// against a baseline expected-strokes table; per-category totals ÷ contributing rounds. Lowest = leak.
+export interface StrokesGained {
+  sgDriving: number; sgApproach: number; sgShort: number; sgPutting: number; sgRounds: number;
+  teeAttempts: number; teeFairwayPct: number; teeObPct: number; driveAvg: number;
+  approachCount: number; proximityAvgFt: number; shortCount: number;
+  scrambleOpps: number; scrambled: number; scramblePct: number;
+  puttAttemptsTotal: number; c1xPct: number;
+}
+export interface RankedCategory { id: string; name: string; evidence: string; sg: number; eligible: boolean; progress: string }
+
+const legacyLandingRow = (t: DecodedThrow) =>
+  t.lat == null && !(t.lie ?? "") && (t.distance ?? 0) === 0 && (t.result === "Circle 1" || t.result === "Circle 2");
+
+// iOS RecommendationEngine.expectedStrokes(fromFeet:) — baseline expected strokes by feet-to-basket.
+function expectedStrokes(d: number): number {
+  if (d < 1) return 0; if (d < 9) return 1.02; if (d < 16) return 1.15; if (d < 23) return 1.35;
+  if (d < 34) return 1.55; if (d < 51) return 1.80; if (d < 67) return 1.95; if (d < 101) return 2.20;
+  if (d < 151) return 2.45; if (d < 201) return 2.65; if (d < 251) return 2.85; if (d < 301) return 3.00;
+  if (d < 351) return 3.15; if (d < 401) return 3.30; return 3.30 + (d - 400) / 250;
+}
+function haversineFt(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371000, dLat = ((lat2 - lat1) * Math.PI) / 180, dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 3.28084;
+}
+
+export function computeStrokesGained(rounds: DecodedRound[], putterNames: Set<string> = new Set()): StrokesGained {
+  const complete = rounds.filter((r) => r.isComplete);
+  let sgD = 0, sgA = 0, sgS = 0, sgP = 0, sgRounds = 0;
+  let teeAttempts = 0, teeOB = 0, teeFairway = 0, driveTotal = 0, driveCount = 0;
+  let approachCount = 0, proximityTotal = 0, shortCount = 0;
+  let scrambleOpps = 0, scrambled = 0;
+  let puttAtt = 0, c1xMade = 0, c1xAtt = 0;
+
+  for (const r of complete) {
+    let roundContributedSG = false;
+    for (const h of r.holes.filter((x) => x.played)) {
+      const rawThrows = h.throws.filter((t) => t.discName !== "Score");
+      // Scramble: trouble off the first real throw, saved to par-or-better.
+      if (rawThrows[0] && h.score > 0) {
+        const tee = rawThrows[0];
+        if (tee.result === "OB" || tee.result === "Miss Left" || tee.result === "Miss Right") {
+          scrambleOpps++; if (h.score - h.par <= 0) scrambled++;
+        }
+      }
+      // Tee counters (fairway/OB/drive distance).
+      rawThrows.forEach((log, i) => {
+        const isTeeShot = log.lie === "tee" || (log.lie == null && i === 0);
+        if (!isTeeShot) return;
+        teeAttempts++;
+        if (log.result === "OB") teeOB++;
+        if (log.result === "Fairway" || log.result === "Circle 1" || log.result === "Circle 2") teeFairway++;
+        if ((log.distance ?? 0) >= 100) { driveTotal += log.distance!; driveCount++; }
+      });
+      // DTB chain — strokes gained, proximity, putt bands.
+      const logs = h.throws.filter((t) => t.discName !== "Score" && t.distanceToBasket != null);
+      logs.forEach((log, i) => {
+        const prev = logs[i - 1], next = logs[i + 1];
+        const legacy = legacyLandingRow(log);
+        let startD: number;
+        if (legacy) {
+          if (i > 0 && prev && legacyLandingRow(prev) && prev.distanceToBasket != null) startD = prev.distanceToBasket;
+          else return;
+        } else if (log.distanceToBasket != null) startD = log.distanceToBasket;
+        else return;
+
+        let endD: number | null = null;
+        if (log.madeIt || log.result === "Basket") endD = 0;
+        else if (legacy) endD = log.distanceToBasket ?? null;
+        else if (next && next.distanceToBasket != null && !legacyLandingRow(next)) endD = next.distanceToBasket;
+        else if (log.landLat != null && log.landLng != null && log.targetLat != null && log.targetLng != null) endD = Math.round(haversineFt(log.landLat, log.landLng, log.targetLat, log.targetLng));
+
+        const isTee = log.lie === "tee";
+        const lieStamp = log.lie ?? "";
+        const stampedPutt = lieStamp.startsWith("putt") || lieStamp === "tap-in";
+        const standardPutt = log.lat == null && (log.distance ?? 0) === 0 && (log.result === "Basket" || log.result === "Miss Left");
+        const isPutt = startD <= 66 && !isTee && (stampedPutt || standardPutt || putterNames.has(log.discName));
+        const isShort = !isTee && !isPutt && startD <= 150;
+        if (isShort) shortCount++;
+
+        if (isPutt) {
+          const fabricatedThrowIn = i === 0 && log.result === "Basket" && log.distanceToBasket === 15 && log.lat == null;
+          if (!fabricatedThrowIn) {
+            let puttStart = startD;
+            if (puttStart === 0 && lieStamp !== "tap-in" && i > 0 && prev && legacyLandingRow(prev) && prev.distanceToBasket != null) puttStart = prev.distanceToBasket;
+            const bandIdx = puttStart < 15 ? 0 : puttStart < 22 ? 1 : puttStart < 33 ? 2 : 3;
+            const made = Boolean(log.madeIt) || log.result === "Basket";
+            puttAtt++;
+            if (bandIdx === 1 || bandIdx === 2) { c1xAtt++; if (made) c1xMade++; }
+          }
+        }
+
+        if (!isTee && !isPutt && startD <= 300 && endD != null && endD <= 66) { proximityTotal += endD; approachCount++; }
+
+        if (endD != null) {
+          const cost = log.result === "OB" ? 2 : 1;
+          const sg = expectedStrokes(startD) - cost - expectedStrokes(endD);
+          roundContributedSG = true;
+          if (isPutt) sgP += sg; else if (isTee) sgD += sg; else if (isShort) sgS += sg; else sgA += sg;
+        }
+      });
+    }
+    if (roundContributedSG) sgRounds++;
+  }
+
+  return {
+    sgDriving: sgRounds ? sgD / sgRounds : 0,
+    sgApproach: sgRounds ? sgA / sgRounds : 0,
+    sgShort: sgRounds ? sgS / sgRounds : 0,
+    sgPutting: sgRounds ? sgP / sgRounds : 0,
+    sgRounds,
+    teeAttempts,
+    teeFairwayPct: teeAttempts ? Math.floor((teeFairway * 100) / teeAttempts) : 0,
+    teeObPct: teeAttempts ? Math.floor((teeOB * 100) / teeAttempts) : 0,
+    driveAvg: driveCount ? Math.floor(driveTotal / driveCount) : 0,
+    approachCount,
+    proximityAvgFt: approachCount ? Math.floor(proximityTotal / approachCount) : 0,
+    shortCount,
+    scrambleOpps, scrambled,
+    scramblePct: scrambleOpps ? Math.round((scrambled / scrambleOpps) * 100) : 0,
+    puttAttemptsTotal: puttAtt,
+    c1xPct: c1xAtt ? Math.round((c1xMade / c1xAtt) * 100) : 0,
+  };
+}
+
+/** iOS rankedCategories: four categories, worst (lowest strokes-gained) first among the eligible
+ *  ones, then the ineligible ones appended. Eligibility gates by sample size. */
+export function rankedCategories(s: StrokesGained): RankedCategory[] {
+  const cats: RankedCategory[] = [
+    { id: "tee", name: "Off the tee", evidence: `${s.teeFairwayPct}% fairway · ${s.teeObPct}% OB · ${s.driveAvg} ft avg`, sg: s.sgDriving, eligible: s.teeAttempts >= 10, progress: `${s.teeAttempts}/10 tee shots measured` },
+    { id: "approach", name: "Approach", evidence: `${s.proximityAvgFt} ft average leave`, sg: s.sgApproach, eligible: s.approachCount >= 10, progress: `${s.approachCount}/10 approach shots measured` },
+    { id: "short", name: "Around the green", evidence: `${s.scramblePct}% scramble · ${s.scrambled} of ${s.scrambleOpps} saved`, sg: s.sgShort, eligible: s.shortCount >= 10, progress: `${s.shortCount}/10 shots measured` },
+    { id: "putting", name: "Putting", evidence: `${s.c1xPct}% C1X · ${s.puttAttemptsTotal} putts`, sg: s.sgPutting, eligible: s.puttAttemptsTotal >= 20, progress: `${s.puttAttemptsTotal}/20 putts recorded` },
+  ];
+  return [...cats.filter((c) => c.eligible).sort((a, b) => a.sg - b.sg), ...cats.filter((c) => !c.eligible)];
+}
+
 /** Aggregate the per-round metrics across all complete rounds — attempt-weighted from raw throws so
  *  career percentages are exact (not an average of per-round percentages). */
 export function computeCareerStats(rounds: DecodedRound[], putterNames: Set<string> = new Set()): CareerStats {

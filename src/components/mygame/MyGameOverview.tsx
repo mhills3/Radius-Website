@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { getDashboard, type Dashboard } from "@/lib/account";
-import { getDecodedRounds, computeCareerStats, type DecodedRound, type CareerStats } from "@/lib/rounds";
+import { getDecodedRounds, computeCareerStats, computeStrokesGained, rankedCategories, type DecodedRound, type CareerStats } from "@/lib/rounds";
 import { getAllCourses, type Course } from "@/lib/courses";
 import { getPutterDiscNames } from "@/lib/bag";
 import { rankForIQ, rankLabel, rankProgress } from "@/lib/rank";
@@ -17,6 +17,7 @@ const pct = (v: number | null | undefined) => (v == null ? "—" : `${Math.round
 const scoreColor = (n: number | null) => (n == null ? "var(--cream)" : n < 0 ? "#5fcf80" : n === 0 ? "var(--cream)" : "#f08c8c");
 
 const HEAD = "font-[family-name:var(--font-heading)]";
+const MONO = { fontFamily: "var(--font-mono-stack, 'JetBrains Mono', monospace)" } as const;
 const eyebrow = `${HEAD} text-[10px] font-black uppercase tracking-[0.16em] text-[var(--sage-dim)]`;
 const card = "rounded-3xl border border-white/[0.08] bg-white/[0.03] p-6";
 
@@ -84,17 +85,11 @@ export default function MyGameOverview({ uid }: { uid: string }) {
     return cands.map((c) => ({ ...c, gap: c.benchmark - c.value })).sort((a, b) => b.gap - a.gap)[0];
   }, [career]);
 
-  // "Where your strokes go" — every benchmarked skill, ranked worst-first.
-  const skills = useMemo(() => {
-    if (!career) return [];
-    const raw = [
-      career.c1.pct != null ? { label: "Putting", value: career.c1.pct, benchmark: 0.7, sub: `${career.c1.made}/${career.c1.att} inside 33 ft` } : null,
-      career.fairwayPct != null ? { label: "Off the tee", value: career.fairwayPct, benchmark: 0.6, sub: "tees in play" } : null,
-      career.obRate != null ? { label: "Avoiding OB", value: 1 - career.obRate, benchmark: 0.92, sub: `${Math.round(career.obRate * 100)}% OB rate` } : null,
-      career.scramblePct != null ? { label: "Scrambling", value: career.scramblePct, benchmark: 0.4, sub: "saves after trouble" } : null,
-    ].filter((s): s is { label: string; value: number; benchmark: number; sub: string } => s != null);
-    return raw.map((s) => ({ ...s, gap: s.benchmark - s.value })).sort((a, b) => b.gap - a.gap);
-  }, [career]);
+  // "Where the strokes go" — iOS strokes-gained ranking: four categories, biggest leak (lowest sg)
+  // first among the eligible ones. Shown only once >= 2 categories have enough measured shots.
+  const sg = useMemo(() => (rounds ? computeStrokesGained(rounds, putterNames) : null), [rounds, putterNames]);
+  const leaks = useMemo(() => (sg ? rankedCategories(sg) : []), [sg]);
+  const showLeaks = sg != null && sg.sgRounds > 0 && leaks.filter((c) => c.eligible).length >= 2;
 
   if (dash === undefined || rounds === null) {
     return <div className="flex min-h-[40vh] items-center justify-center text-[var(--sage)]"><svg className="h-6 w-6 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg></div>;
@@ -163,24 +158,23 @@ export default function MyGameOverview({ uid }: { uid: string }) {
               <EvidenceTile label="Miss Pattern" value={career!.missLeft + career!.missRight === 0 ? "—" : career!.missLeft >= career!.missRight ? "Left" : "Right"} sub={career!.missLeft + career!.missRight ? `${career!.missLeft}L · ${career!.missRight}R` : "No data yet"} />
             </div>
 
-            {skills.length > 0 && (
+            {showLeaks && (
               <div>
-                <div className={eyebrow}>Where your strokes go</div>
-                <div className="mt-3 space-y-2.5">
-                  {skills.map((s, i) => {
-                    const worst = i === 0;
-                    const color = worst ? "#e0733f" : "var(--cream)";
+                <div className={eyebrow}>Where the strokes go</div>
+                <p className="mt-1 text-[12px] text-[var(--sage-dim)]">Ranked from your biggest leak down — the order is the point.</p>
+                <div className="mt-3 divide-y divide-white/[0.06] rounded-2xl border border-white/[0.07] bg-white/[0.02]">
+                  {leaks.map((c, i) => {
+                    const worst = i === 0 && c.eligible;
                     return (
-                      <div key={s.label} className={`rounded-2xl border p-3.5 ${worst ? "border-[#e0733f]/30 bg-[#e0733f]/[0.06]" : "border-white/[0.07] bg-white/[0.02]"}`}>
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="flex items-center gap-2 text-sm font-bold text-[var(--cream)]">
-                            {s.label}
+                      <div key={c.id} className={`flex items-center gap-3.5 p-3.5 ${c.eligible ? "" : "opacity-50"}`}>
+                        <span className={`${HEAD} w-4 shrink-0 text-center text-[15px] font-black`} style={{ ...MONO, color: worst ? "#eb9166" : "rgba(255,255,255,0.35)" }}>{i + 1}</span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-[var(--cream)]">{c.name}</span>
                             {worst && <span className="rounded-full bg-[#e0733f]/20 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-[#eb9166]">Biggest leak</span>}
-                          </span>
-                          <span className={`${HEAD} text-lg font-black`} style={{ color }}>{Math.round(s.value * 100)}%</span>
+                          </div>
+                          <div className="mt-0.5 truncate text-[11.5px] text-[var(--sage-dim)]">{c.eligible ? c.evidence : c.progress}</div>
                         </div>
-                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/[0.06]"><div className="h-full rounded-full" style={{ width: `${Math.min(100, s.value * 100)}%`, background: worst ? "#e0733f" : "var(--gold)" }} /></div>
-                        <div className="mt-1 text-[11px] text-[var(--sage-dim)]">{s.sub}</div>
                       </div>
                     );
                   })}
