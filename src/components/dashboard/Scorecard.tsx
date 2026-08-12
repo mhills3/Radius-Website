@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { type DecodedRound, computeRoundStats, type RoundStats } from "@/lib/rounds";
+import { useAuth } from "@/components/AuthProvider";
 import { usePro } from "@/lib/usePro";
 import ProGate from "@/components/ProGate";
 import ScorecardTable from "@/components/scorecard/ScorecardTable";
@@ -52,6 +53,15 @@ function SectionRule({ children }: { children: string }) {
   );
 }
 
+function RingGroup({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div>
+      <div className="mb-4 text-center text-[11px] font-bold uppercase tracking-[0.16em] text-white/45">{label}</div>
+      <div className="flex items-start justify-center gap-3 sm:gap-2">{children}</div>
+    </div>
+  );
+}
+
 function ScoreCard({ big, label, color }: { big: string; label: string; color: string }) {
   return (
     <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] px-2 py-4 text-center">
@@ -66,6 +76,7 @@ type Tab = "scorecard" | "stats" | "insights";
 export default function Scorecard({ round, onClose, rounds }: { round: DecodedRound; onClose: () => void; rounds?: DecodedRound[] }) {
   const [tab, setTab] = useState<Tab>("scorecard");
   const pro = usePro();
+  const { profile } = useAuth();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
@@ -118,10 +129,10 @@ export default function Scorecard({ round, onClose, rounds }: { round: DecodedRo
           ))}
         </div>
 
-        {tab === "scorecard" && <ScorecardTable holes={scHoles} />}
+        {tab === "scorecard" && <ScorecardTable holes={scHoles} player={{ name: profile?.name ?? "You", photo: profile?.profileImageUrl, username: profile?.username }} />}
 
         {tab === "stats" && (
-          <div className="mx-auto max-w-[440px]">
+          <div>
             <SectionRule>Performance</SectionRule>
             <div className="flex items-center justify-between rounded-2xl border border-white/[0.08] bg-white/[0.02] px-5 py-5">
               <div className="min-w-0">
@@ -134,22 +145,20 @@ export default function Scorecard({ round, onClose, rounds }: { round: DecodedRo
               </div>
             </div>
 
-            <SectionRule>Driving</SectionRule>
-            <div className="grid grid-cols-2 justify-items-center gap-2">
-              <Gauge value={stats.fairwayPct} label="Fairway" tint={RING.green} />
-              <Gauge value={stats.obRate} label="OB Rate" tint={(stats.obRate ?? 1) <= 0 ? RING.green : RING.red} />
-            </div>
-
-            <SectionRule>Approach</SectionRule>
-            <div className="grid grid-cols-2 justify-items-center gap-2">
-              <Gauge value={stats.greenHitPct} label="Green Hit" tint={RING.sage} />
-              <Gauge value={stats.scramblePct} label="Scramble" tint={RING.gold} />
-            </div>
-
-            <SectionRule>Putting</SectionRule>
-            <div className="grid grid-cols-2 justify-items-center gap-2">
-              <Gauge value={stats.c1Pct} label="C1 Putt" tint={RING.green} />
-              <Gauge value={stats.c2Pct} label="C2 Putt" tint={RING.sage} />
+            {/* Ring groups laid out horizontally for desktop */}
+            <div className="mt-9 grid grid-cols-1 gap-8 sm:grid-cols-3">
+              <RingGroup label="Driving">
+                <Gauge value={stats.fairwayPct} label="Fairway" tint={RING.green} />
+                <Gauge value={stats.obRate} label="OB Rate" tint={(stats.obRate ?? 1) <= 0 ? RING.green : RING.red} />
+              </RingGroup>
+              <RingGroup label="Approach">
+                <Gauge value={stats.greenHitPct} label="Green Hit" tint={RING.sage} />
+                <Gauge value={stats.scramblePct} label="Scramble" tint={RING.gold} />
+              </RingGroup>
+              <RingGroup label="Putting">
+                <Gauge value={stats.c1Pct} label="C1 Putt" tint={RING.green} />
+                <Gauge value={stats.c2Pct} label="C2 Putt" tint={RING.sage} />
+              </RingGroup>
             </div>
 
             <SectionRule>Scoring</SectionRule>

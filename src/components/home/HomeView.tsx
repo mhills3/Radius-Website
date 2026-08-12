@@ -132,13 +132,20 @@ export default function HomeView({ uid }: { uid: string }) {
     return { title: "Where to next?", body: "Find a new course to play, or add one that isn't here yet." };
   }, [nearCourses, playedNames, complete]);
 
+  // Mirrors iOS Home `workOnLine` exactly (priority: putting → OB off the tee → scramble), and NEVER a
+  // "well-rounded" line — it either names a concrete leak or tells you to track more shots.
   const workOn = useMemo(() => {
     if (!career) return null;
-    if (career.c1.pct != null && career.c1.pct < 0.7) return `Putting is where you're losing the most. You're making ${Math.round(career.c1.pct * 100)}% on makeable putts inside 33 feet.`;
-    if (career.fairwayPct != null && career.fairwayPct < 0.6) return `Off the tee — only ${Math.round(career.fairwayPct * 100)}% of your drives are finding the fairway.`;
-    if (career.obRate != null && career.obRate > 0.08) return `Trouble is costing you — ${Math.round(career.obRate * 100)}% of your throws are going OB.`;
-    if (career.rounds === 0) return "Play a shot-tracked round in the app and your focus builds itself.";
-    return "Your game is well-rounded — keep stacking clean rounds.";
+    if (career.c1.att >= 20) {
+      const pct = Math.floor((career.c1.made * 100) / Math.max(career.c1.att, 1));
+      if (pct < 75) return `Putting is where you're losing the most — ${pct}% on makeable putts inside 33 feet.`;
+    }
+    if (career.teeAttempts >= 20 && career.teeObPct != null && career.teeObPct >= 10) return `OB is the leak off the tee — ${career.teeObPct}% of your drives.`;
+    if (career.scrambleOpps >= 10 && career.scramblePct != null) {
+      const s = Math.round(career.scramblePct * 100);
+      if (s <= 35) return `Trouble turns into bogeys — you're saving just ${s}%.`;
+    }
+    return "Track your shots on your next round and your focus area builds itself.";
   }, [career]);
 
   if (rounds === null) {

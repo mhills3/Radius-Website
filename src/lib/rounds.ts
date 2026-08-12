@@ -208,7 +208,10 @@ export interface CareerStats {
   throwQuality: number | null; // 0..100
   fairwayPct: number | null;
   obRate: number | null;
+  teeAttempts: number;          // tee shots counted (iOS teeAttempts)
+  teeObPct: number | null;      // OB % among tee shots only, 0..100 int
   scramblePct: number | null;
+  scrambleOpps: number;         // holes with a miss/OB throw (iOS scrambleOpps)
   c1: { made: number; att: number; pct: number | null };
   c2: { made: number; att: number; pct: number | null };
   birdies: number; pars: number; bogeys: number; doublePlus: number;
@@ -224,7 +227,7 @@ export function computeCareerStats(rounds: DecodedRound[]): CareerStats {
   const complete = rounds.filter((r) => r.isComplete);
   const successOf = (key: string) => RESULTS.find((r) => r.key === key)?.success ?? 40;
   let throws = 0, qSum = 0, holes = 0;
-  let teeCount = 0, fairwayHits = 0, ob = 0;
+  let teeCount = 0, fairwayHits = 0, ob = 0, teeOb = 0;
   let c1m = 0, c1a = 0, c2m = 0, c2a = 0;
   let birdies = 0, pars = 0, bogeys = 0, doublePlus = 0;
   let troubleHoles = 0, troubleSaved = 0;
@@ -248,6 +251,7 @@ export function computeCareerStats(rounds: DecodedRound[]): CareerStats {
         if (i === 0) {
           teeCount++;
           if (["Fairway", "Circle 1", "Circle 2", "Basket"].includes(key)) fairwayHits++;
+          if (key === "OB") teeOb++;
           if (typeof t.distance === "number" && t.distance > 0) { driveSum += t.distance; driveN++; }
         }
         if (key === "OB") ob++;
@@ -283,7 +287,10 @@ export function computeCareerStats(rounds: DecodedRound[]): CareerStats {
     throwQuality: throws ? qSum / throws : null,
     fairwayPct: teeCount ? fairwayHits / teeCount : null,
     obRate: throws ? ob / throws : null,
+    teeAttempts: teeCount,
+    teeObPct: teeCount ? Math.round((teeOb / teeCount) * 100) : null,
     scramblePct: troubleHoles ? troubleSaved / troubleHoles : null,
+    scrambleOpps: troubleHoles,
     c1: { made: c1m, att: c1a, pct: c1a ? c1m / c1a : null },
     c2: { made: c2m, att: c2a, pct: c2a ? c2m / c2a : null },
     birdies, pars, bogeys, doublePlus,
