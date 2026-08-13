@@ -27,8 +27,8 @@ function holeColor(v: number): string {
 }
 const relLabel = (v: number) => { if (Math.abs(v) < 0.05) return ".0"; const s = v < 0 ? "−" : "+"; return s + Math.abs(v).toFixed(1).replace(/^0/, ""); };
 
-export default function GameVisuals({ name, line, insight, rounds, range, catalog, putterNames }: {
-  name: string; line: string; insight: string; rounds: DecodedRound[]; range: RangeSession[]; catalog: DbDisc[]; putterNames: Set<string>;
+export default function GameVisuals({ iq, rankText, meta, insight, rounds, range, catalog, putterNames }: {
+  iq: number; rankText: string; meta: string; insight: string; rounds: DecodedRound[]; range: RangeSession[]; catalog: DbDisc[]; putterNames: Set<string>;
 }) {
   const disp = useMemo(() => driveDispersion(rounds, range), [rounds, range]);
   const bag = useMemo(() => bagMeasured(rounds, catalog), [rounds, catalog]);
@@ -38,14 +38,13 @@ export default function GameVisuals({ name, line, insight, rounds, range, catalo
 
   return (
     <div>
-      {/* header */}
-      <div className="mb-5 flex items-center gap-3.5">
-        <span className="grid h-[38px] w-[38px] place-items-center overflow-hidden rounded-full" style={{ background: "#2E4034", boxShadow: `0 0 0 1.5px ${GOLD}` }}>
-          <span className={`${HEAD} text-[15px] font-bold`} style={{ color: INK }}>{name.charAt(0).toUpperCase()}</span>
-        </span>
-        <div>
-          <div className={`${HEAD} text-[17px] font-bold leading-none`} style={{ color: INK }}>{name}</div>
-          <div className="mt-1.5 text-[10.5px]" style={{ ...MONO, color: EB }}>{line}</div>
+      {/* header — Game IQ */}
+      <div className="mb-6">
+        <div className={eb} style={{ color: EB }}>Game IQ</div>
+        <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <span style={{ ...MONO, fontSize: 38, fontWeight: 700, color: INK, lineHeight: 1, letterSpacing: "-0.02em" }}>{iq}</span>
+          <span style={{ ...MONO, fontSize: 12.5, color: SAGE }}>{rankText}</span>
+          <span className="ml-auto" style={{ ...MONO, fontSize: 11, color: EB }}>{meta}</span>
         </div>
       </div>
       <p className={BODY} style={{ color: INK, fontSize: 20, lineHeight: 1.5, maxWidth: 640, marginBottom: 4 }}>{insight}</p>

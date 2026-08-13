@@ -50,12 +50,13 @@ export default function MyGameOverview({ uid }: { uid: string }) {
   const iq = dash.iqCurrent ?? 0;
   const rank = rankForIQ(iq);
   const leak = rankedCategories(sg).filter((c) => c.eligible)[0];
-  const line = `Game IQ ${iq} · ${rankLabel(rank)} · ${career.rounds} round${career.rounds === 1 ? "" : "s"} · ${fmtToParAvg(career.avgToPar)} avg`;
+  const rankText = rankLabel(rank);
+  const meta = `${career.rounds} round${career.rounds === 1 ? "" : "s"} · ${fmtToParAvg(career.avgToPar)} avg`;
   const insight = `You hit ${sg.teeFairwayPct}% of fairways and make ${sg.c1xPct}% inside the circle.${leak ? ` The strokes leak from your ${leak.name.toLowerCase()} — that's where the round is decided.` : ""}`;
 
   return (
     <div className="space-y-8">
-      <GameVisuals name={dash.profile.name || "Player"} line={line} insight={insight} rounds={rounds} range={range} catalog={catalog} putterNames={putterNames} />
+      <GameVisuals iq={iq} rankText={rankText} meta={meta} insight={insight} rounds={rounds} range={range} catalog={catalog} putterNames={putterNames} />
 
       <div className="border-t border-white/[0.06] pt-8">
         <div className={`${eyebrow} mb-3`}>Recent rounds</div>
