@@ -2,6 +2,7 @@
 
 import { type DecodedRound } from "@/lib/rounds";
 import { flightMapImageUrl } from "@/lib/flightMap";
+import DiscGraphic from "@/components/bag/DiscGraphic";
 
 const HEAD = "font-[family-name:var(--font-heading)]";
 const MONO = { fontFamily: "var(--font-mono-stack, 'JetBrains Mono', monospace)" } as const;
@@ -9,9 +10,12 @@ const fmtToPar = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `−${Math.ab
 const scoreColor = (n: number) => (n < 0 ? "#5fcf80" : n === 0 ? "#F4F1E8" : "#E8B560");
 const fmtDate = (ms: number) => new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
+export type BagDisc = { photoUrl?: string; color: string; speed?: number };
+
 /** A round preview card matching the iOS scorecard card: course · date · holes header, a cover-photo
- *  (or flight-map) band, big to-par on the left, strokes + birdies + top-disc dots on the right. */
-export default function RoundPreviewCard({ round, cover, onClick }: { round: DecodedRound; cover?: string; onClick?: () => void }) {
+ *  (or flight-map) band, big to-par on the left, strokes + birdies + the round's top discs on the right
+ *  (real photo when the user has one, otherwise the disc's bag flight plate). */
+export default function RoundPreviewCard({ round, cover, onClick, discMap }: { round: DecodedRound; cover?: string; onClick?: () => void; discMap?: Map<string, BagDisc> }) {
   const played = round.holes.filter((h) => h.played);
   const birdies = played.filter((h) => h.score - h.par < 0).length;
   const rel = round.relativeToPar;
@@ -19,7 +23,6 @@ export default function RoundPreviewCard({ round, cover, onClick }: { round: Dec
   const counts = new Map<string, number>();
   for (const h of played) for (const t of h.throws) { if (t.discName === "Score" || t.discName === "Throw" || !t.discName) continue; counts.set(t.discName, (counts.get(t.discName) ?? 0) + 1); }
   const topDiscs = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
-  const dotColors = ["#E8B560", "#E8B560", "#C99A46"]; // gold family only — third slightly dimmer for depth
   // GPS rounds show a satellite flight map behind the card; otherwise the course cover.
   const media = flightMapImageUrl(round, 760, 300) ?? cover;
 
@@ -49,9 +52,20 @@ export default function RoundPreviewCard({ round, cover, onClick }: { round: Dec
           {birdies > 0 && <div className="mt-1 text-[14px] text-white/85 drop-shadow" style={MONO}>{birdies} birdie{birdies === 1 ? "" : "s"}</div>}
           {topDiscs.length > 0 && (
             <div className="mt-2 flex justify-end">
-              {topDiscs.map(([, n], i) => (
-                <span key={i} className={`${HEAD} grid h-7 w-7 place-items-center rounded-full border-2 text-[12px] font-bold text-white`} style={{ background: "rgba(15,23,18,0.72)", borderColor: dotColors[i], marginLeft: i ? -8 : 0, zIndex: 3 - i }} title={topDiscs[i][0]}>{n}</span>
-              ))}
+              {topDiscs.map(([name, n], i) => {
+                const d = discMap?.get(name.trim().toLowerCase());
+                return (
+                  <span key={name} className="relative" style={{ marginLeft: i ? -10 : 0, zIndex: 3 - i }} title={`${name} · ${n}×`}>
+                    {d?.photoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={d.photoUrl} alt="" className="h-8 w-8 rounded-full object-cover ring-2 ring-[#0F1712]" />
+                    ) : (
+                      <span className="grid h-8 w-8 place-items-center overflow-hidden rounded-full ring-2 ring-[#0F1712]"><DiscGraphic color={d?.color ?? "#8a968d"} speed={d?.speed} size={32} /></span>
+                    )}
+                    <span className="absolute -bottom-1 -right-1 grid h-[15px] min-w-[15px] place-items-center rounded-full bg-[#0F1712] px-[3px] text-[9px] font-bold text-white ring-1 ring-white/10" style={MONO}>{n}</span>
+                  </span>
+                );
+              })}
             </div>
           )}
         </div>

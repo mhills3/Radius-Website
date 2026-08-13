@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
 import { getDecodedRounds, computeCareerStats, computeStrokesGained, rankedCategories, type DecodedRound } from "@/lib/rounds";
 import { getAllCourses, slugify, type Course } from "@/lib/courses";
-import { getPutterDiscNames } from "@/lib/bag";
+import { getPutterDiscNames, getBag } from "@/lib/bag";
+import type { BagDisc } from "@/components/scorecard/RoundPreviewCard";
 import { getUpcomingEvents, type LeagueEvent } from "@/lib/leagues";
 import { getFeed, type FeedPost } from "@/lib/feed";
 import { flightMapImageUrl, courseSatelliteUrl } from "@/lib/flightMap";
@@ -90,6 +91,7 @@ export default function HomeView({ uid }: { uid: string }) {
   const [loc, setLoc] = useState<{ lat: number; lng: number } | null>(null);
   const [open, setOpen] = useState<DecodedRound | null>(null);
   const [putterNames, setPutterNames] = useState<Set<string>>(new Set());
+  const [discMap, setDiscMap] = useState<Map<string, BagDisc>>(new Map());
 
   useEffect(() => {
     let alive = true;
@@ -98,6 +100,7 @@ export default function HomeView({ uid }: { uid: string }) {
     getUpcomingEvents(60).then((e) => alive && setEvents(e)).catch(() => {});
     getFeed(20).then((f) => alive && setFeed(f)).catch(() => {});
     getPutterDiscNames().then((s) => alive && setPutterNames(s)).catch(() => {});
+    getBag(uid).then((b) => alive && setDiscMap(new Map(b.discs.map((d) => [d.name.trim().toLowerCase(), { photoUrl: d.photoUrl, color: d.color, speed: d.speed }])))).catch(() => {});
     if (typeof navigator !== "undefined" && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition((p) => alive && setLoc({ lat: p.coords.latitude, lng: p.coords.longitude }), () => {}, { enableHighAccuracy: false, timeout: 8000, maximumAge: 600000 });
     }
@@ -232,7 +235,7 @@ export default function HomeView({ uid }: { uid: string }) {
               ) : (
                 <div className="space-y-3.5">
                   {complete.slice(0, 6).map((r) => (
-                    <RoundPreviewCard key={r.roundId} round={r} cover={byName.get(r.courseName.trim().toLowerCase())?.coverPhotoUrl} onClick={() => setOpen(r)} />
+                    <RoundPreviewCard key={r.roundId} round={r} cover={byName.get(r.courseName.trim().toLowerCase())?.coverPhotoUrl} onClick={() => setOpen(r)} discMap={discMap} />
                   ))}
                 </div>
               )}

@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { getDashboard, type Dashboard } from "@/lib/account";
 import { getDecodedRounds, computeCareerStats, computeStrokesGained, rankedCategories, type DecodedRound, type CareerStats, type StrokesGained } from "@/lib/rounds";
 import { getAllCourses, type Course } from "@/lib/courses";
-import { getPutterDiscNames, getDiscCatalog, type DbDisc } from "@/lib/bag";
+import { getPutterDiscNames, getDiscCatalog, getBag, type DbDisc } from "@/lib/bag";
+import type { BagDisc } from "@/components/scorecard/RoundPreviewCard";
 import { getPracticeSessions, type RangeSession } from "@/lib/sessions";
 import { rankForIQ, rankLabel } from "@/lib/rank";
 import Scorecard from "@/components/dashboard/Scorecard";
@@ -22,6 +23,7 @@ export default function MyGameOverview({ uid }: { uid: string }) {
   const [range, setRange] = useState<RangeSession[]>([]);
   const [catalog, setCatalog] = useState<DbDisc[]>([]);
   const [putterNames, setPutterNames] = useState<Set<string>>(new Set());
+  const [discMap, setDiscMap] = useState<Map<string, BagDisc>>(new Map());
   const [open, setOpen] = useState<DecodedRound | null>(null);
 
   useEffect(() => {
@@ -30,6 +32,7 @@ export default function MyGameOverview({ uid }: { uid: string }) {
     getDecodedRounds(uid).then((r) => alive && setRounds(r)).catch(() => alive && setRounds([]));
     getAllCourses().then((c) => alive && setCourses(c)).catch(() => {});
     getPutterDiscNames().then((s) => alive && setPutterNames(s)).catch(() => {});
+    getBag(uid).then((b) => alive && setDiscMap(new Map(b.discs.map((d) => [d.name.trim().toLowerCase(), { photoUrl: d.photoUrl, color: d.color, speed: d.speed }])))).catch(() => {});
     getDiscCatalog().then((c) => alive && setCatalog(c)).catch(() => {});
     getPracticeSessions(uid).then((s) => alive && setRange(s.range)).catch(() => {});
     return () => { alive = false; };
@@ -64,7 +67,7 @@ export default function MyGameOverview({ uid }: { uid: string }) {
           <p className="text-sm text-[var(--sage-dim)]">No rounds yet — play one in the Radius app and it&apos;ll appear here.</p>
         ) : (
           <div className="space-y-4">
-            {recent.map((r) => <RoundPreviewCard key={r.roundId} round={r} cover={coverOf.get(r.courseName.trim().toLowerCase())} onClick={() => setOpen(r)} />)}
+            {recent.map((r) => <RoundPreviewCard key={r.roundId} round={r} cover={coverOf.get(r.courseName.trim().toLowerCase())} onClick={() => setOpen(r)} discMap={discMap} />)}
           </div>
         )}
       </div>
