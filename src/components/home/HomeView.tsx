@@ -8,6 +8,7 @@ import { getAllCourses, slugify, type Course } from "@/lib/courses";
 import { getPutterDiscNames } from "@/lib/bag";
 import { getUpcomingEvents, type LeagueEvent } from "@/lib/leagues";
 import { getFeed, type FeedPost } from "@/lib/feed";
+import { flightMapImageUrl, courseSatelliteUrl } from "@/lib/flightMap";
 import Scorecard from "@/components/dashboard/Scorecard";
 import RoundPreviewCard from "@/components/scorecard/RoundPreviewCard";
 
@@ -107,7 +108,13 @@ export default function HomeView({ uid }: { uid: string }) {
   const last = complete[0];
   const career = useMemo(() => (rounds ? computeCareerStats(rounds, putterNames) : null), [rounds, putterNames]);
   const byName = useMemo(() => { const m = new Map<string, Course>(); courses.forEach((c) => { const k = c.name.trim().toLowerCase(); if (!m.has(k)) m.set(k, c); }); return m; }, [courses]);
-  const cover = last ? byName.get(last.courseName.trim().toLowerCase())?.coverPhotoUrl : undefined;
+  const lastCourse = last ? byName.get(last.courseName.trim().toLowerCase()) : undefined;
+  const cover = lastCourse?.coverPhotoUrl;
+  // Crisp aerial hero: satellite auto-fit to the GPS round, else a satellite centred on the course,
+  // else the (low-res) cover photo as a last resort.
+  const heroImg = (last ? flightMapImageUrl(last, 1280, 460) : null)
+    ?? (lastCourse?.latitude != null && lastCourse?.longitude != null ? courseSatelliteUrl(lastCourse.latitude, lastCourse.longitude, 1280, 460, 15.5) : null)
+    ?? cover;
   const firstName = (profile?.name || "Player").split(" ")[0];
   const playedNames = useMemo(() => new Set(complete.map((r) => r.courseName.trim().toLowerCase())), [complete]);
 
@@ -166,10 +173,10 @@ export default function HomeView({ uid }: { uid: string }) {
     <div className="min-h-screen bg-[var(--bg-deep)] text-[var(--cream)]">
       {/* ===== HERO ===== */}
       <div className="relative overflow-hidden">
-        {cover && (
+        {heroImg && (
           <div aria-hidden className="pointer-events-none absolute inset-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={cover} alt="" className="h-full w-full scale-[1.06] object-cover blur-[3px] brightness-[0.92]" />
+            <img src={heroImg} alt="" className="h-full w-full object-cover" />
           </div>
         )}
         {/* two-part scrim: darken the left where the text sits, then fade fully to page color at the bottom */}

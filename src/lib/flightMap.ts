@@ -9,6 +9,12 @@ export function roundHasGps(round: DecodedRound): boolean {
   return round.holes.some((h) => h.played && h.throws.some((t) => real(t) && t.lat != null && t.lng != null));
 }
 
+/** A crisp Mapbox satellite tile centred on a course, rendered @2x — a sharp aerial hero backdrop
+ *  (unlike upscaling a small user cover photo). */
+export function courseSatelliteUrl(lat: number, lng: number, w: number, h: number, zoom = 15): string {
+  return `https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/${lng.toFixed(5)},${lat.toFixed(5)},${zoom},0/${Math.round(w)}x${Math.round(h)}@2x?access_token=${TOKEN}`;
+}
+
 /** A Mapbox Static Images URL: a satellite tile with each hole's flight path drawn in gold,
  *  auto-fit to the shots. Returns null when there's no GPS data (or the URL would be too long). */
 export function flightMapImageUrl(round: DecodedRound, w: number, h: number): string | null {
