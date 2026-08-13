@@ -169,7 +169,7 @@ export default function HomeView({ uid }: { uid: string }) {
         {cover && (
           <div aria-hidden className="pointer-events-none absolute inset-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={cover} alt="" className="h-full w-full object-cover" />
+            <img src={cover} alt="" className="h-full w-full scale-[1.06] object-cover blur-[3px] brightness-[0.92]" />
           </div>
         )}
         {/* two-part scrim: darken the left where the text sits, then fade fully to page color at the bottom */}
