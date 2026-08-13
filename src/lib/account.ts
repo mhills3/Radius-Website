@@ -1,5 +1,5 @@
 import { db } from "./firebase";
-import { doc, getDoc, collection, getDocs } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
 import { getDecodedRoundsForCanonical, countAces, normEpoch, type RoundMeta } from "./rounds";
 
 /** User image URLs can be arbitrary/invalid (content:// etc.) — keep only real http(s) URLs. */
@@ -116,6 +116,7 @@ export interface ProfileLite {
   name: string;
   username: string;
   profileImageUrl?: string;
+  coverPhotoUrl?: string;
   writer?: boolean;
   homeCourseName?: string;
   isPro?: boolean;
@@ -197,6 +198,12 @@ export async function getOwnedIds(uid: string): Promise<Set<string>> {
   return ids;
 }
 
+/** Write the signed-in user's profile cover photo URL to their user doc (canonical id). */
+export async function setProfileCover(uid: string, coverPhotoUrl: string): Promise<void> {
+  const cid = await resolveCanonicalIdStrict(uid);
+  await setDoc(doc(db, "users", cid), { coverPhotoUrl }, { merge: true });
+}
+
 export async function getProfileLite(uid: string): Promise<ProfileLite | null> {
   const canonicalId = await resolveCanonicalId(uid);
   try {
@@ -204,7 +211,7 @@ export async function getProfileLite(uid: string): Promise<ProfileLite | null> {
     if (!snap.exists()) return null;
     const u = snap.data();
     return {
-      canonicalId, name: u.name ?? "", username: u.username ?? "", profileImageUrl: safeHttp(u.profileImageUrl),
+      canonicalId, name: u.name ?? "", username: u.username ?? "", profileImageUrl: safeHttp(u.profileImageUrl), coverPhotoUrl: safeHttp(u.coverPhotoUrl),
       writer: u.writer === true || u.role === "writer", homeCourseName: (u.homeCourseName as string) || undefined,
       isPro: u.isPro === true, proExpires: toEpochMillis(u.proExpires),
       proOverride: u.proOverride === true, proOverrideExpires: toEpochMillis(u.proOverrideExpires),

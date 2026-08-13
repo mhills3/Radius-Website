@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
+import { setProfileCover } from "@/lib/account";
+import { uploadProfileCover } from "@/lib/postImage";
 import { getDecodedRounds, computeCareerStats, computeStrokesGained, rankedCategories, type DecodedRound } from "@/lib/rounds";
 import { getAllCourses, slugify, type Course } from "@/lib/courses";
 import { getPutterDiscNames, getBag } from "@/lib/bag";
@@ -25,6 +27,19 @@ const chip = `${HEAD} inline-flex items-center gap-1.5 rounded-full border borde
 const fmtToPar = (n: number | null | undefined) => (n == null ? "—" : n === 0 ? "E" : n > 0 ? `+${n}` : `−${Math.abs(n)}`);
 const scoreColor = (n: number | null) => (n == null ? "var(--cream)" : n < 0 ? "#8FBF9A" : n === 0 ? "var(--cream)" : "var(--sage-dim)");
 const greeting = () => { const h = new Date().getHours(); return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening"; };
+// WMO weather codes → short label + emoji (Open-Meteo current weather).
+function wmo(code: number): { label: string; icon: string } {
+  if (code === 0) return { label: "Clear", icon: "☀️" };
+  if (code <= 2) return { label: "Partly cloudy", icon: "⛅" };
+  if (code === 3) return { label: "Overcast", icon: "☁️" };
+  if (code <= 48) return { label: "Fog", icon: "🌫️" };
+  if (code <= 57) return { label: "Drizzle", icon: "🌦️" };
+  if (code <= 67) return { label: "Rain", icon: "🌧️" };
+  if (code <= 77) return { label: "Snow", icon: "❄️" };
+  if (code <= 82) return { label: "Showers", icon: "🌧️" };
+  if (code <= 86) return { label: "Snow", icon: "❄️" };
+  return { label: "Storms", icon: "⛈️" };
+}
 const timeAgo = (ms: number) => { const d = Math.floor((Date.now() - ms) / 86400000); return d <= 0 ? "today" : d === 1 ? "1d" : d < 7 ? `${d}d` : new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric" }); };
 const miLabel = (mi: number) => `${mi < 10 ? mi.toFixed(1) : Math.round(mi)} mi`;
 function milesBetween(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
@@ -96,6 +111,10 @@ export default function HomeView({ uid }: { uid: string }) {
   const [sortNewest, setSortNewest] = useState(true);   // ↑↓ Date (newest) vs Score (best to par)
   const [rangeKey, setRangeKey] = useState("last5");     // Last 5 / Events / MMM yyyy / All
   const [menuOpen, setMenuOpen] = useState(false);
+  const [uploadedCover, setUploadedCover] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [weather, setWeather] = useState<{ temp: number; label: string; icon: string } | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let alive = true;
@@ -110,6 +129,27 @@ export default function HomeView({ uid }: { uid: string }) {
     }
     return () => { alive = false; };
   }, [uid]);
+
+  // today's weather at the user's location (Open-Meteo — free, no key)
+  useEffect(() => {
+    if (!loc) return;
+    const ctrl = new AbortController();
+    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lng}&current=temperature_2m,weather_code&temperature_unit=fahrenheit`, { signal: ctrl.signal })
+      .then((r) => r.json())
+      .then((j) => { const c = j?.current; if (c && typeof c.temperature_2m === "number") setWeather({ temp: Math.round(c.temperature_2m), ...wmo(Number(c.weather_code) || 0) }); })
+      .catch(() => {});
+    return () => ctrl.abort();
+  }, [loc]);
+
+  const coverPhoto = uploadedCover ?? profile?.coverPhotoUrl;
+  const onCoverFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try { const url = await uploadProfileCover(uid, file); await setProfileCover(uid, url); setUploadedCover(url); }
+    catch { /* surface silently — keep the current cover */ }
+    finally { setUploading(false); if (fileRef.current) fileRef.current.value = ""; }
+  };
 
   const complete = useMemo(() => (rounds ? [...rounds].filter((r) => r.isComplete).sort((a, b) => b.date - a.date) : []), [rounds]);
   // Month filter options — one per month that has rounds, newest first (complete is already date-desc).
@@ -136,7 +176,8 @@ export default function HomeView({ uid }: { uid: string }) {
   const cover = lastCourse?.coverPhotoUrl;
   // Crisp aerial hero: satellite auto-fit to the GPS round, else a satellite centred on the course,
   // else the (low-res) cover photo as a last resort.
-  const heroImg = (last ? flightMapImageUrl(last, 1280, 460) : null)
+  const heroImg = coverPhoto
+    ?? (last ? flightMapImageUrl(last, 1280, 460) : null)
     ?? (lastCourse?.latitude != null && lastCourse?.longitude != null ? courseSatelliteUrl(lastCourse.latitude, lastCourse.longitude, 1280, 460, 15.5) : null)
     ?? cover;
   const firstName = (profile?.name || "Player").split(" ")[0];
@@ -205,9 +246,30 @@ export default function HomeView({ uid }: { uid: string }) {
         )}
         {/* two-part scrim: darken the left where the text sits, then fade fully to page color at the bottom */}
         <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "linear-gradient(100deg, rgba(15,23,18,0.96) 0%, rgba(15,23,18,0.62) 44%, rgba(15,23,18,0.22) 100%), linear-gradient(to bottom, transparent 30%, rgba(15,23,18,0.72) 74%, var(--bg-deep) 99%)" }} />
+        {/* today's weather + change cover */}
+        <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
+          {weather && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-black/35 px-3 py-1.5 text-[12px] font-semibold text-[var(--cream)] backdrop-blur-sm">
+              <span>{weather.icon}</span><span style={MONO}>{weather.temp}°</span><span className="text-[var(--sage)]">{weather.label}</span>
+            </span>
+          )}
+          <button onClick={() => fileRef.current?.click()} disabled={uploading} className="grid h-8 w-8 place-items-center rounded-full bg-black/35 text-[var(--cream)] backdrop-blur-sm transition-colors hover:bg-black/60 disabled:opacity-50" title="Change cover photo" aria-label="Change cover photo">
+            {uploading ? <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+              : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></svg>}
+          </button>
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onCoverFile} />
+        </div>
         <div className={`relative ${frame} pb-16 pt-10 sm:pt-12`}>
           <div className={`${label} !text-[var(--sage)]`}>{greeting()}</div>
-          <div className={`${HEAD} mt-2 text-[38px] font-bold leading-none`}>{firstName}</div>
+          <div className="mt-2 flex items-center gap-3.5">
+            <span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--bg-mid)] text-lg font-bold text-[var(--cream)] ring-2 ring-white/20">
+              {profile?.profileImageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={profile.profileImageUrl} alt="" className="h-full w-full object-cover" />
+              ) : firstName.charAt(0).toUpperCase()}
+            </span>
+            <div className={`${HEAD} text-[38px] font-bold leading-none`}>{firstName}</div>
+          </div>
           {last ? (
             // last-round details (left) + score arc (right) share a bottom axis so the arc is anchored, not floating
             <div className="mt-10 flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
