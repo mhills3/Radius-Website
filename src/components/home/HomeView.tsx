@@ -16,6 +16,7 @@ import { getFeed, type FeedPost } from "@/lib/feed";
 import { flightMapImageUrl, courseSatelliteUrl } from "@/lib/flightMap";
 import Scorecard from "@/components/dashboard/Scorecard";
 import RoundPreviewCard from "@/components/scorecard/RoundPreviewCard";
+import RoundsHeatmap from "@/components/dashboard/RoundsHeatmap";
 
 // --- one type + color system for the whole page ---
 const HEAD = "font-[family-name:var(--font-heading)]";   // Sora — headings + labels
@@ -43,6 +44,21 @@ function wmo(code: number): { label: string; icon: string } {
   return { label: "Storms", icon: "⛈️" };
 }
 const timeAgo = (ms: number) => { const d = Math.floor((Date.now() - ms) / 86400000); return d <= 0 ? "today" : d === 1 ? "1d" : d < 7 ? `${d}d` : new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric" }); };
+// Rounds cadence: rounds this year, current week streak, and this-month vs last (matches the app dashboard).
+function roundsSummary(dates: number[]) {
+  const now = new Date(), thisYear = now.getFullYear(), WEEK = 7 * 86400000;
+  const roundsThisYear = dates.filter((ms) => new Date(ms).getFullYear() === thisYear).length;
+  const weekKey = (ms: number) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - d.getDay()); return d.getTime(); };
+  const weeks = new Set(dates.map(weekKey));
+  let streak = 0, w = weekKey(now.getTime());
+  if (!weeks.has(w)) w -= WEEK; // grace: count from last week if none yet this week
+  while (weeks.has(w)) { streak++; w -= WEEK; }
+  const inMonth = (ms: number, mo: number, yr: number) => { const d = new Date(ms); return d.getMonth() === mo && d.getFullYear() === yr; };
+  const cntThis = dates.filter((ms) => inMonth(ms, now.getMonth(), thisYear)).length;
+  const lastMo = now.getMonth() === 0 ? 11 : now.getMonth() - 1, lastMoYr = now.getMonth() === 0 ? thisYear - 1 : thisYear;
+  const cntLast = dates.filter((ms) => inMonth(ms, lastMo, lastMoYr)).length;
+  return { roundsThisYear, streak, cntThis, cntLast, monthDelta: cntThis - cntLast };
+}
 const miLabel = (mi: number) => `${mi < 10 ? mi.toFixed(1) : Math.round(mi)} mi`;
 function milesBetween(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
   const R = 3958.8, dLat = ((b.lat - a.lat) * Math.PI) / 180, dLng = ((b.lng - a.lng) * Math.PI) / 180;
@@ -83,19 +99,20 @@ function ToParLine({ round, w, h }: { round: DecodedRound; w: number; h: number 
 // in the center, label beneath). `frac` (0..1) drives the arc; null value = empty ring.
 function StatRing({ value, unit, frac, label, size = 68 }: { value: string; unit?: string; frac: number | null; label: string; size?: number }) {
   const r = size / 2 - 5, C = 2 * Math.PI * r, p = Math.max(0, Math.min(1, frac ?? 0));
+  const sw = size >= 82 ? 5.5 : 4.5;
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className="flex flex-col items-center gap-2.5">
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="block">
         <g transform={`translate(${size / 2} ${size / 2})`}>
-          <circle r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="4.5" />
-          {frac != null && <circle r={r} fill="none" stroke="var(--gold)" strokeWidth="4.5" strokeLinecap="round" strokeDasharray={`${p * C} ${C}`} transform="rotate(-90)" />}
+          <circle r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={sw} />
+          {frac != null && <circle r={r} fill="none" stroke="var(--gold)" strokeWidth={sw} strokeLinecap="round" strokeDasharray={`${p * C} ${C}`} transform="rotate(-90)" />}
           <text textAnchor="middle" dominantBaseline="central" y="0">
-            <tspan style={{ fontSize: 16, fontWeight: 800, fontFamily: "var(--font-mono-stack, 'JetBrains Mono', monospace)", fill: "var(--cream)" }}>{value}</tspan>
-            {unit && <tspan dx="1" style={{ fontSize: 9, fontWeight: 700, fontFamily: "var(--font-mono-stack, 'JetBrains Mono', monospace)", fill: "var(--sage-dim)" }}>{unit}</tspan>}
+            <tspan style={{ fontSize: size * 0.235, fontWeight: 800, fontFamily: "var(--font-mono-stack, 'JetBrains Mono', monospace)", fill: "var(--cream)" }}>{value}</tspan>
+            {unit && <tspan dx="1" style={{ fontSize: size * 0.13, fontWeight: 700, fontFamily: "var(--font-mono-stack, 'JetBrains Mono', monospace)", fill: "var(--sage-dim)" }}>{unit}</tspan>}
           </text>
         </g>
       </svg>
-      <div className={`${HEAD} text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--sage-dim)]`}>{label}</div>
+      <div className={`${HEAD} text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--sage-dim)]`}>{label}</div>
     </div>
   );
 }
@@ -109,10 +126,10 @@ function HeroIQ({ iq, history }: { iq: number; history: { t: number; iq: number 
   const nextText = rank.nextIQ != null ? rankLabel(rankForIQ(rank.nextIQ)) : null;
   const trend = history.length >= 2 ? history[history.length - 1].iq - history[history.length - 2].iq : 0;
   // dial geometry
-  const S = 210, R = S / 2 - 12, C = 2 * Math.PI * R;
+  const S = 150, R = S / 2 - 9, C = 2 * Math.PI * R;
   // spark geometry
   const pts = history.slice(-16).map((h) => h.iq);
-  const sw = 360, sh = 84, sp = 4;
+  const sw = 300, sh = 60, sp = 4;
   const smin = Math.min(...pts), smax = Math.max(...pts), sspan = smax - smin || 1;
   const sx = (i: number) => (pts.length <= 1 ? sw : (i / (pts.length - 1)) * sw);
   const sy = (v: number) => sp + (1 - (v - smin) / sspan) * (sh - 2 * sp);
@@ -120,37 +137,37 @@ function HeroIQ({ iq, history }: { iq: number; history: { t: number; iq: number 
   const area = pts.length ? `M0,${sh} ${pts.map((v, i) => `L${sx(i)},${sy(v)}`).join(" ")} L${sw},${sh} Z` : "";
 
   return (
-    <div className="flex w-full flex-col items-center justify-center gap-10 sm:flex-row sm:gap-20">
+    <div className="flex w-full flex-col items-center gap-6 sm:flex-row sm:gap-8 md:w-[420px]">
       {/* IQ dial */}
       <div className="relative shrink-0" style={{ width: S, height: S }}>
         <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
           <g transform={`translate(${S / 2} ${S / 2})`}>
-            <circle r={R} fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="6" />
-            <circle r={R} fill="none" stroke={rank.color} strokeWidth="6" strokeLinecap="round" strokeDasharray={`${prog * C} ${C}`} transform="rotate(-90)" />
+            <circle r={R} fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="5" />
+            <circle r={R} fill="none" stroke={rank.color} strokeWidth="5" strokeLinecap="round" strokeDasharray={`${prog * C} ${C}`} transform="rotate(-90)" />
           </g>
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <div className={`${HEAD} text-[12px] font-bold uppercase tracking-[0.2em] text-[var(--sage-dim)]`}>Game IQ</div>
-          <div style={{ ...MONO, fontSize: 82, fontWeight: 700, lineHeight: 1, letterSpacing: "-0.03em", color: "var(--cream)" }}>{iq}</div>
-          <div className={`${HEAD} mt-2 rounded-full px-3.5 py-1 text-[12px] font-bold`} style={{ background: `${rank.color}22`, color: rank.color }}>{rankText}</div>
+          <div className={`${HEAD} text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--sage-dim)]`}>Game IQ</div>
+          <div style={{ ...MONO, fontSize: 56, fontWeight: 700, lineHeight: 1, letterSpacing: "-0.03em", color: "var(--cream)" }}>{iq}</div>
+          <div className={`${HEAD} mt-1.5 rounded-full px-2.5 py-[3px] text-[10px] font-bold`} style={{ background: `${rank.color}22`, color: rank.color }}>{rankText}</div>
         </div>
       </div>
       {/* rank + spark */}
-      <div className="w-full max-w-[420px]">
-        <div className="flex items-center gap-4">
-          <LevelBadge iq={iq} size={52} />
+      <div className="w-full min-w-0 flex-1">
+        <div className="flex items-center gap-3">
+          <LevelBadge iq={iq} size={40} />
           <div className="min-w-0">
-            <div className={`${HEAD} truncate text-[24px] font-bold text-[var(--cream)]`}>{rankText}</div>
-            <div className="text-[13px] text-[var(--sage-dim)]" style={MONO}>Rank {rank.level} of 30</div>
+            <div className={`${HEAD} truncate text-[18px] font-bold text-[var(--cream)]`}>{rankText}</div>
+            <div className="text-[12px] text-[var(--sage-dim)]" style={MONO}>Rank {rank.level} of 30</div>
           </div>
         </div>
-        <div className="mt-6 flex items-center gap-2">
-          <span className={`${HEAD} text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--sage-dim)]`}>IQ History</span>
+        <div className="mt-4 flex items-center gap-2">
+          <span className={`${HEAD} text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--sage-dim)]`}>IQ History</span>
           {trend !== 0 && (
-            <span className="text-[13px] font-bold" style={{ color: trend > 0 ? "#8FBF9A" : "#C87F6A" }}>{trend > 0 ? "▲" : "▼"}{Math.abs(trend)}</span>
+            <span className="text-[12px] font-bold" style={{ color: trend > 0 ? "#8FBF9A" : "#C87F6A" }}>{trend > 0 ? "▲" : "▼"}{Math.abs(trend)}</span>
           )}
         </div>
-        <svg className="mt-2 block w-full" viewBox={`0 0 ${sw} ${sh}`} preserveAspectRatio="none" height={sh}>
+        <svg className="mt-1.5 block w-full" viewBox={`0 0 ${sw} ${sh}`} preserveAspectRatio="none" height={sh}>
           <defs><linearGradient id="hiq-spark" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={rank.color} stopOpacity="0.24" /><stop offset="100%" stopColor={rank.color} stopOpacity="0" /></linearGradient></defs>
           {pts.length >= 2 && <>
             <path d={area} fill="url(#hiq-spark)" />
@@ -159,9 +176,9 @@ function HeroIQ({ iq, history }: { iq: number; history: { t: number; iq: number 
           </>}
         </svg>
         {toNext > 0 && nextText ? (
-          <div className="mt-3 text-[16px]" style={MONO}><span className="font-bold text-[var(--cream)]">{toNext} IQ</span><span className="text-[var(--sage-dim)]"> to </span><span className="font-bold text-[var(--gold)]">{nextText}</span></div>
+          <div className="mt-2.5 text-[14px]" style={MONO}><span className="font-bold text-[var(--cream)]">{toNext} IQ</span><span className="text-[var(--sage-dim)]"> to </span><span className="font-bold text-[var(--gold)]">{nextText}</span></div>
         ) : (
-          <div className="mt-3 text-[16px] font-bold text-[var(--gold)]" style={MONO}>Top rank reached</div>
+          <div className="mt-2.5 text-[14px] font-bold text-[var(--gold)]" style={MONO}>Top rank reached</div>
         )}
       </div>
     </div>
@@ -242,6 +259,8 @@ export default function HomeView({ uid }: { uid: string }) {
   }, [complete, rangeKey, sortNewest]);
   const rangeLabel = rangeKey === "last5" ? "Last 5" : rangeKey === "all" ? "All" : rangeKey === "events" ? "Events" : (monthOpts.find((m) => m.key === rangeKey)?.label ?? "Last 5");
   const last = complete[0];
+  const roundDates = useMemo(() => (dash?.roundMetas ?? complete).map((m) => m.date), [dash, complete]);
+  const cadence = roundDates.length ? roundsSummary(roundDates) : null;
   const career = useMemo(() => (rounds ? computeCareerStats(rounds, putterNames) : null), [rounds, putterNames]);
   const byName = useMemo(() => { const m = new Map<string, Course>(); courses.forEach((c) => { const k = c.name.trim().toLowerCase(); if (!m.has(k)) m.set(k, c); }); return m; }, [courses]);
   const lastCourse = last ? byName.get(last.courseName.trim().toLowerCase()) : undefined;
@@ -344,40 +363,42 @@ export default function HomeView({ uid }: { uid: string }) {
             </span>
             <div className={`${HEAD} text-[38px] font-bold leading-none`}>{firstName}</div>
           </div>
-          {last ? (
-            <div className="mt-8">
-              <div className={`${label} mb-3`}>Your last round</div>
-              <div className={`${HEAD} text-2xl font-bold`}>{last.courseName}</div>
-              <div className="mt-2.5 flex items-baseline gap-3.5">
-                <span className="text-[44px] font-bold leading-[0.85] tracking-[-0.03em]" style={{ ...MONO, color: scoreColor(last.relativeToPar) }}>{fmtToPar(last.relativeToPar)}</span>
-                <span className="text-xs text-[var(--sage)]" style={MONO}>{last.total} strokes · {last.holesPlayed} holes · {timeAgo(last.date)}</span>
-              </div>
+          {/* last round (left) + Game IQ status (right), vertically centered together */}
+          <div className="mt-8 flex flex-col gap-10 md:mt-10 md:flex-row md:items-center md:justify-between md:gap-10">
+            <div className="min-w-0">
+              {last ? (
+                <>
+                  <div className={`${label} mb-3`}>Your last round</div>
+                  <div className={`${HEAD} text-2xl font-bold`}>{last.courseName}</div>
+                  <div className="mt-2.5 flex items-baseline gap-3.5">
+                    <span className="text-[44px] font-bold leading-[0.85] tracking-[-0.03em]" style={{ ...MONO, color: scoreColor(last.relativeToPar) }}>{fmtToPar(last.relativeToPar)}</span>
+                    <span className="text-xs text-[var(--sage)]" style={MONO}>{last.total} strokes · {last.holesPlayed} holes · {timeAgo(last.date)}</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className={`${HEAD} text-xl font-bold`}>Play your first round</div>
+                  <p className="mt-1 text-sm text-[var(--text-body)]">Track a round in the Radius app and your stats appear here.</p>
+                </>
+              )}
             </div>
-          ) : (
-            <div className="mt-10">
-              <div className={`${HEAD} text-xl font-bold`}>Play your first round</div>
-              <p className="mt-1 text-sm text-[var(--text-body)]">Track a round in the Radius app and your stats appear here.</p>
-            </div>
-          )}
-          {/* Game IQ — big, centered, spread across the hero */}
-          {dash && dash.iqCurrent > 0 ? (
-            <div className="mt-14 sm:mt-16"><HeroIQ iq={dash.iqCurrent} history={dash.iqHistory} /></div>
-          ) : last ? (
-            <div className="mt-12 w-full md:w-[300px]"><ToParLine round={last} w={300} h={88} /></div>
-          ) : null}
+            {dash && dash.iqCurrent > 0
+              ? <HeroIQ iq={dash.iqCurrent} history={dash.iqHistory} />
+              : last ? <div className="w-full md:w-[300px]"><ToParLine round={last} w={300} h={88} /></div> : null}
+          </div>
         </div>
       </div>
 
       {/* ===== GRID — explicit: fluid main + fixed rail, 40px gutter, both start at the same Y ===== */}
       <div className={`${frame} pb-20 pt-8`}>
-        <div className="grid gap-8 lg:grid-cols-[1fr_336px] lg:items-start lg:gap-10">
+        <div className="grid gap-8 lg:grid-cols-[1fr_384px] lg:items-start lg:gap-10">
           {/* MAIN */}
           <div className="min-w-0">
             {workOn && (
-              <div className={`border-b ${divider} pb-8`}>
-                <div className={`${label} mb-3`}>What to work on</div>
-                <p className={`${HEAD} max-w-xl text-[22px] font-semibold leading-[1.32] text-[var(--cream)]`}>{workOn}</p>
-                <Link href="/bag?tab=improve" className="mt-4 inline-block text-[13px] font-semibold text-[var(--gold)]">Open Improve →</Link>
+              <div className={`border-b ${divider} pb-10`}>
+                <div className={`${label} mb-4`}>What to work on</div>
+                <p className={`${HEAD} max-w-2xl text-[30px] font-semibold leading-[1.28] text-[var(--cream)] sm:text-[34px]`}>{workOn}</p>
+                <Link href="/bag?tab=improve" className="mt-5 inline-block text-[15px] font-semibold text-[var(--gold)]">Open Improve →</Link>
               </div>
             )}
 
@@ -423,55 +444,73 @@ export default function HomeView({ uid }: { uid: string }) {
 
           {/* SIDEBAR */}
           <aside className="min-w-0">
+            {/* Your rounds — activity heatmap (its own section at the top of the rail) */}
+            {cadence && (
+              <div className={`border-b ${divider} pb-6`}>
+                <div className="mb-4 flex items-baseline justify-between gap-2">
+                  <span className={label}>Your rounds</span>
+                  <span className="text-[14px] text-[var(--sage)]" style={MONO}><span className="font-bold text-[var(--cream)]">{cadence.roundsThisYear}</span> this year</span>
+                </div>
+                <RoundsHeatmap dates={roundDates} />
+                <div className={`mt-5 flex items-center justify-between border-t ${divider} pt-4 text-[14px]`} style={MONO}>
+                  <span><span className="text-[var(--sage-dim)]">Streak </span><span className="font-bold text-[var(--cream)]">{cadence.streak} wk{cadence.streak === 1 ? "" : "s"}</span>{cadence.streak >= 2 && <span> 🔥</span>}</span>
+                  <span>
+                    <span className="text-[var(--sage-dim)]">This month </span><span className="font-bold text-[var(--cream)]">{cadence.cntThis}</span>
+                    {(cadence.cntThis > 0 || cadence.cntLast > 0) && <span className={`ml-1.5 font-semibold ${cadence.monthDelta >= 0 ? "text-[#5fcf80]" : "text-[#f08c8c]"}`}>{cadence.monthDelta >= 0 ? `▲ ${cadence.monthDelta}` : `▼ ${Math.abs(cadence.monthDelta)}`} vs last</span>}
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* Play a course — a section, not a card; copy adapts to the player */}
-            <div className={`border-b ${divider} pb-5`}>
-              <div className={`${HEAD} text-[17px] font-bold text-[var(--cream)]`}>{courseNudge.title}</div>
-              <p className={`${BODY} mt-1.5 text-[13.5px] leading-snug text-[var(--sage)]`}>{courseNudge.body}</p>
-              <div className="mt-3.5 flex items-center gap-4">
-                <Link href="/courses" className="text-[13.5px] font-semibold text-[var(--gold)]">Find a course →</Link>
-                <Link href="/courses/new" className="text-[13.5px] font-semibold text-[var(--sage)] hover:text-[var(--cream)]">Add a course</Link>
+            <div className={`mt-6 border-b ${divider} pb-6`}>
+              <div className={`${HEAD} text-[19px] font-bold text-[var(--cream)]`}>{courseNudge.title}</div>
+              <p className={`${BODY} mt-2 text-[15px] leading-snug text-[var(--sage)]`}>{courseNudge.body}</p>
+              <div className="mt-4 flex items-center gap-5">
+                <Link href="/courses" className="text-[15px] font-semibold text-[var(--gold)]">Find a course →</Link>
+                <Link href="/courses/new" className="text-[15px] font-semibold text-[var(--sage)] hover:text-[var(--cream)]">Add a course</Link>
               </div>
             </div>
 
             {/* Your game — stat rings, mirroring the app */}
-            <div className={`mt-5 border-b ${divider} pb-5`}>
-              <div className={`${label} mb-4`}>Your game</div>
-              <div className="grid grid-cols-3 gap-1">
-                <StatRing label="C1X Putt" value={career && career.c1.att >= 3 && career.c1.pct != null ? `${Math.round(career.c1.pct * 100)}` : "—"} unit={career && career.c1.att >= 3 && career.c1.pct != null ? "%" : undefined} frac={career && career.c1.att >= 3 ? career.c1.pct : null} />
-                <StatRing label="Avg Drive" value={career?.avgDriveFt ? `${Math.round(career.avgDriveFt)}` : "—"} unit={career?.avgDriveFt ? "ft" : undefined} frac={career?.avgDriveFt ? career.avgDriveFt / 400 : null} />
-                <StatRing label="Fairway" value={career?.fairwayPct != null ? `${Math.round(career.fairwayPct * 100)}` : "—"} unit={career?.fairwayPct != null ? "%" : undefined} frac={career?.fairwayPct ?? null} />
+            <div className={`mt-6 border-b ${divider} pb-6`}>
+              <div className={`${label} mb-5`}>Your game</div>
+              <div className="grid grid-cols-3 gap-2">
+                <StatRing size={86} label="C1X Putt" value={career && career.c1.att >= 3 && career.c1.pct != null ? `${Math.round(career.c1.pct * 100)}` : "—"} unit={career && career.c1.att >= 3 && career.c1.pct != null ? "%" : undefined} frac={career && career.c1.att >= 3 ? career.c1.pct : null} />
+                <StatRing size={86} label="Avg Drive" value={career?.avgDriveFt ? `${Math.round(career.avgDriveFt)}` : "—"} unit={career?.avgDriveFt ? "ft" : undefined} frac={career?.avgDriveFt ? career.avgDriveFt / 400 : null} />
+                <StatRing size={86} label="Fairway" value={career?.fairwayPct != null ? `${Math.round(career.fairwayPct * 100)}` : "—"} unit={career?.fairwayPct != null ? "%" : undefined} frac={career?.fairwayPct ?? null} />
               </div>
-              <Link href="/bag" className="mt-4 inline-block text-[13px] font-semibold text-[var(--gold)]">Open My Game →</Link>
+              <Link href="/bag" className="mt-5 inline-block text-[15px] font-semibold text-[var(--gold)]">Open My Game →</Link>
             </div>
 
             {/* Near you */}
             {showNear && (
-              <div className={`mt-5 border-b ${divider} pb-5`}>
-                <div className={`${label} mb-3`}>Near you</div>
-                <div className="space-y-3.5">
+              <div className={`mt-6 border-b ${divider} pb-6`}>
+                <div className={`${label} mb-4`}>Near you</div>
+                <div className="space-y-4">
                   {nearEvents.map(({ e, mi }) => (
                     <Link key={e.id} href="/leagues" className="flex items-center gap-3">
-                      <span className="grid h-[36px] w-[36px] shrink-0 place-items-center rounded-lg bg-[#22302A]">
-                        <span className="text-[6.5px] font-bold uppercase tracking-wide text-[var(--gold)]">{new Date(e.date).toLocaleDateString("en-US", { month: "short" }).toUpperCase()}</span>
-                        <span className="text-[12px] font-bold leading-none text-[var(--cream)]" style={MONO}>{new Date(e.date).getDate()}</span>
+                      <span className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-lg bg-[#22302A]">
+                        <span className="text-[7.5px] font-bold uppercase tracking-wide text-[var(--gold)]">{new Date(e.date).toLocaleDateString("en-US", { month: "short" }).toUpperCase()}</span>
+                        <span className="text-[14px] font-bold leading-none text-[var(--cream)]" style={MONO}>{new Date(e.date).getDate()}</span>
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[13.5px] font-semibold text-[var(--cream)]">{e.name}</span>
-                        <span className="mt-0.5 block truncate text-[10.5px] text-[var(--sage-dim)]" style={MONO}>{e.courseName} · {miLabel(mi)}</span>
+                        <span className="block truncate text-[15px] font-semibold text-[var(--cream)]">{e.name}</span>
+                        <span className="mt-0.5 block truncate text-[12px] text-[var(--sage-dim)]" style={MONO}>{e.courseName} · {miLabel(mi)}</span>
                       </span>
                     </Link>
                   ))}
                   {sceneCourses.map(({ c, mi }) => (
                     <Link key={c.id} href={`/courses/${slugify(c.name, c.id)}`} className="flex items-center gap-3">
                       {c.coverPhotoUrl && (
-                        <span className="h-[36px] w-[36px] shrink-0 overflow-hidden rounded-lg bg-[#22302A]">
+                        <span className="h-[42px] w-[42px] shrink-0 overflow-hidden rounded-lg bg-[#22302A]">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src={c.coverPhotoUrl} alt="" className="h-full w-full object-cover" />
                         </span>
                       )}
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[13.5px] font-semibold text-[var(--cream)]">{c.name}</span>
-                        <span className="mt-0.5 block text-[10.5px] text-[var(--sage-dim)]" style={MONO}>{miLabel(mi)} · {playedNames.has(c.name.trim().toLowerCase()) ? "played" : "new to you"}</span>
+                        <span className="block truncate text-[15px] font-semibold text-[var(--cream)]">{c.name}</span>
+                        <span className="mt-0.5 block text-[12px] text-[var(--sage-dim)]" style={MONO}>{miLabel(mi)} · {playedNames.has(c.name.trim().toLowerCase()) ? "played" : "new to you"}</span>
                       </span>
                     </Link>
                   ))}
@@ -483,27 +522,27 @@ export default function HomeView({ uid }: { uid: string }) {
             {/* The scene */}
             {showScene && (
               <div className="mt-5">
-                <div className={`${label} mb-3`}>The scene</div>
-                <div className="space-y-3.5">
+                <div className={`${label} mb-4`}>The scene</div>
+                <div className="space-y-4">
                   {scene.map((p) => (
-                    <Link key={p.id} href="/community" className="flex items-center gap-2.5">
-                      <span className="grid h-7 w-7 shrink-0 place-items-center overflow-hidden rounded-full bg-[#22302A] text-[11px] font-semibold text-[var(--sage)]">
+                    <Link key={p.id} href="/community" className="flex items-center gap-3">
+                      <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-[#22302A] text-[13px] font-semibold text-[var(--sage)]">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         {p.authorPhotoUrl ? <img src={p.authorPhotoUrl} alt="" className="h-full w-full object-cover" /> : (p.authorName || "?").charAt(0)}
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[13.5px] font-semibold text-[var(--cream)]">{p.authorName}</span>
+                        <span className="block truncate text-[15px] font-semibold text-[var(--cream)]">{p.authorName}</span>
                         {p.linkedCourseName
-                          ? <span className="mt-0.5 block truncate text-[10.5px] text-[var(--sage-dim)]" style={MONO}>{p.linkedCourseName}</span>
-                          : <span className={`${BODY} mt-0.5 block truncate text-[11px] text-[var(--sage-dim)]`}>{p.text || "posted an update"}</span>}
+                          ? <span className="mt-0.5 block truncate text-[12px] text-[var(--sage-dim)]" style={MONO}>{p.linkedCourseName}</span>
+                          : <span className={`${BODY} mt-0.5 block truncate text-[12.5px] text-[var(--sage-dim)]`}>{p.text || "posted an update"}</span>}
                       </span>
                       {p.scoreToPar != null
-                        ? <span className="w-9 shrink-0 text-right text-[14px] font-bold" style={{ ...MONO, color: scoreColor(p.scoreToPar) }}>{fmtToPar(p.scoreToPar)}</span>
-                        : <span className="w-9 shrink-0 text-right text-[10.5px] text-[var(--sage-dim)]" style={MONO}>{timeAgo(p.createdAt)}</span>}
+                        ? <span className="w-10 shrink-0 text-right text-[16px] font-bold" style={{ ...MONO, color: scoreColor(p.scoreToPar) }}>{fmtToPar(p.scoreToPar)}</span>
+                        : <span className="w-10 shrink-0 text-right text-[12px] text-[var(--sage-dim)]" style={MONO}>{timeAgo(p.createdAt)}</span>}
                     </Link>
                   ))}
                 </div>
-                <Link href="/community" className="group mt-4 flex items-center justify-center gap-1.5 rounded-[10px] border border-[var(--hair-strong)] py-2.5 text-[12px] font-semibold text-[var(--sage)] transition-colors hover:border-[var(--gold)]/45 hover:bg-[var(--gold)]/[0.05] hover:text-[var(--gold)]">
+                <Link href="/community" className="group mt-5 flex items-center justify-center gap-1.5 rounded-[10px] border border-[var(--hair-strong)] py-3 text-[13px] font-semibold text-[var(--sage)] transition-colors hover:border-[var(--gold)]/45 hover:bg-[var(--gold)]/[0.05] hover:text-[var(--gold)]">
                   See more in Community
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
                 </Link>
