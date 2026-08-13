@@ -21,7 +21,9 @@ const HTML = `
   <li>Use the App for any unlawful purpose or in violation of these Terms</li>
   <li>Reverse engineer, decompile, or disassemble any part of the App</li>
   <li>Attempt to gain unauthorized access to the App's systems or other users' accounts</li>
-  <li>Use automated systems (bots, scrapers, etc.) to access or interact with the App</li>
+  <li>Use automated systems (bots, scrapers, crawlers, etc.) to access, index, or interact with the Services, or access the Services or any data made available through them (including via our application programming interfaces or underlying data stores) other than through the interfaces we provide and in the manner permitted by these Terms</li>
+  <li>Copy, extract, harvest, scrape, reproduce, republish, distribute, sell, license, or otherwise make available any course data, database content, or other content from the Services, in whole or in any material part, except as expressly permitted by these Terms</li>
+  <li>Use any content, course data, or database from the Services to create, populate, train, or improve any competing product, service, dataset, or machine-learning or artificial-intelligence model, or for any commercial purpose</li>
   <li>Interfere with or disrupt the integrity or performance of the App</li>
   <li>Upload or share content that is illegal, harmful, threatening, abusive, defamatory, or otherwise objectionable</li>
 </ul>
@@ -46,6 +48,10 @@ const HTML = `
 <p>Radius is a community-built database. When you submit, upload, or edit course information — including course names, locations, layouts, hole and tee data, descriptions, ratings, photographs, and similar material (collectively, "Contributions") — you represent and warrant that: (a) you have all rights necessary to make the Contribution and to grant the license below; (b) the Contribution consists of factual information and/or your own original work; and (c) the Contribution does not copy proprietary content (such as original written descriptions, photographs, or other original material) from any third party, and does not infringe any intellectual property right or violate the terms of service of any other platform or service.</p>
 <p>You grant Radius a worldwide, perpetual, irrevocable, royalty-free, sublicensable license to host, store, use, reproduce, modify, adapt, display, and distribute your Contributions as part of the Services and the Radius database. Because Contributions become part of a shared community database that other users rely on, this license survives deletion of your account with respect to Contributions already incorporated into the database.</p>
 
+<h2>Ownership of the Radius Course Database</h2>
+<p>While each contributor retains rights in their own individual Contribution as described above, the Radius course database as a whole — including its compilation, selection, coordination, arrangement, structure, and the aggregated collection of course names, locations, layouts, hole and tee data, distances, ratings, reviews, photographs, and related information — is a proprietary database owned by Radius Disc Golf and is protected as a compilation under copyright and applicable database, contract, and unfair-competition laws. Your use of the Services does not transfer to you any ownership of, or any license to reuse, the compiled database.</p>
+<p>Except with our prior written permission, you may not, and may not permit, assist, or enable any third party to: (a) copy, extract, harvest, scrape, mirror, download, reproduce, republish, distribute, sell, license, or otherwise make available any material portion of the course database or other Radius content; (b) create any derivative work from, or build or populate any product, service, dataset, or database that incorporates or is derived from, the course database or Radius content; (c) use the course database or Radius content to develop, train, or improve any competing product or service, or any machine-learning or artificial-intelligence model; or (d) access the course database or Radius content other than through the interfaces we provide for ordinary personal, non-commercial use. This section applies regardless of the means used, whether automated or manual, and survives termination of your account or these Terms.</p>
+
 <h2>Community Guidelines</h2>
 <p>When using community features (Discover feed, forums, local meetups), you agree to:</p>
 <ul>
@@ -57,7 +63,7 @@ const HTML = `
 <p>Radius reserves the right to remove content and suspend or terminate accounts that violate these guidelines at our sole discretion.</p>
 
 <h2>Intellectual Property</h2>
-<p>The App and its original content (excluding user-generated content), features, and functionality are owned by Radius Disc Golf and are protected by copyright, trademark, and other intellectual property laws. The Radius name, logo, and all related marks are trademarks of Radius Disc Golf.</p>
+<p>The App and its original content (excluding individual user-generated content), features, and functionality are owned by Radius Disc Golf and are protected by copyright, trademark, and other intellectual property laws. This ownership includes the compiled Radius course database — its structure, selection, and arrangement — as described in "Ownership of the Radius Course Database" above: individual contributors retain rights in their own Contributions, but the aggregated database as a compilation is owned by Radius. The Radius name, logo, and all related marks are trademarks of Radius Disc Golf.</p>
 
 <h2>Third-Party Services</h2>
 <p>The App may integrate with or link to third-party services (e.g., mapping and satellite imagery, weather data providers, and cloud infrastructure such as Google Firebase). Your use of these services is subject to their respective terms and privacy policies. Radius is not responsible for the content or practices of any third-party services.</p>
@@ -110,5 +116,5 @@ Email: <a href="mailto:info@radiusdiscgolf.com">info@radiusdiscgolf.com</a></p>
 `;
 
 export default function TermsPage() {
-  return <LegalLayout title="Terms of Service" updated="Last updated: June 16, 2026" html={HTML} />;
+  return <LegalLayout title="Terms of Service" updated="Last updated: August 12, 2026" html={HTML} />;
 }
