@@ -5,18 +5,20 @@ import type { DecodedRound } from "@/lib/rounds";
 import type { RangeSession } from "@/lib/sessions";
 import type { DbDisc } from "@/lib/bag";
 import { driveDispersion, bagMeasured, holeByHole, latestSGRound, puttGreen } from "@/lib/gameViz";
+import LevelBadge from "@/components/scorecard/LevelBadge";
 
 const HEAD = "font-[family-name:var(--font-heading)]";
 const BODY = "font-[family-name:var(--font-body)]";
 const MONO = { fontFamily: "var(--font-mono-stack, 'JetBrains Mono', monospace)" } as const;
 const INK = "#F4F1E8", GOLD = "#E8B560", SALMON = "#C87F6A", EB = "#4A5A48", DIM = "#3E4B3F", SAGE = "#8FA08A", GRID = "#1B241E", HAIR = "rgba(244,241,232,0.08)";
-const eb = `${HEAD} text-[9px] font-black uppercase tracking-[0.22em]`;
-const Hair = () => <div style={{ height: 1, background: HAIR }} className="my-8" />;
+const eb = `${HEAD} text-[11px] font-black uppercase tracking-[0.2em]`;
+const svgFill = { width: "100%", height: "auto", display: "block" } as const;
+const Hair = () => <div style={{ height: 1, background: HAIR }} className="my-11" />;
 function Head({ label, sub }: { label: string; sub: string }) {
-  return <div className="mb-4"><div className={eb} style={{ color: EB }}>{label}</div><div className={`${BODY} mt-1.5 text-[10.5px]`} style={{ color: DIM }}>{sub}</div></div>;
+  return <div className="mb-5"><div className={eb} style={{ color: EB }}>{label}</div><div className={`${BODY} mt-2 text-[13px]`} style={{ color: DIM }}>{sub}</div></div>;
 }
 function Caption({ children }: { children: React.ReactNode }) {
-  return <div className={`${BODY} mt-3.5 text-[12.5px] leading-[1.6]`} style={{ color: SAGE }}>{children}</div>;
+  return <div className={`${BODY} mt-5 text-[15px] leading-[1.6]`} style={{ color: SAGE }}>{children}</div>;
 }
 
 // avg score-to-par → colour (green under, warm over)
@@ -38,20 +40,23 @@ export default function GameVisuals({ iq, rankText, meta, insight, rounds, range
 
   return (
     <div>
-      {/* header — Game IQ */}
-      <div className="mb-6">
-        <div className={eb} style={{ color: EB }}>Game IQ</div>
-        <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <span style={{ ...MONO, fontSize: 38, fontWeight: 700, color: INK, lineHeight: 1, letterSpacing: "-0.02em" }}>{iq}</span>
-          <span style={{ ...MONO, fontSize: 12.5, color: SAGE }}>{rankText}</span>
-          <span className="ml-auto" style={{ ...MONO, fontSize: 11, color: EB }}>{meta}</span>
+      {/* header — gamified emblem + Game IQ */}
+      <div className="mb-8 flex items-center gap-5">
+        <LevelBadge iq={iq} size={72} />
+        <div className="min-w-0 flex-1">
+          <div className={eb} style={{ color: EB }}>Game IQ</div>
+          <div className="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+            <span style={{ ...MONO, fontSize: 56, fontWeight: 700, color: INK, lineHeight: 1, letterSpacing: "-0.02em" }}>{iq}</span>
+            <span style={{ ...MONO, fontSize: 16, color: SAGE }}>{rankText}</span>
+            <span className="ml-auto" style={{ ...MONO, fontSize: 13.5, color: EB }}>{meta}</span>
+          </div>
         </div>
       </div>
-      <p className={BODY} style={{ color: INK, fontSize: 20, lineHeight: 1.5, maxWidth: 640, marginBottom: 4 }}>{insight}</p>
+      <p className={BODY} style={{ color: INK, fontSize: 25, lineHeight: 1.5, maxWidth: 760, marginBottom: 4 }}>{insight}</p>
       <Hair />
 
       {/* row 1: dispersion + bag */}
-      <div className="flex flex-col gap-11 lg:flex-row">
+      <div className="flex flex-col gap-14 lg:flex-row">
         <div className="min-w-0 flex-1">
           <Head label="Where your drives land" sub={`${disp.count} measured tee shots, relative to the target line`} />
           {disp.count >= 4 ? <><Dispersion disp={disp} /><Caption>{Math.abs(disp.avgOffset) >= 6 ? <>Your average drive lands <b style={{ color: INK }}>{Math.abs(Math.round(disp.avgOffset))} ft {disp.avgOffset > 0 ? "right" : "left"}</b> of target. That&apos;s a consistent aim bias, not spray.</> : "Your drives sit right on the target line — no aim bias to correct."}</Caption></>
@@ -69,11 +74,11 @@ export default function GameVisuals({ iq, rankText, meta, insight, rounds, range
       {hbh ? (
         <>
           <Head label="Hole by hole, all rounds" sub={`${hbh.courseName} · average score to par on each hole`} />
-          <div className="flex" style={{ gap: 5 }}>
+          <div className="flex" style={{ gap: 6 }}>
             {hbh.holes.map((h) => { const notable = Math.abs(h.avgRel) >= 0.05; return (
-              <div key={h.hole} className="flex flex-1 flex-col items-center justify-center rounded-[4px]" style={{ height: 56, background: holeColor(h.avgRel) }}>
-                <span style={{ ...MONO, fontSize: 10, color: notable ? INK : SAGE }}>{h.hole}</span>
-                <span style={{ ...MONO, fontSize: 11, fontWeight: 700, marginTop: 3, color: notable ? (h.avgRel < 0 ? "#C9D2C4" : INK) : SAGE }}>{relLabel(h.avgRel)}</span>
+              <div key={h.hole} className="flex flex-1 flex-col items-center justify-center rounded-[5px]" style={{ height: 78, background: holeColor(h.avgRel) }}>
+                <span style={{ ...MONO, fontSize: 13, color: notable ? INK : SAGE }}>{h.hole}</span>
+                <span style={{ ...MONO, fontSize: 14, fontWeight: 700, marginTop: 4, color: notable ? (h.avgRel < 0 ? "#C9D2C4" : INK) : SAGE }}>{relLabel(h.avgRel)}</span>
               </div>
             ); })}
           </div>
@@ -83,7 +88,7 @@ export default function GameVisuals({ iq, rankText, meta, insight, rounds, range
       ) : null}
 
       {/* row 2: cumulative SG + putt green */}
-      <div className="flex flex-col gap-11 lg:flex-row">
+      <div className="flex flex-col gap-14 lg:flex-row">
         <div className="min-w-0" style={{ flex: 1.3 }}>
           <Head label="How the round is won or lost" sub={`Cumulative strokes gained · ${rsg ? new Date(rsg.round.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "last round"}`} />
           {rsg ? <><CumulativeSG sg={rsg.sg} /><Caption>{rsg.sg.worst.sg <= -1.2 ? <>You gained steadily except hole {rsg.sg.worst.hole}, where you gave back <b style={{ color: INK }}>{Math.abs(rsg.sg.worst.sg).toFixed(1)} strokes</b> in one hole.</> : rsg.sg.total >= 0 ? "You gained ground on most holes — a clean, positive round." : "The round leaked slowly rather than in one blow-up hole."}</Caption></>
@@ -99,7 +104,7 @@ export default function GameVisuals({ iq, rankText, meta, insight, rounds, range
   );
 }
 
-function Empty({ children }: { children: React.ReactNode }) { return <div className={`${BODY} flex min-h-[180px] items-center text-[12.5px] leading-[1.6]`} style={{ color: DIM, maxWidth: 320 }}>{children}</div>; }
+function Empty({ children }: { children: React.ReactNode }) { return <div className={`${BODY} flex min-h-[240px] items-center text-[14px] leading-[1.6]`} style={{ color: DIM, maxWidth: 320 }}>{children}</div>; }
 
 // ---- 1. dispersion scatter ----
 function Dispersion({ disp }: { disp: ReturnType<typeof driveDispersion> }) {
@@ -111,7 +116,7 @@ function Dispersion({ disp }: { disp: ReturnType<typeof driveDispersion> }) {
   const y = (d: number) => 230 - ((d - dmin) / dspan) * 210;
   const avgX = x(disp.avgOffset);
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: 250 }}>
+    <svg viewBox={`0 0 ${W} ${H}`} style={svgFill}>
       <line x1="150" y1="10" x2="150" y2="240" stroke={GRID} strokeWidth="1" strokeDasharray="4 6" />
       <ellipse cx="150" cy="125" rx="86" ry="98" fill={GOLD} opacity="0.05" /><ellipse cx="150" cy="125" rx="52" ry="66" fill={GOLD} opacity="0.06" />
       <text x="150" y="248" fill="#2A362D" fontSize="9" style={MONO} textAnchor="middle">TARGET LINE</text>
@@ -130,7 +135,7 @@ function BagMap({ bag }: { bag: ReturnType<typeof bagMeasured> }) {
   const y = (s: number) => 26 + ((s - smin) / sspan) * 196;
   const col = (s: number) => (s < -0.5 ? "#7A8FA8" : s <= 1.5 ? "#3EA88F" : "#B5544A");
   return (
-    <svg viewBox="0 0 300 250" style={{ width: "100%", height: 250 }}>
+    <svg viewBox="0 0 300 250" style={svgFill}>
       <line x1="34" y1="228" x2="292" y2="228" stroke={GRID} strokeWidth="1" /><line x1="34" y1="10" x2="34" y2="228" stroke={GRID} strokeWidth="1" />
       <text x="34" y="244" fill="#2A362D" fontSize="8.5" style={MONO}>{Math.round(lo)}</text>
       <text x="278" y="244" fill="#2A362D" fontSize="8.5" style={MONO}>{Math.round(hi)} ft</text>
@@ -153,7 +158,7 @@ function CumulativeSG({ sg }: { sg: NonNullable<ReturnType<typeof latestSGRound>
   const worstI = sg.perHole.findIndex((p) => p.hole === sg.worst.hole);
   return (
     <div>
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: 150 }}>
+      <svg viewBox={`0 0 ${W} ${H}`} style={svgFill}>
         <line x1="10" y1={mid} x2="452" y2={mid} stroke={GRID} strokeWidth="1" />
         <text x="6" y="20" fill="#2A362D" fontSize="8.5" style={MONO}>+{Math.round(cap)}</text><text x="6" y="140" fill="#2A362D" fontSize="8.5" style={MONO}>{"−"}{Math.round(cap)}</text>
         <defs><linearGradient id="sgUp" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={SAGE} stopOpacity="0.16" /><stop offset="100%" stopColor={SAGE} stopOpacity="0" /></linearGradient></defs>
@@ -172,7 +177,7 @@ function PuttGreen({ data }: { data: ReturnType<typeof puttGreen> }) {
   const cx = 130, cy = 168, C1 = 66, C2 = 128; // px radii for 33 / 66 ft
   const pos = (d: number, a: number) => { const r = Math.min(C2, (d / 66) * C2); return [cx + Math.sin(a) * r, cy - Math.abs(Math.cos(a)) * r] as const; };
   return (
-    <svg viewBox="0 0 260 190" style={{ width: "100%", height: 190 }}>
+    <svg viewBox="0 0 260 190" style={svgFill}>
       <circle cx={cx} cy={cy} r={C2} fill="none" stroke={GRID} strokeWidth="1" /><circle cx={cx} cy={cy} r={C1} fill="none" stroke="#22302A" strokeWidth="1" />
       <text x={cx + 66} y="60" fill="#2A362D" fontSize="8.5" style={MONO}>C2</text><text x={cx + 20} y="108" fill="#2A362D" fontSize="8.5" style={MONO}>C1</text>
       <g stroke={GOLD} strokeWidth="1.6" fill="none"><line x1={cx} y1={cy - 14} x2={cx} y2={cy + 14} /><path d={`M${cx - 9} ${cy - 6} L${cx + 9} ${cy - 6} L${cx + 7} ${cy + 4} L${cx - 7} ${cy + 4} Z`} /><ellipse cx={cx} cy={cy - 6} rx="9" ry="2.6" /></g>
