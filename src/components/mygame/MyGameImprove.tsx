@@ -25,21 +25,39 @@ function standing(pct: number, tiers: Tier[]): { name: string; caption: string }
   return { name: tiers[0].name, caption: "" };
 }
 
-// gradient benchmark bar with a needle at the player's position
+// Tier ladder: one labelled segment per level (Beginner → Pro) with each level's range, the player's
+// tier highlighted, and a needle placed within that tier so you can see exactly where you land.
+const TIER_SHADES = ["#2A362D", "#3E4B3F", "#5E6E5C", "#7C8B72"];
 function StackBar({ label, pct, tiers, gold }: { label: string; pct: number | null; tiers: Tier[]; gold?: boolean }) {
   const has = pct != null;
   const v = has ? pct * 100 : 0;
-  const span = tiers[tiers.length - 1].end - tiers[0].start;
-  const tick = Math.max(0, Math.min(100, ((v - tiers[0].start) / span) * 100));
+  const n = tiers.length;
   const st = has ? standing(v, tiers) : null;
+  let seg = 0, frac = 0, cur = -1;
+  if (has && v >= tiers[0].start) {
+    for (let i = 0; i < n; i++) if (v >= tiers[i].start) { seg = i; cur = i; frac = Math.min(1, (v - tiers[i].start) / (tiers[i].end - tiers[i].start)); }
+    if (v >= tiers[n - 1].end) frac = 1;
+  }
+  const needle = ((seg + frac) / n) * 100;
   return (
-    <div className="mb-6">
-      <div className="mb-3.5 flex items-baseline"><span className="flex-1 text-[14px] font-semibold" style={{ color: INK }}>{label}</span><span className={`${HEAD} text-[15px] font-bold`} style={{ ...MONO, color: gold ? GOLD : INK }}>{has ? `${Math.round(v)}%` : "—"}</span></div>
-      <div className="relative mb-3" style={{ height: 3, background: HAIR }}>
-        <div className="absolute left-0 top-0 h-full w-full" style={{ background: "linear-gradient(90deg,#2A362D,#3E4B3F,#5E6E5C,#8FA08A)" }} />
-        {has && <div className="absolute" style={{ left: `${tick}%`, top: -5, width: 2, height: 13, background: INK }} />}
+    <div className="mb-7">
+      <div className="mb-3 flex items-baseline">
+        <span className="flex-1 text-[14px] font-semibold" style={{ color: INK }}>{label}</span>
+        <span className={`${HEAD} text-[15px] font-bold`} style={{ ...MONO, color: gold ? GOLD : INK }}>{has ? `${Math.round(v)}%` : "—"}</span>
       </div>
-      <div className={`${BODY} text-[11.5px]`} style={{ color: SAGE2 }}>{st?.caption ?? "Log more putts to place yourself on the scale."}</div>
+      <div className="relative flex" style={{ height: 9, gap: 3 }}>
+        {tiers.map((t, i) => <div key={t.name} className="flex-1 rounded-[2px]" style={{ background: TIER_SHADES[i], boxShadow: cur === i ? `inset 0 0 0 1.5px ${GOLD}` : "none" }} />)}
+        {has && <div className="absolute" style={{ left: `${needle}%`, top: -3, bottom: -3, width: 2, transform: "translateX(-1px)", background: INK, borderRadius: 1 }} />}
+      </div>
+      <div className="mt-2 flex" style={{ gap: 3 }}>
+        {tiers.map((t, i) => (
+          <div key={t.name} className="flex-1 text-center">
+            <div style={{ fontSize: 8.5, letterSpacing: "0.05em", textTransform: "uppercase", fontWeight: 700, color: cur === i ? GOLD : EB }}>{t.name}</div>
+            <div style={{ ...MONO, fontSize: 9.5, color: cur === i ? GOLD : DIM, marginTop: 3 }}>{t.start}{i === n - 1 ? "+" : `–${t.end}`}</div>
+          </div>
+        ))}
+      </div>
+      <div className={`${BODY} mt-3 text-[11.5px]`} style={{ color: SAGE2 }}>{st?.caption ?? "Log more putts to place yourself on the scale."}</div>
     </div>
   );
 }
@@ -193,7 +211,6 @@ export default function MyGameImprove({ uid }: { uid: string }) {
           <div className={`${eb} mb-5`} style={{ color: EB }}>How you stack up</div>
           <StackBar label="Circle 1" pct={career?.c1.pct ?? null} tiers={C1_TIERS} />
           <StackBar label="Circle 2" pct={career?.c2.pct ?? null} tiers={C2_TIERS} gold />
-          <div className="mb-7 flex items-center gap-4"><span style={{ ...MONO, fontSize: 9, color: DIM }}>BEGINNER</span><div className="flex-1" /><span style={{ ...MONO, fontSize: 9, color: DIM }}>PRO</span></div>
 
           <Hair />
           <div className={`${eb} mb-5 mt-6`} style={{ color: EB }}>Is it transferring</div>
