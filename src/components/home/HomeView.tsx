@@ -246,13 +246,8 @@ export default function HomeView({ uid }: { uid: string }) {
         )}
         {/* two-part scrim: darken the left where the text sits, then fade fully to page color at the bottom */}
         <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "linear-gradient(100deg, rgba(15,23,18,0.96) 0%, rgba(15,23,18,0.62) 44%, rgba(15,23,18,0.22) 100%), linear-gradient(to bottom, transparent 30%, rgba(15,23,18,0.72) 74%, var(--bg-deep) 99%)" }} />
-        {/* today's weather + change cover */}
+        {/* change cover */}
         <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
-          {weather && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-black/35 px-3 py-1.5 text-[12px] font-semibold text-[var(--cream)] backdrop-blur-sm">
-              <span>{weather.icon}</span><span style={MONO}>{weather.temp}°</span><span className="text-[var(--sage)]">{weather.label}</span>
-            </span>
-          )}
           <button onClick={() => fileRef.current?.click()} disabled={uploading} className="grid h-8 w-8 place-items-center rounded-full bg-black/35 text-[var(--cream)] backdrop-blur-sm transition-colors hover:bg-black/60 disabled:opacity-50" title="Change cover photo" aria-label="Change cover photo">
             {uploading ? <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
               : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></svg>}
@@ -260,6 +255,13 @@ export default function HomeView({ uid }: { uid: string }) {
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onCoverFile} />
         </div>
         <div className={`relative ${frame} pb-16 pt-10 sm:pt-12`}>
+          {weather && (
+            <div className="mb-2 flex items-center gap-1.5 text-[13px] text-[var(--sage)]">
+              <span className="text-base leading-none">{weather.icon}</span>
+              <span className="font-semibold text-[var(--cream)]" style={MONO}>{weather.temp}°</span>
+              <span>{weather.label}</span>
+            </div>
+          )}
           <div className={`${label} !text-[var(--sage)]`}>{greeting()}</div>
           <div className="mt-2 flex items-center gap-3.5">
             <span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--bg-mid)] text-lg font-bold text-[var(--cream)] ring-2 ring-white/20">
@@ -283,7 +285,6 @@ export default function HomeView({ uid }: { uid: string }) {
               </div>
               <div className="w-full md:w-[300px]">
                 <ToParLine round={last} w={300} h={88} />
-                <div className="mt-2 flex justify-between text-[9px] text-[var(--sage-dim)]" style={MONO}><span>Hole 1</span><span>Hole {last.holesPlayed}</span></div>
               </div>
             </div>
           ) : (
