@@ -3,8 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
-import { setProfileCover } from "@/lib/account";
+import { setProfileCover, getDashboard, type Dashboard } from "@/lib/account";
 import { uploadProfileCover } from "@/lib/postImage";
+import { rankForIQ, rankLabel, rankProgress } from "@/lib/rank";
+import LevelBadge from "@/components/scorecard/LevelBadge";
 import { getDecodedRounds, computeCareerStats, computeStrokesGained, rankedCategories, type DecodedRound } from "@/lib/rounds";
 import { getAllCourses, slugify, type Course } from "@/lib/courses";
 import { getPutterDiscNames, getBag } from "@/lib/bag";
@@ -98,9 +100,78 @@ function StatRing({ value, unit, frac, label, size = 68 }: { value: string; unit
   );
 }
 
+// Cardless Game IQ status for the hero: dial with the score, tier emblem, and the IQ-history spark.
+function HeroIQ({ iq, history }: { iq: number; history: { t: number; iq: number }[] }) {
+  const rank = rankForIQ(iq);
+  const rankText = rankLabel(rank);
+  const prog = rankProgress(iq, rank);
+  const toNext = rank.nextIQ != null ? Math.max(0, rank.nextIQ - iq) : 0;
+  const nextText = rank.nextIQ != null ? rankLabel(rankForIQ(rank.nextIQ)) : null;
+  const trend = history.length >= 2 ? history[history.length - 1].iq - history[history.length - 2].iq : 0;
+  // dial geometry
+  const S = 132, R = S / 2 - 8, C = 2 * Math.PI * R;
+  // spark geometry
+  const pts = history.slice(-16).map((h) => h.iq);
+  const sw = 200, sh = 42, sp = 3;
+  const smin = Math.min(...pts), smax = Math.max(...pts), sspan = smax - smin || 1;
+  const sx = (i: number) => (pts.length <= 1 ? sw : (i / (pts.length - 1)) * sw);
+  const sy = (v: number) => sp + (1 - (v - smin) / sspan) * (sh - 2 * sp);
+  const line = pts.map((v, i) => `${sx(i)},${sy(v)}`).join(" ");
+  const area = pts.length ? `M0,${sh} ${pts.map((v, i) => `L${sx(i)},${sy(v)}`).join(" ")} L${sw},${sh} Z` : "";
+
+  return (
+    <div className="flex w-full items-center gap-5 md:w-[360px]">
+      {/* IQ dial */}
+      <div className="relative shrink-0" style={{ width: S, height: S }}>
+        <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
+          <g transform={`translate(${S / 2} ${S / 2})`}>
+            <circle r={R} fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="5" />
+            <circle r={R} fill="none" stroke={rank.color} strokeWidth="5" strokeLinecap="round" strokeDasharray={`${prog * C} ${C}`} transform="rotate(-90)" />
+          </g>
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <div className={`${HEAD} text-[9px] font-bold uppercase tracking-[0.18em] text-[var(--sage-dim)]`}>Game IQ</div>
+          <div style={{ ...MONO, fontSize: 46, fontWeight: 700, lineHeight: 1, letterSpacing: "-0.02em", color: "var(--cream)" }}>{iq}</div>
+          <div className={`${HEAD} mt-1 rounded-full px-2 py-[3px] text-[9px] font-bold`} style={{ background: `${rank.color}22`, color: rank.color }}>{rankText}</div>
+        </div>
+      </div>
+      {/* rank + spark */}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2.5">
+          <LevelBadge iq={iq} size={30} />
+          <div className="min-w-0">
+            <div className={`${HEAD} truncate text-[13px] font-bold text-[var(--cream)]`}>{rankText}</div>
+            <div className="text-[10px] text-[var(--sage-dim)]" style={MONO}>Rank {rank.level} of 30</div>
+          </div>
+        </div>
+        <div className="mt-3 flex items-center gap-1.5">
+          <span className={`${HEAD} text-[8px] font-bold uppercase tracking-[0.16em] text-[var(--sage-dim)]`}>IQ History</span>
+          {trend !== 0 && (
+            <span className="text-[10px] font-bold" style={{ color: trend > 0 ? "#8FBF9A" : "#C87F6A" }}>{trend > 0 ? "▲" : "▼"}{Math.abs(trend)}</span>
+          )}
+        </div>
+        <svg className="mt-1 block w-full" viewBox={`0 0 ${sw} ${sh}`} preserveAspectRatio="none" height={sh}>
+          <defs><linearGradient id="hiq-spark" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={rank.color} stopOpacity="0.22" /><stop offset="100%" stopColor={rank.color} stopOpacity="0" /></linearGradient></defs>
+          {pts.length >= 2 && <>
+            <path d={area} fill="url(#hiq-spark)" />
+            <polyline points={line} fill="none" stroke={rank.color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+            <circle cx={sx(pts.length - 1)} cy={sy(pts[pts.length - 1])} r="3" fill={rank.color} />
+          </>}
+        </svg>
+        {toNext > 0 && nextText ? (
+          <div className="mt-1.5 text-[11px]" style={MONO}><span className="font-bold text-[var(--cream)]">{toNext} IQ</span><span className="text-[var(--sage-dim)]"> to </span><span className="font-bold text-[var(--gold)]">{nextText}</span></div>
+        ) : (
+          <div className="mt-1.5 text-[11px] font-bold text-[var(--gold)]" style={MONO}>Top rank reached</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function HomeView({ uid }: { uid: string }) {
   const { profile } = useAuth();
   const [rounds, setRounds] = useState<DecodedRound[] | null>(null);
+  const [dash, setDash] = useState<Dashboard | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
   const [events, setEvents] = useState<LeagueEvent[]>([]);
   const [feed, setFeed] = useState<FeedPost[]>([]);
@@ -119,6 +190,7 @@ export default function HomeView({ uid }: { uid: string }) {
   useEffect(() => {
     let alive = true;
     getDecodedRounds(uid).then((r) => alive && setRounds(r)).catch(() => alive && setRounds([]));
+    getDashboard(uid).then((d) => alive && setDash(d)).catch(() => {});
     getAllCourses().then((c) => alive && setCourses(c)).catch(() => {});
     getUpcomingEvents(60).then((e) => alive && setEvents(e)).catch(() => {});
     getFeed(20).then((f) => alive && setFeed(f)).catch(() => {});
@@ -283,9 +355,9 @@ export default function HomeView({ uid }: { uid: string }) {
                   <span className="text-xs text-[var(--sage)]" style={MONO}>{last.total} strokes · {last.holesPlayed} holes · {timeAgo(last.date)}</span>
                 </div>
               </div>
-              <div className="w-full md:w-[300px]">
-                <ToParLine round={last} w={300} h={88} />
-              </div>
+              {dash && dash.iqCurrent > 0
+                ? <HeroIQ iq={dash.iqCurrent} history={dash.iqHistory} />
+                : <div className="w-full md:w-[300px]"><ToParLine round={last} w={300} h={88} /></div>}
             </div>
           ) : (
             <div className="mt-10">
