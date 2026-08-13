@@ -109,10 +109,10 @@ function HeroIQ({ iq, history }: { iq: number; history: { t: number; iq: number 
   const nextText = rank.nextIQ != null ? rankLabel(rankForIQ(rank.nextIQ)) : null;
   const trend = history.length >= 2 ? history[history.length - 1].iq - history[history.length - 2].iq : 0;
   // dial geometry
-  const S = 132, R = S / 2 - 8, C = 2 * Math.PI * R;
+  const S = 210, R = S / 2 - 12, C = 2 * Math.PI * R;
   // spark geometry
   const pts = history.slice(-16).map((h) => h.iq);
-  const sw = 200, sh = 42, sp = 3;
+  const sw = 360, sh = 84, sp = 4;
   const smin = Math.min(...pts), smax = Math.max(...pts), sspan = smax - smin || 1;
   const sx = (i: number) => (pts.length <= 1 ? sw : (i / (pts.length - 1)) * sw);
   const sy = (v: number) => sp + (1 - (v - smin) / sspan) * (sh - 2 * sp);
@@ -120,48 +120,48 @@ function HeroIQ({ iq, history }: { iq: number; history: { t: number; iq: number 
   const area = pts.length ? `M0,${sh} ${pts.map((v, i) => `L${sx(i)},${sy(v)}`).join(" ")} L${sw},${sh} Z` : "";
 
   return (
-    <div className="flex w-full items-center gap-5 md:w-[360px]">
+    <div className="flex w-full flex-col items-center justify-center gap-10 sm:flex-row sm:gap-20">
       {/* IQ dial */}
       <div className="relative shrink-0" style={{ width: S, height: S }}>
         <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
           <g transform={`translate(${S / 2} ${S / 2})`}>
-            <circle r={R} fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="5" />
-            <circle r={R} fill="none" stroke={rank.color} strokeWidth="5" strokeLinecap="round" strokeDasharray={`${prog * C} ${C}`} transform="rotate(-90)" />
+            <circle r={R} fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="6" />
+            <circle r={R} fill="none" stroke={rank.color} strokeWidth="6" strokeLinecap="round" strokeDasharray={`${prog * C} ${C}`} transform="rotate(-90)" />
           </g>
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <div className={`${HEAD} text-[9px] font-bold uppercase tracking-[0.18em] text-[var(--sage-dim)]`}>Game IQ</div>
-          <div style={{ ...MONO, fontSize: 46, fontWeight: 700, lineHeight: 1, letterSpacing: "-0.02em", color: "var(--cream)" }}>{iq}</div>
-          <div className={`${HEAD} mt-1 rounded-full px-2 py-[3px] text-[9px] font-bold`} style={{ background: `${rank.color}22`, color: rank.color }}>{rankText}</div>
+          <div className={`${HEAD} text-[12px] font-bold uppercase tracking-[0.2em] text-[var(--sage-dim)]`}>Game IQ</div>
+          <div style={{ ...MONO, fontSize: 82, fontWeight: 700, lineHeight: 1, letterSpacing: "-0.03em", color: "var(--cream)" }}>{iq}</div>
+          <div className={`${HEAD} mt-2 rounded-full px-3.5 py-1 text-[12px] font-bold`} style={{ background: `${rank.color}22`, color: rank.color }}>{rankText}</div>
         </div>
       </div>
       {/* rank + spark */}
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2.5">
-          <LevelBadge iq={iq} size={30} />
+      <div className="w-full max-w-[420px]">
+        <div className="flex items-center gap-4">
+          <LevelBadge iq={iq} size={52} />
           <div className="min-w-0">
-            <div className={`${HEAD} truncate text-[13px] font-bold text-[var(--cream)]`}>{rankText}</div>
-            <div className="text-[10px] text-[var(--sage-dim)]" style={MONO}>Rank {rank.level} of 30</div>
+            <div className={`${HEAD} truncate text-[24px] font-bold text-[var(--cream)]`}>{rankText}</div>
+            <div className="text-[13px] text-[var(--sage-dim)]" style={MONO}>Rank {rank.level} of 30</div>
           </div>
         </div>
-        <div className="mt-3 flex items-center gap-1.5">
-          <span className={`${HEAD} text-[8px] font-bold uppercase tracking-[0.16em] text-[var(--sage-dim)]`}>IQ History</span>
+        <div className="mt-6 flex items-center gap-2">
+          <span className={`${HEAD} text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--sage-dim)]`}>IQ History</span>
           {trend !== 0 && (
-            <span className="text-[10px] font-bold" style={{ color: trend > 0 ? "#8FBF9A" : "#C87F6A" }}>{trend > 0 ? "▲" : "▼"}{Math.abs(trend)}</span>
+            <span className="text-[13px] font-bold" style={{ color: trend > 0 ? "#8FBF9A" : "#C87F6A" }}>{trend > 0 ? "▲" : "▼"}{Math.abs(trend)}</span>
           )}
         </div>
-        <svg className="mt-1 block w-full" viewBox={`0 0 ${sw} ${sh}`} preserveAspectRatio="none" height={sh}>
-          <defs><linearGradient id="hiq-spark" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={rank.color} stopOpacity="0.22" /><stop offset="100%" stopColor={rank.color} stopOpacity="0" /></linearGradient></defs>
+        <svg className="mt-2 block w-full" viewBox={`0 0 ${sw} ${sh}`} preserveAspectRatio="none" height={sh}>
+          <defs><linearGradient id="hiq-spark" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={rank.color} stopOpacity="0.24" /><stop offset="100%" stopColor={rank.color} stopOpacity="0" /></linearGradient></defs>
           {pts.length >= 2 && <>
             <path d={area} fill="url(#hiq-spark)" />
-            <polyline points={line} fill="none" stroke={rank.color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-            <circle cx={sx(pts.length - 1)} cy={sy(pts[pts.length - 1])} r="3" fill={rank.color} />
+            <polyline points={line} fill="none" stroke={rank.color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+            <circle cx={sx(pts.length - 1)} cy={sy(pts[pts.length - 1])} r="4" fill={rank.color} />
           </>}
         </svg>
         {toNext > 0 && nextText ? (
-          <div className="mt-1.5 text-[11px]" style={MONO}><span className="font-bold text-[var(--cream)]">{toNext} IQ</span><span className="text-[var(--sage-dim)]"> to </span><span className="font-bold text-[var(--gold)]">{nextText}</span></div>
+          <div className="mt-3 text-[16px]" style={MONO}><span className="font-bold text-[var(--cream)]">{toNext} IQ</span><span className="text-[var(--sage-dim)]"> to </span><span className="font-bold text-[var(--gold)]">{nextText}</span></div>
         ) : (
-          <div className="mt-1.5 text-[11px] font-bold text-[var(--gold)]" style={MONO}>Top rank reached</div>
+          <div className="mt-3 text-[16px] font-bold text-[var(--gold)]" style={MONO}>Top rank reached</div>
         )}
       </div>
     </div>
@@ -345,19 +345,13 @@ export default function HomeView({ uid }: { uid: string }) {
             <div className={`${HEAD} text-[38px] font-bold leading-none`}>{firstName}</div>
           </div>
           {last ? (
-            // last-round details (left) + score arc (right) share a bottom axis so the arc is anchored, not floating
-            <div className="mt-10 flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
-              <div className="min-w-0">
-                <div className={`${label} mb-3`}>Your last round</div>
-                <div className={`${HEAD} text-2xl font-bold`}>{last.courseName}</div>
-                <div className="mt-2.5 flex items-baseline gap-3.5">
-                  <span className="text-[44px] font-bold leading-[0.85] tracking-[-0.03em]" style={{ ...MONO, color: scoreColor(last.relativeToPar) }}>{fmtToPar(last.relativeToPar)}</span>
-                  <span className="text-xs text-[var(--sage)]" style={MONO}>{last.total} strokes · {last.holesPlayed} holes · {timeAgo(last.date)}</span>
-                </div>
+            <div className="mt-8">
+              <div className={`${label} mb-3`}>Your last round</div>
+              <div className={`${HEAD} text-2xl font-bold`}>{last.courseName}</div>
+              <div className="mt-2.5 flex items-baseline gap-3.5">
+                <span className="text-[44px] font-bold leading-[0.85] tracking-[-0.03em]" style={{ ...MONO, color: scoreColor(last.relativeToPar) }}>{fmtToPar(last.relativeToPar)}</span>
+                <span className="text-xs text-[var(--sage)]" style={MONO}>{last.total} strokes · {last.holesPlayed} holes · {timeAgo(last.date)}</span>
               </div>
-              {dash && dash.iqCurrent > 0
-                ? <HeroIQ iq={dash.iqCurrent} history={dash.iqHistory} />
-                : <div className="w-full md:w-[300px]"><ToParLine round={last} w={300} h={88} /></div>}
             </div>
           ) : (
             <div className="mt-10">
@@ -365,6 +359,12 @@ export default function HomeView({ uid }: { uid: string }) {
               <p className="mt-1 text-sm text-[var(--text-body)]">Track a round in the Radius app and your stats appear here.</p>
             </div>
           )}
+          {/* Game IQ — big, centered, spread across the hero */}
+          {dash && dash.iqCurrent > 0 ? (
+            <div className="mt-14 sm:mt-16"><HeroIQ iq={dash.iqCurrent} history={dash.iqHistory} /></div>
+          ) : last ? (
+            <div className="mt-12 w-full md:w-[300px]"><ToParLine round={last} w={300} h={88} /></div>
+          ) : null}
         </div>
       </div>
 
