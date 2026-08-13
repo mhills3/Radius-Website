@@ -346,40 +346,40 @@ export default function HomeView({ uid }: { uid: string }) {
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onCoverFile} />
         </div>
         <div className={`relative ${frame} pb-16 pt-10 sm:pt-12`}>
-          {weather && (
-            <div className="mb-2 flex items-center gap-1.5 text-[13px] text-[var(--sage)]">
-              <span className="text-base leading-none">{weather.icon}</span>
-              <span className="font-semibold text-[var(--cream)]" style={MONO}>{weather.temp}°</span>
-              <span>{weather.label}</span>
-            </div>
-          )}
-          <div className={`${label} !text-[var(--sage)]`}>{greeting()}</div>
-          <div className="mt-2 flex items-center gap-3.5">
-            <span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--bg-mid)] text-lg font-bold text-[var(--cream)] ring-2 ring-white/20">
-              {profile?.profileImageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={profile.profileImageUrl} alt="" className="h-full w-full object-cover" />
-              ) : firstName.charAt(0).toUpperCase()}
-            </span>
-            <div className={`${HEAD} text-[38px] font-bold leading-none`}>{firstName}</div>
-          </div>
-          {/* last round (left) + Game IQ status (right), vertically centered together */}
-          <div className="mt-8 flex flex-col gap-10 md:mt-10 md:flex-row md:items-center md:justify-between md:gap-10">
+          {/* whole left stack (greeting → last round) + Game IQ (right), vertically centered on the cover */}
+          <div className="flex flex-col gap-10 md:flex-row md:items-center md:justify-between md:gap-10">
             <div className="min-w-0">
+              {weather && (
+                <div className="mb-2 flex items-center gap-1.5 text-[13px] text-[var(--sage)]">
+                  <span className="text-base leading-none">{weather.icon}</span>
+                  <span className="font-semibold text-[var(--cream)]" style={MONO}>{weather.temp}°</span>
+                  <span>{weather.label}</span>
+                </div>
+              )}
+              <div className={`${label} !text-[var(--sage)]`}>{greeting()}</div>
+              <div className="mt-2 flex items-center gap-3.5">
+                <span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--bg-mid)] text-lg font-bold text-[var(--cream)] ring-2 ring-white/20">
+                  {profile?.profileImageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={profile.profileImageUrl} alt="" className="h-full w-full object-cover" />
+                  ) : firstName.charAt(0).toUpperCase()}
+                </span>
+                <div className={`${HEAD} text-[38px] font-bold leading-none`}>{firstName}</div>
+              </div>
               {last ? (
-                <>
+                <div className="mt-8">
                   <div className={`${label} mb-3`}>Your last round</div>
                   <div className={`${HEAD} text-2xl font-bold`}>{last.courseName}</div>
                   <div className="mt-2.5 flex items-baseline gap-3.5">
                     <span className="text-[44px] font-bold leading-[0.85] tracking-[-0.03em]" style={{ ...MONO, color: scoreColor(last.relativeToPar) }}>{fmtToPar(last.relativeToPar)}</span>
                     <span className="text-xs text-[var(--sage)]" style={MONO}>{last.total} strokes · {last.holesPlayed} holes · {timeAgo(last.date)}</span>
                   </div>
-                </>
+                </div>
               ) : (
-                <>
+                <div className="mt-8">
                   <div className={`${HEAD} text-xl font-bold`}>Play your first round</div>
                   <p className="mt-1 text-sm text-[var(--text-body)]">Track a round in the Radius app and your stats appear here.</p>
-                </>
+                </div>
               )}
             </div>
             {dash && dash.iqCurrent > 0
