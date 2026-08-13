@@ -3,324 +3,305 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
-import { getDecodedRounds, computeCareerStats, computeStrokesGained, rankedCategories, type DecodedRound } from "@/lib/rounds";
+import { getDecodedRounds, computeStrokesGained, rankedCategories, computeRoundStats, type DecodedRound, type RoundStats } from "@/lib/rounds";
+import { getDashboard, type Dashboard } from "@/lib/account";
 import { getAllCourses, slugify, type Course } from "@/lib/courses";
-import { getPutterDiscNames } from "@/lib/bag";
-import { getUpcomingEvents, type LeagueEvent } from "@/lib/leagues";
 import { getFeed, type FeedPost } from "@/lib/feed";
+import { getPutterDiscNames } from "@/lib/bag";
+import { flightMapImageUrl } from "@/lib/flightMap";
 import Scorecard from "@/components/dashboard/Scorecard";
-import RoundPreviewCard from "@/components/scorecard/RoundPreviewCard";
 
-// --- one type + color system for the whole page ---
-const HEAD = "font-[family-name:var(--font-heading)]";   // Sora — headings + labels
-const BODY = "font-[family-name:var(--font-body)]";      // Inter — prose
-const MONO = { fontFamily: "var(--font-mono-stack, 'JetBrains Mono', monospace)" } as const; // all numerals
-// Section label: identical size / tracking / color everywhere. Pair with `mb-3` for its content gap.
-const label = `${HEAD} text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--sage-dim)]`;
-const divider = "border-[var(--hair)]";
-
-const fmtToPar = (n: number | null | undefined) => (n == null ? "—" : n === 0 ? "E" : n > 0 ? `+${n}` : `−${Math.abs(n)}`);
-const scoreColor = (n: number | null) => (n == null ? "var(--cream)" : n < 0 ? "#8FBF9A" : n === 0 ? "var(--cream)" : "var(--sage-dim)");
+const HEAD = "font-[family-name:var(--font-heading)]";
+const MONO = { fontFamily: "var(--font-mono-stack, 'JetBrains Mono', monospace)" } as const;
+const card = "rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5";
+const label = `${HEAD} text-[13px] font-bold text-[var(--cream)]`;
+const eyebrow = `${HEAD} text-[9px] font-bold uppercase tracking-[0.14em] text-[var(--sage-dim)]`;
+const GREEN = "#33c773", GOLD = "#E8B560", RED = "#e0603f";
 const greeting = () => { const h = new Date().getHours(); return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening"; };
-const timeAgo = (ms: number) => { const d = Math.floor((Date.now() - ms) / 86400000); return d <= 0 ? "today" : d === 1 ? "1d" : d < 7 ? `${d}d` : new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric" }); };
-const miLabel = (mi: number) => `${mi < 10 ? mi.toFixed(1) : Math.round(mi)} mi`;
-function milesBetween(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
-  const R = 3958.8, dLat = ((b.lat - a.lat) * Math.PI) / 180, dLng = ((b.lng - a.lng) * Math.PI) / 180;
-  const la1 = (a.lat * Math.PI) / 180, la2 = (b.lat * Math.PI) / 180;
+const fmtDate = (ms: number) => new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+const fmtRel = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `−${Math.abs(n)}`);
+const relColor = (n: number) => (n < 0 ? GREEN : n > 0 ? "#e0873f" : "var(--cream)");
+function miBetween(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const R = 3958.8, dLat = ((b.lat - a.lat) * Math.PI) / 180, dLng = ((b.lng - a.lng) * Math.PI) / 180, la1 = (a.lat * Math.PI) / 180, la2 = (b.lat * Math.PI) / 180;
   const x = Math.sin(dLat / 2) ** 2 + Math.cos(la1) * Math.cos(la2) * Math.sin(dLng / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
 }
+const timeAgo = (ms: number) => { const d = Math.floor((Date.now() - ms) / 86400000); return d <= 0 ? "today" : d === 1 ? "1d" : d < 7 ? `${d}d` : new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric" }); };
 
-// Cumulative to-par line for the last round (gold; birdies climb).
-function ToParLine({ round, w, h }: { round: DecodedRound; w: number; h: number }) {
-  const holes = [...round.holes.filter((x) => x.played)].sort((a, b) => a.holeNumber - b.holeNumber);
-  const cum = holes.reduce<number[]>((acc, x) => [...acc, (acc[acc.length - 1] ?? 0) + (x.score - x.par)], []);
-  if (cum.length < 2) return null;
-  const min = Math.min(0, ...cum), max = Math.max(0, ...cum), span = max - min || 1, pad = 4;
-  const y = (v: number) => pad + (1 - (v - min) / span) * (h - 2 * pad);
-  const x = (i: number) => (i / (cum.length - 1)) * w;
-  const pts = cum.map((v, i) => `${x(i)},${y(v)}`).join(" ");
-  const base = y(0);
-  // Area between the line and the par axis — split at the axis so under-par shades green, over-par gold.
-  const area = `M0,${y(cum[0])}` + cum.map((v, i) => `L${x(i)},${y(v)}`).join("") + `L${w},${base}L0,${base}Z`;
+// ---- performance pillar ring ----
+function pillarStatus(kind: "putting" | "driving" | "fairway" | "scramble", v: number): { color: string; caption: string } {
+  const good = { color: GREEN, caption: "Green/Good" }, warn = { color: GOLD, caption: "Gold/Warning" }, focus = { color: RED, caption: "Red/Focus" };
+  if (kind === "putting") return v >= 80 ? good : v >= 65 ? warn : focus;
+  if (kind === "driving") return v >= 270 ? good : v >= 220 ? warn : focus;
+  if (kind === "fairway") return v >= 70 ? good : v >= 55 ? warn : focus;
+  return v >= 55 ? good : v >= 48 ? warn : focus;
+}
+function Ring({ label: lbl, value, frac, color, caption }: { label: string; value: string; frac: number; color: string; caption: string }) {
+  const size = 88, sw = 8, r = size / 2 - sw / 2 - 1, C = 2 * Math.PI * r, p = Math.max(0, Math.min(1, frac));
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} width="100%" height={h} preserveAspectRatio="none" className="block">
-      <defs>
-        {/* the par axis maps under-par below it, over-par above — so top = over (red), bottom = under (green) */}
-        <clipPath id="tpl-over"><rect x="0" y="0" width={w} height={base} /></clipPath>
-        <clipPath id="tpl-under"><rect x="0" y={base} width={w} height={h - base} /></clipPath>
-      </defs>
-      <path d={area} fill="rgba(224,102,102,0.18)" clipPath="url(#tpl-over)" />
-      <path d={area} fill="rgba(143,191,154,0.20)" clipPath="url(#tpl-under)" />
-      <line x1="0" y1={base} x2={w} y2={base} stroke="rgba(244,241,232,0.22)" strokeWidth="1" strokeDasharray="3 5" />
-      <polyline points={pts} fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-      <circle cx={w} cy={y(cum[cum.length - 1])} r="3.4" fill="var(--gold)" />
-    </svg>
+    <div className="flex flex-col items-center">
+      <div className={`${eyebrow} mb-2.5`}>{lbl}</div>
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          <g transform={`translate(${size / 2} ${size / 2}) rotate(-90)`}>
+            <circle r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={sw} />
+            <circle r={r} fill="none" stroke={color} strokeWidth={sw} strokeLinecap="round" strokeDasharray={`${p * C} ${C}`} />
+          </g>
+        </svg>
+        <span className={`${HEAD} absolute inset-0 grid place-items-center text-[19px] font-black text-[var(--cream)]`} style={MONO}>{value}</span>
+      </div>
+      <div className="mt-2.5 text-[10.5px]" style={{ color }}>{caption}</div>
+    </div>
   );
 }
 
-// A single stat as a progress ring (matches the My Game ring language: faint track + gold arc, value
-// in the center, label beneath). `frac` (0..1) drives the arc; null value = empty ring.
-function StatRing({ value, unit, frac, label, size = 68 }: { value: string; unit?: string; frac: number | null; label: string; size?: number }) {
-  const r = size / 2 - 5, C = 2 * Math.PI * r, p = Math.max(0, Math.min(1, frac ?? 0));
+function VolRow({ name, value, frac }: { name: string; value: string; frac: number }) {
   return (
-    <div className="flex flex-col items-center gap-2">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="block">
-        <g transform={`translate(${size / 2} ${size / 2})`}>
-          <circle r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="4.5" />
-          {frac != null && <circle r={r} fill="none" stroke="var(--gold)" strokeWidth="4.5" strokeLinecap="round" strokeDasharray={`${p * C} ${C}`} transform="rotate(-90)" />}
-          <text textAnchor="middle" dominantBaseline="central" y="0">
-            <tspan style={{ fontSize: 16, fontWeight: 800, fontFamily: "var(--font-mono-stack, 'JetBrains Mono', monospace)", fill: "var(--cream)" }}>{value}</tspan>
-            {unit && <tspan dx="1" style={{ fontSize: 9, fontWeight: 700, fontFamily: "var(--font-mono-stack, 'JetBrains Mono', monospace)", fill: "var(--sage-dim)" }}>{unit}</tspan>}
-          </text>
-        </g>
-      </svg>
-      <div className={`${HEAD} text-[8px] font-bold uppercase tracking-[0.12em] text-[var(--sage-dim)]`}>{label}</div>
+    <div>
+      <div className="flex items-baseline justify-between">
+        <span className="text-[13px] text-[var(--sage)]">{name}</span>
+        <span className={`${HEAD} text-[14px] font-bold text-[var(--cream)]`} style={MONO}>{value}</span>
+      </div>
+      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/[0.06]"><div className="h-full rounded-full" style={{ width: `${Math.max(3, Math.min(1, frac) * 100)}%`, background: GREEN }} /></div>
     </div>
+  );
+}
+
+// ---- recent round card ----
+function DashRoundCard({ round, cover, featured, onClick, putterNames }: { round: DecodedRound; cover?: string; featured?: boolean; onClick: () => void; putterNames: Set<string> }) {
+  const s: RoundStats = useMemo(() => computeRoundStats(round, putterNames), [round, putterNames]);
+  const rel = round.relativeToPar;
+  const flight = flightMapImageUrl(round, 760, 300);
+  const stat = (v: string, l: string, color?: string) => (
+    <div className="text-center"><div className={`${HEAD} text-[18px] font-black`} style={{ ...MONO, color: color ?? "var(--cream)" }}>{v}</div><div className="mt-0.5 text-[10px] text-[var(--sage-dim)]">{l}</div></div>
+  );
+  return (
+    <button onClick={onClick} className="group block w-full overflow-hidden rounded-xl border border-white/[0.06] bg-[#12171410] text-left transition-colors hover:border-white/[0.12]">
+      <div className="px-4 pt-3.5">
+        <span className={`${HEAD} text-[15px] font-bold text-[var(--cream)]`}>{round.courseName}</span>
+        <span className="ml-1.5 text-[12px] text-[var(--sage-dim)]" style={MONO}>{fmtDate(round.date)} · {round.holesPlayed} holes</span>
+      </div>
+      <div className={`relative mt-2.5 w-full overflow-hidden ${featured ? "h-[150px]" : "h-[110px]"} bg-[radial-gradient(circle_at_35%_30%,#2E4034,#16211B)]`}>
+        {cover && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={cover} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
+        )}
+        <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(15,23,18,0.7) 0%, transparent 45%)" }} />
+        <span className={`${HEAD} absolute bottom-3 left-4 text-[34px] font-black leading-none drop-shadow`} style={{ ...MONO, color: relColor(rel) }}>{fmtRel(rel)}</span>
+        <span className={`${HEAD} absolute bottom-3 right-4 text-[30px] font-black leading-none text-white drop-shadow`} style={MONO}>{round.total}</span>
+      </div>
+      {featured && flight && (
+        <div className="relative h-[150px] w-full overflow-hidden border-t border-white/[0.05]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={flight} alt="" loading="lazy" className="h-full w-full object-cover" />
+        </div>
+      )}
+      <div className="grid grid-cols-4 gap-2 px-4 py-3.5">
+        {stat(fmtRel(rel), "Score", relColor(rel))}
+        {stat(`${s.birdies}`, "Birdies")}
+        {stat(s.fairwayPct == null ? "—" : `${Math.round(s.fairwayPct * 100)}%`, "Fairways")}
+        {stat(s.c2Pct == null ? "—" : `${Math.round(s.c2Pct * 100)}%`, "C2 Putts")}
+      </div>
+    </button>
   );
 }
 
 export default function HomeView({ uid }: { uid: string }) {
   const { profile } = useAuth();
+  const [dash, setDash] = useState<Dashboard | null | undefined>(undefined);
   const [rounds, setRounds] = useState<DecodedRound[] | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
-  const [events, setEvents] = useState<LeagueEvent[]>([]);
   const [feed, setFeed] = useState<FeedPost[]>([]);
+  const [putterNames, setPutterNames] = useState<Set<string>>(new Set());
   const [loc, setLoc] = useState<{ lat: number; lng: number } | null>(null);
   const [open, setOpen] = useState<DecodedRound | null>(null);
-  const [putterNames, setPutterNames] = useState<Set<string>>(new Set());
+  const [now, setNow] = useState(0);
 
   useEffect(() => {
     let alive = true;
+    const t = setTimeout(() => alive && setNow(Date.now()), 0);
+    getDashboard(uid).then((d) => alive && setDash(d)).catch(() => alive && setDash(null));
     getDecodedRounds(uid).then((r) => alive && setRounds(r)).catch(() => alive && setRounds([]));
     getAllCourses().then((c) => alive && setCourses(c)).catch(() => {});
-    getUpcomingEvents(60).then((e) => alive && setEvents(e)).catch(() => {});
-    getFeed(20).then((f) => alive && setFeed(f)).catch(() => {});
+    getFeed(12).then((f) => alive && setFeed(f)).catch(() => {});
     getPutterDiscNames().then((s) => alive && setPutterNames(s)).catch(() => {});
-    if (typeof navigator !== "undefined" && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((p) => alive && setLoc({ lat: p.coords.latitude, lng: p.coords.longitude }), () => {}, { enableHighAccuracy: false, timeout: 8000, maximumAge: 600000 });
-    }
-    return () => { alive = false; };
+    if (typeof navigator !== "undefined" && navigator.geolocation) navigator.geolocation.getCurrentPosition((p) => alive && setLoc({ lat: p.coords.latitude, lng: p.coords.longitude }), () => {}, { enableHighAccuracy: false, timeout: 8000, maximumAge: 600000 });
+    return () => { alive = false; clearTimeout(t); };
   }, [uid]);
 
   const complete = useMemo(() => (rounds ? [...rounds].filter((r) => r.isComplete).sort((a, b) => b.date - a.date) : []), [rounds]);
-  const last = complete[0];
-  const career = useMemo(() => (rounds ? computeCareerStats(rounds, putterNames) : null), [rounds, putterNames]);
-  const byName = useMemo(() => { const m = new Map<string, Course>(); courses.forEach((c) => { const k = c.name.trim().toLowerCase(); if (!m.has(k)) m.set(k, c); }); return m; }, [courses]);
-  const cover = last ? byName.get(last.courseName.trim().toLowerCase())?.coverPhotoUrl : undefined;
-  const firstName = (profile?.name || "Player").split(" ")[0];
-  const playedNames = useMemo(() => new Set(complete.map((r) => r.courseName.trim().toLowerCase())), [complete]);
-
-  const coordsOf = (c?: Course) => (c && c.latitude != null && c.longitude != null ? { lat: c.latitude, lng: c.longitude } : null);
-  // Nearby courses — drop co-located/junk results (< 0.1 mi is almost always bad data, not a real course at your feet).
-  const nearCourses = useMemo(() => {
-    if (!loc) return [];
-    return courses.map((c) => ({ c, co: coordsOf(c) })).filter((x) => x.co).map((x) => ({ c: x.c, mi: milesBetween(loc, x.co!) })).filter((x) => x.mi >= 0.1 && x.c.name.trim().length > 2).sort((a, b) => a.mi - b.mi).slice(0, 4);
-  }, [courses, loc]);
-  const nearEvents = useMemo(() => {
-    if (!loc) return [];
-    return events.map((e) => { const co = coordsOf(e.courseName ? byName.get(e.courseName.trim().toLowerCase()) : undefined); return co ? { e, mi: milesBetween(loc, co) } : null; }).filter((x): x is { e: LeagueEvent; mi: number } => !!x).sort((a, b) => a.mi - b.mi).slice(0, 2);
-  }, [events, loc, byName]);
-  const sceneCourses = useMemo(() => nearCourses.filter((x) => !nearEvents.some((ne) => ne.e.courseName?.trim().toLowerCase() === x.c.name.trim().toLowerCase())).slice(0, nearEvents.length > 0 ? 1 : 3), [nearCourses, nearEvents]);
-  // The scene = latest community activity (round shares surface a score chip; everything else its course/text).
-  const scene = useMemo(() => feed.slice(0, 3), [feed]);
-  const showScene = scene.length >= 1;
-  const showNear = nearEvents.length > 0 || nearCourses.length > 0;
-
-  // Cardless "play a course" prompt whose copy adapts to what we know about the player.
-  const courseNudge = useMemo(() => {
-    const unplayed = nearCourses.find((x) => !playedNames.has(x.c.name.trim().toLowerCase()));
-    if (unplayed) return { title: "A course you haven't played", body: `${unplayed.c.name} · ${miLabel(unplayed.mi)} away` };
-    if (complete.length === 0) return { title: "Find your first course", body: "Browse courses near you, or add one that's missing." };
-    return { title: "Where to next?", body: "Find a new course to play, or add one that isn't here yet." };
-  }, [nearCourses, playedNames, complete]);
-
-  // Always names the weakest area — the strokes-gained biggest leak (same #1 as "Where your strokes
-  // go"), with per-category coaching copy. Only when there's genuinely no shot data at all does it ask
-  // for a tracked round.
   const sg = useMemo(() => (rounds ? computeStrokesGained(rounds, putterNames) : null), [rounds, putterNames]);
-  const workOn = useMemo(() => {
-    if (!sg || !career) return null;
-    const leak = rankedCategories(sg).filter((c) => c.eligible)[0];
-    if (leak) {
-      if (leak.id === "putting") return `Putting is where you're losing the most — ${sg.c1xPct}% on makeable putts inside 33 feet.`;
-      if (leak.id === "tee") return sg.teeObPct >= 10 ? `OB is the leak off the tee — ${sg.teeObPct}% of your drives.` : `Off the tee is your biggest leak — only ${sg.teeFairwayPct}% of your drives are finding the fairway.`;
-      if (leak.id === "approach") return `Your approach game is the leak — you're leaving ${sg.proximityAvgFt}-foot putts on average.`;
-      if (leak.id === "short") return `Around the green is costing you — you're saving just ${sg.scramblePct}% after trouble.`;
-    }
-    // Not enough measured shots in any one category yet — still surface the most useful signal we have.
-    if (career.c1.att >= 3 && career.c1.pct != null) return `Sharpen your putting — you're at ${Math.round(career.c1.pct * 100)}% on makeable putts inside 33 feet.`;
-    if (career.teeAttempts >= 3 && career.fairwayPct != null) return `Off the tee — ${Math.round(career.fairwayPct * 100)}% of your drives are finding the fairway.`;
-    if (career.avgToPar != null) return `You're averaging ${career.avgToPar > 0 ? "+" : ""}${career.avgToPar.toFixed(1)} to par — track your shots to pinpoint the leak.`;
-    return "Play a shot-tracked round in the app and your focus builds itself.";
-  }, [sg, career]);
+  const byName = useMemo(() => { const m = new Map<string, Course>(); courses.forEach((c) => { const k = c.name.trim().toLowerCase(); if (!m.has(k)) m.set(k, c); }); return m; }, [courses]);
+  const coverOf = (name: string) => byName.get(name.trim().toLowerCase())?.coverPhotoUrl;
+  const firstName = (profile?.name || dash?.profile.name || "Player").split(" ")[0];
 
-  if (rounds === null) {
+  const iq = dash?.iqCurrent ?? 0;
+  const iqDelta = useMemo(() => {
+    const h = dash?.iqHistory ?? []; if (h.length < 2 || !now) return 0;
+    const cutoff = now - 30 * 86400000;
+    const past = [...h].reverse().find((p) => p.t <= cutoff) ?? h[0];
+    return iq - past.iq;
+  }, [dash, iq, now]);
+
+  const focus = useMemo(() => {
+    if (!sg) return null;
+    const leak = rankedCategories(sg).filter((c) => c.eligible)[0];
+    if (!leak) return null;
+    const val = leak.id === "putting" ? sg.sgPutting : leak.id === "tee" ? sg.sgDriving : leak.id === "approach" ? sg.sgApproach : sg.sgShort;
+    return { name: leak.name, val };
+  }, [sg]);
+
+  const weekly = useMemo(() => {
+    if (!now) return { rounds: 0, holes: 0, throws: 0, birdies: 0 };
+    const cutoff = now - 6 * 86400000;
+    const wk = complete.filter((r) => r.date >= cutoff);
+    let holes = 0, throws = 0, birdies = 0;
+    for (const r of wk) { holes += r.holesPlayed; throws += r.total; for (const h of r.holes) if (h.played && h.score - h.par < 0) birdies++; }
+    return { rounds: wk.length, holes, throws, birdies };
+  }, [complete, now]);
+
+  const nearCourses = useMemo(() => {
+    if (!loc) return [...courses].filter((c) => (c.reviewCount ?? 0) > 0).sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0)).slice(0, 3).map((c) => ({ c, mi: null as number | null }));
+    return courses.map((c) => (c.latitude != null && c.longitude != null ? { c, mi: miBetween(loc, { lat: c.latitude, lng: c.longitude }) } : null)).filter((x): x is { c: Course; mi: number } => !!x && x.mi >= 0.1).sort((a, b) => a.mi - b.mi).slice(0, 3);
+  }, [courses, loc]);
+  const scene = useMemo(() => feed.slice(0, 3), [feed]);
+
+  if (dash === undefined || rounds === null) {
     return <div className="flex min-h-screen items-center justify-center bg-[var(--bg-deep)] text-[var(--sage)]"><svg className="h-6 w-6 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg></div>;
   }
 
-  // Shared page frame: same max-width + horizontal padding as the hero, so left edges line up exactly.
-  const frame = "mx-auto max-w-[1200px] px-6 sm:px-10";
+  const pillars = sg ? [
+    { kind: "putting" as const, lbl: "PUTTING", value: `${sg.c1xPct}%`, frac: sg.c1xPct / 100, val: sg.c1xPct },
+    { kind: "driving" as const, lbl: "DRIVING DIST", value: `${sg.driveAvg} ft`, frac: sg.driveAvg / 400, val: sg.driveAvg },
+    { kind: "fairway" as const, lbl: "FAIRWAY HIT %", value: `${sg.teeFairwayPct}%`, frac: sg.teeFairwayPct / 100, val: sg.teeFairwayPct },
+    { kind: "scramble" as const, lbl: "SCRAMBLING %", value: `${sg.scramblePct}%`, frac: sg.scramblePct / 100, val: sg.scramblePct },
+  ] : [];
 
   return (
     <div className="min-h-screen bg-[var(--bg-deep)] text-[var(--cream)]">
-      {/* ===== HERO ===== */}
-      <div className="relative overflow-hidden">
-        {cover && (
-          <div aria-hidden className="pointer-events-none absolute inset-0">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={cover} alt="" className="h-full w-full object-cover" />
-          </div>
-        )}
-        {/* two-part scrim: darken the left where the text sits, then fade fully to page color at the bottom */}
-        <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "linear-gradient(100deg, rgba(15,23,18,0.96) 0%, rgba(15,23,18,0.62) 44%, rgba(15,23,18,0.22) 100%), linear-gradient(to bottom, transparent 30%, rgba(15,23,18,0.72) 74%, var(--bg-deep) 99%)" }} />
-        <div className={`relative ${frame} pb-16 pt-10 sm:pt-12`}>
-          <div className={`${label} !text-[var(--sage)]`}>{greeting()}</div>
-          <div className={`${HEAD} mt-2 text-[38px] font-bold leading-none`}>{firstName}</div>
-          {last ? (
-            // last-round details (left) + score arc (right) share a bottom axis so the arc is anchored, not floating
-            <div className="mt-10 flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
-              <div className="min-w-0">
-                <div className={`${label} mb-3`}>Your last round</div>
-                <div className={`${HEAD} text-2xl font-bold`}>{last.courseName}</div>
-                <div className="mt-2.5 flex items-baseline gap-3.5">
-                  <span className="text-[44px] font-bold leading-[0.85] tracking-[-0.03em]" style={{ ...MONO, color: scoreColor(last.relativeToPar) }}>{fmtToPar(last.relativeToPar)}</span>
-                  <span className="text-xs text-[var(--sage)]" style={MONO}>{last.total} strokes · {last.holesPlayed} holes · {timeAgo(last.date)}</span>
+      <div className="mx-auto max-w-[1280px] px-4 py-6 sm:px-6">
+        <div className="mb-5 text-[13px] text-[var(--sage)]">{greeting()}, <span className="font-semibold text-[var(--cream)]">{firstName}</span></div>
+
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+          {/* ===== MAIN ===== */}
+          <div className="space-y-5">
+            {/* top row: rating + pillars */}
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+              {/* radius rating */}
+              <div className={card}>
+                <div className={eyebrow}>Radius Rating</div>
+                <div className="mt-3 flex items-end gap-2.5">
+                  <span className={`${HEAD} text-[52px] font-black leading-[0.85]`} style={MONO}>{iq}</span>
+                  {iqDelta !== 0 && <span className="mb-1.5 inline-flex items-center gap-1 text-[13px] font-bold" style={{ color: iqDelta > 0 ? GREEN : RED }}><span>{iqDelta > 0 ? "▲" : "▼"}</span>{iqDelta > 0 ? "+" : ""}{iqDelta} this month</span>}
                 </div>
+                <div className="mt-1 text-[11px] text-[var(--sage-dim)]">Game IQ</div>
+                <div className="my-4 h-px bg-white/[0.07]" />
+                {focus ? (
+                  <>
+                    <div className={`${label} text-[15px]`}>Focus Area: {focus.name} <span className="font-normal text-[var(--sage)]">({focus.val > 0 ? "+" : ""}{focus.val.toFixed(1)} Strokes Gained)</span></div>
+                    <Link href="/bag?tab=improve" className={`${HEAD} mt-3.5 block rounded-lg bg-[#F4F1E8] py-2.5 text-center text-[13.5px] font-bold text-[#141B16] transition-colors hover:bg-white`}>Open {focus.name} Insights</Link>
+                  </>
+                ) : (
+                  <div className="text-[13px] text-[var(--sage-dim)]">Shot-track a few rounds and your focus area appears here.</div>
+                )}
               </div>
-              <div className="w-full md:w-[300px]">
-                <ToParLine round={last} w={300} h={88} />
-                <div className="mt-2 flex justify-between text-[9px] text-[var(--sage-dim)]" style={MONO}><span>Hole 1</span><span>Hole {last.holesPlayed}</span></div>
+
+              {/* performance pillars */}
+              <div className={card}>
+                <div className={label}>Performance Pillars</div>
+                {pillars.length ? (
+                  <div className="mt-4 grid grid-cols-2 gap-y-5 sm:grid-cols-4 sm:gap-y-0">
+                    {pillars.map((p) => { const st = pillarStatus(p.kind, p.val); return <Ring key={p.kind} label={p.lbl} value={p.value} frac={p.frac} color={st.color} caption={st.caption} />; })}
+                  </div>
+                ) : <div className="mt-4 text-[13px] text-[var(--sage-dim)]">Play shot-tracked rounds to fill your pillars.</div>}
               </div>
             </div>
-          ) : (
-            <div className="mt-10">
-              <div className={`${HEAD} text-xl font-bold`}>Play your first round</div>
-              <p className="mt-1 text-sm text-[var(--text-body)]">Track a round in the Radius app and your stats appear here.</p>
-            </div>
-          )}
-        </div>
-      </div>
 
-      {/* ===== GRID — explicit: fluid main + fixed rail, 40px gutter, both start at the same Y ===== */}
-      <div className={`${frame} pb-20 pt-8`}>
-        <div className="grid gap-8 lg:grid-cols-[1fr_336px] lg:items-start lg:gap-10">
-          {/* MAIN */}
-          <div className="min-w-0">
-            {workOn && (
-              <div className={`border-b ${divider} pb-8`}>
-                <div className={`${label} mb-3`}>What to work on</div>
-                <p className={`${HEAD} max-w-xl text-[22px] font-semibold leading-[1.32] text-[var(--cream)]`}>{workOn}</p>
-                <Link href="/bag?tab=improve" className="mt-4 inline-block text-[13px] font-semibold text-[var(--gold)]">Open Improve →</Link>
-              </div>
-            )}
-
-            <div className={`${workOn ? "pt-8" : ""}`}>
+            {/* recent rounds */}
+            <div>
               <div className="mb-3 flex items-baseline justify-between">
-                <span className={label}>Recent rounds</span>
-                <Link href="/bag" className={`${BODY} text-[12.5px] text-[var(--sage)] hover:text-[var(--cream)]`}>View all</Link>
+                <span className={label}>Recent Rounds</span>
+                <Link href="/bag" className="text-[12px] text-[var(--sage)] hover:text-[var(--cream)]">View all</Link>
               </div>
               {complete.length === 0 ? (
-                <p className="text-sm text-[var(--sage-dim)]">No rounds yet — play one in the Radius app.</p>
+                <p className="text-[13px] text-[var(--sage-dim)]">No rounds yet — play one in the Radius app.</p>
               ) : (
-                <div className="space-y-3.5">
-                  {complete.slice(0, 6).map((r) => (
-                    <RoundPreviewCard key={r.roundId} round={r} cover={byName.get(r.courseName.trim().toLowerCase())?.coverPhotoUrl} onClick={() => setOpen(r)} />
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  {complete.slice(0, 7).map((r, i) => (
+                    <div key={r.roundId} className={i === 0 ? "sm:row-span-2" : ""}>
+                      <DashRoundCard round={r} cover={coverOf(r.courseName)} featured={i === 0} onClick={() => setOpen(r)} putterNames={putterNames} />
+                    </div>
                   ))}
                 </div>
               )}
             </div>
           </div>
 
-          {/* SIDEBAR */}
-          <aside className="min-w-0">
-            {/* Play a course — a section, not a card; copy adapts to the player */}
-            <div className={`border-b ${divider} pb-5`}>
-              <div className={`${HEAD} text-[17px] font-bold text-[var(--cream)]`}>{courseNudge.title}</div>
-              <p className={`${BODY} mt-1.5 text-[13.5px] leading-snug text-[var(--sage)]`}>{courseNudge.body}</p>
-              <div className="mt-3.5 flex items-center gap-4">
-                <Link href="/courses" className="text-[13.5px] font-semibold text-[var(--gold)]">Find a course →</Link>
-                <Link href="/courses/new" className="text-[13.5px] font-semibold text-[var(--sage)] hover:text-[var(--cream)]">Add a course</Link>
+          {/* ===== SIDEBAR ===== */}
+          <div className="space-y-5">
+            {/* weekly volume */}
+            <div className={card}>
+              <div className={`${label} mb-4`}>Weekly Volume</div>
+              <div className="space-y-3.5">
+                <VolRow name="Rounds" value={`${weekly.rounds}`} frac={weekly.rounds / 5} />
+                <VolRow name="Holes" value={`${weekly.holes}`} frac={weekly.holes / 90} />
+                <VolRow name="Throws" value={`${weekly.throws}`} frac={weekly.throws / 400} />
+                <VolRow name="Birdies" value={`${weekly.birdies}`} frac={weekly.birdies / 25} />
               </div>
             </div>
 
-            {/* Your game — stat rings, mirroring the app */}
-            <div className={`mt-5 border-b ${divider} pb-5`}>
-              <div className={`${label} mb-4`}>Your game</div>
-              <div className="grid grid-cols-3 gap-1">
-                <StatRing label="C1X Putt" value={career && career.c1.att >= 3 && career.c1.pct != null ? `${Math.round(career.c1.pct * 100)}` : "—"} unit={career && career.c1.att >= 3 && career.c1.pct != null ? "%" : undefined} frac={career && career.c1.att >= 3 ? career.c1.pct : null} />
-                <StatRing label="Avg Drive" value={career?.avgDriveFt ? `${Math.round(career.avgDriveFt)}` : "—"} unit={career?.avgDriveFt ? "ft" : undefined} frac={career?.avgDriveFt ? career.avgDriveFt / 400 : null} />
-                <StatRing label="Fairway" value={career?.fairwayPct != null ? `${Math.round(career.fairwayPct * 100)}` : "—"} unit={career?.fairwayPct != null ? "%" : undefined} frac={career?.fairwayPct ?? null} />
+            {/* nearby courses */}
+            <div className={card}>
+              <div className={`${label} mb-3.5`}>Nearby / Top-Rated Courses</div>
+              <div className="space-y-3">
+                {nearCourses.map(({ c, mi }) => (
+                  <Link key={c.id} href={`/courses/${slugify(c.name, c.id)}`} className="flex items-center gap-3">
+                    <span className="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-[#22302A]">{c.coverPhotoUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={c.coverPhotoUrl} alt="" className="h-full w-full object-cover" />
+                    )}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[13px] font-semibold text-[var(--cream)]">{c.name}</span>
+                      <span className="mt-0.5 block truncate text-[10.5px] text-[var(--sage-dim)]" style={MONO}>{[c.city, mi != null ? `${mi < 10 ? mi.toFixed(1) : Math.round(mi)} mi away` : null].filter(Boolean).join(" · ")}</span>
+                    </span>
+                    {c.rating != null && c.rating > 0 && <span className="shrink-0 rounded-md bg-[var(--gold)]/15 px-2 py-0.5 text-[11px] font-bold text-[var(--gold)]" style={MONO}>{c.rating.toFixed(1)}</span>}
+                  </Link>
+                ))}
+                {nearCourses.length === 0 && <p className="text-[12px] text-[var(--sage-dim)]">No nearby courses found.</p>}
               </div>
-              <Link href="/bag" className="mt-4 inline-block text-[13px] font-semibold text-[var(--gold)]">Open My Game →</Link>
+              <Link href="/courses" className="mt-4 block text-[12px] font-semibold text-[var(--gold)]">See more Community →</Link>
             </div>
 
-            {/* Near you */}
-            {showNear && (
-              <div className={`mt-5 border-b ${divider} pb-5`}>
-                <div className={`${label} mb-3`}>Near you</div>
-                <div className="space-y-3.5">
-                  {nearEvents.map(({ e, mi }) => (
-                    <Link key={e.id} href="/leagues" className="flex items-center gap-3">
-                      <span className="grid h-[36px] w-[36px] shrink-0 place-items-center rounded-lg bg-[#22302A]">
-                        <span className="text-[6.5px] font-bold uppercase tracking-wide text-[var(--gold)]">{new Date(e.date).toLocaleDateString("en-US", { month: "short" }).toUpperCase()}</span>
-                        <span className="text-[12px] font-bold leading-none text-[var(--cream)]" style={MONO}>{new Date(e.date).getDate()}</span>
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[13.5px] font-semibold text-[var(--cream)]">{e.name}</span>
-                        <span className="mt-0.5 block truncate text-[10.5px] text-[var(--sage-dim)]" style={MONO}>{e.courseName} · {miLabel(mi)}</span>
-                      </span>
-                    </Link>
-                  ))}
-                  {sceneCourses.map(({ c, mi }) => (
-                    <Link key={c.id} href={`/courses/${slugify(c.name, c.id)}`} className="flex items-center gap-3">
-                      {c.coverPhotoUrl && (
-                        <span className="h-[36px] w-[36px] shrink-0 overflow-hidden rounded-lg bg-[#22302A]">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={c.coverPhotoUrl} alt="" className="h-full w-full object-cover" />
-                        </span>
-                      )}
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[13.5px] font-semibold text-[var(--cream)]">{c.name}</span>
-                        <span className="mt-0.5 block text-[10.5px] text-[var(--sage-dim)]" style={MONO}>{miLabel(mi)} · {playedNames.has(c.name.trim().toLowerCase()) ? "played" : "new to you"}</span>
-                      </span>
-                    </Link>
-                  ))}
-                  {nearEvents.length === 0 && nearCourses.length === 0 && <p className="text-[11px] text-[var(--sage-dim)]">No courses nearby yet.</p>}
-                </div>
-              </div>
-            )}
-
-            {/* The scene */}
-            {showScene && (
-              <div className="mt-5">
-                <div className={`${label} mb-3`}>The scene</div>
+            {/* social stream */}
+            {scene.length > 0 && (
+              <div className={card}>
+                <div className={`${label} mb-3.5`}>Social Stream</div>
                 <div className="space-y-3.5">
                   {scene.map((p) => (
-                    <Link key={p.id} href="/community" className="flex items-center gap-2.5">
-                      <span className="grid h-7 w-7 shrink-0 place-items-center overflow-hidden rounded-full bg-[#22302A] text-[11px] font-semibold text-[var(--sage)]">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        {p.authorPhotoUrl ? <img src={p.authorPhotoUrl} alt="" className="h-full w-full object-cover" /> : (p.authorName || "?").charAt(0)}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[13.5px] font-semibold text-[var(--cream)]">{p.authorName}</span>
-                        {p.linkedCourseName
-                          ? <span className="mt-0.5 block truncate text-[10.5px] text-[var(--sage-dim)]" style={MONO}>{p.linkedCourseName}</span>
-                          : <span className={`${BODY} mt-0.5 block truncate text-[11px] text-[var(--sage-dim)]`}>{p.text || "posted an update"}</span>}
-                      </span>
-                      {p.scoreToPar != null
-                        ? <span className="w-9 shrink-0 text-right text-[14px] font-bold" style={{ ...MONO, color: scoreColor(p.scoreToPar) }}>{fmtToPar(p.scoreToPar)}</span>
-                        : <span className="w-9 shrink-0 text-right text-[10.5px] text-[var(--sage-dim)]" style={MONO}>{timeAgo(p.createdAt)}</span>}
+                    <Link key={p.id} href="/community" className="block">
+                      <div className="flex items-center gap-2.5">
+                        <span className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full bg-[#22302A] text-[12px] font-semibold text-[var(--sage)]">{p.authorPhotoUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={p.authorPhotoUrl} alt="" className="h-full w-full object-cover" />
+                        ) : (p.authorName || "?").charAt(0)}</span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[13px] font-semibold text-[var(--cream)]">{p.authorName}</span>
+                          <span className="mt-0.5 block truncate text-[11px] text-[var(--sage-dim)]">{p.text || p.linkedCourseName || "posted an update"}</span>
+                        </span>
+                        <span className="shrink-0 text-[10px] text-[var(--sage-dim)]" style={MONO}>{timeAgo(p.createdAt)}</span>
+                      </div>
+                      {p.imageUrl && (
+                        <div className="mt-2 h-24 overflow-hidden rounded-lg">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={p.imageUrl} alt="" className="h-full w-full object-cover" />
+                        </div>
+                      )}
                     </Link>
                   ))}
                 </div>
-                <Link href="/community" className="group mt-4 flex items-center justify-center gap-1.5 rounded-[10px] border border-[var(--hair-strong)] py-2.5 text-[12px] font-semibold text-[var(--sage)] transition-colors hover:border-[var(--gold)]/45 hover:bg-[var(--gold)]/[0.05] hover:text-[var(--gold)]">
-                  See more in Community
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-                </Link>
               </div>
             )}
-          </aside>
+          </div>
         </div>
       </div>
 
