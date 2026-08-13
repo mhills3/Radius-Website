@@ -20,6 +20,7 @@ const MONO = { fontFamily: "var(--font-mono-stack, 'JetBrains Mono', monospace)"
 // Section label: identical size / tracking / color everywhere. Pair with `mb-3` for its content gap.
 const label = `${HEAD} text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--sage-dim)]`;
 const divider = "border-[var(--hair)]";
+const chip = `${HEAD} inline-flex items-center gap-1.5 rounded-full border border-[var(--hair-strong)] px-3 py-1 text-[11px] font-semibold text-[var(--sage)] transition-colors hover:text-[var(--cream)]`;
 
 const fmtToPar = (n: number | null | undefined) => (n == null ? "—" : n === 0 ? "E" : n > 0 ? `+${n}` : `−${Math.abs(n)}`);
 const scoreColor = (n: number | null) => (n == null ? "var(--cream)" : n < 0 ? "#8FBF9A" : n === 0 ? "var(--cream)" : "var(--sage-dim)");
@@ -92,6 +93,9 @@ export default function HomeView({ uid }: { uid: string }) {
   const [open, setOpen] = useState<DecodedRound | null>(null);
   const [putterNames, setPutterNames] = useState<Set<string>>(new Set());
   const [discMap, setDiscMap] = useState<Map<string, BagDisc>>(new Map());
+  const [sortNewest, setSortNewest] = useState(true);   // ↑↓ Date (newest) vs Score (best to par)
+  const [rangeKey, setRangeKey] = useState("last5");     // Last 5 / Events / MMM yyyy / All
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -108,6 +112,23 @@ export default function HomeView({ uid }: { uid: string }) {
   }, [uid]);
 
   const complete = useMemo(() => (rounds ? [...rounds].filter((r) => r.isComplete).sort((a, b) => b.date - a.date) : []), [rounds]);
+  // Month filter options — one per month that has rounds, newest first (complete is already date-desc).
+  const monthOpts = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const r of complete) { const d = new Date(r.date); const key = `${d.getFullYear()}-${d.getMonth() + 1}`; if (!seen.has(key)) seen.set(key, d.toLocaleDateString("en-US", { month: "short", year: "numeric" })); }
+    return [...seen.entries()].map(([key, mlabel]) => ({ key, label: mlabel }));
+  }, [complete]);
+  // iOS Recent Activity: filter by range, then sort by date (newest) or score (best), cap 120.
+  const shownRounds = useMemo(() => {
+    let ranged: DecodedRound[];
+    if (rangeKey === "all") ranged = complete;
+    else if (rangeKey === "events") ranged = complete.filter((r) => r.leagueEventId != null);
+    else if (rangeKey === "last5") ranged = complete.slice(0, 5);
+    else ranged = complete.filter((r) => { const d = new Date(r.date); return `${d.getFullYear()}-${d.getMonth() + 1}` === rangeKey; });
+    const sorted = sortNewest ? ranged : [...ranged].sort((a, b) => a.relativeToPar - b.relativeToPar);
+    return sorted.slice(0, 120);
+  }, [complete, rangeKey, sortNewest]);
+  const rangeLabel = rangeKey === "last5" ? "Last 5" : rangeKey === "all" ? "All" : rangeKey === "events" ? "Events" : (monthOpts.find((m) => m.key === rangeKey)?.label ?? "Last 5");
   const last = complete[0];
   const career = useMemo(() => (rounds ? computeCareerStats(rounds, putterNames) : null), [rounds, putterNames]);
   const byName = useMemo(() => { const m = new Map<string, Course>(); courses.forEach((c) => { const k = c.name.trim().toLowerCase(); if (!m.has(k)) m.set(k, c); }); return m; }, [courses]);
@@ -226,15 +247,38 @@ export default function HomeView({ uid }: { uid: string }) {
             )}
 
             <div className={`${workOn ? "pt-8" : ""}`}>
-              <div className="mb-3 flex items-baseline justify-between">
+              <div className="mb-3 flex items-center justify-between gap-2">
                 <span className={label}>Recent rounds</span>
-                <Link href="/bag" className={`${BODY} text-[12.5px] text-[var(--sage)] hover:text-[var(--cream)]`}>View all</Link>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setSortNewest((v) => !v)} className={chip} title="Sort by date or score">
+                    <span className="text-[var(--sage-dim)]">↑↓</span> {sortNewest ? "Date" : "Score"}
+                  </button>
+                  <div className="relative">
+                    <button onClick={() => setMenuOpen((v) => !v)} className={chip}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-3 w-3"><path d="M3 6h18M6 12h12M10 18h4" /></svg>
+                      {rangeLabel}
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3"><path d="M6 9l6 6 6-6" /></svg>
+                    </button>
+                    {menuOpen && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+                        <div className="absolute right-0 z-50 mt-1.5 max-h-72 w-40 overflow-y-auto rounded-xl border border-[var(--hair-strong)] bg-[var(--bg-mid)] py-1.5 shadow-xl">
+                          {[{ key: "last5", label: "Last 5" }, { key: "events", label: "Events" }, ...monthOpts, { key: "all", label: "All" }].map((o) => (
+                            <button key={o.key} onClick={() => { setRangeKey(o.key); setMenuOpen(false); }} className={`block w-full px-3.5 py-1.5 text-left text-[12.5px] ${rangeKey === o.key ? "font-bold text-[var(--gold)]" : "text-[var(--sage)] hover:text-[var(--cream)]"}`}>{o.label}</button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
               {complete.length === 0 ? (
                 <p className="text-sm text-[var(--sage-dim)]">No rounds yet — play one in the Radius app.</p>
+              ) : shownRounds.length === 0 ? (
+                <p className="text-sm text-[var(--sage-dim)]">No rounds in this range.</p>
               ) : (
                 <div className="space-y-3.5">
-                  {complete.slice(0, 6).map((r) => (
+                  {shownRounds.map((r) => (
                     <RoundPreviewCard key={r.roundId} round={r} cover={byName.get(r.courseName.trim().toLowerCase())?.coverPhotoUrl} onClick={() => setOpen(r)} discMap={discMap} />
                   ))}
                 </div>

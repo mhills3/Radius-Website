@@ -36,6 +36,7 @@ export interface DecodedRound {
   relativeToPar: number;
   holesPlayed: number;
   format?: string;
+  leagueEventId?: string; // set on league/tournament rounds — powers the "Events" filter
   // Insights extras (present on app-written rounds; optional)
   iqBefore?: number;
   iqAfter?: number;
@@ -631,6 +632,7 @@ function parseRound(docId: string, data: any): Promise<DecodedRound | null> {
         relativeToPar: total - totalPar,
         holesPlayed,
         format: (j.scoringFormat as string) ?? undefined,
+        leagueEventId: (j.leagueEventId as string) ?? (data.leagueEventId as string) ?? undefined,
         iqBefore: typeof j.iqBefore === "number" ? (j.iqBefore as number) : undefined,
         iqAfter: typeof j.iqAfter === "number" ? (j.iqAfter as number) : undefined,
         weatherSummary: typeof j.weatherSummary === "string" && j.weatherSummary ? (j.weatherSummary as string) : undefined,
