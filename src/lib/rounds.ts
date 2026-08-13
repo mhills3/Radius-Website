@@ -290,11 +290,11 @@ export interface ProxBand { label: string; count: number; avg: number }
 export interface DiscStat { name: string; count: number; avg: number; inPlayPct?: number }
 export interface RankedCategory { id: string; name: string; evidence: string; sg: number; eligible: boolean; progress: string }
 
-const legacyLandingRow = (t: DecodedThrow) =>
+export const legacyLandingRow = (t: DecodedThrow) =>
   t.lat == null && !(t.lie ?? "") && (t.distance ?? 0) === 0 && (t.result === "Circle 1" || t.result === "Circle 2");
 
 // iOS RecommendationEngine.expectedStrokes(fromFeet:) — baseline expected strokes by feet-to-basket.
-function expectedStrokes(d: number): number {
+export function expectedStrokes(d: number): number {
   if (d < 1) return 0; if (d < 9) return 1.02; if (d < 16) return 1.15; if (d < 23) return 1.35;
   if (d < 34) return 1.55; if (d < 51) return 1.80; if (d < 67) return 1.95; if (d < 101) return 2.20;
   if (d < 151) return 2.45; if (d < 201) return 2.65; if (d < 251) return 2.85; if (d < 301) return 3.00;
