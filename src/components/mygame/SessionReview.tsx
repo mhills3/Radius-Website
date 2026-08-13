@@ -24,7 +24,7 @@ function Shell({ title, sub, onClose, onBack, children }: { title: string; sub?:
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/70 animate-[fadeIn_0.2s_ease]" onClick={onClose} />
-      <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-[26px] border border-white/10 bg-[#0C1310] animate-[fadeIn_0.25s_ease]">
+      <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-[26px] border border-white/10 bg-[#111813] animate-[fadeIn_0.25s_ease]">
         <div className="flex items-start justify-between gap-3 border-b border-[#17201A] px-6 py-5">
           <div className="flex items-center gap-3">
             {onBack && <button onClick={onBack} aria-label="Back" className="grid h-8 w-8 place-items-center rounded-full border border-white/10 text-[var(--sage)] transition-colors hover:text-[var(--cream)]"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 6l-6 6 6 6" /></svg></button>}

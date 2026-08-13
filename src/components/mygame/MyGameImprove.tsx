@@ -10,7 +10,8 @@ import SessionReview from "@/components/mygame/SessionReview";
 const HEAD = "font-[family-name:var(--font-heading)]";
 const BODY = "font-[family-name:var(--font-body)]";
 const MONO = { fontFamily: "var(--font-mono-stack, 'JetBrains Mono', monospace)" } as const;
-const INK = "#F4F1E8", GOLD = "#E8B560", EB = "#4A5A48", DIM = "#3E4B3F", SAGE = "#8FA08A", SAGE2 = "#5E6E5C", HAIR = "#17201A";
+const INK = "#F4F1E8", GOLD = "#E8B560", EB = "#4A5A48", DIM = "#3E4B3F", SAGE = "#8FA08A", SAGE2 = "#5E6E5C";
+const HAIR = "rgba(244,241,232,0.08)"; // the site's --hair, so the Improve tab sits on the same green as the rest
 const eb = `${HEAD} text-[9px] font-black uppercase tracking-[0.22em]`;
 const Hair = () => <div style={{ height: 1, background: HAIR }} />;
 
@@ -58,7 +59,7 @@ function Falloff({ points }: { points: { label: string; pct: number | null; gold
       <defs><linearGradient id="fo" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={GOLD} stopOpacity="0.14" /><stop offset="100%" stopColor={GOLD} stopOpacity="0" /></linearGradient></defs>
       <path d={area} fill="url(#fo)" />
       <path d={`M${line.split(" ").join(" L")}`} fill="none" stroke={GOLD} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      {points.map((p, i) => p.pct == null ? null : <circle key={i} cx={x(i)} cy={y(p.pct)} r={i === points.length - 1 ? 4 : 3} fill={i === points.length - 1 ? GOLD : "#0C1310"} stroke={GOLD} strokeWidth="1.5" />)}
+      {points.map((p, i) => p.pct == null ? null : <circle key={i} cx={x(i)} cy={y(p.pct)} r={i === points.length - 1 ? 4 : 3} fill={i === points.length - 1 ? GOLD : "#141B16"} stroke={GOLD} strokeWidth="1.5" />)}
     </svg>
   );
 }
@@ -142,7 +143,7 @@ export default function MyGameImprove({ uid }: { uid: string }) {
   if (!rounds) return <div className="flex min-h-[40vh] items-center justify-center text-[var(--sage)]"><svg className="h-6 w-6 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg></div>;
 
   return (
-    <div className="rounded-[18px] px-1 py-2 sm:px-6 sm:py-6" style={{ background: "#0C1310" }}>
+    <>
       <div className="flex flex-col gap-12 lg:flex-row">
         {/* ===== LEFT: This week's focus ===== */}
         <div className="min-w-0 flex-1">
@@ -229,6 +230,6 @@ export default function MyGameImprove({ uid }: { uid: string }) {
       </div>
 
       {review && <SessionReview type={review} putting={putting} range={range} onClose={() => setReview(null)} />}
-    </div>
+    </>
   );
 }
