@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import MyGameOverview from "@/components/mygame/MyGameOverview";
@@ -27,8 +27,12 @@ function MyGameInner() {
   const sp = useSearchParams();
   const { user, loading } = useAuth();
   const tabParam = sp.get("tab");
-  const tab: GTab = tabParam === "bag" ? "bag" : "improve"; // Overview is merged into Improve; old ?tab=overview/improve both land here
-  const go = (t: GTab) => router.replace(t === "improve" ? "/bag" : `/bag?tab=${t}`, { scroll: false });
+  // Local state drives the active tab (instant, reliable) with the URL kept in sync — so a click never
+  // depends on a searchParams re-render. Overview is merged into Improve; old ?tab=overview/improve → improve.
+  const [tab, setTab] = useState<GTab>(tabParam === "bag" ? "bag" : "improve");
+  const go = (t: GTab) => { setTab(t); router.replace(t === "improve" ? "/bag" : `/bag?tab=${t}`, { scroll: false }); };
+  // keep state in sync when the URL changes externally (back/forward, deep link)
+  useEffect(() => { setTab(tabParam === "bag" ? "bag" : "improve"); }, [tabParam]);
 
   useEffect(() => { if (!loading && !user) router.replace("/login"); }, [loading, user, router]);
   if (loading || !user) return <Spinner />;

@@ -10,7 +10,7 @@ import { isProEntitled } from "@/lib/account";
  * the web can't see yet) out of features that used to be free on the web. Flip to true once the apps
  * ship the mirror, and desktop gating goes live everywhere usePro() is used.
  */
-export const PRO_GATING_ENABLED = false;
+export const PRO_GATING_ENABLED = true;
 
 /**
  * The single source of truth for "is this user Pro?" on the web. Reads the entitlement carried on
