@@ -55,9 +55,9 @@ export default function DualRing({
         {/* inner scoring-mix donut */}
         <Donut segments={segs} r={innerR} width={17} />
         {/* center */}
-        <text x="0" y={-innerR * 0.38} textAnchor="middle" className="fill-[var(--sage-dim)]" style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", fontFamily: "var(--font-heading)" }}>{centerTop}</text>
-        <text x="0" y={innerR * 0.16} textAnchor="middle" className="fill-[var(--cream)]" style={{ fontSize: 34, fontWeight: 900, fontFamily: "var(--font-heading)" }}>{centerBig}</text>
-        {centerSub && <text x="0" y={innerR * 0.55} textAnchor="middle" className="fill-[var(--sage-dim)]" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", fontFamily: "var(--font-heading)" }}>{centerSub}</text>}
+        <text x="0" y={-innerR * 0.38} textAnchor="middle" className="fill-[var(--sage-dim)]" style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", fontFamily: "'Sora', sans-serif" }}>{centerTop}</text>
+        <text x="0" y={innerR * 0.16} textAnchor="middle" className="fill-[var(--cream)]" style={{ fontSize: 34, fontWeight: 900, fontFamily: "'Sora', sans-serif" }}>{centerBig}</text>
+        {centerSub && <text x="0" y={innerR * 0.55} textAnchor="middle" className="fill-[var(--sage-dim)]" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", fontFamily: "'Sora', sans-serif" }}>{centerSub}</text>}
       </g>
     </svg>
   );

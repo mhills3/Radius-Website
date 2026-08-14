@@ -5,7 +5,7 @@ import { flightMapImageUrl } from "@/lib/flightMap";
 import DiscGraphic from "@/components/bag/DiscGraphic";
 
 const HEAD = "font-[family-name:var(--font-heading)]";
-const MONO = { fontFamily: "var(--font-heading)" } as const;
+const MONO = { fontFamily: "'Sora', sans-serif" } as const;
 const fmtToPar = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `−${Math.abs(n)}`);
 const scoreColor = (n: number) => (n < 0 ? "#5fcf80" : n === 0 ? "#F4F1E8" : "#E8B560");
 const fmtDate = (ms: number) => new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });

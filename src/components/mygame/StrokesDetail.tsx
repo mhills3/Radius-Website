@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import type { StrokesGained, PuttBand } from "@/lib/rounds";
 
 const HEAD = "font-[family-name:var(--font-heading)]";
-const MONO = { fontFamily: "var(--font-heading)" } as const;
+const MONO = { fontFamily: "'Sora', sans-serif" } as const;
 const GOLD = "#E8B560", GREEN = "#8FBF9A";
 
 export type StrokesCategory = "putting" | "tee" | "approach";

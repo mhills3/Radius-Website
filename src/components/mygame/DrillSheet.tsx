@@ -5,7 +5,7 @@ import type { PlanDrill } from "@/lib/drills";
 
 const HEAD = "font-[family-name:var(--font-heading)]";
 const BODY = "font-[family-name:var(--font-body)]";
-const MONO = { fontFamily: "var(--font-heading)" } as const;
+const MONO = { fontFamily: "'Sora', sans-serif" } as const;
 const GOLD = "#E8B560", INK = "#F4F1E8", SAGE = "#8FA08A", DIM = "#3E4B3F", EB = "#4A5A48";
 
 /** A single prescribed drill — the goal, time, level, and a personal "mark done" for the week. */

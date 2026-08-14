@@ -33,10 +33,10 @@ function Gauge({ value, label, tint }: { value: number | null; label: string; ti
         </g>
         <text x={size / 2} y={size / 2} textAnchor="middle" dominantBaseline="central">
           {shown == null
-            ? <tspan style={{ fontSize: 30, fontWeight: 800, fontFamily: "var(--font-heading)", fill: "rgba(255,255,255,0.35)" }}>––</tspan>
+            ? <tspan style={{ fontSize: 30, fontWeight: 800, fontFamily: "'Sora', sans-serif", fill: "rgba(255,255,255,0.35)" }}>––</tspan>
             : <>
-                <tspan style={{ fontSize: 31, fontWeight: 800, fontFamily: "var(--font-heading)", fill: RING.ink }}>{shown}</tspan>
-                <tspan dx="1" dy="-9" style={{ fontSize: 14, fontWeight: 700, fontFamily: "var(--font-heading)", fill: "rgba(255,255,255,0.5)" }}>%</tspan>
+                <tspan style={{ fontSize: 31, fontWeight: 800, fontFamily: "'Sora', sans-serif", fill: RING.ink }}>{shown}</tspan>
+                <tspan dx="1" dy="-9" style={{ fontSize: 14, fontWeight: 700, fontFamily: "'Sora', sans-serif", fill: "rgba(255,255,255,0.5)" }}>%</tspan>
               </>}
         </text>
       </svg>

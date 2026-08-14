@@ -14,7 +14,7 @@ import { PLAN_DRILLS, PUTTING_DRILLS, C1_TIERS, C2_TIERS, DRIVE_TIERS, skillForL
 // Editorial treatment: hairline rules instead of cards, one hero number, a benchmark scale.
 const HEAD = "font-[family-name:var(--font-heading)]";
 const BODY = "font-[family-name:var(--font-body)]";
-const MONO = { fontFamily: "var(--font-heading)" } as const;
+const MONO = { fontFamily: "'Sora', sans-serif" } as const;
 const INK = "#F4F1E8", GOLD = "#E8B560", EB = "#4A5A48", DIM = "#3E4B3F", SAGE = "#8FA08A", SAGE2 = "#5E6E5C", GREEN = "#8FBF9A", RED = "#C87F6A";
 const HAIR = "rgba(244,241,232,0.08)"; // the site's --hair, so the Improve tab sits on the same green as the rest
 const eb = `${HEAD} text-[9px] font-black uppercase tracking-[0.22em]`;

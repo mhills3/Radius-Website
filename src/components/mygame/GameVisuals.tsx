@@ -10,7 +10,8 @@ import Link from "next/link";
 
 const HEAD = "font-[family-name:var(--font-heading)]";
 const BODY = "font-[family-name:var(--font-body)]";
-const MONO = { fontFamily: "var(--font-heading)" } as const;
+// Use the loaded Sora family literally — CSS vars for font-family can silently fall back inside SVG <text>.
+const MONO = { fontFamily: "'Sora', sans-serif" } as const;
 const INK = "#F4F1E8", GOLD = "#E8B560", SALMON = "#C87F6A", EB = "#4A5A48", DIM = "#3E4B3F", SAGE = "#8FA08A", GRID = "#1B241E", HAIR = "rgba(244,241,232,0.08)";
 const eb = `${HEAD} text-[11px] font-black uppercase tracking-[0.2em]`;
 const svgFill = { width: "100%", height: "auto", display: "block" } as const;
@@ -210,7 +211,7 @@ function BagMap({ bag }: { bag: ReturnType<typeof bagMeasured> }) {
       <text x="278" y="244" fill="#2A362D" fontSize="8.5" style={MONO}>{Math.round(hi)} ft</text>
       <text x="6" y="26" fill="#2A362D" fontSize="8.5" style={MONO}>over</text><text x="4" y="220" fill="#2A362D" fontSize="8.5" style={MONO}>under</text>
       {bag.gap && <><rect x={x(bag.gap.lo)} y="26" width={x(bag.gap.hi) - x(bag.gap.lo)} height="196" fill={SALMON} opacity="0.07" /><text x={(x(bag.gap.lo) + x(bag.gap.hi)) / 2} y="122" fill={SALMON} fontSize="9" style={MONO} textAnchor="middle" opacity="0.8">gap</text></>}
-      {bag.discs.map((d) => <g key={d.name}><circle cx={x(d.distance)} cy={y(d.stability)} r="8" fill={col(d.stability)} /><text x={x(d.distance)} y={y(d.stability) + 20} fill="#5E6E5C" fontSize="8" style={{ fontFamily: "Sora,sans-serif" }} textAnchor="middle">{d.name.length > 8 ? d.name.slice(0, 7) + "…" : d.name}</text></g>)}
+      {bag.discs.map((d) => <g key={d.name}><circle cx={x(d.distance)} cy={y(d.stability)} r="8" fill={col(d.stability)} /><text x={x(d.distance)} y={y(d.stability) + 20} fill="#5E6E5C" fontSize="8" style={{ fontFamily: "'Sora', sans-serif" }} textAnchor="middle">{d.name.length > 8 ? d.name.slice(0, 7) + "…" : d.name}</text></g>)}
     </svg>
   );
 }

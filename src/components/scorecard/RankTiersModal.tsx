@@ -6,7 +6,7 @@ import { TierEmblem } from "@/components/scorecard/LevelBadge";
 
 const HEAD = "font-[family-name:var(--font-heading)]";
 const BODY = "font-[family-name:var(--font-body)]";
-const MONO = { fontFamily: "var(--font-heading)" } as const;
+const MONO = { fontFamily: "'Sora', sans-serif" } as const;
 
 /** The full 6-tier rank ladder, opened from the Game IQ emblem. Highlights the viewer's tier. */
 export default function RankTiersModal({ iq, onClose }: { iq: number; onClose: () => void }) {

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { PuttingSession, RangeSession } from "@/lib/sessions";
 
 const HEAD = "font-[family-name:var(--font-heading)]";
-const MONO = { fontFamily: "var(--font-heading)" } as const;
+const MONO = { fontFamily: "'Sora', sans-serif" } as const;
 const GOLD = "#E8B560", GREEN = "#5fcf80", ORANGE = "#e0873f", RED = "#e0473f";
 const eyebrow = `${HEAD} text-[9px] font-black uppercase tracking-[0.2em] text-[#4A5A48]`;
 const fmtDate = (ms: number) => (ms ? new Date(ms).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : "—");
