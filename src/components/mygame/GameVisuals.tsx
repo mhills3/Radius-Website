@@ -29,6 +29,40 @@ function holeColor(v: number): string {
 }
 const relLabel = (v: number) => { if (Math.abs(v) < 0.05) return ".0"; const s = v < 0 ? "−" : "+"; return s + Math.abs(v).toFixed(1).replace(/^0/, ""); };
 
+// Illustrative sample data — shown (clearly badged) only when a player hasn't logged enough GPS-tracked
+// shots yet, so the visual reads as intended instead of sitting empty. Never presented as real numbers.
+const SAMPLE_DISP: ReturnType<typeof driveDispersion> = {
+  points: [
+    { offset: -18, distance: 355, ob: false }, { offset: 6, distance: 405, ob: false }, { offset: 14, distance: 390, ob: false },
+    { offset: 24, distance: 340, ob: false }, { offset: 9, distance: 425, ob: false }, { offset: -7, distance: 380, ob: false },
+    { offset: 17, distance: 360, ob: false }, { offset: 34, distance: 325, ob: true }, { offset: 11, distance: 400, ob: false },
+    { offset: 21, distance: 370, ob: false }, { offset: -22, distance: 345, ob: true }, { offset: 8, distance: 395, ob: false },
+    { offset: 28, distance: 335, ob: false }, { offset: 19, distance: 410, ob: false }, { offset: 5, distance: 385, ob: false },
+    { offset: 13, distance: 375, ob: false },
+  ],
+  avgOffset: 11, count: 16,
+};
+const SAMPLE_BAG: ReturnType<typeof bagMeasured> = {
+  discs: [
+    { name: "Putter", distance: 230, stability: 0.5, count: 9 },
+    { name: "Midrange", distance: 300, stability: 0.5, count: 11 },
+    { name: "Fairway", distance: 355, stability: 1.5, count: 8 },
+    { name: "Control", distance: 400, stability: 1.0, count: 7 },
+    { name: "Roller", distance: 415, stability: -1.5, count: 4 },
+    { name: "Distance", distance: 440, stability: 2.5, count: 6 },
+  ],
+  gap: { lo: 230, hi: 300 }, minD: 230, maxD: 440,
+};
+// Wraps a chart drawn from sample data with an unmistakable badge + dim, so it's never mistaken for real.
+function SampleWrap({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative" style={{ opacity: 0.92 }}>
+      <span className={`${HEAD} absolute right-0 top-0 z-10 rounded-full border px-2 py-[2.5px] text-[8.5px] font-black uppercase tracking-[0.2em]`} style={{ borderColor: "rgba(232,181,96,0.45)", color: GOLD, background: "rgba(20,27,22,0.6)" }}>Sample</span>
+      {children}
+    </div>
+  );
+}
+
 export default function GameVisuals({ iq, rankText, meta, insight, rounds, range, catalog, putterNames }: {
   iq: number; rankText: string; meta: string; insight: string; rounds: DecodedRound[]; range: RangeSession[]; catalog: DbDisc[]; putterNames: Set<string>;
 }) {
@@ -58,14 +92,14 @@ export default function GameVisuals({ iq, rankText, meta, insight, rounds, range
       {/* row 1: dispersion + bag */}
       <div className="flex flex-col gap-14 lg:flex-row">
         <div className="min-w-0 flex-1">
-          <Head label="Where your drives land" sub={`${disp.count} measured tee shots, relative to the target line`} />
+          <Head label="Where your drives land" sub={disp.count >= 4 ? `${disp.count} measured tee shots, relative to the target line` : "How your tee shots scatter around the target line"} />
           {disp.count >= 4 ? <><Dispersion disp={disp} /><Caption>{Math.abs(disp.avgOffset) >= 6 ? <>Your average drive lands <b style={{ color: INK }}>{Math.abs(Math.round(disp.avgOffset))} ft {disp.avgOffset > 0 ? "right" : "left"}</b> of target. That&apos;s a consistent aim bias, not spray.</> : "Your drives sit right on the target line — no aim bias to correct."}</Caption></>
-            : <Empty>Play GPS-tracked rounds (or run a measured range session) and your drive dispersion plots here.</Empty>}
+            : <><SampleWrap><Dispersion disp={SAMPLE_DISP} /></SampleWrap><Caption>Sample pattern — play GPS-tracked rounds (or run a measured range session) and your real dispersion replaces this.</Caption></>}
         </div>
         <div className="min-w-0 flex-1">
           <Head label="Your bag, measured" sub="Actual distance and fade, with the gaps" />
           {bag.discs.length >= 3 ? <><BagMap bag={bag} /><Caption>{bag.gap ? <>Nothing covers <b style={{ color: INK }}>{bag.gap.lo}–{bag.gap.hi} ft</b>. That&apos;s a slot you throw around instead of through.</> : "Your distances ladder up cleanly — no obvious gaps in the bag."}</Caption></>
-            : <Empty>Throw a few more discs off the tee and your measured distance ladder builds here.</Empty>}
+            : <><SampleWrap><BagMap bag={SAMPLE_BAG} /></SampleWrap><Caption>Sample ladder — throw a few GPS-tracked drives and this fills with your real distances and gaps.</Caption></>}
         </div>
       </div>
       <Hair />
