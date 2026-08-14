@@ -8,7 +8,7 @@ import LevelBadge from "@/components/scorecard/LevelBadge";
 
 // ---- palette (matches app Theme) ----
 const HEAD = "font-[family-name:var(--font-heading)]";
-const MONO = { fontFamily: "var(--font-mono-stack, 'JetBrains Mono', monospace)" } as const;
+const MONO = { fontFamily: "var(--font-heading)" } as const;
 const ft = (n: number) => `${Math.round(n)} ft`;
 const relBadge = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `−${Math.abs(n)}`);
 const relColor = (n: number) => (n < 0 ? "#7fd39a" : n > 0 ? "#eb9166" : "var(--cream)");

@@ -22,7 +22,7 @@ import RoundsHeatmap from "@/components/dashboard/RoundsHeatmap";
 // --- one type + color system for the whole page ---
 const HEAD = "font-[family-name:var(--font-heading)]";   // Sora — headings + labels
 const BODY = "font-[family-name:var(--font-body)]";      // Inter — prose
-const MONO = { fontFamily: "var(--font-mono-stack, 'JetBrains Mono', monospace)" } as const; // all numerals
+const MONO = { fontFamily: "var(--font-heading)" } as const; // all numerals
 // Section label: identical size / tracking / color everywhere. Pair with `mb-3` for its content gap.
 const label = `${HEAD} text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--sage-dim)]`;
 const divider = "border-[var(--hair)]";
@@ -108,8 +108,8 @@ function StatRing({ value, unit, frac, label, size = 68 }: { value: string; unit
           <circle r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={sw} />
           {frac != null && <circle r={r} fill="none" stroke="var(--gold)" strokeWidth={sw} strokeLinecap="round" strokeDasharray={`${p * C} ${C}`} transform="rotate(-90)" />}
           <text textAnchor="middle" dominantBaseline="central" y="0">
-            <tspan style={{ fontSize: size * 0.235, fontWeight: 800, fontFamily: "var(--font-mono-stack, 'JetBrains Mono', monospace)", fill: "var(--cream)" }}>{value}</tspan>
-            {unit && <tspan dx="1" style={{ fontSize: size * 0.13, fontWeight: 700, fontFamily: "var(--font-mono-stack, 'JetBrains Mono', monospace)", fill: "var(--sage-dim)" }}>{unit}</tspan>}
+            <tspan style={{ fontSize: size * 0.235, fontWeight: 800, fontFamily: "var(--font-heading)", fill: "var(--cream)" }}>{value}</tspan>
+            {unit && <tspan dx="1" style={{ fontSize: size * 0.13, fontWeight: 700, fontFamily: "var(--font-heading)", fill: "var(--sage-dim)" }}>{unit}</tspan>}
           </text>
         </g>
       </svg>

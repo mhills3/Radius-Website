@@ -9,7 +9,7 @@ import LevelBadge from "@/components/scorecard/LevelBadge";
 
 const HEAD = "font-[family-name:var(--font-heading)]";
 const BODY = "font-[family-name:var(--font-body)]";
-const MONO = { fontFamily: "var(--font-mono-stack, 'JetBrains Mono', monospace)" } as const;
+const MONO = { fontFamily: "var(--font-heading)" } as const;
 const INK = "#F4F1E8", GOLD = "#E8B560", SALMON = "#C87F6A", EB = "#4A5A48", DIM = "#3E4B3F", SAGE = "#8FA08A", GRID = "#1B241E", HAIR = "rgba(244,241,232,0.08)";
 const eb = `${HEAD} text-[11px] font-black uppercase tracking-[0.2em]`;
 const svgFill = { width: "100%", height: "auto", display: "block" } as const;

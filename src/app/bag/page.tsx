@@ -44,7 +44,7 @@ function MyGameInner() {
         <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(20,27,22,0.45) 0%, rgba(20,27,22,0.66) 42%, rgba(20,27,22,0.9) 74%, var(--bg-deep) 96%)" }} />
       </div>
       <div className="relative z-10 mx-auto max-w-6xl px-6 pt-8">
-        <div className="font-mono text-[10px] font-bold uppercase tracking-[0.24em] text-[var(--gold)]">Your game</div>
+        <div className="font-[family-name:var(--font-heading)] text-[10px] font-bold uppercase tracking-[0.24em] text-[var(--gold)]">Your game</div>
         <h1 className="mt-1 font-[family-name:var(--font-heading)] text-3xl font-black tracking-[-0.02em] sm:text-4xl">My Game</h1>
 
         {/* iOS-style top tab bar — icon + caps label, gold underline on the active tab */}
