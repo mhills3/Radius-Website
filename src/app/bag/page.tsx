@@ -35,17 +35,27 @@ function MyGameInner() {
 
   return (
     <div className="relative min-h-screen text-[var(--cream)]">
-      {/* subtle on-brand backdrop: a forest lift up top, a faint warm ambient, and barely-there
-          concentric "radius" rings — depth without pulling focus off the data */}
+      {/* instrument-panel backdrop: deepened forest-black, a fine major/minor technical grid, and real
+          film grain so it reads tactile rather than flat-digital — Whoop/cockpit, not a gradient */}
       <div aria-hidden className="pointer-events-none fixed inset-0" style={{
         zIndex: -1,
-        background: [
-          "repeating-radial-gradient(circle at 84% 10%, transparent 0 90px, rgba(244,241,232,0.014) 90px 92px)",
-          "radial-gradient(1100px 560px at 50% -8%, rgba(52,72,58,0.5), transparent 62%)",
-          "radial-gradient(820px 520px at 88% 16%, rgba(232,181,96,0.05), transparent 55%)",
-          "var(--bg-deep)",
+        backgroundColor: "#0F140F",
+        backgroundImage: [
+          // major grid (every 170px) — structure
+          "repeating-linear-gradient(0deg, rgba(244,241,232,0.03) 0 1px, transparent 1px 170px)",
+          "repeating-linear-gradient(90deg, rgba(244,241,232,0.03) 0 1px, transparent 1px 170px)",
+          // minor grid (every 34px) — fine ruling
+          "repeating-linear-gradient(0deg, rgba(244,241,232,0.016) 0 1px, transparent 1px 34px)",
+          "repeating-linear-gradient(90deg, rgba(244,241,232,0.016) 0 1px, transparent 1px 34px)",
         ].join(", "),
-      }} />
+      }}>
+        <div className="absolute inset-0" style={{
+          backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
+          backgroundSize: "140px 140px",
+          opacity: 0.06,
+          mixBlendMode: "overlay",
+        }} />
+      </div>
       <div className="mx-auto max-w-6xl px-6 pt-8">
         <div className="font-mono text-[10px] font-bold uppercase tracking-[0.24em] text-[var(--gold)]">Your game</div>
         <h1 className="mt-1 font-[family-name:var(--font-heading)] text-3xl font-black tracking-[-0.02em] sm:text-4xl">My Game</h1>
