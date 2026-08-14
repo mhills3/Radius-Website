@@ -36,24 +36,24 @@ function StackBar({ label, value, tiers, unit, gold }: { label: string; value: n
     else { const nx = tiers[cur + 1]; caption = nx ? `${tiers[cur].name} range. ${nx.name} starts at ${fmtEdge(nx.start, unit)}${unit === "%" ? "" : ` ${unit}`}.` : `${tiers[cur].name} range — top of the ladder.`; }
   }
   return (
-    <div className="mb-7">
-      <div className="mb-3 flex items-baseline">
-        <span className="flex-1 text-[14px] font-semibold" style={{ color: INK }}>{label}</span>
-        <span className={`${HEAD} text-[15px] font-bold`} style={{ ...MONO, color: gold ? GOLD : INK }}>{has ? (unit === "%" ? `${Math.round(v)}%` : `${Math.round(v)} ${unit}`) : "—"}</span>
+    <div className="mb-9">
+      <div className="mb-3.5 flex items-baseline">
+        <span className="flex-1 text-[16px] font-semibold" style={{ color: INK }}>{label}</span>
+        <span className={`${HEAD} text-[18px] font-bold`} style={{ ...MONO, color: gold ? GOLD : INK }}>{has ? (unit === "%" ? `${Math.round(v)}%` : `${Math.round(v)} ${unit}`) : "—"}</span>
       </div>
-      <div className="relative flex" style={{ height: 9, gap: 3 }}>
+      <div className="relative flex" style={{ height: 12, gap: 3 }}>
         {tiers.map((t, i) => <div key={t.name} className="flex-1 rounded-[2px]" style={{ background: TIER_SHADES[i], boxShadow: cur === i ? `inset 0 0 0 1.5px ${GOLD}` : "none" }} />)}
         {has && <div className="absolute" style={{ left: `${needle}%`, top: -3, bottom: -3, width: 2, transform: "translateX(-1px)", background: INK, borderRadius: 1 }} />}
       </div>
-      <div className="mt-2 flex" style={{ gap: 3 }}>
+      <div className="mt-2.5 flex" style={{ gap: 3 }}>
         {tiers.map((t, i) => (
           <div key={t.name} className="flex-1 text-center">
-            <div style={{ fontSize: 8, letterSpacing: "0.03em", textTransform: "uppercase", fontWeight: 700, color: cur === i ? GOLD : EB }}>{t.name}</div>
-            <div style={{ ...MONO, fontSize: 9, color: cur === i ? GOLD : DIM, marginTop: 3 }}>{t.start}{i === n - 1 ? "+" : `–${t.end}`}</div>
+            <div style={{ fontSize: 9.5, letterSpacing: "0.03em", textTransform: "uppercase", fontWeight: 700, color: cur === i ? GOLD : EB }}>{t.name}</div>
+            <div style={{ ...MONO, fontSize: 10.5, color: cur === i ? GOLD : DIM, marginTop: 3 }}>{t.start}{i === n - 1 ? "+" : `–${t.end}`}</div>
           </div>
         ))}
       </div>
-      <div className={`${BODY} mt-3 text-[11.5px]`} style={{ color: SAGE2 }}>{caption}</div>
+      <div className={`${BODY} mt-3.5 text-[13px]`} style={{ color: SAGE2 }}>{caption}</div>
     </div>
   );
 }
@@ -321,42 +321,42 @@ export default function MyGameImprove({ uid }: { uid: string }) {
         </div>
 
         {/* ===== RIGHT: stack up · transfer · practice ===== */}
-        <div className="w-full shrink-0 lg:w-[360px]">
-          <div className={`${eb} mb-5`} style={{ color: EB }}>How you stack up</div>
+        <div className="w-full shrink-0 lg:w-[420px]">
+          <div className={`${eb} mb-6 text-[10px]`} style={{ color: EB }}>How you stack up</div>
           <StackBar label="Circle 1 putting" value={career?.c1.pct != null ? career.c1.pct * 100 : null} tiers={C1_TIERS} unit="%" />
           <StackBar label="Circle 2 putting" value={career?.c2.pct != null ? career.c2.pct * 100 : null} tiers={C2_TIERS} unit="%" gold />
           <StackBar label="Drive distance" value={career?.avgDriveFt ?? null} tiers={DRIVE_TIERS} unit="ft" />
 
           <Hair />
-          <div className={`${eb} mb-5 mt-6`} style={{ color: EB }}>Is it working</div>
-          <div className="mb-4 flex">
+          <div className={`${eb} mb-6 mt-7 text-[10px]`} style={{ color: EB }}>Is it working</div>
+          <div className="mb-5 flex">
             {[{ v: onCourseC2.pct != null ? `${Math.round(onCourseC2.pct * 100)}%` : "—", l: "C2 on course" }, { v: practiceC2.pct != null ? `${Math.round(practiceC2.pct * 100)}%` : "—", l: "C2 in practice", gold: true }, { v: `${sessions}`, l: "Sessions" }].map((s, i, arr) => (
               <div key={i} className="flex-1" style={{ textAlign: i === 0 ? "left" : i === arr.length - 1 ? "right" : "center" }}>
-                <div style={{ ...MONO, fontSize: 26, fontWeight: 700, color: s.gold ? GOLD : INK, lineHeight: 1, letterSpacing: "-0.03em" }}>{s.v}</div>
-                <div style={{ fontSize: 8.5, letterSpacing: "0.12em", textTransform: "uppercase", color: DIM, marginTop: 9 }}>{s.l}</div>
+                <div style={{ ...MONO, fontSize: 34, fontWeight: 700, color: s.gold ? GOLD : INK, lineHeight: 1, letterSpacing: "-0.03em" }}>{s.v}</div>
+                <div style={{ fontSize: 9.5, letterSpacing: "0.12em", textTransform: "uppercase", color: DIM, marginTop: 11 }}>{s.l}</div>
               </div>
             ))}
           </div>
-          <p className={BODY} style={{ color: SAGE2, fontSize: 12.5, lineHeight: 1.65, marginBottom: 28 }}>{transfer}</p>
+          <p className={BODY} style={{ color: SAGE2, fontSize: 14, lineHeight: 1.65, marginBottom: 34 }}>{transfer}</p>
 
           <Hair />
-          <div className={`${eb} mb-4 mt-6`} style={{ color: EB }}>Practice</div>
-          <button onClick={() => setReview("putting")} className="flex w-full items-center pb-[15px]" style={{ borderBottom: `1px solid ${HAIR}`, marginBottom: 15 }}>
-            <div className="flex-1 text-left"><div style={{ color: INK, fontSize: 13.5, fontWeight: 600 }}>Putting</div><div style={{ ...MONO, fontSize: 10, color: DIM, marginTop: 5 }}>{putting.length ? `${putting.length} session${putting.length === 1 ? "" : "s"} · structured C1 / C2 sets` : "Structured C1 / C2 sets"}</div></div>
-            <span className={BODY} style={{ color: GOLD, fontSize: 11.5 }}>Review ↗</span>
+          <div className={`${eb} mb-5 mt-7 text-[10px]`} style={{ color: EB }}>Practice</div>
+          <button onClick={() => setReview("putting")} className="flex w-full items-center pb-[18px]" style={{ borderBottom: `1px solid ${HAIR}`, marginBottom: 18 }}>
+            <div className="flex-1 text-left"><div style={{ color: INK, fontSize: 16, fontWeight: 600 }}>Putting</div><div style={{ ...MONO, fontSize: 11.5, color: DIM, marginTop: 6 }}>{putting.length ? `${putting.length} session${putting.length === 1 ? "" : "s"} · structured C1 / C2 sets` : "Structured C1 / C2 sets"}</div></div>
+            <span className={BODY} style={{ color: GOLD, fontSize: 13.5 }}>Review ↗</span>
           </button>
-          <button onClick={() => setReview("range")} className="flex w-full items-center" style={{ borderBottom: `1px solid ${HAIR}`, paddingBottom: 15, marginBottom: 18 }}>
-            <div className="flex-1 text-left"><div style={{ color: INK, fontSize: 13.5, fontWeight: 600 }}>Driving range</div><div style={{ ...MONO, fontSize: 10, color: DIM, marginTop: 5 }}>{range.length ? `${range.length} session${range.length === 1 ? "" : "s"} · measured distance and shape` : "Measured distance and shape"}</div></div>
-            <span className={BODY} style={{ color: GOLD, fontSize: 11.5 }}>Review ↗</span>
+          <button onClick={() => setReview("range")} className="flex w-full items-center" style={{ borderBottom: `1px solid ${HAIR}`, paddingBottom: 18, marginBottom: 22 }}>
+            <div className="flex-1 text-left"><div style={{ color: INK, fontSize: 16, fontWeight: 600 }}>Driving range</div><div style={{ ...MONO, fontSize: 11.5, color: DIM, marginTop: 6 }}>{range.length ? `${range.length} session${range.length === 1 ? "" : "s"} · measured distance and shape` : "Measured distance and shape"}</div></div>
+            <span className={BODY} style={{ color: GOLD, fontSize: 13.5 }}>Review ↗</span>
           </button>
 
           {/* putting drill reference — the app's GPS trainer set */}
-          <div className={`${eb} mb-1`} style={{ color: EB }}>Putting drills in the app</div>
-          <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3">
+          <div className={`${eb} mb-1 text-[10px]`} style={{ color: EB }}>Putting drills in the app</div>
+          <div className="mt-4 grid grid-cols-2 gap-x-5 gap-y-4">
             {PUTTING_DRILLS.map((d) => (
               <div key={d.name} title={d.detail}>
-                <div style={{ color: INK, fontSize: 12.5, fontWeight: 600 }}>{d.name}</div>
-                <div style={{ ...MONO, fontSize: 9, color: DIM, marginTop: 2 }}>{d.band}</div>
+                <div style={{ color: INK, fontSize: 14.5, fontWeight: 600 }}>{d.name}</div>
+                <div style={{ ...MONO, fontSize: 10.5, color: DIM, marginTop: 3 }}>{d.band}</div>
               </div>
             ))}
           </div>
