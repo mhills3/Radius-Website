@@ -241,8 +241,11 @@ export default function MyGameImprove({ uid }: { uid: string }) {
     if (sessions < 5 || onCourseC2.att < 20 || practiceC2.att < 20) return `${sessions} session${sessions === 1 ? "" : "s"} in. Not enough on-course data yet to tell if it's transferring.`;
     if (pPct == null || cPct == null) return `${sessions} sessions in. Keep logging to see if it's transferring.`;
     if (cPct >= pPct - 0.05) return "It's transferring — your on-course C2 is tracking your practice numbers.";
-    return `Practice is ahead of the course — ${Math.round(pPct * 100)}% in practice vs ${Math.round(cPct * 100)}% in rounds. Keep taking the reps to the card.`;
-  }, [sessions, practiceC2, onCourseC2]);
+    // don't leak the gated C2 numbers in the prose for free users
+    return pro
+      ? `Practice is ahead of the course — ${Math.round(pPct * 100)}% in practice vs ${Math.round(cPct * 100)}% in rounds. Keep taking the reps to the card.`
+      : "Practice is ahead of the course — keep taking the reps to the card.";
+  }, [sessions, practiceC2, onCourseC2, pro]);
 
   if (!rounds) return <div className="flex min-h-[40vh] items-center justify-center text-[var(--sage)]"><svg className="h-6 w-6 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg></div>;
 
@@ -338,9 +341,11 @@ export default function MyGameImprove({ uid }: { uid: string }) {
           <Hair />
           <div className={`${eb} mb-6 mt-7 text-[10px]`} style={{ color: EB }}>Is it working</div>
           <div className="mb-5 flex">
-            {[{ v: onCourseC2.pct != null ? `${Math.round(onCourseC2.pct * 100)}%` : "—", l: "C2 on course" }, { v: practiceC2.pct != null ? `${Math.round(practiceC2.pct * 100)}%` : "—", l: "C2 in practice", gold: true }, { v: `${sessions}`, l: "Sessions" }].map((s, i, arr) => (
+            {[{ v: onCourseC2.pct != null ? `${Math.round(onCourseC2.pct * 100)}%` : "—", l: "C2 on course", gate: true }, { v: practiceC2.pct != null ? `${Math.round(practiceC2.pct * 100)}%` : "—", l: "C2 in practice", gold: true, gate: true }, { v: `${sessions}`, l: "Sessions" }].map((s, i, arr) => (
               <div key={i} className="flex-1" style={{ textAlign: i === 0 ? "left" : i === arr.length - 1 ? "right" : "center" }}>
-                <div style={{ ...MONO, fontSize: 34, fontWeight: 700, color: s.gold ? GOLD : INK, lineHeight: 1, letterSpacing: "-0.03em" }}>{s.v}</div>
+                <div style={{ ...MONO, fontSize: 34, fontWeight: 700, color: s.gold ? GOLD : INK, lineHeight: 1, letterSpacing: "-0.03em" }}>
+                  {(!pro && s.gate && s.v !== "—") ? <span className="inline-block rounded-lg bg-white/[0.14] text-transparent blur-[1px] select-none">00%</span> : s.v}
+                </div>
                 <div style={{ fontSize: 9.5, letterSpacing: "0.12em", textTransform: "uppercase", color: DIM, marginTop: 11 }}>{s.l}</div>
               </div>
             ))}
