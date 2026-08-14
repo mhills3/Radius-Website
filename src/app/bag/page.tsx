@@ -35,25 +35,14 @@ function MyGameInner() {
 
   return (
     <div className="relative min-h-screen text-[var(--cream)]">
-      {/* instrument-panel backdrop: deepened forest-black, a fine major/minor technical grid, and real
-          film grain so it reads tactile rather than flat-digital — Whoop/cockpit, not a gradient */}
-      <div aria-hidden className="pointer-events-none fixed inset-0" style={{
-        zIndex: -1,
-        backgroundColor: "#0F140F",
-        backgroundImage: [
-          // major grid (every 170px) — structure
-          "repeating-linear-gradient(0deg, rgba(244,241,232,0.03) 0 1px, transparent 1px 170px)",
-          "repeating-linear-gradient(90deg, rgba(244,241,232,0.03) 0 1px, transparent 1px 170px)",
-          // minor grid (every 34px) — fine ruling
-          "repeating-linear-gradient(0deg, rgba(244,241,232,0.016) 0 1px, transparent 1px 34px)",
-          "repeating-linear-gradient(90deg, rgba(244,241,232,0.016) 0 1px, transparent 1px 34px)",
-        ].join(", "),
-      }}>
+      {/* Premium = restraint: a deep, richer forest-black canvas with just enough film grain to kill
+          the flat-digital banding. No pattern — the richness lives in the content, like Whoop/Arccos. */}
+      <div aria-hidden className="pointer-events-none fixed inset-0" style={{ zIndex: -1, backgroundColor: "#0D120F" }}>
         <div className="absolute inset-0" style={{
-          backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
-          backgroundSize: "140px 140px",
-          opacity: 0.06,
-          mixBlendMode: "overlay",
+          backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
+          backgroundSize: "160px 160px",
+          opacity: 0.05,
+          mixBlendMode: "soft-light",
         }} />
       </div>
       <div className="mx-auto max-w-6xl px-6 pt-8">
