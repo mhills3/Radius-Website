@@ -125,7 +125,7 @@ export default function Scorecard({ round, onClose, rounds }: { round: DecodedRo
               className={`inline-flex items-center gap-1.5 rounded-full px-5 py-1.5 text-sm font-bold transition-colors ${tab === t.key ? "bg-[#F4F1E8] text-[#141b16]" : "text-[var(--text-body)] hover:text-[var(--cream)]"}`}
             >
               {t.label}
-              {t.key === "insights" && !pro && (
+              {(t.key === "insights" || t.key === "stats") && !pro && (
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 opacity-80"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
               )}
             </button>
@@ -135,6 +135,7 @@ export default function Scorecard({ round, onClose, rounds }: { round: DecodedRo
         {tab === "scorecard" && <ScorecardTable holes={scHoles} player={{ name: profile?.name ?? "You", photo: profile?.profileImageUrl, username: profile?.username }} />}
 
         {tab === "stats" && (
+          <ProGate pro={pro} title="Round stats" blurb="Throw quality, fairway, scramble and putting for this round — see them with Radius Pro.">
           <div>
             <SectionRule>Performance</SectionRule>
             <div className="flex items-center justify-between rounded-2xl border border-white/[0.08] bg-white/[0.02] px-5 py-5">
@@ -171,6 +172,7 @@ export default function Scorecard({ round, onClose, rounds }: { round: DecodedRo
               <ScoreCard big={stats.worstHole ? `H${stats.worstHole.holeNumber} (${fmtHoleRel(stats.worstHole.rel)})` : "—"} label="Worst Hole" color={RING.red} />
             </div>
           </div>
+          </ProGate>
         )}
 
         {tab === "insights" && (

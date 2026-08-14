@@ -8,6 +8,8 @@ import { uploadProfileCover } from "@/lib/postImage";
 import { rankForIQ, rankLabel, rankProgress } from "@/lib/rank";
 import LevelBadge from "@/components/scorecard/LevelBadge";
 import RankTiersModal from "@/components/scorecard/RankTiersModal";
+import ProGate from "@/components/ProGate";
+import { usePro } from "@/lib/usePro";
 import { getDecodedRounds, computeCareerStats, computeStrokesGained, rankedCategories, type DecodedRound } from "@/lib/rounds";
 import { getAllCourses, slugify, type Course } from "@/lib/courses";
 import { getPutterDiscNames, getBag } from "@/lib/bag";
@@ -190,8 +192,18 @@ function HeroIQ({ iq, history }: { iq: number; history: { t: number; iq: number 
   );
 }
 
+// Renders the "what to work on" sentence, blurring only the marked performance stat (⟦…⟧) for free
+// users — keeps the coaching language intact but hides the number, like the rest of the site's gates.
+function WorkOnText({ text, pro }: { text: string; pro: boolean }) {
+  const parts = text.split(/⟦(.*?)⟧/); // even = plain text, odd = the stat
+  return <>{parts.map((p, i) => i % 2 === 1
+    ? (pro ? <span key={i}>{p}</span> : <span key={i} className="mx-0.5 inline-block translate-y-[1px] select-none rounded-[4px] bg-white/[0.07] px-1 blur-[6px]" aria-hidden>{p}</span>)
+    : <span key={i}>{p}</span>)}</>;
+}
+
 export default function HomeView({ uid }: { uid: string }) {
   const { profile } = useAuth();
+  const pro = usePro();
   const [rounds, setRounds] = useState<DecodedRound[] | null>(null);
   const [dash, setDash] = useState<Dashboard | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -311,15 +323,15 @@ export default function HomeView({ uid }: { uid: string }) {
     if (!sg || !career) return null;
     const leak = rankedCategories(sg).filter((c) => c.eligible)[0];
     if (leak) {
-      if (leak.id === "putting") return `Putting is where you're losing the most — ${sg.c1xPct}% on makeable putts inside 33 feet.`;
-      if (leak.id === "tee") return sg.teeObPct >= 10 ? `OB is the leak off the tee — ${sg.teeObPct}% of your drives.` : `Off the tee is your biggest leak — only ${sg.teeFairwayPct}% of your drives are finding the fairway.`;
-      if (leak.id === "approach") return `Your approach game is the leak — you're leaving ${sg.proximityAvgFt}-foot putts on average.`;
-      if (leak.id === "short") return `Around the green is costing you — you're saving just ${sg.scramblePct}% after trouble.`;
+      if (leak.id === "putting") return `Putting is where you're losing the most — ⟦${sg.c1xPct}%⟧ on makeable putts inside 33 feet.`;
+      if (leak.id === "tee") return sg.teeObPct >= 10 ? `OB is the leak off the tee — ⟦${sg.teeObPct}%⟧ of your drives.` : `Off the tee is your biggest leak — only ⟦${sg.teeFairwayPct}%⟧ of your drives are finding the fairway.`;
+      if (leak.id === "approach") return `Your approach game is the leak — you're leaving ⟦${sg.proximityAvgFt}-foot⟧ putts on average.`;
+      if (leak.id === "short") return `Around the green is costing you — you're saving just ⟦${sg.scramblePct}%⟧ after trouble.`;
     }
     // Not enough measured shots in any one category yet — still surface the most useful signal we have.
-    if (career.c1.att >= 3 && career.c1.pct != null) return `Sharpen your putting — you're at ${Math.round(career.c1.pct * 100)}% on makeable putts inside 33 feet.`;
-    if (career.teeAttempts >= 3 && career.fairwayPct != null) return `Off the tee — ${Math.round(career.fairwayPct * 100)}% of your drives are finding the fairway.`;
-    if (career.avgToPar != null) return `You're averaging ${career.avgToPar > 0 ? "+" : ""}${career.avgToPar.toFixed(1)} to par — track your shots to pinpoint the leak.`;
+    if (career.c1.att >= 3 && career.c1.pct != null) return `Sharpen your putting — you're at ⟦${Math.round(career.c1.pct * 100)}%⟧ on makeable putts inside 33 feet.`;
+    if (career.teeAttempts >= 3 && career.fairwayPct != null) return `Off the tee — ⟦${Math.round(career.fairwayPct * 100)}%⟧ of your drives are finding the fairway.`;
+    if (career.avgToPar != null) return `You're averaging ⟦${career.avgToPar > 0 ? "+" : ""}${career.avgToPar.toFixed(1)}⟧ to par — track your shots to pinpoint the leak.`;
     return "Play a shot-tracked round in the app and your focus builds itself.";
   }, [sg, career]);
 
@@ -403,7 +415,7 @@ export default function HomeView({ uid }: { uid: string }) {
             {workOn && (
               <div className={`border-b ${divider} pb-10`}>
                 <div className={`${label} mb-4`}>What to work on</div>
-                <p className={`${HEAD} max-w-2xl text-[30px] font-semibold leading-[1.28] text-[var(--cream)] sm:text-[34px]`}>{workOn}</p>
+                <p className={`${HEAD} max-w-2xl text-[30px] font-semibold leading-[1.28] text-[var(--cream)] sm:text-[34px]`}><WorkOnText text={workOn} pro={pro} /></p>
                 <Link href="/bag?tab=improve" className="mt-5 inline-block text-[15px] font-semibold text-[var(--gold)]">Open Improve →</Link>
               </div>
             )}
@@ -481,11 +493,13 @@ export default function HomeView({ uid }: { uid: string }) {
             {/* Your game — stat rings, mirroring the app */}
             <div className={`mt-6 border-b ${divider} pb-6`}>
               <div className={`${label} mb-5`}>Your game</div>
-              <div className="grid grid-cols-3 gap-2">
-                <StatRing size={86} label="C1X Putt" value={career && career.c1.att >= 3 && career.c1.pct != null ? `${Math.round(career.c1.pct * 100)}` : "—"} unit={career && career.c1.att >= 3 && career.c1.pct != null ? "%" : undefined} frac={career && career.c1.att >= 3 ? career.c1.pct : null} />
-                <StatRing size={86} label="Avg Drive" value={career?.avgDriveFt ? `${Math.round(career.avgDriveFt)}` : "—"} unit={career?.avgDriveFt ? "ft" : undefined} frac={career?.avgDriveFt ? career.avgDriveFt / 400 : null} />
-                <StatRing size={86} label="Fairway" value={career?.fairwayPct != null ? `${Math.round(career.fairwayPct * 100)}` : "—"} unit={career?.fairwayPct != null ? "%" : undefined} frac={career?.fairwayPct ?? null} />
-              </div>
+              <ProGate pro={pro} title="Your game" blurb="Your C1X putting, drive distance and fairway rate — see them with Radius Pro." className="!rounded-2xl">
+                <div className="grid grid-cols-3 gap-2">
+                  <StatRing size={86} label="C1X Putt" value={career && career.c1.att >= 3 && career.c1.pct != null ? `${Math.round(career.c1.pct * 100)}` : "—"} unit={career && career.c1.att >= 3 && career.c1.pct != null ? "%" : undefined} frac={career && career.c1.att >= 3 ? career.c1.pct : null} />
+                  <StatRing size={86} label="Avg Drive" value={career?.avgDriveFt ? `${Math.round(career.avgDriveFt)}` : "—"} unit={career?.avgDriveFt ? "ft" : undefined} frac={career?.avgDriveFt ? career.avgDriveFt / 400 : null} />
+                  <StatRing size={86} label="Fairway" value={career?.fairwayPct != null ? `${Math.round(career.fairwayPct * 100)}` : "—"} unit={career?.fairwayPct != null ? "%" : undefined} frac={career?.fairwayPct ?? null} />
+                </div>
+              </ProGate>
               <Link href="/bag" className="mt-5 inline-block text-[15px] font-semibold text-[var(--gold)]">Open My Game →</Link>
             </div>
 
