@@ -20,5 +20,8 @@ export const PRO_GATING_ENABLED = true;
 export function usePro(): boolean {
   const { profile } = useAuth();
   if (!PRO_GATING_ENABLED) return true; // gating disabled → treat everyone as Pro (nothing locked)
+  // Preview tool: append ?free to any URL to see the locked/free experience even on a Pro account.
+  // Only ever restricts your own view (never grants Pro), so it's safe to leave enabled.
+  if (typeof window !== "undefined" && new URLSearchParams(window.location.search).has("free")) return false;
   return isProEntitled(profile);
 }
