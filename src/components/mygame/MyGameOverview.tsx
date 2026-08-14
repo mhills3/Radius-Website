@@ -7,11 +7,13 @@ import { getPutterDiscNames, getDiscCatalog, type DbDisc } from "@/lib/bag";
 import { getPracticeSessions, type RangeSession } from "@/lib/sessions";
 import { rankForIQ, rankLabel } from "@/lib/rank";
 import GameVisuals from "@/components/mygame/GameVisuals";
+import { usePro } from "@/lib/usePro";
 
 const HEAD = "font-[family-name:var(--font-heading)]";
 const fmtToParAvg = (n: number | null) => (n == null ? "—" : `${n > 0 ? "+" : "−"}${Math.abs(n).toFixed(1)}`);
 
 export default function MyGameOverview({ uid }: { uid: string }) {
+  const pro = usePro();
   const [dash, setDash] = useState<Dashboard | null | undefined>(undefined);
   const [rounds, setRounds] = useState<DecodedRound[] | null>(null);
   const [range, setRange] = useState<RangeSession[]>([]);
@@ -45,5 +47,5 @@ export default function MyGameOverview({ uid }: { uid: string }) {
   const meta = `${career.rounds} round${career.rounds === 1 ? "" : "s"} · ${fmtToParAvg(career.avgToPar)} avg`;
   const insight = `You hit ${sg.teeFairwayPct}% of fairways and make ${sg.c1xPct}% inside the circle.${leak ? ` The strokes leak from your ${leak.name.toLowerCase()} — that's where the round is decided.` : ""}`;
 
-  return <GameVisuals iq={iq} rankText={rankText} meta={meta} insight={insight} rounds={rounds} range={range} catalog={catalog} putterNames={putterNames} />;
+  return <GameVisuals iq={iq} rankText={rankText} meta={meta} insight={insight} rounds={rounds} range={range} catalog={catalog} putterNames={putterNames} pro={pro} />;
 }

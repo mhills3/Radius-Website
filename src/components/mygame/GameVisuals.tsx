@@ -6,6 +6,7 @@ import type { RangeSession } from "@/lib/sessions";
 import type { DbDisc } from "@/lib/bag";
 import { driveDispersion, bagMeasured, holeByHole, latestSGRound, puttGreen } from "@/lib/gameViz";
 import LevelBadge from "@/components/scorecard/LevelBadge";
+import ProGate from "@/components/ProGate";
 
 const HEAD = "font-[family-name:var(--font-heading)]";
 const BODY = "font-[family-name:var(--font-body)]";
@@ -63,8 +64,8 @@ function SampleWrap({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function GameVisuals({ iq, rankText, meta, insight, rounds, range, catalog, putterNames }: {
-  iq: number; rankText: string; meta: string; insight: string; rounds: DecodedRound[]; range: RangeSession[]; catalog: DbDisc[]; putterNames: Set<string>;
+export default function GameVisuals({ iq, rankText, meta, insight, rounds, range, catalog, putterNames, pro = true }: {
+  iq: number; rankText: string; meta: string; insight: string; rounds: DecodedRound[]; range: RangeSession[]; catalog: DbDisc[]; putterNames: Set<string>; pro?: boolean;
 }) {
   const disp = useMemo(() => driveDispersion(rounds, range), [rounds, range]);
   const bag = useMemo(() => bagMeasured(rounds, catalog), [rounds, catalog]);
@@ -89,6 +90,8 @@ export default function GameVisuals({ iq, rankText, meta, insight, rounds, range
       <p className={BODY} style={{ color: INK, fontSize: 25, lineHeight: 1.5, maxWidth: 760, marginBottom: 4 }}>{insight}</p>
       <Hair />
 
+      {/* the breakdown/evidence is Pro (the Game IQ number + read above stay free) */}
+      <ProGate pro={pro} title="Unlock your evidence" blurb="Your miss pattern, measured bag, strokes gained and putting — the full breakdown is part of Radius Pro." className="!rounded-2xl">
       {/* row 1: dispersion + bag */}
       <div className="flex flex-col gap-14 lg:flex-row">
         <div className="min-w-0 flex-1">
@@ -134,6 +137,7 @@ export default function GameVisuals({ iq, rankText, meta, insight, rounds, range
             : <Empty>Shot-track your putts and your make/miss green plot builds here.</Empty>}
         </div>
       </div>
+      </ProGate>
     </div>
   );
 }

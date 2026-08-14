@@ -6,6 +6,8 @@ import { getPutterDiscNames } from "@/lib/bag";
 import { getPracticeSessions, type PuttingSession, type RangeSession } from "@/lib/sessions";
 import SessionReview from "@/components/mygame/SessionReview";
 import DrillSheet from "@/components/mygame/DrillSheet";
+import ProGate from "@/components/ProGate";
+import { usePro } from "@/lib/usePro";
 import { PLAN_DRILLS, PUTTING_DRILLS, C1_TIERS, C2_TIERS, DRIVE_TIERS, skillForLeak, skillLabel, missionFor, dayOfYear, weekKey, type Tier, type PlanDrill, type LeakId, type Skill } from "@/lib/drills";
 
 // Editorial treatment: hairline rules instead of cards, one hero number, a benchmark scale.
@@ -153,6 +155,7 @@ function buildFocus(leak: RankedCategory | undefined, sg: StrokesGained, c2Pct: 
 }
 
 export default function MyGameImprove({ uid }: { uid: string }) {
+  const pro = usePro();
   const [rounds, setRounds] = useState<DecodedRound[] | null>(null);
   const [putterNames, setPutterNames] = useState<Set<string>>(new Set());
   const [putting, setPutting] = useState<PuttingSession[]>([]);
@@ -252,25 +255,28 @@ export default function MyGameImprove({ uid }: { uid: string }) {
           {focus ? (
             <>
               <div className={`${HEAD} mb-4 mt-5 text-[26px] font-extrabold leading-tight`} style={{ color: INK }}>{focus.headline}</div>
-              <div className="mb-3.5 flex items-start gap-4">
-                <span style={{ ...MONO, fontSize: 72, fontWeight: 700, color: INK, lineHeight: 0.76, letterSpacing: "-0.055em" }}>{focus.heroValue}</span>
-                <span style={{ ...MONO, fontSize: 26, fontWeight: 500, color: DIM, paddingTop: 6 }}>{focus.heroUnit}</span>
-              </div>
-              <p className={BODY} style={{ color: SAGE, fontSize: 14.5, lineHeight: 1.65, maxWidth: 480, marginBottom: 30 }}>{focus.prose}</p>
+              {/* headline is the free hook; the numbers behind it are Pro (iOS "Unlock your numbers") */}
+              <ProGate pro={pro} title="Unlock your numbers" blurb="The number behind this week's focus, your trend, and where it falls off — see it all with Radius Pro." className="!rounded-2xl">
+                <div className="mb-3.5 flex items-start gap-4">
+                  <span style={{ ...MONO, fontSize: 72, fontWeight: 700, color: INK, lineHeight: 0.76, letterSpacing: "-0.055em" }}>{focus.heroValue}</span>
+                  <span style={{ ...MONO, fontSize: 26, fontWeight: 500, color: DIM, paddingTop: 6 }}>{focus.heroUnit}</span>
+                </div>
+                <p className={BODY} style={{ color: SAGE, fontSize: 14.5, lineHeight: 1.65, maxWidth: 480, marginBottom: 30 }}>{focus.prose}</p>
 
-              {focusTrend.length >= 3 && <><div className="mb-8"><Trend series={focusTrend} unit={trendUnit} lowerBetter={lowerBetter} /></div></>}
+                {focusTrend.length >= 3 && <><div className="mb-8"><Trend series={focusTrend} unit={trendUnit} lowerBetter={lowerBetter} /></div></>}
 
-              <Hair />
-              <div className={`${eb} mb-5 mt-6`} style={{ color: EB }}>{focus.fallLabel}</div>
-              {focus.falloff && <Falloff points={focus.falloff} />}
-              <div className="mb-8 flex">
-                {focus.readout.map((r, i) => (
-                  <div key={i} className="flex-1" style={{ textAlign: i === 0 ? "left" : i === focus.readout.length - 1 ? "right" : "center" }}>
-                    <div style={{ ...MONO, fontSize: 13, color: r.gold ? GOLD : INK }}>{r.value}</div>
-                    <div style={{ ...MONO, fontSize: 9, color: DIM, marginTop: 5 }}>{r.label}</div>
-                  </div>
-                ))}
-              </div>
+                <Hair />
+                <div className={`${eb} mb-5 mt-6`} style={{ color: EB }}>{focus.fallLabel}</div>
+                {focus.falloff && <Falloff points={focus.falloff} />}
+                <div className="mb-8 flex">
+                  {focus.readout.map((r, i) => (
+                    <div key={i} className="flex-1" style={{ textAlign: i === 0 ? "left" : i === focus.readout.length - 1 ? "right" : "center" }}>
+                      <div style={{ ...MONO, fontSize: 13, color: r.gold ? GOLD : INK }}>{r.value}</div>
+                      <div style={{ ...MONO, fontSize: 9, color: DIM, marginTop: 5 }}>{r.label}</div>
+                    </div>
+                  ))}
+                </div>
+              </ProGate>
 
               {/* today's move */}
               {mission && (
@@ -323,9 +329,11 @@ export default function MyGameImprove({ uid }: { uid: string }) {
         {/* ===== RIGHT: stack up · transfer · practice ===== */}
         <div className="w-full shrink-0 lg:w-[420px]">
           <div className={`${eb} mb-6 text-[10px]`} style={{ color: EB }}>How you stack up</div>
-          <StackBar label="Circle 1 putting" value={career?.c1.pct != null ? career.c1.pct * 100 : null} tiers={C1_TIERS} unit="%" />
-          <StackBar label="Circle 2 putting" value={career?.c2.pct != null ? career.c2.pct * 100 : null} tiers={C2_TIERS} unit="%" gold />
-          <StackBar label="Drive distance" value={career?.avgDriveFt ?? null} tiers={DRIVE_TIERS} unit="ft" />
+          <ProGate pro={pro} title="Unlock your skills" blurb="See exactly where you land against every level of player — with Radius Pro." className="!rounded-2xl">
+            <StackBar label="Circle 1 putting" value={career?.c1.pct != null ? career.c1.pct * 100 : null} tiers={C1_TIERS} unit="%" />
+            <StackBar label="Circle 2 putting" value={career?.c2.pct != null ? career.c2.pct * 100 : null} tiers={C2_TIERS} unit="%" gold />
+            <StackBar label="Drive distance" value={career?.avgDriveFt ?? null} tiers={DRIVE_TIERS} unit="ft" />
+          </ProGate>
 
           <Hair />
           <div className={`${eb} mb-6 mt-7 text-[10px]`} style={{ color: EB }}>Is it working</div>
