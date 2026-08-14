@@ -7,6 +7,7 @@ import { getPracticeSessions, type PuttingSession, type RangeSession } from "@/l
 import SessionReview from "@/components/mygame/SessionReview";
 import DrillSheet from "@/components/mygame/DrillSheet";
 import ProGate from "@/components/ProGate";
+import LockedStat from "@/components/LockedStat";
 import { usePro } from "@/lib/usePro";
 import { PLAN_DRILLS, PUTTING_DRILLS, C1_TIERS, C2_TIERS, DRIVE_TIERS, skillForLeak, skillLabel, missionFor, dayOfYear, weekKey, type Tier, type PlanDrill, type LeakId, type Skill } from "@/lib/drills";
 
@@ -344,7 +345,7 @@ export default function MyGameImprove({ uid }: { uid: string }) {
             {[{ v: onCourseC2.pct != null ? `${Math.round(onCourseC2.pct * 100)}%` : "—", l: "C2 on course", gate: true }, { v: practiceC2.pct != null ? `${Math.round(practiceC2.pct * 100)}%` : "—", l: "C2 in practice", gold: true, gate: true }, { v: `${sessions}`, l: "Sessions" }].map((s, i, arr) => (
               <div key={i} className="flex-1" style={{ textAlign: i === 0 ? "left" : i === arr.length - 1 ? "right" : "center" }}>
                 <div style={{ ...MONO, fontSize: 34, fontWeight: 700, color: s.gold ? GOLD : INK, lineHeight: 1, letterSpacing: "-0.03em" }}>
-                  {(!pro && s.gate && s.v !== "—") ? <span className="inline-block rounded-lg bg-white/[0.14] text-transparent blur-[1px] select-none">00%</span> : s.v}
+                  {(!pro && s.gate && s.v !== "—") ? <LockedStat>00%</LockedStat> : s.v}
                 </div>
                 <div style={{ fontSize: 9.5, letterSpacing: "0.12em", textTransform: "uppercase", color: DIM, marginTop: 11 }}>{s.l}</div>
               </div>

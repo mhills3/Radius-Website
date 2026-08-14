@@ -9,6 +9,7 @@ import { rankForIQ, rankLabel, rankProgress } from "@/lib/rank";
 import LevelBadge from "@/components/scorecard/LevelBadge";
 import RankTiersModal from "@/components/scorecard/RankTiersModal";
 import ProGate from "@/components/ProGate";
+import LockedStat from "@/components/LockedStat";
 import { usePro } from "@/lib/usePro";
 import { getDecodedRounds, computeCareerStats, computeStrokesGained, rankedCategories, type DecodedRound } from "@/lib/rounds";
 import { getAllCourses, slugify, type Course } from "@/lib/courses";
@@ -197,7 +198,7 @@ function HeroIQ({ iq, history }: { iq: number; history: { t: number; iq: number 
 function WorkOnText({ text, pro }: { text: string; pro: boolean }) {
   const parts = text.split(/⟦(.*?)⟧/); // even = plain text, odd = the stat
   return <>{parts.map((p, i) => i % 2 === 1
-    ? (pro ? <span key={i}>{p}</span> : <span key={i} className="mx-0.5 inline-block translate-y-[2px] select-none rounded-[5px] bg-white/[0.16] px-1.5 text-transparent blur-[1px]" aria-hidden>{p}</span>)
+    ? (pro ? <span key={i}>{p}</span> : <LockedStat key={i}>{p}</LockedStat>)
     : <span key={i}>{p}</span>)}</>;
 }
 
