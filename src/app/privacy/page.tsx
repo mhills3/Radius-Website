@@ -25,8 +25,9 @@ const HTML = `
 <p><strong>Bag and Disc Data:</strong> Information about the discs in your bag, including disc names, manufacturers, flight numbers, nicknames, condition, and usage statistics.</p>
 <p><strong>Photos and Camera:</strong> With your permission, we access your camera and photo library so you can scan discs with the Disc Scanner, set a profile photo, and add course or gallery photos. Images you choose to upload are stored as described in "How Your Data Is Stored and Synced." We only access photos you select or capture for these features.</p>
 <p><strong>Location Data:</strong> With your permission, we collect location data to provide course maps, satellite imagery, distance measurements, and weather conditions during gameplay, and to help you find local casual rounds and meetups. You control location access through your device settings (see "Device Permissions").</p>
+<p><strong>Precise Location During Play:</strong> When you use shot-by-shot tracking during a round, or the Driving Range practice tool, Radius records precise GPS coordinates for individual throws — including your release point, the disc's landing point, and the path walked between shots. These coordinates are stored in your account so you can review your shot maps, measured distances, dispersion, and strokes-gained analysis. This precise, per-throw location collection goes beyond finding nearby courses; it is active only while you are actively tracking a round or a range session, and you can stop it at any time by ending tracking or disabling location access.</p>
 <p><strong>Device and Technical Information:</strong> We may collect your device type and model, operating system and version, app version, language and region settings, app-instance identifiers, and general diagnostic, performance, and crash data. On Android this may include Android-specific device identifiers; on iOS it may include the iOS identifier-for-vendor. This information helps us operate the App, fix bugs, and improve performance.</p>
-<p><strong>User-Generated Content:</strong> Posts, comments, forum threads, course submissions, reviews, and other content you create within the community features of the Services.</p>
+<p><strong>User-Generated Content:</strong> Posts, comments, forum threads, course submissions and layout edits, course reviews, league and event names, and other content you create within the community features of the Services. This includes <strong>Stories</strong> — photos you upload that are shown to other users and are automatically deleted after 24 hours. For each Story, we also record which users viewed it and which users liked it (see "Information You Share With Other Players").</p>
 
 <h2>Device Permissions</h2>
 <p>Radius only requests the device permissions needed for features you use. You can grant or revoke each permission at any time:</p>
@@ -64,18 +65,19 @@ const HTML = `
 </ul>
 <p>Because Radius is cross-platform, data you create on one platform (for example, your bag or a round logged on Android) is synced through Firebase and can appear on your other signed-in devices and on the web dashboard.</p>
 
-<h2>AI and Machine Learning</h2>
+<h2>Machine Learning and Recommendations</h2>
 <p>Radius uses machine learning to power features like Caddy disc recommendations, Game IQ scoring, and Disc Scanner identification. These features process your gameplay data, bag configuration, and environmental conditions (wind, temperature, hole layout) to generate personalized recommendations. This processing occurs on our servers and through the third-party providers listed below; the data used to generate recommendations is not sold or shared for unrelated purposes, and is not used to train third-party models except as permitted under our agreements with those providers.</p>
 
 <h2>Analytics and Crash Reporting</h2>
-<p>To keep Radius reliable and to understand which features are used, we collect aggregate analytics and crash diagnostics:</p>
+<p>To keep Radius reliable and to understand which features are used, we collect aggregate analytics and crash diagnostics through the following named providers:</p>
 <ul>
-  <li><strong>Google Analytics for Firebase</strong> — measures aggregate, app-level usage on both the iOS and Android apps.</li>
-  <li><strong>Firebase Crashlytics</strong> — captures crash reports and stability diagnostics so we can fix problems.</li>
+  <li><strong>TelemetryDeck</strong> — privacy-focused, anonymized product analytics on iOS. Measures aggregate usage and product interaction (which features and screens are used) with no personal identifiers.</li>
+  <li><strong>Google Firebase Analytics (Google Analytics for Firebase)</strong> — measures aggregate, app-level usage and product interaction across the iOS and Android apps.</li>
+  <li><strong>Firebase Crashlytics</strong> — captures crash reports and stability diagnostics so we can find and fix problems.</li>
   <li><strong>Google Analytics</strong> — measures aggregate usage of the radiusdiscgolf.com website.</li>
-  <li><strong>TelemetryDeck</strong> — privacy-focused, anonymized usage analytics on iOS, with no personal identifiers.</li>
 </ul>
-<p>This data is used in aggregate to improve the Services and is not used to advertise to you. You can reset or limit advertising and analytics identifiers through your device settings (on Android, via <em>Settings → Privacy → Ads</em>; on iOS, via <em>Settings → Privacy & Security → Tracking</em>).</p>
+<p>This data is used in aggregate to improve the Services and is not used to serve you targeted advertising. You can reset or limit advertising and analytics identifiers through your device settings (on Android, via <em>Settings → Privacy → Ads</em>; on iOS, via <em>Settings → Privacy & Security → Tracking</em>).</p>
+<p><strong>Apple Search Ads attribution:</strong> If you installed the iOS app after tapping a Radius ad in the App Store, we use Apple's AdServices framework to confirm that the ad led to your install. This attribution is first-party and privacy-preserving: it is provided by Apple, does not track you across other apps or websites, and does not build an advertising profile of you. It tells us only that an install can be attributed to an Apple Search Ads campaign, which helps us understand which campaigns work.</p>
 
 <h2>Subscriptions and Payments</h2>
 <p>Radius Pro subscriptions are processed by the app store you purchased through. We never receive or store your payment card details:</p>
@@ -93,6 +95,13 @@ const HTML = `
   <li><strong>Legal Requirements:</strong> When required by law, regulation, or legal process</li>
   <li><strong>Safety:</strong> When we believe it is necessary to protect the safety, rights, or property of Radius, our users, or the public</li>
 </ul>
+
+<h2>Information You Share With Other Players</h2>
+<p>Several Radius features are social by design. When you use them, certain information is made visible to other players as described below.</p>
+<p><strong>Live Play (public profiles only):</strong> If your profile is public and you start a round, Radius publishes your active-round status — the course you are playing, your score relative to par, and the number of holes you have completed — so that players who follow you can see you are out playing. This is shared only for public profiles; it is not shared if your profile is private. Your live status is cleared as soon as the round ends, and it automatically expires on its own after approximately five hours even if a round is left open. It reflects only your in-progress round summary and does not share your precise location or individual shot coordinates with other players.</p>
+<p><strong>Stories:</strong> Stories are photos you choose to upload for other users to see. Each Story is automatically deleted 24 hours after it is posted. So that Stories function like a normal social feed, we record which users have viewed and which users have liked your Story, and we show you those viewer and like counts.</p>
+<p><strong>Shared scorecards (Live Cards and events):</strong> When you play on a shared scorecard — such as a Live Cards group round or an event scorecard — the other players in your group can view the card and can view and enter scores attributed to you for that round. This is how group and event scoring works; scores entered on a shared card are associated with your account and round history.</p>
+<p><strong>Public profile and community content:</strong> Content you post publicly — Discover and community posts, forum threads, comments, course submissions and reviews, and league or event names — is visible to other users of the Services. You choose what to post, and you can set your profile to private to limit what is shared through these social features.</p>
 
 <h2>Third-Party Services We Use</h2>
 <p>We share limited data with the following trusted service providers, each subject to their own privacy practices. We only share what's necessary for them to perform their service:</p>
@@ -147,9 +156,17 @@ const HTML = `
 </ul>
 <p>To exercise any of these rights, email <a href="mailto:info@radiusdiscgolf.com">info@radiusdiscgolf.com</a>. You also have the right to lodge a complaint with your local data protection authority.</p>
 
+<h2>Data Retention</h2>
+<p>We keep your personal information for as long as your account is active or as needed to provide the Services. Some content is retained only briefly by design:</p>
+<ul>
+  <li><strong>Stories</strong> are automatically deleted 24 hours after they are posted.</li>
+  <li><strong>Live Play status</strong> (your active-round course, score to par, and holes completed) is cleared when the round ends and automatically expires after approximately five hours.</li>
+  <li><strong>Account data</strong> — your profile, bag, rounds, shot-tracking and range data, courses, and community content — is retained while your account exists and is deleted or anonymized when you delete your account, as described below.</li>
+</ul>
+
 <h2>Your Choices and Data Deletion</h2>
 <p>We retain your personal information for as long as your account is active or as needed to provide you with the Services. If you delete your account, we will delete or anonymize your personal data within 30 days, except where we are required to retain it for legal or legitimate business purposes.</p>
-<p><strong>Account Deletion:</strong> You may delete your account and associated data directly within the App (in your Profile settings) on both iOS and Android, or by contacting us at <a href="mailto:info@radiusdiscgolf.com">info@radiusdiscgolf.com</a>. Deleting your account removes your data from our Firebase backend and, on iOS, from your associated CloudKit records.</p>
+<p><strong>Account Deletion:</strong> You can delete your account and its associated data directly in the App on both iOS and Android at <em>Settings → Delete Account</em>, or by contacting us at <a href="mailto:info@radiusdiscgolf.com">info@radiusdiscgolf.com</a>. Deleting your account removes your profile, bag, rounds, shot-tracking and range data, uploaded photos and Stories, and community content from our Firebase backend (Cloud Firestore and Cloud Storage) and, on iOS, your associated Apple CloudKit records. Course and layout information you contributed to the shared community database may remain available to the community in de-identified form, and we may retain limited records where required for legal or legitimate business purposes.</p>
 <p><strong>Location and Permissions:</strong> You can enable or disable location, camera, photos, and notification access at any time through your device settings (Android: <em>Settings → Apps → Radius → Permissions</em>; iOS: <em>Settings → Radius</em>). Disabling a permission may limit certain features such as course maps, weather data, the Disc Scanner, and local meetups.</p>
 <p><strong>Data Access:</strong> You have the right to request a copy of the personal data we hold about you.</p>
 <p><strong>Corrections:</strong> You may update or correct your account information at any time within the App's Profile settings.</p>
@@ -167,5 +184,5 @@ Email: <a href="mailto:info@radiusdiscgolf.com">info@radiusdiscgolf.com</a></p>
 `;
 
 export default function PrivacyPage() {
-  return <LegalLayout title="Privacy Policy" updated="Last updated: July 20, 2026" html={HTML} />;
+  return <LegalLayout title="Privacy Policy" updated="Last updated: August 13, 2026" html={HTML} />;
 }
