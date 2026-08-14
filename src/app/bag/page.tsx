@@ -34,7 +34,18 @@ function MyGameInner() {
   if (loading || !user) return <Spinner />;
 
   return (
-    <div className="min-h-screen bg-[var(--bg-deep)] text-[var(--cream)]">
+    <div className="relative min-h-screen text-[var(--cream)]">
+      {/* subtle on-brand backdrop: a forest lift up top, a faint warm ambient, and barely-there
+          concentric "radius" rings — depth without pulling focus off the data */}
+      <div aria-hidden className="pointer-events-none fixed inset-0" style={{
+        zIndex: -1,
+        background: [
+          "repeating-radial-gradient(circle at 84% 10%, transparent 0 90px, rgba(244,241,232,0.014) 90px 92px)",
+          "radial-gradient(1100px 560px at 50% -8%, rgba(52,72,58,0.5), transparent 62%)",
+          "radial-gradient(820px 520px at 88% 16%, rgba(232,181,96,0.05), transparent 55%)",
+          "var(--bg-deep)",
+        ].join(", "),
+      }} />
       <div className="mx-auto max-w-6xl px-6 pt-8">
         <div className="font-mono text-[10px] font-bold uppercase tracking-[0.24em] text-[var(--gold)]">Your game</div>
         <h1 className="mt-1 font-[family-name:var(--font-heading)] text-3xl font-black tracking-[-0.02em] sm:text-4xl">My Game</h1>
