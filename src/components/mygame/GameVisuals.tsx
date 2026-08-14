@@ -54,6 +54,18 @@ const SAMPLE_BAG: ReturnType<typeof bagMeasured> = {
   ],
   gap: { lo: 230, hi: 300 }, minD: 230, maxD: 440,
 };
+const SAMPLE_HBH: ReturnType<typeof holeByHole> = {
+  courseName: "Sample course",
+  holes: Array.from({ length: 18 }, (_, i) => ({ hole: i + 1, par: 3, avgRel: [-0.2, 0.1, 0.4, -0.1, 0, 0.3, -0.3, 0.2, 0.6, -0.1, 0.1, -0.2, 0.3, 0, -0.4, 0.2, 0.1, -0.1][i] ?? 0, n: 6 })),
+  worst: { hole: 9, par: 3, avgRel: 0.6, n: 6 }, best: { hole: 15, par: 3, avgRel: -0.4, n: 6 },
+};
+const _sgPer = [0.3, -0.2, 0.4, -1.3, 0.2, 0.5, -0.3, 0.6, 0.1, -0.4, 0.3, 0.2, -0.2, 0.5, 0.3, -0.1, 0.4, 0.2].map((sg, i) => ({ hole: i + 1, sg }));
+let _sgAcc = 0; const _sgCum = _sgPer.map((p) => ({ hole: p.hole, val: (_sgAcc += p.sg) }));
+const SAMPLE_SG: NonNullable<ReturnType<typeof latestSGRound>>["sg"] = { perHole: _sgPer, cumulative: _sgCum, worst: { hole: 4, sg: -1.3 }, total: _sgAcc };
+const SAMPLE_PUTTS: ReturnType<typeof puttGreen> = {
+  points: Array.from({ length: 34 }, (_, i) => ({ distance: 15 + ((i * 7) % 50), made: i % 3 !== 0, angle: i * 2.399963 })),
+  total: 34, c1Made: 15, c1Att: 20, c2Made: 5, c2Att: 14,
+};
 // Wraps a chart drawn from sample data with an unmistakable badge + dim, so it's never mistaken for real.
 function SampleWrap({ children }: { children: React.ReactNode }) {
   return (
@@ -67,11 +79,20 @@ function SampleWrap({ children }: { children: React.ReactNode }) {
 export default function GameVisuals({ iq, rankText, meta, insight, rounds, range, catalog, putterNames, pro = true }: {
   iq: number; rankText: string; meta: string; insight: string; rounds: DecodedRound[]; range: RangeSession[]; catalog: DbDisc[]; putterNames: Set<string>; pro?: boolean;
 }) {
-  const disp = useMemo(() => driveDispersion(rounds, range), [rounds, range]);
-  const bag = useMemo(() => bagMeasured(rounds, catalog), [rounds, catalog]);
-  const hbh = useMemo(() => holeByHole(rounds), [rounds]);
-  const rsg = useMemo(() => latestSGRound(rounds), [rounds]);
-  const putts = useMemo(() => puttGreen(rounds, putterNames), [rounds, putterNames]);
+  const dispReal = useMemo(() => driveDispersion(rounds, range), [rounds, range]);
+  const bagReal = useMemo(() => bagMeasured(rounds, catalog), [rounds, catalog]);
+  const hbhReal = useMemo(() => holeByHole(rounds), [rounds]);
+  const rsgReal = useMemo(() => latestSGRound(rounds), [rounds]);
+  const puttsReal = useMemo(() => puttGreen(rounds, putterNames), [rounds, putterNames]);
+
+  // Free users see the paywall over realistic SAMPLE data (labelled), not a blurred-empty void.
+  const sample = !pro;
+  const disp = sample ? SAMPLE_DISP : dispReal;
+  const bag = sample ? SAMPLE_BAG : bagReal;
+  const hbh = sample ? SAMPLE_HBH : hbhReal;
+  const putts = sample ? SAMPLE_PUTTS : puttsReal;
+  const rsgSg = sample ? SAMPLE_SG : (rsgReal?.sg ?? null);
+  const rsgDate = sample ? "Sample round" : (rsgReal ? new Date(rsgReal.round.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "last round");
 
   return (
     <div>
@@ -90,8 +111,8 @@ export default function GameVisuals({ iq, rankText, meta, insight, rounds, range
       <p className={BODY} style={{ color: INK, fontSize: 25, lineHeight: 1.5, maxWidth: 760, marginBottom: 4 }}>{insight}</p>
       <Hair />
 
-      {/* the breakdown/evidence is Pro (the Game IQ number + read above stay free) */}
-      <ProGate pro={pro} title="Unlock your evidence" blurb="Your miss pattern, measured bag, strokes gained and putting — the full breakdown is part of Radius Pro." className="!rounded-2xl">
+      {/* the breakdown/evidence is Pro — free users see this labelled SAMPLE data behind the paywall */}
+      <ProGate pro={pro} title="Sample data" blurb="This is sample data. Upgrade to Radius Pro to see your own miss pattern, bag, strokes gained and putting." className="!rounded-2xl">
       {/* row 1: dispersion + bag */}
       <div className="flex flex-col gap-14 lg:flex-row">
         <div className="min-w-0 flex-1">
@@ -127,8 +148,8 @@ export default function GameVisuals({ iq, rankText, meta, insight, rounds, range
       {/* row 2: cumulative SG + putt green */}
       <div className="flex flex-col gap-14 lg:flex-row lg:items-start">
         <div className="min-w-0 flex-1">
-          <Head label="How the round is won or lost" sub={`Cumulative strokes gained · ${rsg ? new Date(rsg.round.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "last round"}`} />
-          {rsg ? <><CumulativeSG sg={rsg.sg} /><Caption>{rsg.sg.worst.sg <= -1.2 ? <>You gained steadily except hole {rsg.sg.worst.hole}, where you gave back <b style={{ color: INK }}>{Math.abs(rsg.sg.worst.sg).toFixed(1)} strokes</b> in one hole.</> : rsg.sg.total >= 0 ? "You gained ground on most holes — a clean, positive round." : "The round leaked slowly rather than in one blow-up hole."}</Caption></>
+          <Head label="How the round is won or lost" sub={`Cumulative strokes gained · ${rsgDate}`} />
+          {rsgSg ? <><CumulativeSG sg={rsgSg} /><Caption>{rsgSg.worst.sg <= -1.2 ? <>You gained steadily except hole {rsgSg.worst.hole}, where you gave back <b style={{ color: INK }}>{Math.abs(rsgSg.worst.sg).toFixed(1)} strokes</b> in one hole.</> : rsgSg.total >= 0 ? "You gained ground on most holes — a clean, positive round." : "The round leaked slowly rather than in one blow-up hole."}</Caption></>
             : <Empty>Play a shot-tracked round and your hole-by-hole strokes-gained line builds here.</Empty>}
         </div>
         <div className="min-w-0 flex-1">

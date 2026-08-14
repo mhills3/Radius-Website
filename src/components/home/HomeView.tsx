@@ -197,7 +197,7 @@ function HeroIQ({ iq, history }: { iq: number; history: { t: number; iq: number 
 function WorkOnText({ text, pro }: { text: string; pro: boolean }) {
   const parts = text.split(/⟦(.*?)⟧/); // even = plain text, odd = the stat
   return <>{parts.map((p, i) => i % 2 === 1
-    ? (pro ? <span key={i}>{p}</span> : <span key={i} className="mx-0.5 inline-block translate-y-[1px] select-none rounded-[4px] bg-white/[0.07] px-1 blur-[6px]" aria-hidden>{p}</span>)
+    ? (pro ? <span key={i}>{p}</span> : <span key={i} className="mx-0.5 inline-block translate-y-[2px] select-none rounded-[5px] bg-white/[0.16] px-1.5 text-transparent blur-[1px]" aria-hidden>{p}</span>)
     : <span key={i}>{p}</span>)}</>;
 }
 
@@ -493,7 +493,7 @@ export default function HomeView({ uid }: { uid: string }) {
             {/* Your game — stat rings, mirroring the app */}
             <div className={`mt-6 border-b ${divider} pb-6`}>
               <div className={`${label} mb-5`}>Your game</div>
-              <ProGate pro={pro} title="Your game" blurb="Your C1X putting, drive distance and fairway rate — see them with Radius Pro." className="!rounded-2xl">
+              <ProGate pro={pro} title="Your game" blurb="Your C1X putting, drive distance and fairway rate — see them with Radius Pro." className="!rounded-2xl min-h-[230px]">
                 <div className="grid grid-cols-3 gap-2">
                   <StatRing size={86} label="C1X Putt" value={career && career.c1.att >= 3 && career.c1.pct != null ? `${Math.round(career.c1.pct * 100)}` : "—"} unit={career && career.c1.att >= 3 && career.c1.pct != null ? "%" : undefined} frac={career && career.c1.att >= 3 ? career.c1.pct : null} />
                   <StatRing size={86} label="Avg Drive" value={career?.avgDriveFt ? `${Math.round(career.avgDriveFt)}` : "—"} unit={career?.avgDriveFt ? "ft" : undefined} frac={career?.avgDriveFt ? career.avgDriveFt / 400 : null} />
