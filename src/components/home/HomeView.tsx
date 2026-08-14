@@ -7,6 +7,7 @@ import { setProfileCover, getDashboard, type Dashboard } from "@/lib/account";
 import { uploadProfileCover } from "@/lib/postImage";
 import { rankForIQ, rankLabel, rankProgress } from "@/lib/rank";
 import LevelBadge from "@/components/scorecard/LevelBadge";
+import RankTiersModal from "@/components/scorecard/RankTiersModal";
 import { getDecodedRounds, computeCareerStats, computeStrokesGained, rankedCategories, type DecodedRound } from "@/lib/rounds";
 import { getAllCourses, slugify, type Course } from "@/lib/courses";
 import { getPutterDiscNames, getBag } from "@/lib/bag";
@@ -119,6 +120,7 @@ function StatRing({ value, unit, frac, label, size = 68 }: { value: string; unit
 
 // Cardless Game IQ status for the hero: dial with the score, tier emblem, and the IQ-history spark.
 function HeroIQ({ iq, history }: { iq: number; history: { t: number; iq: number }[] }) {
+  const [tiers, setTiers] = useState(false);
   const rank = rankForIQ(iq);
   const rankText = rankLabel(rank);
   const prog = rankProgress(iq, rank);
@@ -137,6 +139,7 @@ function HeroIQ({ iq, history }: { iq: number; history: { t: number; iq: number 
   const area = pts.length ? `M0,${sh} ${pts.map((v, i) => `L${sx(i)},${sy(v)}`).join(" ")} L${sw},${sh} Z` : "";
 
   return (
+    <>
     <div className="flex w-full flex-col items-center gap-6 sm:flex-row sm:gap-8 md:w-[420px]">
       {/* IQ dial */}
       <div className="relative shrink-0" style={{ width: S, height: S }}>
@@ -154,13 +157,13 @@ function HeroIQ({ iq, history }: { iq: number; history: { t: number; iq: number 
       </div>
       {/* rank + spark */}
       <div className="w-full min-w-0 flex-1">
-        <div className="flex items-center gap-3">
+        <button onClick={() => setTiers(true)} className="group flex items-center gap-3 text-left" title="See all rank tiers">
           <LevelBadge iq={iq} size={40} />
           <div className="min-w-0">
             <div className={`${HEAD} truncate text-[18px] font-bold text-[var(--cream)]`}>{rankText}</div>
-            <div className="text-[12px] text-[var(--sage-dim)]" style={MONO}>Rank {rank.level} of 30</div>
+            <div className="text-[12px] text-[var(--sage-dim)] transition-colors group-hover:text-[var(--sage)]" style={MONO}>Rank {rank.level} of 30 · view tiers</div>
           </div>
-        </div>
+        </button>
         <div className="mt-4 flex items-center gap-2">
           <span className={`${HEAD} text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--sage-dim)]`}>IQ History</span>
           {trend !== 0 && (
@@ -182,6 +185,8 @@ function HeroIQ({ iq, history }: { iq: number; history: { t: number; iq: number 
         )}
       </div>
     </div>
+    {tiers && <RankTiersModal iq={iq} onClose={() => setTiers(false)} />}
+    </>
   );
 }
 
