@@ -35,11 +35,8 @@ function MyGameInner() {
 
   return (
     <div className="relative min-h-screen text-[var(--cream)]">
-      {/* The site's own backdrop system: deep forest-black + the shared topo-contour texture (as on
-          /discs, /stories, /features), so My Game speaks the same visual language as the rest of Radius. */}
-      <div aria-hidden className="pointer-events-none fixed inset-0" style={{ zIndex: -1, backgroundColor: "#0D120F" }}>
-        <div className="absolute inset-0" style={{ maskImage: "url(/topo.png)", WebkitMaskImage: "url(/topo.png)", maskSize: "1100px", WebkitMaskSize: "1100px", backgroundColor: "#F4F1E8", opacity: 0.045 }} />
-      </div>
+      {/* deep forest-black base */}
+      <div aria-hidden className="pointer-events-none fixed inset-0" style={{ zIndex: -1, backgroundColor: "#0D120F" }} />
       {/* a real course photo behind the header, deeply darkened + faded into the base — like the Dashboard */}
       <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 z-0 h-[440px] overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
