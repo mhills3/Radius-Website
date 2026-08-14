@@ -155,7 +155,6 @@ function HeroIQ({ iq, history }: { iq: number; history: { t: number; iq: number 
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <div className={`${HEAD} text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--sage-dim)]`}>Game IQ</div>
           <div style={{ ...MONO, fontSize: 56, fontWeight: 700, lineHeight: 1, letterSpacing: "-0.03em", color: "var(--cream)" }}>{iq}</div>
-          <div className={`${HEAD} mt-1.5 text-[10px] font-bold`} style={{ color: rank.color }}>{rankText}</div>
         </div>
       </div>
       {/* rank + spark */}
