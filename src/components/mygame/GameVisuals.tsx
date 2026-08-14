@@ -6,7 +6,7 @@ import type { RangeSession } from "@/lib/sessions";
 import type { DbDisc } from "@/lib/bag";
 import { driveDispersion, bagMeasured, holeByHole, latestSGRound, puttGreen } from "@/lib/gameViz";
 import LevelBadge from "@/components/scorecard/LevelBadge";
-import ProGate from "@/components/ProGate";
+import Link from "next/link";
 
 const HEAD = "font-[family-name:var(--font-heading)]";
 const BODY = "font-[family-name:var(--font-body)]";
@@ -111,8 +111,18 @@ export default function GameVisuals({ iq, rankText, meta, insight, rounds, range
       <p className={BODY} style={{ color: INK, fontSize: 25, lineHeight: 1.5, maxWidth: 760, marginBottom: 4 }}>{insight}</p>
       <Hair />
 
-      {/* the breakdown/evidence is Pro — free users see this labelled SAMPLE data behind the paywall */}
-      <ProGate pro={pro} title="Sample data" blurb="This is sample data. Upgrade to Radius Pro to see your own miss pattern, bag, strokes gained and putting." className="!rounded-2xl">
+      {/* the breakdown is Pro — free users see crisp, clearly-labelled SAMPLE data + an upgrade prompt */}
+      {!pro && (
+        <div className="mb-9 flex flex-col items-start gap-3 rounded-2xl border p-4 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: "rgba(232,181,96,0.3)", background: "rgba(232,181,96,0.06)" }}>
+          <div className="min-w-0">
+            <div className={`${HEAD} text-[12px] font-black uppercase tracking-[0.16em]`} style={{ color: GOLD }}>Sample data</div>
+            <div className={`${BODY} mt-1 text-[13.5px]`} style={{ color: SAGE }}>A preview of the breakdown. Upgrade to Radius Pro to see your own miss pattern, bag, strokes gained and putting.</div>
+          </div>
+          <Link href="/subscription" className={`${HEAD} shrink-0 rounded-full px-5 py-2.5 text-[13.5px] font-bold transition-colors`} style={{ background: GOLD, color: "#141B16" }}>Unlock with Pro</Link>
+        </div>
+      )}
+      <div className="relative">
+      {!pro && <span className={`${HEAD} pointer-events-none absolute right-0 -top-1 z-10 rounded-full px-2 py-[3px] text-[9px] font-black uppercase tracking-[0.16em]`} style={{ border: "1px solid rgba(232,181,96,0.4)", color: GOLD, background: "rgba(20,27,22,0.7)" }}>Sample</span>}
       {/* row 1: dispersion + bag */}
       <div className="flex flex-col gap-14 lg:flex-row">
         <div className="min-w-0 flex-1">
@@ -158,7 +168,7 @@ export default function GameVisuals({ iq, rankText, meta, insight, rounds, range
             : <Empty>Shot-track your putts and your make/miss green plot builds here.</Empty>}
         </div>
       </div>
-      </ProGate>
+      </div>
     </div>
   );
 }
