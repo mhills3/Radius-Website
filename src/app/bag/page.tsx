@@ -56,9 +56,9 @@ function MyGameInner() {
       <div className="mx-auto max-w-6xl px-6 py-6">
         {tab === "improve" && (
           <>
-            <MyGameOverview uid={user.uid} />
-            <div className="my-12 border-t border-white/[0.08]" />
             <MyGameImprove uid={user.uid} />
+            <div className="my-12 border-t border-white/[0.08]" />
+            <MyGameOverview uid={user.uid} />
           </>
         )}
         {tab === "bag" && <MyGameBag uid={user.uid} />}
