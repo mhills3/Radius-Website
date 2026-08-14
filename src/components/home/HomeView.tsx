@@ -340,8 +340,9 @@ export default function HomeView({ uid }: { uid: string }) {
             <img src={heroImg} alt="" className="h-full w-full object-cover" />
           </div>
         )}
-        {/* two-part scrim: darken the left where the text sits, then fade fully to page color at the bottom */}
-        <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "linear-gradient(100deg, rgba(15,23,18,0.96) 0%, rgba(15,23,18,0.62) 44%, rgba(15,23,18,0.22) 100%), linear-gradient(to bottom, transparent 30%, rgba(15,23,18,0.72) 74%, var(--bg-deep) 99%)" }} />
+        {/* two-part scrim: darken the left where the text sits, then melt seamlessly into the page color
+            at the bottom — both stops use the exact --bg-deep rgb (20,27,22) so there's no visible seam */}
+        <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "linear-gradient(100deg, rgba(20,27,22,0.95) 0%, rgba(20,27,22,0.6) 44%, rgba(20,27,22,0.2) 100%), linear-gradient(to bottom, transparent 24%, rgba(20,27,22,0.5) 56%, rgba(20,27,22,0.88) 82%, var(--bg-deep) 100%)" }} />
         {/* change cover */}
         <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
           <button onClick={() => fileRef.current?.click()} disabled={uploading} className="grid h-8 w-8 place-items-center rounded-full bg-black/35 text-[var(--cream)] backdrop-blur-sm transition-colors hover:bg-black/60 disabled:opacity-50" title="Change cover photo" aria-label="Change cover photo">

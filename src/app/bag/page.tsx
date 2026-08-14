@@ -35,13 +35,13 @@ function MyGameInner() {
 
   return (
     <div className="relative min-h-screen text-[var(--cream)]">
-      {/* deep forest-black base */}
-      <div aria-hidden className="pointer-events-none fixed inset-0" style={{ zIndex: -1, backgroundColor: "#0D120F" }} />
-      {/* a real course photo behind the header, deeply darkened + faded into the base — like the Dashboard */}
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 z-0 h-[440px] overflow-hidden">
+      {/* same green as the Dashboard */}
+      <div aria-hidden className="pointer-events-none fixed inset-0" style={{ zIndex: -1, backgroundColor: "var(--bg-deep)" }} />
+      {/* a real course photo behind the header, deeply darkened + melting seamlessly into the base */}
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 z-0 h-[460px] overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/course/courses-hero.jpg" alt="" className="h-full w-full object-cover object-[center_35%] opacity-[0.28]" />
-        <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(13,18,15,0.5) 0%, rgba(13,18,15,0.72) 46%, rgba(13,18,15,0.94) 78%, #0D120F 100%)" }} />
+        <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(20,27,22,0.45) 0%, rgba(20,27,22,0.66) 42%, rgba(20,27,22,0.9) 74%, var(--bg-deep) 96%)" }} />
       </div>
       <div className="relative z-10 mx-auto max-w-6xl px-6 pt-8">
         <div className="font-mono text-[10px] font-bold uppercase tracking-[0.24em] text-[var(--gold)]">Your game</div>
