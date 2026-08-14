@@ -88,8 +88,8 @@ export default function GameVisuals({ iq, rankText, meta, insight, rounds, range
       ) : null}
 
       {/* row 2: cumulative SG + putt green */}
-      <div className="flex flex-col gap-14 lg:flex-row">
-        <div className="min-w-0" style={{ flex: 1.3 }}>
+      <div className="flex flex-col gap-14 lg:flex-row lg:items-start">
+        <div className="min-w-0 flex-1">
           <Head label="How the round is won or lost" sub={`Cumulative strokes gained · ${rsg ? new Date(rsg.round.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "last round"}`} />
           {rsg ? <><CumulativeSG sg={rsg.sg} /><Caption>{rsg.sg.worst.sg <= -1.2 ? <>You gained steadily except hole {rsg.sg.worst.hole}, where you gave back <b style={{ color: INK }}>{Math.abs(rsg.sg.worst.sg).toFixed(1)} strokes</b> in one hole.</> : rsg.sg.total >= 0 ? "You gained ground on most holes — a clean, positive round." : "The round leaked slowly rather than in one blow-up hole."}</Caption></>
             : <Empty>Play a shot-tracked round and your hole-by-hole strokes-gained line builds here.</Empty>}
@@ -172,18 +172,49 @@ function CumulativeSG({ sg }: { sg: NonNullable<ReturnType<typeof latestSGRound>
   );
 }
 
-// ---- 5. putt green ----
-function PuttGreen({ data }: { data: ReturnType<typeof puttGreen> }) {
-  const cx = 130, cy = 168, C1 = 66, C2 = 128; // px radii for 33 / 66 ft
-  const pos = (d: number, a: number) => { const r = Math.min(C2, (d / 66) * C2); return [cx + Math.sin(a) * r, cy - Math.abs(Math.cos(a)) * r] as const; };
+// The app's real disc-golf basket (public/basket-icon.svg), tinted and scaled to sit at the pin.
+function BasketMark({ x, y, size, color }: { x: number; y: number; size: number; color: string }) {
+  const sc = size / 160;
   return (
-    <svg viewBox="0 0 260 190" style={svgFill}>
-      <circle cx={cx} cy={cy} r={C2} fill="none" stroke={GRID} strokeWidth="1" /><circle cx={cx} cy={cy} r={C1} fill="none" stroke="#22302A" strokeWidth="1" />
-      <text x={cx + 66} y="60" fill="#2A362D" fontSize="8.5" style={MONO}>C2</text><text x={cx + 20} y="108" fill="#2A362D" fontSize="8.5" style={MONO}>C1</text>
-      <g stroke={GOLD} strokeWidth="1.6" fill="none"><line x1={cx} y1={cy - 14} x2={cx} y2={cy + 14} /><path d={`M${cx - 9} ${cy - 6} L${cx + 9} ${cy - 6} L${cx + 7} ${cy + 4} L${cx - 7} ${cy + 4} Z`} /><ellipse cx={cx} cy={cy - 6} rx="9" ry="2.6" /></g>
-      {data.points.map((p, i) => { const [px, py] = pos(p.distance, p.angle); return p.made
-        ? <circle key={i} cx={px} cy={py} r="3.1" fill={GOLD} opacity="0.9" />
-        : <circle key={i} cx={px} cy={py} r="3.1" fill="none" stroke={SALMON} strokeWidth="1.5" />; })}
+    <g transform={`translate(${x - 80 * sc} ${y - 66 * sc}) scale(${sc})`} fill={color}>
+      <path d="M85.4,47.93h13.64c.55,0,.99.48,1.05.95l.03,4.86c0,.5-.24,1.04-.56,1.43-.4,4.82-.99,9.53-2.11,14.28-1.62,6.26-3.54,11.15-7.55,16.31l14.51.05c.33,0,.84.18.99.38.18.22.33.89.22,1.2l-4.27,12.06c-.49.9-1.43,1.29-2.51,1.29l-16.77.03.42,25.26c-1.69.17-3.02.15-4.82.07l.28-25.32-16.99-.02c-.94,0-1.79-.44-2.27-1.16l-4.3-12.2c-.09-.24,0-.9.13-1.1.17-.23.68-.48,1.07-.48l14.39-.05c-4.76-6.2-6.76-12.58-8.31-20.1-.55-3.49-.93-7.01-1.2-10.46-.19-.23-.62-.73-.62-.98v-5.13c0-.64.43-1.16,1.09-1.16h17.99M81.05,47.93h4.35M81.05,46.84v1.09M78.96,49.95l-.03-14.44c0-.67.29-1.19.81-1.26.8-.11,1.33.28,1.33,1.03v14.69M78.94,47.93v-1.09M73.47,85.6c-1.51-2.69-2.53-5.24-3.31-8.17-1.93-7.26-2.7-14.59-2.72-22.17l-5.15-.03c.55,10.14,2.93,22.66,9.99,30.42l1.19-.05ZM73.87,55.25h-4.71c-.02,6.98.77,13.67,2.31,20.4.82,3.58,2.1,6.86,3.96,10l1.4-.06c-2.87-9.89-2.89-20.25-2.96-30.34ZM77.99,83.52l.16-28.28h-2.58c-.04,4.65.05,9.03.31,13.66.43,4.99.81,9.89,2.11,14.63h0ZM83.68,74.41c.63-6.42.89-12.65.86-19.14h-2.67l.11,28.73c1.01-3.15,1.25-6.31,1.7-9.59ZM84.71,85.53c2.26-3.72,3.48-7.6,4.33-11.74,1.27-6.14,1.74-12.2,1.83-18.53l-4.64-.02c.01,7.7-.31,15.3-1.37,22.97-.36,2.61-.95,4.92-1.71,7.42.44.07,1.22.08,1.55-.1h0ZM87.74,85.52c7.09-7.86,9.35-20.13,10-30.28h-5.13c-.31,9.78-1.19,21.81-6.04,30.36.19.1.97.15,1.17-.09h0ZM77.85,87.47l-1.15.09,1.2,1.58-.06-1.68h.01ZM66.38,92.5l-1.39-4.87-8.48.02,1.79,4.85h8.08ZM77.83,91.02c-2.54-.5-4.48-1.63-6-3.4l-5.19.02,1.31,4.89,9.96.09c.03-.58.02-1.19-.08-1.59ZM83.31,87.62l-1.17-.08-.04,1.53,1.22-1.45h-.01ZM92.05,92.54l1.38-4.88-5.15-.05c-1.68,1.74-3.73,2.84-6.21,3.36l.03,1.63,9.94-.06h.01ZM101.76,92.5l1.7-4.85h-8.42l-1.39,4.85h8.11ZM68.01,98.26l-1.05-3.92-8.03.02,1.47,3.87,7.6.03h.01ZM77.97,98.25l-.03-3.92h-9.45l.98,3.94s8.5-.02,8.5-.02ZM90.6,98.27l.97-3.93-9.52-.02v3.94h8.54s0,0,0,0ZM99.92,97.44l1.07-3.1h-7.94l-1.04,3.91h7.08c.28,0,.72-.52.82-.81h.01Z" />
+      <path d="M81.88,47.41h19.52c.49,0,.89.4.89.89v6.72c0,.49-.4.89-.89.89h-42.32c-.49,0-.89-.4-.89-.9v-6.72c0-.49.4-.89.89-.89h22.81" />
+      <polygon points="94.05 37.68 80.02 42.21 79.97 34.23 94.05 37.68" />
+    </g>
+  );
+}
+
+// ---- 5. putt green — perspective fan around the basket, made vs missed, with C1/C2 make rates ----
+function PuttGreen({ data }: { data: ReturnType<typeof puttGreen> }) {
+  const W = 340, H = 156, cx = 170, cy = 140, RX = 165, RY = 122, FAN = (78 * Math.PI) / 180;
+  const c1x = 100, c1y = 74; // C1 (33 ft) ellipse radii
+  const c1Pct = data.c1Att ? Math.round((data.c1Made / data.c1Att) * 100) : null;
+  const c2Pct = data.c2Att ? Math.round((data.c2Made / data.c2Att) * 100) : null;
+  // even, low-discrepancy fan placement so same-distance putts spread across the green (no arcs)
+  const place = (p: { distance: number }, i: number) => {
+    const f = Math.min(1, p.distance / 66);
+    const frac = ((i + 0.5) * 0.6180339887) % 1;
+    const theta = (frac * 2 - 1) * FAN;
+    const jit = 1 + (((i * 37) % 11) / 11 - 0.5) * 0.05;
+    return [cx + Math.sin(theta) * RX * f * jit, cy - Math.cos(theta) * RY * f * jit] as const;
+  };
+  const arc = (rx: number, ry: number) => `M${cx - rx},${cy} A${rx},${ry} 0 0 1 ${cx + rx},${cy}`;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={svgFill}>
+      {/* green rings */}
+      <path d={arc(RX, RY)} fill="none" stroke={GRID} strokeWidth="1.2" />
+      <path d={arc(c1x, c1y)} fill="none" stroke="#243029" strokeWidth="1.2" />
+      <text x={cx + RX * 0.62} y={cy - RY * 0.66} fill="#39493C" fontSize="9" style={MONO}>C2{c2Pct != null ? ` · ${c2Pct}%` : ""}</text>
+      <text x={cx + c1x * 0.5} y={cy - c1y * 0.72} fill="#4A5A48" fontSize="9" style={MONO}>C1{c1Pct != null ? ` · ${c1Pct}%` : ""}</text>
+      {/* missed first (under), then made on top */}
+      {data.points.map((p, i) => p.made ? null : (() => { const [px, py] = place(p, i); return <circle key={`m${i}`} cx={px} cy={py} r="4" fill="none" stroke={SALMON} strokeWidth="1.5" opacity="0.75" />; })())}
+      {data.points.map((p, i) => p.made ? (() => { const [px, py] = place(p, i); return <circle key={`k${i}`} cx={px} cy={py} r="4" fill={GOLD} opacity="0.92" />; })() : null)}
+      <BasketMark x={cx} y={cy} size={92} color={GOLD} />
+      {/* legend */}
+      <g transform={`translate(8 ${H - 8})`} style={MONO}>
+        <circle cx="5" cy="-4" r="4" fill={GOLD} opacity="0.92" /><text x="14" y="-1" fill={SAGE} fontSize="9">made</text>
+        <circle cx="58" cy="-4" r="4" fill="none" stroke={SALMON} strokeWidth="1.5" opacity="0.75" /><text x="67" y="-1" fill={SAGE} fontSize="9">missed</text>
+      </g>
     </svg>
   );
 }
