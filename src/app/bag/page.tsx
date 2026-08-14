@@ -35,17 +35,18 @@ function MyGameInner() {
 
   return (
     <div className="relative min-h-screen text-[var(--cream)]">
-      {/* Premium = restraint: a deep, richer forest-black canvas with just enough film grain to kill
-          the flat-digital banding. No pattern — the richness lives in the content, like Whoop/Arccos. */}
+      {/* The site's own backdrop system: deep forest-black + the shared topo-contour texture (as on
+          /discs, /stories, /features), so My Game speaks the same visual language as the rest of Radius. */}
       <div aria-hidden className="pointer-events-none fixed inset-0" style={{ zIndex: -1, backgroundColor: "#0D120F" }}>
-        <div className="absolute inset-0" style={{
-          backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
-          backgroundSize: "160px 160px",
-          opacity: 0.05,
-          mixBlendMode: "soft-light",
-        }} />
+        <div className="absolute inset-0" style={{ maskImage: "url(/topo.png)", WebkitMaskImage: "url(/topo.png)", maskSize: "1100px", WebkitMaskSize: "1100px", backgroundColor: "#F4F1E8", opacity: 0.045 }} />
       </div>
-      <div className="mx-auto max-w-6xl px-6 pt-8">
+      {/* a real course photo behind the header, deeply darkened + faded into the base — like the Dashboard */}
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 z-0 h-[440px] overflow-hidden">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/course/courses-hero.jpg" alt="" className="h-full w-full object-cover object-[center_35%] opacity-[0.28]" />
+        <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(13,18,15,0.5) 0%, rgba(13,18,15,0.72) 46%, rgba(13,18,15,0.94) 78%, #0D120F 100%)" }} />
+      </div>
+      <div className="relative z-10 mx-auto max-w-6xl px-6 pt-8">
         <div className="font-mono text-[10px] font-bold uppercase tracking-[0.24em] text-[var(--gold)]">Your game</div>
         <h1 className="mt-1 font-[family-name:var(--font-heading)] text-3xl font-black tracking-[-0.02em] sm:text-4xl">My Game</h1>
 
@@ -63,7 +64,7 @@ function MyGameInner() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-6xl px-6 py-6">
+      <div className="relative z-10 mx-auto max-w-6xl px-6 py-6">
         {tab === "improve" && (
           <>
             <MyGameImprove uid={user.uid} />
