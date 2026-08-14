@@ -342,7 +342,7 @@ export default function BagView({ bag, uid, switcher, embedded = false }: { bag:
               </div>
             </div>
 
-            <ProGate pro={pro} title="Score breakdown" blurb="See how your bag scores across coverage, depth and fit — with Pro.">
+            {/* Bag score + factor bars are FREE (parity with iOS — only the deeper analysis is Pro) */}
             <div>
               <div className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-[var(--sage-dim)]">Score breakdown</div>
               <div className="space-y-3">
@@ -353,7 +353,6 @@ export default function BagView({ bag, uid, switcher, embedded = false }: { bag:
                 <Bar label="Player fit" value={b.playerFit} tipUp tip="How well your discs' speeds match your arm speed. Set your arm speed in your profile, then carry discs you can throw with control rather than all max-speed drivers." />
               </div>
             </div>
-            </ProGate>
           </div>
         </div>
 

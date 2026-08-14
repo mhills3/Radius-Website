@@ -130,11 +130,12 @@ export interface ProfileLite {
  *  - isPro / proExpires      — the REAL App Store / Play subscription, mirrored to Firestore by the
  *                              apps (StoreKit/Play receipts never reach the web directly).
  *  - proOverride / *Expires  — a manual comp granted from the console.
- * Store subs are lenient on a missing expiry (treat as active) so a real paying subscriber is NEVER
- * locked out of the web if the app hasn't written a fresh expiry — over-granting is the safe failure.
- * Comps are strict (match iOS): a comp needs a parseable FUTURE expiry to count — comps are always
- * 1-year, never lifetime, so a missing/past expiry means expired. Expiry values are normalized to
- * epoch ms by toEpochMillis() at the mapping sites (comps arrive as Firestore Timestamps).
+ * Both lanes require a parseable FUTURE expiry to count, matching the iOS contract exactly:
+ *   (isPro && proExpires > now) || (proOverride && proOverrideExpires > now)
+ * The two lanes are independent: proOverride / proOverrideExpires is the separate comp contract and is
+ * never touched by the App Store / Play mirror writes, so a comped account stays Pro on its own lane
+ * even with no store subscription. Expiry values are normalized to epoch ms by toEpochMillis() at the
+ * mapping sites (comps arrive as Firestore Timestamps; store subs as ms).
  * NOTE: client-side reads are public, so this is a UX paywall, not a security boundary.
  */
 export interface ProEntitlement {
@@ -146,7 +147,7 @@ export interface ProEntitlement {
 export function isProEntitled(p?: ProEntitlement | null): boolean {
   if (!p) return false;
   const now = Date.now();
-  const real = p.isPro === true && (p.proExpires == null || p.proExpires > now);
+  const real = p.isPro === true && p.proExpires != null && p.proExpires > now;
   const comp = p.proOverride === true && p.proOverrideExpires != null && p.proOverrideExpires > now;
   return real || comp;
 }
