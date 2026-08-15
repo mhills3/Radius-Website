@@ -354,6 +354,13 @@ export default function EventWizard() {
                   <p className="mt-2 text-xs text-[var(--sage-dim)]">{SCORING_MODELS.find((s) => s.label === scoring)?.blurb}</p>
                 </div>
               )}
+              {isScoringKind && (
+                <div>
+                  <FieldLabel>Divisions</FieldLabel>
+                  <Segmented options={["Open", "By division"]} value="Open" onChange={() => {}} disabled={["By division"]} />
+                  <p className="mt-2 text-xs text-[var(--sage-dim)]">Everyone plays in one pool for now. Multi-division events (MPO/FPO, age &amp; skill tiers) are coming soon.</p>
+                </div>
+              )}
               {kind === "clinic" && (
                 <>
                   <div>
