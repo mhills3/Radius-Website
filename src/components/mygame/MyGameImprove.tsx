@@ -334,8 +334,8 @@ export default function MyGameImprove({ uid }: { uid: string }) {
         <div className="w-full shrink-0 lg:w-[420px]">
           <div className={`${eb} mb-6 text-[10px]`} style={{ color: EB }}>How you stack up</div>
           <ProGate pro={pro} title="Unlock your skills" blurb="See exactly where you land against every level of player — with Radius Pro." className="!rounded-2xl">
-            <StackBar label="Circle 1 putting" value={career?.c1.pct != null ? career.c1.pct * 100 : null} tiers={C1_TIERS} unit="%" />
-            <StackBar label="Circle 2 putting" value={career?.c2.pct != null ? career.c2.pct * 100 : null} tiers={C2_TIERS} unit="%" gold />
+            <StackBar label="C1X putting" value={career?.c1.pct != null ? career.c1.pct * 100 : null} tiers={C1_TIERS} unit="%" gold />
+            <StackBar label="Circle 2 putting" value={career?.c2.pct != null ? career.c2.pct * 100 : null} tiers={C2_TIERS} unit="%" />
             <StackBar label="Drive distance" value={career?.avgDriveFt ?? null} tiers={DRIVE_TIERS} unit="ft" />
           </ProGate>
 
