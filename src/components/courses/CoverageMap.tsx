@@ -6,11 +6,13 @@ import { feature } from "topojson-client";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Topo = any;
 type Counts = Map<string, number>;
+type Row = { name: string; n: number; d: string; kind: "country" | "state" };
 
 /**
- * World coverage choropleth — every country is filled by how many courses are mapped there, and the
- * US is broken into its individual states (we cover all 50, so the single-country blob is redundant).
- * Both TopoJSON files are lat/lon, so US states reproject onto the same world projection cleanly.
+ * World coverage choropleth — every country is filled by how many courses are mapped there (gold), and
+ * the US is broken into its individual states (green). Both TopoJSON files are lat/lon, so US states
+ * reproject onto the same world projection cleanly. The projection is fit to the ENTIRE world (incl. the
+ * US country outline) so the states always land in-bounds and nothing clips off the edge.
  */
 export default function CoverageMap({ stateCounts, countryCounts }: { stateCounts: Counts; countryCounts: Counts }) {
   const [topo, setTopo] = useState<{ world?: Topo; us?: Topo }>({});
@@ -24,39 +26,45 @@ export default function CoverageMap({ stateCounts, countryCounts }: { stateCount
   const W = 980, H = 500;
   const US_COUNTRY = new Set(["UNITED STATES OF AMERICA", "UNITED STATES", "USA"]);
 
-  const { paths, mapped, total, max } = useMemo(() => {
-    if (!topo.world || !topo.us) return { paths: [] as { name: string; n: number; d: string }[], mapped: 0, total: 0, max: 1 };
+  const { paths, mappedCountries, mappedStates, total, max } = useMemo(() => {
+    if (!topo.world || !topo.us) return { paths: [] as Row[], mappedCountries: 0, mappedStates: 0, total: 0, max: 1 };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const countryFeats = ((feature(topo.world, topo.world.objects.countries) as any).features as any[])
-      .filter((f) => f.properties.name !== "Antarctica" && !US_COUNTRY.has((f.properties.name as string).toUpperCase()));
+    const allCountries = ((feature(topo.world, topo.world.objects.countries) as any).features as any[])
+      .filter((f) => f.properties.name !== "Antarctica");
+    const countryFeats = allCountries.filter((f) => !US_COUNTRY.has((f.properties.name as string).toUpperCase()));
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const stateFeats = ((feature(topo.us, topo.us.objects.states) as any).features as any[])
       .filter((f) => Number(f.id) <= 56 && f.properties.name !== "District of Columbia"); // 50 states only
 
-    // One world projection fit to the countries; US states share it so they land in place.
-    const proj = geoNaturalEarth1().fitSize([W, H], { type: "FeatureCollection", features: countryFeats });
+    // Fit the projection to the WHOLE world (including the US country) so US states land in-bounds and
+    // nothing spills off the edge; then draw the non-US countries + the US states on that same projection.
+    const proj = geoNaturalEarth1().fitSize([W, H], { type: "FeatureCollection", features: allCountries });
     const pathGen = geoPath(proj);
 
-    const rows = [
-      ...countryFeats.map((f) => ({ name: f.properties.name as string, n: countryCounts.get((f.properties.name as string).toUpperCase()) || 0, d: pathGen(f) || "" })),
-      ...stateFeats.map((f) => ({ name: f.properties.name as string, n: stateCounts.get((f.properties.name as string).toUpperCase()) || 0, d: pathGen(f) || "" })),
+    const rows: Row[] = [
+      ...countryFeats.map((f) => ({ name: f.properties.name as string, n: countryCounts.get((f.properties.name as string).toUpperCase()) || 0, d: pathGen(f) || "", kind: "country" as const })),
+      ...stateFeats.map((f) => ({ name: f.properties.name as string, n: stateCounts.get((f.properties.name as string).toUpperCase()) || 0, d: pathGen(f) || "", kind: "state" as const })),
     ].filter((p) => p.d);
 
-    let mx = 1, m = 0;
-    for (const r of rows) if (r.n > 0) { m++; if (r.n > mx) mx = r.n; }
-    return { paths: rows, mapped: m, total: rows.length, max: mx };
+    let mx = 1, mc = 0, ms = 0;
+    for (const r of rows) if (r.n > 0) { if (r.n > mx) mx = r.n; if (r.kind === "state") ms++; else mc++; }
+    return { paths: rows, mappedCountries: mc, mappedStates: ms, total: rows.length, max: mx };
   }, [topo.world, topo.us, stateCounts, countryCounts]);
 
-  const fillFor = (n: number) => (n <= 0 ? "rgba(245,237,225,0.07)" : `rgba(246,193,101,${(0.42 + 0.58 * Math.min(1, n / max)).toFixed(2)})`);
+  const fillFor = (n: number, kind: Row["kind"]) => {
+    if (n <= 0) return "rgba(245,237,225,0.07)";
+    const t = (0.42 + 0.58 * Math.min(1, n / max)).toFixed(2);
+    return kind === "state" ? `rgba(95,184,143,${t})` : `rgba(246,193,101,${t})`;
+  };
   const loading = !topo.world || !topo.us;
+  const noCourses = Math.max(0, total - mappedCountries - mappedStates);
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-[var(--bg-deep)]">
-      <div className="pointer-events-none absolute inset-0" style={{ maskImage: "url(/topo.png)", WebkitMaskImage: "url(/topo.png)", maskSize: "cover", WebkitMaskSize: "cover", backgroundColor: "#fff", opacity: 0.04 }} />
-
       <div className="absolute right-3 top-[84px] z-10 rounded-xl bg-[var(--bg-mid)]/85 px-3 py-2 text-[11px] text-[var(--cream)] shadow-[0_18px_44px_-16px_rgba(0,0,0,0.7)] backdrop-blur">
-        <div className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[var(--gold)]" /> Mapped ({mapped})</div>
-        <div className="mt-1 flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[rgba(245,237,225,0.14)]" /> No courses yet ({Math.max(0, total - mapped)})</div>
+        <div className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[var(--gold)]" /> Countries ({mappedCountries})</div>
+        <div className="mt-1 flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: "rgb(95,184,143)" }} /> US states ({mappedStates})</div>
+        <div className="mt-1 flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[rgba(245,237,225,0.14)]" /> No courses yet ({noCourses})</div>
       </div>
 
       {loading ? (
@@ -65,9 +73,9 @@ export default function CoverageMap({ stateCounts, countryCounts }: { stateCount
         <svg viewBox={`0 0 ${W} ${H}`} className="h-full w-full" preserveAspectRatio="xMidYMid meet" onMouseLeave={() => setHover(null)}>
           {paths.map((p) => (
             <path
-              key={p.name}
+              key={`${p.kind}-${p.name}`}
               d={p.d}
-              fill={fillFor(p.n)}
+              fill={fillFor(p.n, p.kind)}
               stroke="rgba(15,24,19,0.85)"
               strokeWidth={0.4}
               className="cursor-default transition-[fill] duration-150 hover:fill-[var(--gold-bright)]"
