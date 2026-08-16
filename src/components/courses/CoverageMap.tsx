@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { geoPath, geoNaturalEarth1 } from "d3-geo";
 import { feature } from "topojson-client";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -17,6 +17,7 @@ type Row = { name: string; n: number; d: string; kind: "country" | "state" };
 export default function CoverageMap({ stateCounts, countryCounts }: { stateCounts: Counts; countryCounts: Counts }) {
   const [topo, setTopo] = useState<{ world?: Topo; us?: Topo }>({});
   const [hover, setHover] = useState<{ name: string; n: number; x: number; y: number } | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!topo.world) fetch("/geo/world.json").then((r) => r.json()).then((d) => setTopo((t) => ({ ...t, world: d }))).catch(() => {});
@@ -57,7 +58,7 @@ export default function CoverageMap({ stateCounts, countryCounts }: { stateCount
   const noCourses = Math.max(0, total - mappedCountries - mappedStates);
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-[var(--bg-deep)] lg:pl-[400px]">
+    <div ref={rootRef} className="relative h-full w-full overflow-hidden bg-[var(--bg-deep)] lg:pl-[400px]">
       <div className="absolute right-3 top-[84px] z-10 rounded-xl bg-[var(--bg-mid)]/85 px-3 py-2 text-[11px] text-[var(--cream)] shadow-[0_18px_44px_-16px_rgba(0,0,0,0.7)] backdrop-blur">
         <div className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[var(--gold)]" /> Countries ({mappedCountries})</div>
         <div className="mt-1 flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[var(--gold)]" /> US states ({mappedStates})</div>
@@ -76,7 +77,7 @@ export default function CoverageMap({ stateCounts, countryCounts }: { stateCount
               stroke="rgba(15,24,19,0.85)"
               strokeWidth={0.4}
               className="cursor-default transition-[fill] duration-150 hover:fill-[var(--gold-bright)]"
-              onMouseMove={(e) => { const r = (e.currentTarget.ownerSVGElement as SVGSVGElement).getBoundingClientRect(); setHover({ name: p.name, n: p.n, x: e.clientX - r.left, y: e.clientY - r.top }); }}
+              onMouseMove={(e) => { const r = rootRef.current?.getBoundingClientRect(); if (!r) return; setHover({ name: p.name, n: p.n, x: e.clientX - r.left, y: e.clientY - r.top }); }}
             />
           ))}
         </svg>
