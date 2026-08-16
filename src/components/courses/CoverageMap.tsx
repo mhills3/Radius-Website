@@ -51,19 +51,16 @@ export default function CoverageMap({ stateCounts, countryCounts }: { stateCount
     return { paths: rows, mappedCountries: mc, mappedStates: ms, total: rows.length, max: mx };
   }, [topo.world, topo.us, stateCounts, countryCounts]);
 
-  const fillFor = (n: number, kind: Row["kind"]) => {
-    if (n <= 0) return "rgba(245,237,225,0.07)";
-    const t = (0.42 + 0.58 * Math.min(1, n / max)).toFixed(2);
-    return kind === "state" ? `rgba(95,184,143,${t})` : `rgba(246,193,101,${t})`;
-  };
+  // Every mapped place is the same gold — only the legend counts distinguish countries vs US states.
+  const fillFor = (n: number) => (n <= 0 ? "rgba(245,237,225,0.07)" : `rgba(246,193,101,${(0.42 + 0.58 * Math.min(1, n / max)).toFixed(2)})`);
   const loading = !topo.world || !topo.us;
   const noCourses = Math.max(0, total - mappedCountries - mappedStates);
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-[var(--bg-deep)]">
+    <div className="relative h-full w-full overflow-hidden bg-[var(--bg-deep)] lg:pl-[400px]">
       <div className="absolute right-3 top-[84px] z-10 rounded-xl bg-[var(--bg-mid)]/85 px-3 py-2 text-[11px] text-[var(--cream)] shadow-[0_18px_44px_-16px_rgba(0,0,0,0.7)] backdrop-blur">
         <div className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[var(--gold)]" /> Countries ({mappedCountries})</div>
-        <div className="mt-1 flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: "rgb(95,184,143)" }} /> US states ({mappedStates})</div>
+        <div className="mt-1 flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[var(--gold)]" /> US states ({mappedStates})</div>
         <div className="mt-1 flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[rgba(245,237,225,0.14)]" /> No courses yet ({noCourses})</div>
       </div>
 
@@ -75,7 +72,7 @@ export default function CoverageMap({ stateCounts, countryCounts }: { stateCount
             <path
               key={`${p.kind}-${p.name}`}
               d={p.d}
-              fill={fillFor(p.n, p.kind)}
+              fill={fillFor(p.n)}
               stroke="rgba(15,24,19,0.85)"
               strokeWidth={0.4}
               className="cursor-default transition-[fill] duration-150 hover:fill-[var(--gold-bright)]"
