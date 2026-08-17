@@ -1,5 +1,6 @@
 import { type CourseScore } from "./courses";
 import { getCourseRoundsForUser } from "./rounds";
+import { resolveCanonicalId } from "./account";
 
 export interface AceRecord { player: string; username?: string; uid: string; hole: number; date: number; }
 export interface DriveRecord { player: string; username?: string; uid: string; hole: number; distance: number; }
@@ -10,13 +11,22 @@ export interface CourseRecords { aces: AceRecord[]; drives: DriveRecord[]; loade
  * player's submitted rounds (decode the throws). Best scores already live in the scores subcollection.
  */
 export async function getCourseRecords(courseName: string, scores: CourseScore[]): Promise<CourseRecords> {
-  // unique players from the leaderboard (cap to keep reads reasonable)
-  const seen = new Set<string>();
-  const players = scores.filter((s): s is CourseScore & { playerUid: string } => {
-    if (!s.playerUid || seen.has(s.playerUid)) return false;
-    seen.add(s.playerUid);
-    return true;
-  }).slice(0, 14);
+  // One leaderboard row per raw uid first…
+  const byUid = new Map<string, CourseScore & { playerUid: string }>();
+  for (const s of scores) if (s.playerUid && !byUid.has(s.playerUid)) byUid.set(s.playerUid, s as CourseScore & { playerUid: string });
+
+  // …then collapse ALIAS ACCOUNTS to one canonical person. A player's linked logins (e.g. Brady's two
+  // accounts) resolve to the same rounds, so counting each separately double-listed the same aces/drives.
+  const canonOf = new Map<string, string>();
+  await Promise.all([...byUid.keys()].map(async (uid) => { canonOf.set(uid, await resolveCanonicalId(uid).catch(() => uid)); }));
+  const byCanon = new Map<string, CourseScore & { playerUid: string }>();
+  for (const [uid, s] of byUid) {
+    const canon = canonOf.get(uid) || uid;
+    const cur = byCanon.get(canon);
+    // keep the best-labelled account for display (one with a username/handle)
+    if (!cur || (!(cur.username || cur.playerHandle) && (s.username || s.playerHandle))) byCanon.set(canon, s);
+  }
+  const players = [...byCanon.values()].slice(0, 14); // one row per real person
 
   const aces: AceRecord[] = [];
   const driveByPlayer = new Map<string, DriveRecord>();

@@ -568,11 +568,17 @@ export async function getCourseScores(courseId: string, max = 25): Promise<Cours
       playerHandle: (data.playerHandle as string | undefined)?.replace(/^@/, ""),
     };
   });
-  // Best score per player PER LAYOUT (a player who played multiple layouts keeps one best on
+  // Collapse ALIAS ACCOUNTS to one canonical person so a player's linked logins don't each hold a
+  // leaderboard row (that's what duplicated e.g. "Brady" on the board + in the derived records).
+  const uids = [...new Set(all.map((s) => s.playerUid).filter(Boolean) as string[])];
+  const canonOf = new Map<string, string>();
+  await Promise.all(uids.map(async (uid) => { canonOf.set(uid, await resolveCanonicalId(uid).catch(() => uid)); }));
+  // Best score per canonical player PER LAYOUT (a player who played multiple layouts keeps one best on
   // EACH — keying by player alone hid their scores on every layout but their single best).
   const best = new Map<string, CourseScore>();
   for (const s of all) {
-    const key = `${s.playerUid || s.playerName}|${s.layoutName || ""}`;
+    const canon = (s.playerUid && canonOf.get(s.playerUid)) || s.playerUid || s.playerName;
+    const key = `${canon}|${s.layoutName || ""}`;
     const cur = best.get(key);
     if (!cur || s.relativeToPar < cur.relativeToPar) best.set(key, s);
   }
