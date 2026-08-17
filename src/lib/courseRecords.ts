@@ -41,7 +41,8 @@ export async function getCourseRecords(courseName: string, scores: CourseScore[]
           }
           for (const t of h.throws) {
             const d = Math.round(t.distance || 0); // manually-measured throw distance
-            if (d > 0) {
+            // Sanity guard: no real course drive exceeds ~800 ft — anything beyond is bad data.
+            if (d > 0 && d <= 800) {
               const cur = driveByPlayer.get(p.playerUid);
               if (!cur || d > cur.distance) driveByPlayer.set(p.playerUid, { player: p.playerName, username: p.username || p.playerHandle, uid: p.playerUid, hole: h.holeNumber, distance: d });
             }

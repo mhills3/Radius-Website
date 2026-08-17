@@ -582,7 +582,13 @@ export async function getCourseScores(courseId: string, max = 25): Promise<Cours
     const cur = best.get(key);
     if (!cur || s.relativeToPar < cur.relativeToPar) best.set(key, s);
   }
-  return [...best.values()].sort((a, b) => a.relativeToPar - b.relativeToPar).slice(0, max);
+  // Sanity guard: drop physically-impossible scores (e.g. a "-46" on a 4-hole round). The best any
+  // round can shoot is acing every hole; even if every hole were a par 5 that's -4 per hole, so any
+  // relativeToPar below -4×holesPlayed is bad data, not a record.
+  return [...best.values()]
+    .filter((s) => !s.holesPlayed || s.relativeToPar >= -4 * s.holesPlayed)
+    .sort((a, b) => a.relativeToPar - b.relativeToPar)
+    .slice(0, max);
 }
 
 export function slugify(name: string, id: string): string {
