@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getCourseByShortId, getCourseScores, idFromSlug, slugify, isPrivateCourse, type Course, type CourseScore } from "@/lib/courses";
+import { getCourseByShortId, getCourseScores, setHiddenPlayers, idFromSlug, slugify, isPrivateCourse, type Course, type CourseScore } from "@/lib/courses";
 import { getOwnedIds } from "@/lib/account";
 import { getRanksFor, type RankInfo } from "@/lib/community";
 import CourseHoleMap, { holesWithGeo } from "@/components/courses/CourseHoleMap";
@@ -47,6 +47,8 @@ export default function CourseDetailClient({ slug, initialCourse }: { slug: stri
   const [activeSection, setActiveSection] = useState("overview");
   // Private courses are viewable ONLY by their creator. null = n/a (public course), true/false = checked.
   const [ownerOfPrivate, setOwnerOfPrivate] = useState<boolean | null>(null);
+  // Owner-moderated: canonical uids hidden from this course's records + leaderboard.
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     async function load() {
@@ -83,10 +85,13 @@ export default function CourseDetailClient({ slug, initialCourse }: { slug: stri
     return () => { live = false; };
   }, [course, user]);
 
-  // Records (aces + long drives) are derived from leaderboard players' submitted rounds.
+  useEffect(() => { setHiddenIds(new Set(course?.hiddenPlayerIds || [])); }, [course]);
+
+  // Records (aces + long drives) are derived from leaderboard players' submitted rounds — always
+  // exclude owner-hidden players so their bogus data doesn't surface anywhere.
   useEffect(() => {
-    if (course && scores.length) getCourseRecords(course.name, scores).then(setRecords).catch(() => {});
-  }, [course, scores]);
+    if (course && scores.length) getCourseRecords(course.name, scores.filter((s) => !hiddenIds.has(s.canonicalUid || ""))).then(setRecords).catch(() => {});
+  }, [course, scores, hiddenIds]);
 
   // Scroll-spy: highlight the active section in the sticky nav.
   useEffect(() => {
@@ -149,6 +154,19 @@ export default function CourseDetailClient({ slug, initialCourse }: { slug: stri
   const hasLayouts = layoutOptions.length > 1;
   const layoutNames = new Set((course.layouts || []).map((l) => l.name));
   const scopedScores = !hasLayouts ? scores : activeLayout.id === "default" ? scores.filter((s) => !s.layoutName || !layoutNames.has(s.layoutName)) : scores.filter((s) => s.layoutName === activeLayout.name);
+  // hidden players drop out of the public numbers; the owner still sees them (dimmed) so they can un-hide.
+  const isHidden = (s: CourseScore) => hiddenIds.has(s.canonicalUid || "");
+  const visibleScopedScores = scopedScores.filter((s) => !isHidden(s));
+  const isOwner = !!profile && profile.canonicalId === course.createdById;
+  const toggleHide = async (uid?: string) => {
+    if (!uid || !user || !course || !isOwner) return;
+    const next = new Set(hiddenIds);
+    if (next.has(uid)) next.delete(uid); else next.add(uid);
+    const prev = hiddenIds;
+    setHiddenIds(next); // optimistic
+    const ok = await setHiddenPlayers(user.uid, course.id, [...next]);
+    if (!ok) setHiddenIds(prev); // revert on failure
+  };
   const layoutAvg = course.layoutAverages?.[activeLayout.name];
 
   const myScore = user ? scopedScores.find((s) => s.playerUid === user.uid) : undefined;
@@ -156,23 +174,22 @@ export default function CourseDetailClient({ slug, initialCourse }: { slug: stri
   const selectedRound = myRounds[roundIdx];
   const activeRoundHole = activeHole != null ? selectedRound?.holes.find((h) => h.holeNumber === activeHole) : undefined;
   const flightThrows = activeRoundHole?.throws.filter((t) => (t.distance ?? 0) > 0);
-  const isOwner = !!profile && profile.canonicalId === course.createdById;
-  const record = scopedScores[0];
-  const players = scopedScores.length;
-  const avgToPar = players ? Math.round(scopedScores.reduce((s, x) => s + x.relativeToPar, 0) / players) : null;
+  const record = visibleScopedScores[0];
+  const players = visibleScopedScores.length;
+  const avgToPar = players ? Math.round(visibleScopedScores.reduce((s, x) => s + x.relativeToPar, 0) / players) : null;
   const distBuckets = players
     ? [
-        { l: "Under par", n: scopedScores.filter((s) => s.relativeToPar < 0).length },
-        { l: "E – +5", n: scopedScores.filter((s) => s.relativeToPar >= 0 && s.relativeToPar <= 5).length },
-        { l: "+6 – +10", n: scopedScores.filter((s) => s.relativeToPar >= 6 && s.relativeToPar <= 10).length },
-        { l: "+11 – +20", n: scopedScores.filter((s) => s.relativeToPar >= 11 && s.relativeToPar <= 20).length },
-        { l: "+21 plus", n: scopedScores.filter((s) => s.relativeToPar > 20).length },
+        { l: "Under par", n: visibleScopedScores.filter((s) => s.relativeToPar < 0).length },
+        { l: "E – +5", n: visibleScopedScores.filter((s) => s.relativeToPar >= 0 && s.relativeToPar <= 5).length },
+        { l: "+6 – +10", n: visibleScopedScores.filter((s) => s.relativeToPar >= 6 && s.relativeToPar <= 10).length },
+        { l: "+11 – +20", n: visibleScopedScores.filter((s) => s.relativeToPar >= 11 && s.relativeToPar <= 20).length },
+        { l: "+21 plus", n: visibleScopedScores.filter((s) => s.relativeToPar > 20).length },
       ]
     : [];
   const maxBucket = Math.max(1, ...distBuckets.map((b) => b.n));
 
   // records data
-  const best = scopedScores.filter((s) => s.playerUid).slice(0, 5).map((s) => ({ uid: s.playerUid as string, name: s.playerName, username: s.username || s.playerHandle, value: s.relativeToPar }));
+  const best = visibleScopedScores.filter((s) => s.playerUid).slice(0, 5).map((s) => ({ uid: s.playerUid as string, name: s.playerName, username: s.username || s.playerHandle, value: s.relativeToPar }));
   const recordPhotos = new Map<string, string>();
   ranks.forEach((r, uid) => { if (r.photo) recordPhotos.set(uid, r.photo); });
 
@@ -415,15 +432,16 @@ export default function CourseDetailClient({ slug, initialCourse }: { slug: stri
                 {players > 0 && <span className="text-sm text-[var(--c-muted)]">{players} player{players === 1 ? "" : "s"}</span>}
               </div>
             </div>
-            {scopedScores.length === 0 ? (
+            {(isOwner ? scopedScores : visibleScopedScores).length === 0 ? (
               <div className="rounded-2xl border border-dashed border-[var(--c-line)] bg-[var(--c-card)] p-8 text-center text-sm text-[var(--c-muted)]">No scores logged on this layout yet — <Link href="/login" className="font-bold text-[var(--gold)] hover:underline">be the first</Link>.</div>
             ) : (
               <div className="overflow-hidden rounded-2xl border border-[var(--c-line)] bg-[var(--c-card)] shadow-sm">
-                {scopedScores.slice(0, 25).map((s, i) => {
+                {(isOwner ? scopedScores : visibleScopedScores).slice(0, 25).map((s, i) => {
                   const rk = s.playerUid ? ranks.get(s.playerUid) : undefined;
                   const mine = user && s.playerUid === user.uid;
+                  const hidden = isHidden(s);
                   return (
-                    <div key={`${s.playerId}-${s.date}-${i}`} className={`flex items-center gap-3 border-b border-[var(--c-line)] px-4 py-3 last:border-0 ${mine ? "bg-[var(--gold)]/[0.08]" : ""}`}>
+                    <div key={`${s.playerId}-${s.date}-${i}`} className={`flex items-center gap-3 border-b border-[var(--c-line)] px-4 py-3 last:border-0 ${mine ? "bg-[var(--gold)]/[0.08]" : ""} ${hidden ? "opacity-45" : ""}`}>
                       <span className="w-6 shrink-0 text-center text-sm font-bold text-[var(--gold)]">{i < 3 ? MEDALS[i] : i + 1}</span>
                       <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--bg-mid)] text-xs font-bold text-[var(--cream)]">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -433,10 +451,18 @@ export default function CourseDetailClient({ slug, initialCourse }: { slug: stri
                         <div className="flex items-center gap-1.5">
                           {s.playerHandle ? <Link href={`/u/${s.playerHandle}`} className="truncate text-sm font-bold text-[var(--c-ink)] hover:text-[var(--gold)]">{s.playerName}</Link> : <span className="truncate text-sm font-bold text-[var(--c-ink)]">{s.playerName}</span>}
                           {rk && <span className="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold" style={{ background: `${rk.color}22`, color: rk.color }}>{rk.tier}</span>}
+                          {hidden && <span className="shrink-0 rounded-full bg-[var(--c-line)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--c-muted)]">Hidden</span>}
                         </div>
                         <div className="truncate text-xs text-[var(--c-muted)]">{(s.username || s.playerHandle) ? `@${s.username || s.playerHandle} · ` : ""}{s.holesPlayed} holes{s.date ? ` · ${fmtDate(s.date)}` : ""}</div>
                       </div>
                       <span className="font-[family-name:var(--font-heading)] text-lg font-extrabold" style={{ color: scoreColor(s.relativeToPar) }}>{fmt(s.relativeToPar)}</span>
+                      {isOwner && s.canonicalUid && (
+                        <button onClick={() => toggleHide(s.canonicalUid)} title={hidden ? "Un-hide this player" : "Hide this player's records here"} className="shrink-0 rounded-full p-1.5 text-[var(--c-muted)] transition-colors hover:bg-[var(--c-line)] hover:text-[var(--c-ink)]">
+                          {hidden
+                            ? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></svg>
+                            : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20C5 20 1.5 13 1.5 13a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10.5 7 10.5 7a18.5 18.5 0 0 1-2.16 3.19M6.1 6.1 1 1m22 22-5.06-5.06M9.88 9.88a3 3 0 1 0 4.24 4.24" /></svg>}
+                        </button>
+                      )}
                     </div>
                   );
                 })}

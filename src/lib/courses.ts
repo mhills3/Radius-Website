@@ -92,6 +92,7 @@ export interface Course {
   isDraft?: boolean;
   defaultLayoutName?: string;
   lastModified: number;
+  hiddenPlayerIds?: string[]; // canonical uids the owner has hidden from this course's records/leaderboard
 }
 
 /**
@@ -133,6 +134,8 @@ export interface CourseScore {
   layoutName?: string;
   playerUid?: string;
   playerHandle?: string;
+  id?: string;            // score doc id
+  canonicalUid?: string;  // player's canonical id (alias logins collapse to this) — used for moderation
 }
 
 // Some courses store hole tee/basket coordinates but NO explicit `distance` — the apps compute it
@@ -229,7 +232,21 @@ export function docToCourse(id: string, data: DocumentData): Course {
     defaultLayoutName: typeof data.defaultLayoutName === "string" ? data.defaultLayoutName : undefined,
     lastModified: data.lastModified ?? 0,
     dateCreated: normMs(data.dateCreated ?? data.lastModified),
+    hiddenPlayerIds: Array.isArray(data.hiddenPlayerIds) ? (data.hiddenPlayerIds as string[]) : [],
   };
+}
+
+/** Owner-only: set the list of canonical player ids hidden from this course's records + leaderboard. */
+export async function setHiddenPlayers(uid: string, courseId: string, hiddenPlayerIds: string[]): Promise<boolean> {
+  try {
+    const cid = await resolveCanonicalId(uid);
+    const snap = await getDoc(doc(db, "courses", courseId));
+    if (!snap.exists() || (snap.data().createdById as string) !== cid) return false;
+    await updateDoc(doc(db, "courses", courseId), { hiddenPlayerIds, lastModified: Date.now() });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // ms | unix-seconds | Swift reference-date seconds (2001) → ms
@@ -566,6 +583,8 @@ export async function getCourseScores(courseId: string, max = 25): Promise<Cours
       layoutName: data.layoutName,
       playerUid: data.playerUid ?? data.playerId,
       playerHandle: (data.playerHandle as string | undefined)?.replace(/^@/, ""),
+      id: d.id,
+      canonicalUid: "",
     };
   });
   // Collapse ALIAS ACCOUNTS to one canonical person so a player's linked logins don't each hold a
@@ -573,6 +592,7 @@ export async function getCourseScores(courseId: string, max = 25): Promise<Cours
   const uids = [...new Set(all.map((s) => s.playerUid).filter(Boolean) as string[])];
   const canonOf = new Map<string, string>();
   await Promise.all(uids.map(async (uid) => { canonOf.set(uid, await resolveCanonicalId(uid).catch(() => uid)); }));
+  for (const s of all) s.canonicalUid = (s.playerUid && canonOf.get(s.playerUid)) || s.playerUid || "";
   // Best score per canonical player PER LAYOUT (a player who played multiple layouts keeps one best on
   // EACH — keying by player alone hid their scores on every layout but their single best).
   const best = new Map<string, CourseScore>();
