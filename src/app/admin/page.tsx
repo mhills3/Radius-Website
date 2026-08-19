@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { getPendingRemovalCount } from "@/lib/courseRemoval";
+import { getPendingFulfillmentCount } from "@/lib/rewards";
 
 const HEAD = "font-[family-name:var(--font-heading)]";
 
@@ -33,12 +34,20 @@ function ToolCard({ t }: { t: Tool }) {
 
 export default function AdminHub() {
   const [pending, setPending] = useState<number | null>(null);
-  useEffect(() => { getPendingRemovalCount().then(setPending).catch(() => setPending(0)); }, []);
+  const [fulfillPending, setFulfillPending] = useState<number | null>(null);
+  useEffect(() => {
+    getPendingRemovalCount().then(setPending).catch(() => setPending(0));
+    getPendingFulfillmentCount().then(setFulfillPending).catch(() => setFulfillPending(0));
+  }, []);
 
   const tools: Tool[] = [
     {
       title: "Course Removals", desc: "Review requests to pull a course from the directory.", href: "/admin/removals", count: pending, live: true,
       icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /></svg>,
+    },
+    {
+      title: "Reward Fulfillment", desc: "Ship builder gear + tournament bags — address reads onto a label.", href: "/admin/fulfillment", count: fulfillPending, live: true,
+      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><path d="m3.3 7 8.7 5 8.7-5M12 22V12" /></svg>,
     },
     {
       title: "Course Approvals", desc: "Review new course submissions before they go public.", live: false,

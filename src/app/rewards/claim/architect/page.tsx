@@ -23,7 +23,7 @@ export default function ClaimArchitectPage() {
           </p>
         </div>
 
-        <RewardClaimForm tier="architect" />
+        <RewardClaimForm />
 
         <p className="mt-8 text-center text-sm text-[var(--sage-dim)]">
           Questions? Email{" "}

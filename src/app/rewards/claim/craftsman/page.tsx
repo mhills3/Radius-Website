@@ -23,7 +23,7 @@ export default function ClaimCraftsmanPage() {
           </p>
         </div>
 
-        <RewardClaimForm tier="craftsman" />
+        <RewardClaimForm />
 
         <p className="mt-8 text-center text-sm text-[var(--sage-dim)]">
           Questions? Email{" "}

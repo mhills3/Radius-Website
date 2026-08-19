@@ -7,6 +7,7 @@ import Logo from "@/components/Logo";
 import { useAuth } from "@/components/AuthProvider";
 import NotificationBell from "@/components/NotificationBell";
 import { getPendingRemovalCount } from "@/lib/courseRemoval";
+import { getPendingFulfillmentCount } from "@/lib/rewards";
 
 const APP_STORE = "https://apps.apple.com/us/app/radius-disc-golf/id6760574186";
 const GOOGLE_PLAY = "https://play.google.com/store/apps/details?id=com.michaelhills.radiusandroid";
@@ -37,7 +38,10 @@ export default function Nav() {
 
   const hidden = pathname === "/login";
 
-  useEffect(() => { if (profile?.staff) getPendingRemovalCount().then(setAdminPending).catch(() => {}); }, [profile?.staff]);
+  useEffect(() => {
+    if (!profile?.staff) return;
+    Promise.all([getPendingRemovalCount().catch(() => 0), getPendingFulfillmentCount().catch(() => 0)]).then(([a, b]) => setAdminPending(a + b));
+  }, [profile?.staff]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
