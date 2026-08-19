@@ -43,7 +43,9 @@ export default function GrowthStrip({ data }: { data: GrowthData }) {
   const baseY = padT + gh;
   const n = series.length || 1;
   const slot = W / n;
-  const bw = showUsers ? Math.min(slot * 0.3, 18) : Math.min(slot * 0.46, 26);
+  // thicker bars, less dead space — especially with few periods (e.g. 5 months)
+  const bw = showUsers ? Math.min(slot * 0.4, 46) : Math.min(slot * 0.64, 72);
+  const pairGap = showUsers ? Math.max(2, bw * 0.12) : 0;
   const every = Math.max(1, Math.ceil(n / 8));
   const ht = hover != null ? series[hover] : null;
 
@@ -85,8 +87,8 @@ export default function GrowthStrip({ data }: { data: GrowthData }) {
               const uh = (s.users / maxV) * gh;
               return (
                 <g key={i} opacity={dim ? 0.35 : 1} style={{ transition: "opacity .15s" }}>
-                  <rect x={cx - bw - 1} y={baseY - ch} width={bw} height={ch} rx={2} fill={GOLD} />
-                  <rect x={cx + 1} y={baseY - uh} width={bw} height={uh} rx={2} fill={BLUE} />
+                  <rect x={cx - bw - pairGap / 2} y={baseY - ch} width={bw} height={ch} rx={2.5} fill={GOLD} />
+                  <rect x={cx + pairGap / 2} y={baseY - uh} width={bw} height={uh} rx={2.5} fill={BLUE} />
                 </g>
               );
             }
