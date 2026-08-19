@@ -114,19 +114,50 @@ function Card({ r, onShipped }: { r: Fulfillment; onShipped: (id: string, tracki
 }
 
 type Filter = "pending" | "completed" | "all";
+type Quarter = 0 | 1 | 2 | 3 | 4; // 0 = whole year
+
+// claims are batched into quarterly shipments — group by the quarter they were submitted.
+const yearOf = (ms: number) => new Date(ms).getFullYear();
+const quarterOf = (ms: number) => Math.floor(new Date(ms).getMonth() / 3) + 1; // 1..4
+const QUARTERS: { q: Quarter; label: string }[] = [{ q: 0, label: "Full year" }, { q: 1, label: "Q1" }, { q: 2, label: "Q2" }, { q: 3, label: "Q3" }, { q: 4, label: "Q4" }];
 
 export default function FulfillmentQueue() {
   const [rows, setRows] = useState<Fulfillment[] | null>(null);
-  const [filter, setFilter] = useState<Filter>("pending");
+  const [status, setStatus] = useState<Filter>("pending");
+  const [year, setYear] = useState<number | "all">("all");
+  const [quarter, setQuarter] = useState<Quarter>(0);
 
   useEffect(() => { getFulfillments().then(setRows).catch(() => setRows([])); }, []);
 
   const onShipped = (id: string, tracking: string, note: string) =>
     setRows((rs) => rs?.map((r) => (r.id === id ? { ...r, status: "shipped", tracking, shipNote: note, shippedAt: Date.now() } : r)) ?? rs);
 
-  const pending = (rows || []).filter((r) => r.status !== "shipped");
-  const shown = filter === "all" ? (rows || []) : filter === "completed" ? (rows || []).filter((r) => r.status === "shipped") : pending;
-  const TABS: { k: Filter; label: string }[] = [{ k: "pending", label: `Pending${pending.length ? ` (${pending.length})` : ""}` }, { k: "completed", label: "Completed" }, { k: "all", label: "All" }];
+  const all = rows || [];
+  // every year present in the data, newest first — populates the dropdown so it self-organizes.
+  const years = Array.from(new Set(all.map((r) => (r.submittedAt ? yearOf(r.submittedAt) : null)).filter((y): y is number => y != null))).sort((a, b) => b - a);
+
+  const matchStatus = (r: Fulfillment) => (status === "all" ? true : status === "completed" ? r.status === "shipped" : r.status !== "shipped");
+  const matchYear = (r: Fulfillment) => year === "all" || (r.submittedAt != null && yearOf(r.submittedAt) === year);
+  const matchQuarter = (r: Fulfillment) => quarter === 0 || (r.submittedAt != null && quarterOf(r.submittedAt) === quarter);
+
+  const shown = all.filter((r) => matchStatus(r) && matchYear(r) && matchQuarter(r));
+
+  // period-aware tab counts so "what's needed vs what we did" reads at a glance for the chosen window.
+  const inPeriod = (r: Fulfillment) => matchYear(r) && matchQuarter(r);
+  const pendingCount = all.filter((r) => r.status !== "shipped" && inPeriod(r)).length;
+  const completedCount = all.filter((r) => r.status === "shipped" && inPeriod(r)).length;
+  const TABS: { k: Filter; label: string }[] = [
+    { k: "pending", label: `Pending${pendingCount ? ` (${pendingCount})` : ""}` },
+    { k: "completed", label: `Completed${completedCount ? ` (${completedCount})` : ""}` },
+    { k: "all", label: "All" },
+  ];
+
+  // quarter pill counts respect the status + year selection (ignore quarter) → shows the spread across the year.
+  const inScope = all.filter((r) => matchStatus(r) && matchYear(r));
+  const qCount = (q: Quarter) => (q === 0 ? inScope.length : inScope.filter((r) => r.submittedAt != null && quarterOf(r.submittedAt) === q).length);
+
+  const periodLabel = year === "all" ? (quarter === 0 ? "all time" : `Q${quarter}, all years`) : quarter === 0 ? `${year}` : `Q${quarter} ${year}`;
+  const noun = status === "completed" ? "shipped" : status === "pending" ? "to ship" : "total";
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-10">
@@ -137,19 +168,49 @@ export default function FulfillmentQueue() {
 
       <div className="mt-6 inline-flex rounded-full bg-white/[0.05] p-1">
         {TABS.map((t) => (
-          <button key={t.k} onClick={() => setFilter(t.k)} className={`rounded-full px-4 py-1.5 text-[13px] font-bold transition-colors ${filter === t.k ? "bg-[var(--gold)] text-[#141B16]" : "text-[var(--sage)] hover:text-[var(--cream)]"}`}>{t.label}</button>
+          <button key={t.k} onClick={() => setStatus(t.k)} className={`rounded-full px-4 py-1.5 text-[13px] font-bold transition-colors ${status === t.k ? "bg-[var(--gold)] text-[#141B16]" : "text-[var(--sage)] hover:text-[var(--cream)]"}`}>{t.label}</button>
         ))}
+      </div>
+
+      {/* period: year dropdown + quarter pills — auto-organizes claims into quarterly shipping batches */}
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <div className="relative">
+          <select
+            value={String(year)}
+            onChange={(e) => setYear(e.target.value === "all" ? "all" : Number(e.target.value))}
+            className="appearance-none rounded-full border border-[var(--hair-strong)] bg-white/[0.04] py-1.5 pl-4 pr-9 text-[13px] font-bold text-[var(--cream)] outline-none transition-colors focus:border-[var(--gold)]/50"
+          >
+            <option value="all">All years</option>
+            {years.map((y) => <option key={y} value={y}>{y}</option>)}
+          </select>
+          <svg className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--sage)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+        </div>
+        <div className="inline-flex rounded-full bg-white/[0.05] p-1">
+          {QUARTERS.map((qq) => {
+            const c = qCount(qq.q);
+            const on = quarter === qq.q;
+            return (
+              <button key={qq.q} onClick={() => setQuarter(qq.q)} className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] font-bold transition-colors ${on ? "bg-[var(--gold)] text-[#141B16]" : "text-[var(--sage)] hover:text-[var(--cream)]"}`}>
+                {qq.label}
+                {c > 0 && <span className={`text-[11px] ${on ? "text-[#141B16]/70" : "text-[var(--sage-dim)]"}`}>{c}</span>}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {rows === null ? (
         <div className="mt-10 flex justify-center text-[var(--sage)]"><svg className="h-6 w-6 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg></div>
       ) : shown.length === 0 ? (
         <div className="mt-8 rounded-2xl border border-dashed border-[var(--hair)] bg-[var(--bg-mid)] p-10 text-center">
-          <div className="text-3xl">{filter === "pending" ? "✅" : "📦"}</div>
-          <p className="mt-2 text-[15px] font-semibold text-[var(--cream)]">{filter === "pending" ? "Nothing to ship" : "Nothing here"}</p>
+          <div className="text-3xl">{status === "pending" ? "✅" : "📦"}</div>
+          <p className="mt-2 text-[15px] font-semibold text-[var(--cream)]">{status === "pending" ? "Nothing to ship" : "Nothing here"} <span className="text-[var(--sage-dim)]">· {periodLabel}</span></p>
         </div>
       ) : (
-        <div className="mt-6 space-y-5">{shown.map((r) => <Card key={r.id} r={r} onShipped={onShipped} />)}</div>
+        <>
+          <div className="mt-6 text-[12.5px] font-semibold text-[var(--sage-dim)]">{shown.length} {noun} · {periodLabel}</div>
+          <div className="mt-3 space-y-5">{shown.map((r) => <Card key={r.id} r={r} onShipped={onShipped} />)}</div>
+        </>
       )}
     </div>
   );
