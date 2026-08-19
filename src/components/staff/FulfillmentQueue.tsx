@@ -144,7 +144,7 @@ function Card({ r, onShipped, onRejected }: { r: Fulfillment; onShipped: (id: st
   );
 }
 
-type Filter = "pending" | "completed" | "all";
+type Filter = "pending" | "completed" | "rejected" | "all";
 type Quarter = 0 | 1 | 2 | 3 | 4; // 0 = whole year
 
 // claims are batched into quarterly shipments — group by the quarter they were submitted.
@@ -179,8 +179,9 @@ export default function FulfillmentQueue() {
     ...all.map((r) => (r.submittedAt ? yearOf(r.submittedAt) : null)).filter((y): y is number => y != null),
   ])).sort((a, b) => b - a);
 
-  const isPending = (r: Fulfillment) => r.status !== "shipped" && r.status !== "rejected" && r.status !== "dismissed";
-  const matchStatus = (r: Fulfillment) => (status === "all" ? true : status === "completed" ? r.status === "shipped" : isPending(r));
+  const isRejected = (r: Fulfillment) => r.status === "rejected" || r.status === "dismissed";
+  const isPending = (r: Fulfillment) => r.status !== "shipped" && !isRejected(r);
+  const matchStatus = (r: Fulfillment) => (status === "all" ? true : status === "completed" ? r.status === "shipped" : status === "rejected" ? isRejected(r) : isPending(r));
   const matchYear = (r: Fulfillment) => year === "all" || (r.submittedAt != null && yearOf(r.submittedAt) === year);
   const matchQuarter = (r: Fulfillment) => quarter === 0 || (r.submittedAt != null && quarterOf(r.submittedAt) === quarter);
 
@@ -190,9 +191,11 @@ export default function FulfillmentQueue() {
   const inPeriod = (r: Fulfillment) => matchYear(r) && matchQuarter(r);
   const pendingCount = all.filter((r) => isPending(r) && inPeriod(r)).length;
   const completedCount = all.filter((r) => r.status === "shipped" && inPeriod(r)).length;
+  const rejectedCount = all.filter((r) => isRejected(r) && inPeriod(r)).length;
   const TABS: { k: Filter; label: string }[] = [
     { k: "pending", label: `Pending${pendingCount ? ` (${pendingCount})` : ""}` },
     { k: "completed", label: `Completed${completedCount ? ` (${completedCount})` : ""}` },
+    { k: "rejected", label: `Rejected${rejectedCount ? ` (${rejectedCount})` : ""}` },
     { k: "all", label: "All" },
   ];
 
@@ -201,7 +204,7 @@ export default function FulfillmentQueue() {
   const qCount = (q: Quarter) => (q === 0 ? inScope.length : inScope.filter((r) => r.submittedAt != null && quarterOf(r.submittedAt) === q).length);
 
   const periodLabel = year === "all" ? (quarter === 0 ? "all time" : `Q${quarter}, all years`) : quarter === 0 ? `${year}` : `Q${quarter} ${year}`;
-  const noun = status === "completed" ? "shipped" : status === "pending" ? "to ship" : "total";
+  const noun = status === "completed" ? "shipped" : status === "pending" ? "to ship" : status === "rejected" ? "rejected" : "total";
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-10">
@@ -247,8 +250,8 @@ export default function FulfillmentQueue() {
         <div className="mt-10 flex justify-center text-[var(--sage)]"><svg className="h-6 w-6 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg></div>
       ) : shown.length === 0 ? (
         <div className="mt-8 rounded-2xl border border-dashed border-[var(--hair)] bg-[var(--bg-mid)] p-10 text-center">
-          <div className="text-3xl">{status === "pending" ? "✅" : "📦"}</div>
-          <p className="mt-2 text-[15px] font-semibold text-[var(--cream)]">{status === "pending" ? "Nothing to ship" : "Nothing here"} <span className="text-[var(--sage-dim)]">· {periodLabel}</span></p>
+          <div className="text-3xl">{status === "pending" ? "✅" : status === "rejected" ? "🚫" : "📦"}</div>
+          <p className="mt-2 text-[15px] font-semibold text-[var(--cream)]">{status === "pending" ? "Nothing to ship" : status === "rejected" ? "No rejected claims" : "Nothing here"} <span className="text-[var(--sage-dim)]">· {periodLabel}</span></p>
         </div>
       ) : (
         <>
