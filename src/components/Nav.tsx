@@ -69,7 +69,7 @@ export default function Nav() {
 
   const wrap = darkHeroPage || coursesHero ? "fixed" : "sticky"; // dark-hero pages overlay the nav so it sits ON the hero
   const shell = onDarkSettle
-    ? "border-b border-[rgba(244,241,232,0.08)] bg-[rgba(20,27,22,0.88)] backdrop-blur-[14px]"
+    ? "border-b border-[rgba(244,241,232,0.08)] bg-[rgba(18,24,20,0.97)] backdrop-blur-[14px]"
     : atHeroTop
     ? "bg-transparent"
     : "border-b border-black/[0.06] bg-[#faf8f3]/80 backdrop-blur-xl supports-[backdrop-filter]:bg-[#faf8f3]/70";
@@ -95,8 +95,8 @@ export default function Nav() {
   // Logged in: Dashboard + My Bag lead (your stuff), then explore. No Subscription/Learn.
   const links = user
     ? [
-        { href: "/dashboard", label: "Dashboard" },
         ...(profile?.staff ? [{ href: "/admin", label: "Admin" }] : []),
+        { href: "/dashboard", label: "Dashboard" },
         { href: "/bag", label: "My Game" },
         { href: "/leagues", label: "Events" },
         { href: "/community", label: "Community" },
