@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getFulfillments, markFulfillmentShipped, TIER_LABEL, type Fulfillment } from "@/lib/rewards";
+import { getFulfillments, markFulfillmentShipped, rejectFulfillment, TIER_LABEL, type Fulfillment } from "@/lib/rewards";
 import { parseResolveError } from "@/lib/courseRemoval";
 
 const HEAD = "font-[family-name:var(--font-heading)]";
@@ -31,20 +31,22 @@ function labelBlock(r: Fulfillment): string {
   ].filter(Boolean).join("\n");
 }
 
-function Card({ r, onShipped }: { r: Fulfillment; onShipped: (id: string, tracking: string, note: string) => void }) {
-  const [open, setOpen] = useState(false);
+function Card({ r, onShipped, onRejected }: { r: Fulfillment; onShipped: (id: string, tracking: string, note: string) => void; onRejected: (id: string, reason: string) => void }) {
+  const [mode, setMode] = useState<"idle" | "ship" | "reject">("idle");
   const [tracking, setTracking] = useState("");
   const [note, setNote] = useState("");
+  const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const shipped = r.status === "shipped";
+  const rejected = r.status === "rejected" || r.status === "dismissed";
 
   const copy = async () => {
     try { await navigator.clipboard.writeText(labelBlock(r)); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* ignore */ }
   };
 
-  const confirm = async () => {
+  const confirmShip = async () => {
     setBusy(true); setErr(null);
     try {
       const res = await markFulfillmentShipped(r.id, tracking.trim() || undefined, note.trim() || undefined);
@@ -57,14 +59,28 @@ function Card({ r, onShipped }: { r: Fulfillment; onShipped: (id: string, tracki
     }
   };
 
+  const confirmReject = async () => {
+    setBusy(true); setErr(null);
+    try {
+      const res = await rejectFulfillment(r.id, reason.trim() || undefined);
+      if (res.error) { setErr(res.error); setBusy(false); return; }
+      onRejected(r.id, reason.trim());
+    } catch (e) {
+      console.error("[rejectFulfillment] failed:", e);
+      const { code, message } = parseResolveError(e);
+      setErr(`${message} · ${code}`); setBusy(false);
+    }
+  };
+
   return (
-    <div className={`rounded-2xl border bg-[var(--bg-mid)] p-5 shadow-sm ${shipped ? "border-[var(--hair)] opacity-80" : "border-[var(--hair)]"}`}>
+    <div className={`rounded-2xl border bg-[var(--bg-mid)] p-5 shadow-sm border-[var(--hair)] ${shipped || rejected ? "opacity-80" : ""}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className={`${HEAD} text-[19px] font-bold text-[var(--cream)]`}>{r.fullName || "—"}</h3>
             <span className="rounded-full bg-[var(--gold)]/15 px-2 py-0.5 text-[11px] font-bold text-[var(--gold)]">{tierText(r.tiers)}</span>
             {shipped && <span className="rounded-full bg-[#5fcf80]/15 px-2 py-0.5 text-[11px] font-bold text-[#5fcf80]">Shipped</span>}
+            {rejected && <span className="rounded-full bg-[#e0526a]/15 px-2 py-0.5 text-[11px] font-bold text-[#e0526a]">Rejected</span>}
           </div>
           <div className="mt-1 text-[12.5px] text-[var(--sage-dim)]" style={{ fontFamily: "'Sora', sans-serif" }}>{fmtDate(r.submittedAt)}{courseCountText(r) ? ` · ${courseCountText(r)}` : ""}</div>
         </div>
@@ -92,18 +108,33 @@ function Card({ r, onShipped }: { r: Fulfillment; onShipped: (id: string, tracki
 
       {shipped ? (
         <div className="mt-4 border-t border-[var(--hair)] pt-3 text-[12.5px] text-[var(--sage-dim)]">Shipped {fmtDate(r.shippedAt)}{r.tracking ? ` · ${r.tracking}` : ""}{r.shipNote ? ` · ${r.shipNote}` : ""}</div>
+      ) : rejected ? (
+        <div className="mt-4 border-t border-[var(--hair)] pt-3 text-[12.5px] font-semibold text-[#e0526a]">Rejected{r.rejectedAt ? ` ${fmtDate(r.rejectedAt)}` : ""}{r.rejectReason ? ` · ${r.rejectReason}` : ""}</div>
       ) : (
         <div className="mt-4 border-t border-[var(--hair)] pt-4">
-          {!open ? (
-            <button onClick={() => setOpen(true)} className="flex items-center gap-2 rounded-full bg-[var(--gold)] px-5 py-2.5 text-[13px] font-bold text-[#141B16] transition-colors hover:bg-[var(--gold-bright)]"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M20 6L9 17l-5-5" /></svg>Mark shipped</button>
-          ) : (
+          {mode === "idle" ? (
+            <div className="flex items-center gap-2.5">
+              <button onClick={() => { setMode("ship"); setErr(null); }} className="flex items-center gap-2 rounded-full bg-[var(--gold)] px-5 py-2.5 text-[13px] font-bold text-[#141B16] transition-colors hover:bg-[var(--gold-bright)]"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M20 6L9 17l-5-5" /></svg>Mark shipped</button>
+              <button onClick={() => { setMode("reject"); setErr(null); }} aria-label="Reject claim" title="Reject claim" className="ml-auto grid h-9 w-9 place-items-center rounded-full border border-[#e0526a]/35 text-[#e0526a] transition-colors hover:bg-[#e0526a]/10"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M10 11v6M14 11v6" /></svg></button>
+            </div>
+          ) : mode === "ship" ? (
             <div className="space-y-2.5">
               <input value={tracking} onChange={(e) => setTracking(e.target.value)} placeholder="Tracking number (optional)" className="w-full rounded-xl border border-[var(--hair-strong)] bg-white/[0.03] px-3.5 py-2.5 text-[14px] text-[var(--cream)] placeholder-[var(--sage-dim)] outline-none focus:border-[var(--gold)]/50" />
               <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (optional)" className="w-full rounded-xl border border-[var(--hair-strong)] bg-white/[0.03] px-3.5 py-2.5 text-[14px] text-[var(--cream)] placeholder-[var(--sage-dim)] outline-none focus:border-[var(--gold)]/50" />
               {err && <div className="rounded-lg border border-[#e0873f]/40 bg-[#e0873f]/[0.08] px-3 py-2 text-[12.5px] font-semibold text-[#e0873f]">{err}</div>}
               <div className="flex gap-2.5">
-                <button onClick={() => { setOpen(false); setErr(null); }} disabled={busy} className="rounded-full border border-[var(--hair-strong)] px-4 py-2 text-[13px] font-bold text-[var(--sage)] transition-colors hover:text-[var(--cream)] disabled:opacity-50">Cancel</button>
-                <button onClick={confirm} disabled={busy} className="rounded-full bg-[var(--gold)] px-5 py-2 text-[13px] font-bold text-[#141B16] transition-colors hover:bg-[var(--gold-bright)] disabled:opacity-50">{busy ? "Marking…" : "Confirm shipped"}</button>
+                <button onClick={() => { setMode("idle"); setErr(null); }} disabled={busy} className="rounded-full border border-[var(--hair-strong)] px-4 py-2 text-[13px] font-bold text-[var(--sage)] transition-colors hover:text-[var(--cream)] disabled:opacity-50">Cancel</button>
+                <button onClick={confirmShip} disabled={busy} className="rounded-full bg-[var(--gold)] px-5 py-2 text-[13px] font-bold text-[#141B16] transition-colors hover:bg-[var(--gold-bright)] disabled:opacity-50">{busy ? "Marking…" : "Confirm shipped"}</button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              <div className="text-[13px] font-semibold text-[var(--cream)]">Reject this claim? Nothing ships and it leaves the pending queue.</div>
+              <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason (optional — e.g. duplicate, fraudulent)" className="w-full rounded-xl border border-[var(--hair-strong)] bg-white/[0.03] px-3.5 py-2.5 text-[14px] text-[var(--cream)] placeholder-[var(--sage-dim)] outline-none focus:border-[#e0526a]/60" />
+              {err && <div className="rounded-lg border border-[#e0873f]/40 bg-[#e0873f]/[0.08] px-3 py-2 text-[12.5px] font-semibold text-[#e0873f]">{err}</div>}
+              <div className="flex gap-2.5">
+                <button onClick={() => { setMode("idle"); setErr(null); }} disabled={busy} className="rounded-full border border-[var(--hair-strong)] px-4 py-2 text-[13px] font-bold text-[var(--sage)] transition-colors hover:text-[var(--cream)] disabled:opacity-50">Cancel</button>
+                <button onClick={confirmReject} disabled={busy} className="rounded-full bg-[#e0526a] px-5 py-2 text-[13px] font-bold text-white transition-colors hover:bg-[#d13d57] disabled:opacity-50">{busy ? "Rejecting…" : "Reject claim"}</button>
               </div>
             </div>
           )}
@@ -128,15 +159,28 @@ export default function FulfillmentQueue() {
   const [quarter, setQuarter] = useState<Quarter>(0);
 
   useEffect(() => { getFulfillments().then(setRows).catch(() => setRows([])); }, []);
+  // default to the current quarter's shipping batch — set on mount (client-only) to avoid an SSR date mismatch.
+  useEffect(() => {
+    const now = new Date();
+    setYear(now.getFullYear());
+    setQuarter((Math.floor(now.getMonth() / 3) + 1) as Quarter);
+  }, []);
 
   const onShipped = (id: string, tracking: string, note: string) =>
     setRows((rs) => rs?.map((r) => (r.id === id ? { ...r, status: "shipped", tracking, shipNote: note, shippedAt: Date.now() } : r)) ?? rs);
+  const onRejected = (id: string, reason: string) =>
+    setRows((rs) => rs?.map((r) => (r.id === id ? { ...r, status: "rejected", rejectReason: reason, rejectedAt: Date.now() } : r)) ?? rs);
 
   const all = rows || [];
-  // every year present in the data, newest first — populates the dropdown so it self-organizes.
-  const years = Array.from(new Set(all.map((r) => (r.submittedAt ? yearOf(r.submittedAt) : null)).filter((y): y is number => y != null))).sort((a, b) => b - a);
+  // years present in the data + whatever year is selected (so the current year always has an option even
+  // with no claims yet), newest first — populates the dropdown so it self-organizes.
+  const years = Array.from(new Set([
+    ...(typeof year === "number" ? [year] : []),
+    ...all.map((r) => (r.submittedAt ? yearOf(r.submittedAt) : null)).filter((y): y is number => y != null),
+  ])).sort((a, b) => b - a);
 
-  const matchStatus = (r: Fulfillment) => (status === "all" ? true : status === "completed" ? r.status === "shipped" : r.status !== "shipped");
+  const isPending = (r: Fulfillment) => r.status !== "shipped" && r.status !== "rejected" && r.status !== "dismissed";
+  const matchStatus = (r: Fulfillment) => (status === "all" ? true : status === "completed" ? r.status === "shipped" : isPending(r));
   const matchYear = (r: Fulfillment) => year === "all" || (r.submittedAt != null && yearOf(r.submittedAt) === year);
   const matchQuarter = (r: Fulfillment) => quarter === 0 || (r.submittedAt != null && quarterOf(r.submittedAt) === quarter);
 
@@ -144,7 +188,7 @@ export default function FulfillmentQueue() {
 
   // period-aware tab counts so "what's needed vs what we did" reads at a glance for the chosen window.
   const inPeriod = (r: Fulfillment) => matchYear(r) && matchQuarter(r);
-  const pendingCount = all.filter((r) => r.status !== "shipped" && inPeriod(r)).length;
+  const pendingCount = all.filter((r) => isPending(r) && inPeriod(r)).length;
   const completedCount = all.filter((r) => r.status === "shipped" && inPeriod(r)).length;
   const TABS: { k: Filter; label: string }[] = [
     { k: "pending", label: `Pending${pendingCount ? ` (${pendingCount})` : ""}` },
@@ -209,7 +253,7 @@ export default function FulfillmentQueue() {
       ) : (
         <>
           <div className="mt-6 text-[12.5px] font-semibold text-[var(--sage-dim)]">{shown.length} {noun} · {periodLabel}</div>
-          <div className="mt-3 space-y-5">{shown.map((r) => <Card key={r.id} r={r} onShipped={onShipped} />)}</div>
+          <div className="mt-3 space-y-5">{shown.map((r) => <Card key={r.id} r={r} onShipped={onShipped} onRejected={onRejected} />)}</div>
         </>
       )}
     </div>

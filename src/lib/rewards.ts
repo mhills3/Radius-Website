@@ -107,9 +107,10 @@ export interface Fulfillment extends FulfillmentInput {
   milestoneKeys?: string[];
   courseCount?: number;          // browser-submitted at claim time — NOT authoritative
   verifiedCourseCount?: number;  // server recount (onFulfillmentCreated) from courses, merged across alias ids
-  status: string;               // pending | shipped
+  status: string;               // pending | shipped | rejected
   submittedAt?: number;
   shippedAt?: number; shippedBy?: string; tracking?: string; shipNote?: string;
+  rejectedAt?: number; rejectedBy?: string; rejectReason?: string;
 }
 export async function getFulfillments(): Promise<Fulfillment[]> {
   const snap = await getDocs(collection(db, "rewardFulfillments"));
@@ -130,5 +131,15 @@ export interface ShipResult { ok?: boolean; alreadyShipped?: boolean; error?: st
 export async function markFulfillmentShipped(fulfillmentId: string, tracking?: string, note?: string): Promise<ShipResult> {
   const fn = httpsCallable<{ fulfillmentId: string; tracking?: string; note?: string }, ShipResult>(functions, "markFulfillmentShipped");
   const res = await fn({ fulfillmentId, ...(tracking ? { tracking } : {}), ...(note ? { note } : {}) });
+  return res.data ?? {};
+}
+
+export interface RejectResult { ok?: boolean; alreadyResolved?: boolean; error?: string }
+/** Reject/dismiss a claim — rare (fraud, duplicate, mistake). Same contract as mark-shipped: the callable
+ *  re-checks staff with the Admin SDK, stamps who/when, and moves it out of the queue. Throws typed
+ *  HttpsErrors on failure. Never write the rejection from the client. */
+export async function rejectFulfillment(fulfillmentId: string, reason?: string): Promise<RejectResult> {
+  const fn = httpsCallable<{ fulfillmentId: string; reason?: string }, RejectResult>(functions, "rejectFulfillment");
+  const res = await fn({ fulfillmentId, ...(reason ? { reason } : {}) });
   return res.data ?? {};
 }
