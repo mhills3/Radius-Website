@@ -2,6 +2,7 @@ import { initializeApp, getApps } from "firebase/app";
 import { getFirestore, initializeFirestore, type Firestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
+import { getFunctions } from "firebase/functions";
 import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 
 const firebaseConfig = {
@@ -40,3 +41,6 @@ try {
 export const db = _db;
 export const auth = getAuth(app);
 export const storage = getStorage(app);
+// Callable Cloud Functions (radius-functions, us-central1) — e.g. resolveCourseRemoval, which
+// re-checks staff server-side with the Admin SDK.
+export const functions = getFunctions(app);

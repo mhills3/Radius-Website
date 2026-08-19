@@ -151,6 +151,9 @@ export default function Nav() {
                     {profile?.writer && (
                       <Link href="/stories/mine" onClick={() => setUserMenu(false)} className="flex items-center gap-2.5 px-4 py-3 text-sm font-semibold text-[var(--gold)] transition-colors hover:bg-white/[0.05]"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>Write a story</Link>
                     )}
+                    {profile?.staff && (
+                      <Link href="/staff/removals" onClick={() => setUserMenu(false)} className="flex items-center gap-2.5 px-4 py-3 text-sm font-semibold text-[var(--gold)] transition-colors hover:bg-white/[0.05]"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l7 4v6c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z" /></svg>Staff · Removals</Link>
+                    )}
                     <button onClick={() => { signOut(); setUserMenu(false); }} className="flex w-full items-center gap-2.5 border-t border-white/[0.07] px-4 py-3 text-left text-sm font-semibold text-[var(--text-body)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)]"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>Sign out</button>
                   </div>
                 </>

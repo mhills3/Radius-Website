@@ -118,6 +118,7 @@ export interface ProfileLite {
   profileImageUrl?: string;
   coverPhotoUrl?: string;
   writer?: boolean;
+  staff?: boolean; // Radius staff — gates the staff dashboard (cosmetic gate; server re-checks)
   homeCourseName?: string;
   isPro?: boolean;
   proExpires?: number;
@@ -213,7 +214,7 @@ export async function getProfileLite(uid: string): Promise<ProfileLite | null> {
     const u = snap.data();
     return {
       canonicalId, name: u.name ?? "", username: u.username ?? "", profileImageUrl: safeHttp(u.profileImageUrl), coverPhotoUrl: safeHttp(u.coverPhotoUrl),
-      writer: u.writer === true || u.role === "writer", homeCourseName: (u.homeCourseName as string) || undefined,
+      writer: u.writer === true || u.role === "writer", staff: u.staff === true, homeCourseName: (u.homeCourseName as string) || undefined,
       isPro: u.isPro === true, proExpires: toEpochMillis(u.proExpires),
       proOverride: u.proOverride === true, proOverrideExpires: toEpochMillis(u.proOverrideExpires),
     };
