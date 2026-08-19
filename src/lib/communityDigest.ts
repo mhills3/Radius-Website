@@ -5,6 +5,7 @@ import { httpsCallable } from "firebase/functions";
 // Written by the daily `communityDigest` scheduled function. One doc per day (id = YYYY-MM-DD),
 // history preserved. Every item carries the Discord message link(s) so staff can jump to the thread.
 export type DigestPlatform = "iOS" | "Android" | "web" | "unknown";
+export type DigestPriority = "high" | "medium" | "low";
 export interface DigestItem {
   id: string;
   description: string;
@@ -13,6 +14,9 @@ export interface DigestItem {
   sources?: string[];       // "discord" and/or "email"
   reviewed: boolean;
   platform?: DigestPlatform; // bugs only
+  priority?: DigestPriority; // bugs + features
+  theme?: string;            // bugs + features — short area label for grouping
+  prompt?: string;           // bugs only — ready-to-paste coding-agent task
   kind?: "praise" | "churn_risk"; // notable only
 }
 export interface DigestCategories {
@@ -21,14 +25,18 @@ export interface DigestCategories {
   questions: DigestItem[];
   notable: DigestItem[];
 }
+export interface IgnoredItem { description: string; reason: string }
 export interface Digest {
   date: string;             // YYYY-MM-DD (doc id)
   createdAt?: unknown;
   rangeStartMs?: number;
   rangeEndMs?: number;
   channelsScanned?: number;
+  mailboxesScanned?: number;
   messageCount?: number;
   categories: DigestCategories;
+  ignored?: IgnoredItem[];
+  ignoredCount?: number;
   itemCount?: number;
   reviewedCount?: number;
 }
