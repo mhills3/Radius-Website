@@ -68,7 +68,8 @@ export interface Fulfillment extends FulfillmentInput {
   userId: string;
   tiers: Tier[];
   milestoneKeys?: string[];
-  courseCount?: number;
+  courseCount?: number;          // browser-submitted at claim time — NOT authoritative
+  verifiedCourseCount?: number;  // server recount (onFulfillmentCreated) from courses, merged across alias ids
   status: string;               // pending | shipped
   submittedAt?: number;
   shippedAt?: number; shippedBy?: string; tracking?: string; shipNote?: string;

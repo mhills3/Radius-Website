@@ -9,6 +9,16 @@ const HEAD = "font-[family-name:var(--font-heading)]";
 const fmtDate = (ms?: number) => (ms ? new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—");
 const tierText = (t: string[] = []) => (t.includes("gear") && t.includes("bag") ? "Both · Gear + Bag" : t.includes("bag") ? "Bag" : t.includes("gear") ? "Gear" : "—");
 
+// Prefer the server-verified recount over the browser-submitted figure. When they disagree, show both
+// so the discrepancy is visible — e.g. "12 courses · claimed 40".
+function courseCountText(r: Fulfillment): string | null {
+  const verified = r.verifiedCourseCount;
+  const claimed = r.courseCount;
+  if (verified != null) return claimed != null && claimed !== verified ? `${verified} courses · claimed ${claimed}` : `${verified} courses`;
+  if (claimed != null) return `${claimed} courses · unverified`;
+  return null;
+}
+
 // The full shipping label as one block: name, address, country, phone.
 function labelBlock(r: Fulfillment): string {
   return [
@@ -56,7 +66,7 @@ function Card({ r, onShipped }: { r: Fulfillment; onShipped: (id: string, tracki
             <span className="rounded-full bg-[var(--gold)]/15 px-2 py-0.5 text-[11px] font-bold text-[var(--gold)]">{tierText(r.tiers)}</span>
             {shipped && <span className="rounded-full bg-[#5fcf80]/15 px-2 py-0.5 text-[11px] font-bold text-[#5fcf80]">Shipped</span>}
           </div>
-          <div className="mt-1 text-[12.5px] text-[var(--sage-dim)]" style={{ fontFamily: "'Sora', sans-serif" }}>{fmtDate(r.submittedAt)}{r.courseCount != null ? ` · ${r.courseCount} courses` : ""}</div>
+          <div className="mt-1 text-[12.5px] text-[var(--sage-dim)]" style={{ fontFamily: "'Sora', sans-serif" }}>{fmtDate(r.submittedAt)}{courseCountText(r) ? ` · ${courseCountText(r)}` : ""}</div>
         </div>
         <button onClick={copy} className="shrink-0 rounded-full border border-[var(--hair-strong)] px-3 py-1.5 text-[12px] font-bold text-[var(--sage)] transition-colors hover:text-[var(--cream)]">{copied ? "Copied ✓" : "Copy address"}</button>
       </div>
