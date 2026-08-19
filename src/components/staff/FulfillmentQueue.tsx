@@ -64,10 +64,11 @@ function Card({ r, onShipped }: { r: Fulfillment; onShipped: (id: string, tracki
       {/* label-ready address block */}
       <pre className="mt-4 whitespace-pre-wrap rounded-xl border border-[var(--hair)] bg-white/[0.02] px-4 py-3 text-[14px] leading-relaxed text-[var(--cream)]" style={{ fontFamily: "inherit" }}>{labelBlock(r)}</pre>
 
-      {/* country + phone prominent */}
+      {/* country + phone + email prominent */}
       <div className="mt-3 flex flex-wrap gap-x-8 gap-y-2">
         <div><div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--sage-dim)]">Country</div><div className="text-[15px] font-bold text-[var(--cream)]">{r.country || "—"}</div></div>
         <div><div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--sage-dim)]">Phone</div><div className="text-[15px] font-bold text-[var(--cream)]">{r.phone || <span className="text-[#e0873f]">missing</span>}</div></div>
+        <div className="min-w-0"><div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--sage-dim)]">Email</div>{r.email ? <a href={`mailto:${r.email}`} className="block truncate text-[15px] font-bold text-[var(--gold)] hover:underline">{r.email}</a> : <div className="text-[15px] font-bold text-[#e0873f]">missing</div>}</div>
       </div>
 
       {(r.bagRequest || r.bagLink) && (

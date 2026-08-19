@@ -42,7 +42,7 @@ export async function getClaimable(uid: string): Promise<Claimable> {
 }
 
 export interface FulfillmentInput {
-  fullName: string; address1: string; address2?: string; city: string; region: string; postcode: string; country: string; phone: string;
+  fullName: string; email: string; address1: string; address2?: string; city: string; region: string; postcode: string; country: string; phone: string;
   bagRequest?: string; bagLink?: string; notes?: string;
 }
 /** Write the claim to rewardFulfillments (status pending). One submission covers all claimable tiers. */
@@ -52,7 +52,7 @@ export async function submitFulfillment(claim: Claimable, input: FulfillmentInpu
     userId: claim.canonicalId,
     tiers: claim.tiers,
     milestoneKeys: claim.milestoneKeys,
-    fullName: t(input.fullName), address1: t(input.address1), address2: t(input.address2),
+    fullName: t(input.fullName), email: t(input.email), address1: t(input.address1), address2: t(input.address2),
     city: t(input.city), region: t(input.region), postcode: t(input.postcode), country: t(input.country), phone: t(input.phone),
     bagRequest: t(input.bagRequest), bagLink: t(input.bagLink), notes: t(input.notes),
     courseCount: claim.courseCount,

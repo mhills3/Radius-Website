@@ -11,8 +11,8 @@ const LABEL = "mb-1.5 block text-sm font-semibold text-[var(--cream)]";
 const OPT = <span className="font-normal text-[var(--sage-dim)]">(optional)</span>;
 const Spin = () => <svg className="h-6 w-6 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>;
 
-type FormState = { fullName: string; address1: string; address2: string; city: string; region: string; postcode: string; country: string; phone: string; bagRequest: string; bagLink: string; notes: string };
-const EMPTY: FormState = { fullName: "", address1: "", address2: "", city: "", region: "", postcode: "", country: "", phone: "", bagRequest: "", bagLink: "", notes: "" };
+type FormState = { fullName: string; email: string; address1: string; address2: string; city: string; region: string; postcode: string; country: string; phone: string; bagRequest: string; bagLink: string; notes: string };
+const EMPTY: FormState = { fullName: "", email: "", address1: "", address2: "", city: "", region: "", postcode: "", country: "", phone: "", bagRequest: "", bagLink: "", notes: "" };
 
 export default function RewardClaimForm() {
   const { user, loading } = useAuth();
@@ -27,6 +27,9 @@ export default function RewardClaimForm() {
     if (!user) { setClaim(null); return; }
     getClaimable(user.uid).then(setClaim).catch(() => setClaim(null));
   }, [user, loading]);
+
+  // pre-fill the email from the signed-in account — they can correct it if a different one's better.
+  useEffect(() => { if (user?.email) setF((s) => (s.email ? s : { ...s, email: user.email! })); }, [user]);
 
   // ---- gate states ----
   if (loading || claim === undefined) return <div className="mt-16 flex justify-center text-[var(--sage)]"><Spin /></div>;
@@ -85,6 +88,11 @@ export default function RewardClaimForm() {
       <div>
         <label className={LABEL}>Full name</label>
         <input value={f.fullName} onChange={set("fullName")} autoComplete="name" placeholder="First and last name" required className={FIELD} />
+      </div>
+      <div>
+        <label className={LABEL}>Email</label>
+        <input value={f.email} onChange={set("email")} type="email" inputMode="email" autoComplete="email" placeholder="you@example.com" required className={FIELD} />
+        <p className="mt-1.5 text-xs text-[var(--sage-dim)]">So we can reach you about your shipment.</p>
       </div>
       <div>
         <label className={LABEL}>Address line 1</label>
