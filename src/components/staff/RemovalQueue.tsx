@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { getRemovalRequests, resolveCourseRemoval, twoPinMapUrl, type RemovalRequest, type DuplicateCandidate } from "@/lib/courseRemoval";
 
 const HEAD = "font-[family-name:var(--font-heading)]";
@@ -145,7 +146,8 @@ export default function RemovalQueue() {
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-10">
-      <div className="font-mono text-[10px] font-bold uppercase tracking-[0.24em] text-[var(--gold)]">Staff</div>
+      <Link href="/admin" className="text-[12px] font-semibold text-[var(--sage)] transition-colors hover:text-[var(--gold)]">← Admin</Link>
+      <div className="mt-2 font-mono text-[10px] font-bold uppercase tracking-[0.24em] text-[var(--gold)]">Staff</div>
       <h1 className={`${HEAD} mt-1 text-3xl font-black tracking-[-0.02em] sm:text-4xl`}>Course removals</h1>
       <p className="mt-2 max-w-xl text-[14px] text-[var(--text-body)]">Requests to pull a course from the directory. Each is pre-computed by the backend — review the evidence and approve (soft delete) or deny.</p>
 

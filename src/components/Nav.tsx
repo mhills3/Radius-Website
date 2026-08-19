@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import Logo from "@/components/Logo";
 import { useAuth } from "@/components/AuthProvider";
 import NotificationBell from "@/components/NotificationBell";
+import { getPendingRemovalCount } from "@/lib/courseRemoval";
 
 const APP_STORE = "https://apps.apple.com/us/app/radius-disc-golf/id6760574186";
 const GOOGLE_PLAY = "https://play.google.com/store/apps/details?id=com.michaelhills.radiusandroid";
@@ -32,8 +33,11 @@ export default function Nav() {
   const [appMenu, setAppMenu] = useState(false);
   const [userMenu, setUserMenu] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [adminPending, setAdminPending] = useState(0); // staff: pending removal count → nav badge
 
   const hidden = pathname === "/login";
+
+  useEffect(() => { if (profile?.staff) getPendingRemovalCount().then(setAdminPending).catch(() => {}); }, [profile?.staff]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -92,6 +96,7 @@ export default function Nav() {
   const links = user
     ? [
         { href: "/dashboard", label: "Dashboard" },
+        ...(profile?.staff ? [{ href: "/admin", label: "Admin" }] : []),
         { href: "/bag", label: "My Game" },
         { href: "/leagues", label: "Events" },
         { href: "/community", label: "Community" },
@@ -111,8 +116,9 @@ export default function Nav() {
         {/* ---- Desktop ---- */}
         <div className="hidden items-center gap-1 md:flex">
           {links.map((l) => (
-            <Link key={l.href} href={l.href} className={`${navPill(l.href)} ${l.href === "/leagues" ? "inline-flex items-center gap-1.5" : ""}`}>
+            <Link key={l.href} href={l.href} className={`${navPill(l.href)} ${l.href === "/leagues" || l.href === "/admin" ? "inline-flex items-center gap-1.5" : ""}`}>
               {l.label}
+              {l.href === "/admin" && adminPending > 0 && <span className="grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[var(--gold)] px-1 text-[10px] font-bold text-[#141B16]">{adminPending}</span>}
             </Link>
           ))}
           {user ? (
@@ -150,9 +156,6 @@ export default function Nav() {
                     <Link href="/bag" onClick={() => setUserMenu(false)} className="flex items-center gap-2.5 px-4 py-3 text-sm font-semibold text-[var(--text-body)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)]"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 7V5a3 3 0 0 1 3-3h6a3 3 0 0 1 3 3v2M4 7h16l-1 14H5L4 7z" /></svg>My Game</Link>
                     {profile?.writer && (
                       <Link href="/stories/mine" onClick={() => setUserMenu(false)} className="flex items-center gap-2.5 px-4 py-3 text-sm font-semibold text-[var(--gold)] transition-colors hover:bg-white/[0.05]"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>Write a story</Link>
-                    )}
-                    {profile?.staff && (
-                      <Link href="/staff/removals" onClick={() => setUserMenu(false)} className="flex items-center gap-2.5 px-4 py-3 text-sm font-semibold text-[var(--gold)] transition-colors hover:bg-white/[0.05]"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l7 4v6c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z" /></svg>Staff · Removals</Link>
                     )}
                     <button onClick={() => { signOut(); setUserMenu(false); }} className="flex w-full items-center gap-2.5 border-t border-white/[0.07] px-4 py-3 text-left text-sm font-semibold text-[var(--text-body)] transition-colors hover:bg-white/[0.05] hover:text-[var(--cream)]"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>Sign out</button>
                   </div>
@@ -215,6 +218,7 @@ export default function Nav() {
                     className="flex items-center gap-2 border-b border-black/5 py-3.5 text-base font-semibold text-[#16221b]"
                   >
                     {l.label}
+                    {l.href === "/admin" && adminPending > 0 && <span className="grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[var(--gold)] px-1 text-[10px] font-bold text-[#141B16]">{adminPending}</span>}
                         </Link>
                 ))}
                 {/* Login is desktop-only — no Log in entry in the mobile menu. */}

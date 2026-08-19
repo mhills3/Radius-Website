@@ -1,5 +1,5 @@
 import { db, functions } from "./firebase";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getCountFromServer, getDocs, query, where } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 
 // Every field here is computed by a Cloud Function on create and stored on the request document.
@@ -39,6 +39,14 @@ export interface RemovalRequest {
   status: string;       // pending | invalid | approved | denied
   validationErrors?: string[];
   createdAt?: number;
+}
+
+/** Just the count of pending requests — for the Admin nav badge + hub card (cheap server-side count). */
+export async function getPendingRemovalCount(): Promise<number> {
+  try {
+    const c = await getCountFromServer(query(collection(db, "courseRemovalRequests"), where("status", "==", "pending")));
+    return c.data().count;
+  } catch { return 0; }
 }
 
 /** Everything the staff queue shows: pending requests + the server-flagged invalid ones. */
