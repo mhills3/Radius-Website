@@ -9,17 +9,17 @@ export const metadata = {
 
 export default function RewardClaimedPage() {
   return (
-    <div className="min-h-screen bg-[#faf8f3] text-[#16221b]">
+    <div className="min-h-screen bg-[var(--bg-deep)] text-[var(--cream)]">
       <div className="mx-auto max-w-xl px-6 pt-28 pb-24 md:pt-32">
         <div className="text-center">
-          <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-[#9a7a3a]">
+          <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--gold)]">
             Course Builder Rewards
           </div>
           <h1 className="font-[family-name:var(--font-heading)] text-4xl font-extrabold tracking-[-0.03em] md:text-[3rem]">
             You&apos;re on the list.
           </h1>
-          <p className="mx-auto mt-4 max-w-md text-lg text-[#46554c]">
-            We&rsquo;ve got your details. Merch ships quarterly, and you&rsquo;re on the next shipment &mdash; we&rsquo;ll email you when it goes out.
+          <p className="mx-auto mt-4 max-w-md text-lg text-[var(--text-body)]">
+            We&rsquo;ve got your details. Rewards ship quarterly, and you&rsquo;re on the next shipment &mdash; we&rsquo;ll email you when it goes out.
           </p>
         </div>
 
@@ -30,9 +30,9 @@ export default function RewardClaimedPage() {
           >
             Back to rewards
           </Link>
-          <p className="text-sm text-[#6b7a70]">
+          <p className="text-sm text-[var(--sage-dim)]">
             Something wrong?{" "}
-            <a href="mailto:info@radiusdiscgolf.com" className="font-bold text-[#9a7a3a] hover:underline">
+            <a href="mailto:info@radiusdiscgolf.com" className="font-bold text-[var(--gold)] hover:underline">
               info@radiusdiscgolf.com
             </a>
           </p>

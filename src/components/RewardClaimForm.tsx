@@ -1,8 +1,8 @@
 type Tier = "craftsman" | "architect";
 
 const FIELD =
-  "w-full rounded-xl border border-black/10 bg-white px-4 py-3 text-sm text-[#16221b] placeholder-[#8a968d] outline-none transition-colors focus:border-[var(--gold)]";
-const LABEL = "mb-1.5 block text-sm font-semibold text-[#16221b]";
+  "w-full rounded-xl border border-[rgba(244,241,232,0.14)] bg-white/[0.03] px-4 py-3 text-sm text-[var(--cream)] placeholder-[var(--sage-dim)] outline-none transition-colors focus:border-[var(--gold)]";
+const LABEL = "mb-1.5 block text-sm font-semibold text-[var(--cream)]";
 
 export default function RewardClaimForm({ tier }: { tier: Tier }) {
   const isArchitect = tier === "architect";
@@ -33,7 +33,7 @@ export default function RewardClaimForm({ tier }: { tier: Tier }) {
 
       <div>
         <label className={LABEL}>
-          Radius username <span className="font-normal text-[#8a968d]">(optional)</span>
+          Radius username <span className="font-normal text-[var(--sage-dim)]">(optional)</span>
         </label>
         <input name="Radius username" placeholder="So we can match this to your builder account" className={FIELD} />
       </div>
@@ -45,7 +45,7 @@ export default function RewardClaimForm({ tier }: { tier: Tier }) {
 
       <div>
         <label className={LABEL}>
-          Apartment, suite, etc. <span className="font-normal text-[#8a968d]">(optional)</span>
+          Apartment, suite, etc. <span className="font-normal text-[var(--sage-dim)]">(optional)</span>
         </label>
         <input name="Address line 2" placeholder="Apt 4B" className={FIELD} />
       </div>
@@ -75,7 +75,7 @@ export default function RewardClaimForm({ tier }: { tier: Tier }) {
       <div>
         <label className={LABEL}>Phone number</label>
         <input type="tel" name="Phone" placeholder="+1 555 123 4567" required className={FIELD} />
-        <p className="mt-1.5 text-xs text-[#6b7a70]">
+        <p className="mt-1.5 text-xs text-[var(--sage-dim)]">
           Couriers require a phone number to deliver, especially on international shipments.
         </p>
       </div>
@@ -85,11 +85,11 @@ export default function RewardClaimForm({ tier }: { tier: Tier }) {
           <div>
             <label className={LABEL}>Which bag would you like?</label>
             <input name="Bag choice" placeholder="Brand and model — e.g. Squatch Gen 4" required className={FIELD} />
-            <p className="mt-1.5 text-xs text-[#6b7a70]">Your pick, up to $200.</p>
+            <p className="mt-1.5 text-xs text-[var(--sage-dim)]">Your pick, up to $200.</p>
           </div>
           <div>
             <label className={LABEL}>
-              Link to the bag <span className="font-normal text-[#8a968d]">(optional)</span>
+              Link to the bag <span className="font-normal text-[var(--sage-dim)]">(optional)</span>
             </label>
             <input name="Bag link" placeholder="Paste a product link so we order the right one" className={FIELD} />
           </div>
@@ -114,14 +114,14 @@ export default function RewardClaimForm({ tier }: { tier: Tier }) {
 
       <div>
         <label className={LABEL}>
-          Anything else we should know? <span className="font-normal text-[#8a968d]">(optional)</span>
+          Anything else we should know? <span className="font-normal text-[var(--sage-dim)]">(optional)</span>
         </label>
         <textarea name="Notes" rows={3} placeholder="Delivery notes, preferred colour, anything at all" className={FIELD} />
       </div>
 
-      <div className="rounded-xl border border-[var(--gold)]/40 bg-[var(--gold-dim)] px-4 py-3.5">
-        <p className="text-sm font-semibold text-[#16221b]">Merch ships quarterly.</p>
-        <p className="mt-0.5 text-sm text-[#46554c]">
+      <div className="rounded-xl border border-[var(--gold)]/40 bg-[var(--gold)]/[0.08] px-4 py-3.5">
+        <p className="text-sm font-semibold text-[var(--cream)]">Ships quarterly.</p>
+        <p className="mt-0.5 text-sm text-[var(--sage)]">
           Submit this and you&apos;re on the next shipment.
         </p>
       </div>
