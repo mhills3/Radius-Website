@@ -103,9 +103,9 @@ export default function AdminHub({ growth }: { growth: GrowthData }) {
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-12 sm:py-16">
-      <div className="font-mono text-[11px] font-bold uppercase tracking-[0.3em] text-[var(--gold)]">Staff</div>
+      <div className="font-mono text-[11px] font-bold uppercase tracking-[0.3em] text-[var(--gold)]">Internal use only</div>
       <div className="mt-3 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-        <h1 className={`${HEAD} text-5xl font-black tracking-[-0.03em] sm:text-[64px] sm:leading-[0.95]`}>Admin</h1>
+        <h1 className={`${HEAD} text-5xl font-black tracking-[-0.03em] sm:text-[64px] sm:leading-[0.95]`}>The Circle</h1>
         {data && (total > 0 ? (
           <div className="text-right">
             <div style={NUM} className="text-5xl font-black leading-none text-[var(--gold)] sm:text-6xl">{totalUp}</div>
