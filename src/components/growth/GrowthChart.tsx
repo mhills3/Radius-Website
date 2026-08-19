@@ -25,7 +25,8 @@ function downsample(points: GrowthPoint[], mode: Mode): GrowthPoint[] {
 }
 
 const fmtDate = (ms: number) => new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-const fmtMonth = (ms: number) => new Date(ms).toLocaleDateString("en-US", { month: "short", year: "2-digit" });
+const fmtMonth = (ms: number) => new Date(ms).toLocaleDateString("en-US", { month: "short", year: "numeric" }); // "May 2026"
+const fmtMonthLong = (ms: number) => new Date(ms).toLocaleDateString("en-US", { month: "long", year: "numeric" }); // "April 2026"
 const fmtFull = (ms: number) => new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
 export default function GrowthChart({ data }: { data: GrowthData }) {
@@ -62,6 +63,18 @@ export default function GrowthChart({ data }: { data: GrowthData }) {
   const yTicks = 4;
   const ticks = Array.from({ length: yTicks + 1 }, (_, i) => Math.round((niceMax / yTicks) * i));
   const xLabelEvery = Math.max(1, Math.ceil(pts.length / 7));
+  // Even x-axis ticks, plus the final point — but drop the tick before it if the forced last one would
+  // crowd it (that's the "Aug 11 Aug 18" pile-up when the current partial period is tacked on).
+  const labelIdxs = (() => {
+    const out: number[] = [];
+    for (let i = 0; i < pts.length; i++) if (i % xLabelEvery === 0) out.push(i);
+    const last = pts.length - 1;
+    if (out[out.length - 1] !== last) {
+      if (last - out[out.length - 1] < Math.max(1, Math.ceil(xLabelEvery / 2))) out.pop();
+      out.push(last);
+    }
+    return out;
+  })();
   const ht = hover != null ? pts[hover] : null;
   const slot = gw / pts.length;
   // Bars use band positioning (centered in each slot) so they stay inside the grid at the edges
@@ -106,9 +119,9 @@ export default function GrowthChart({ data }: { data: GrowthData }) {
               <text x={padL - 8} y={sy(t) + 4} fill="rgba(168,179,145,0.6)" fontSize={12} textAnchor="end">{t.toLocaleString()}</text>
             </g>
           ))}
-          {pts.map((p, i) => i % xLabelEvery === 0 || i === pts.length - 1 ? (
-            <text key={i} x={bars ? bucketX(i) : sx(p.d)} y={H - 14} fill="rgba(168,179,145,0.6)" fontSize={12} textAnchor="middle">{mode === "month" ? fmtMonth(p.d) : fmtDate(p.d)}</text>
-          ) : null)}
+          {labelIdxs.map((i) => (
+            <text key={i} x={bars ? bucketX(i) : sx(pts[i].d)} y={H - 14} fill="rgba(168,179,145,0.6)" fontSize={12} textAnchor="middle">{mode === "month" ? fmtMonth(pts[i].d) : fmtDate(pts[i].d)}</text>
+          ))}
 
           {bars ? (
             // per-period "added" bars
@@ -147,7 +160,7 @@ export default function GrowthChart({ data }: { data: GrowthData }) {
         </svg>
         {ht && (
           <div className="pointer-events-none absolute top-2 rounded-xl border border-white/10 bg-black/85 px-3 py-2 text-xs backdrop-blur" style={{ left: `${(hx / W) * 100}%`, transform: "translateX(-50%)" }}>
-            <div className="font-semibold text-[var(--cream)]">{fmtFull(ht.d)}</div>
+            <div className="font-semibold text-[var(--cream)]">{mode === "month" ? fmtMonthLong(ht.d) : fmtFull(ht.d)}</div>
             <div className="mt-0.5" style={{ color: GOLD }}>{ht.courses.toLocaleString()} courses{metric === "added" ? " added" : ""}</div>
             {showUsers && <div style={{ color: BLUE }}>{ht.users.toLocaleString()} users{metric === "added" ? " joined" : ""}</div>}
           </div>
