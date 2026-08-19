@@ -98,12 +98,14 @@ export interface Course {
 /**
  * Whether a course should appear in the PUBLIC directory. Matches the apps' hide rules so web
  * stays consistent: iOS hides reviewStatus=="Draft", Android hides isDraft==true. Hide drafts /
- * pending / rejected; SHOW everything else — including the ~339 legacy courses with no reviewStatus.
+ * pending / rejected / removed; SHOW everything else — including the ~339 legacy courses with no
+ * reviewStatus. "removed" is the staff soft-delete (isDraft + reviewStatus "removed") — it keeps the
+ * doc so existing rounds resolve, but the course must leave the map/directory/sitemap for everyone.
  */
 export function isPubliclyListed(c: { reviewStatus?: string; isDraft?: boolean }): boolean {
   if (c.isDraft === true) return false;
   const rs = (c.reviewStatus || "").trim().toLowerCase();
-  return rs !== "draft" && rs !== "pending" && rs !== "rejected";
+  return rs !== "draft" && rs !== "pending" && rs !== "rejected" && rs !== "removed";
 }
 
 /**
@@ -493,12 +495,17 @@ export async function getTopBuilders(max = 10): Promise<Builder[]> {
   return top;
 }
 
-/** Courses (and layouts) the signed-in user built, newest first. */
+/** Courses (and layouts) the signed-in user built, newest first. Staff-removed courses are dropped
+ *  even for the owner — a soft delete keeps the doc, but the owner's list must not show a course
+ *  staff have pulled (mirrors iOS dropping its local copy with a tombstone). */
 export async function getMyCourses(uid: string): Promise<Course[]> {
   try {
     const cid = await resolveCanonicalId(uid);
     const snap = await getDocs(query(collection(db, "courses"), where("createdById", "==", cid), limit(200)));
-    return snap.docs.map((d) => docToCourse(d.id, d.data())).sort((a, b) => (b.dateCreated ?? 0) - (a.dateCreated ?? 0));
+    return snap.docs
+      .map((d) => docToCourse(d.id, d.data()))
+      .filter((c) => (c.reviewStatus || "").trim().toLowerCase() !== "removed")
+      .sort((a, b) => (b.dateCreated ?? 0) - (a.dateCreated ?? 0));
   } catch {
     return [];
   }
