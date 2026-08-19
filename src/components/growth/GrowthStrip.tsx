@@ -38,14 +38,19 @@ export default function GrowthStrip({ data }: { data: GrowthData }) {
   const series = addedSeries(pts, mode).slice(mode === "month" ? -12 : -16);
   const maxV = Math.max(1, ...series.map((s) => (showUsers ? Math.max(s.courses, s.users) : s.courses)));
 
-  const W = 720, H = 176, padT = 10, padB = 26;
+  const W = 720, H = 184, padT = 12, padB = 26, padL = 40;
+  const gw = W - padL;
   const gh = H - padT - padB;
   const baseY = padT + gh;
   const n = series.length || 1;
-  const slot = W / n;
+  const slot = gw / n;
   // thicker bars, less dead space — especially with few periods (e.g. 5 months)
   const bw = showUsers ? Math.min(slot * 0.4, 46) : Math.min(slot * 0.64, 72);
   const pairGap = showUsers ? Math.max(2, bw * 0.12) : 0;
+  // y-axis: a few nice ticks from 0 to the top
+  const niceMax = (() => { const p = Math.pow(10, Math.floor(Math.log10(maxV || 1))); return Math.ceil(maxV / p) * p || 1; })();
+  const yTicks = [0, niceMax / 2, niceMax];
+  const yFor = (v: number) => baseY - (v / niceMax) * gh;
   const every = Math.max(1, Math.ceil(n / 8));
   const ht = hover != null ? series[hover] : null;
 
@@ -77,14 +82,18 @@ export default function GrowthStrip({ data }: { data: GrowthData }) {
 
       <div className="relative mt-5">
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full overflow-visible" onMouseLeave={() => setHover(null)}>
-          <line x1={0} y1={padT} x2={W} y2={padT} stroke="rgba(245,237,225,0.06)" strokeDasharray="2 5" />
-          <line x1={0} y1={baseY} x2={W} y2={baseY} stroke="rgba(245,237,225,0.1)" />
+          {yTicks.map((v) => (
+            <g key={v}>
+              <line x1={padL} y1={yFor(v)} x2={W} y2={yFor(v)} stroke="rgba(245,237,225,0.07)" strokeDasharray={v === 0 ? undefined : "2 5"} />
+              <text x={padL - 8} y={yFor(v) + 4} textAnchor="end" fontSize={11} fill="rgba(168,179,145,0.55)">{Math.round(v).toLocaleString()}</text>
+            </g>
+          ))}
           {series.map((s, i) => {
-            const cx = slot * (i + 0.5);
+            const cx = padL + slot * (i + 0.5);
             const dim = hover != null && hover !== i;
-            const ch = (s.courses / maxV) * gh;
+            const ch = (s.courses / niceMax) * gh;
             if (showUsers) {
-              const uh = (s.users / maxV) * gh;
+              const uh = (s.users / niceMax) * gh;
               return (
                 <g key={i} opacity={dim ? 0.35 : 1} style={{ transition: "opacity .15s" }}>
                   <rect x={cx - bw - pairGap / 2} y={baseY - ch} width={bw} height={ch} rx={2.5} fill={GOLD} />
@@ -95,14 +104,14 @@ export default function GrowthStrip({ data }: { data: GrowthData }) {
             return <rect key={i} x={cx - bw / 2} y={baseY - ch} width={bw} height={ch} rx={2} fill={GOLD} opacity={dim ? 0.35 : 1} style={{ transition: "opacity .15s" }} />;
           })}
           {series.map((s, i) => (i % every === 0 || i === n - 1 ? (
-            <text key={`t${i}`} x={slot * (i + 0.5)} y={H - 8} textAnchor="middle" fontSize={12} fill="rgba(168,179,145,0.55)">{fmtTick(s.d, mode)}</text>
+            <text key={`t${i}`} x={padL + slot * (i + 0.5)} y={H - 8} textAnchor="middle" fontSize={12} fill="rgba(168,179,145,0.55)">{fmtTick(s.d, mode)}</text>
           ) : null))}
           {series.map((s, i) => (
-            <rect key={`h${i}`} x={slot * i} y={0} width={slot} height={H} fill="transparent" onMouseEnter={() => setHover(i)} />
+            <rect key={`h${i}`} x={padL + slot * i} y={0} width={slot} height={H} fill="transparent" onMouseEnter={() => setHover(i)} />
           ))}
         </svg>
         {ht && hover != null && (
-          <div className="pointer-events-none absolute -top-2 z-10 -translate-x-1/2 -translate-y-full rounded-xl bg-black/85 px-3 py-2 text-xs shadow-[0_8px_24px_-8px_rgba(0,0,0,0.7)] backdrop-blur" style={{ left: `${((slot * (hover + 0.5)) / W) * 100}%` }}>
+          <div className="pointer-events-none absolute -top-2 z-10 -translate-x-1/2 -translate-y-full rounded-xl bg-black/85 px-3 py-2 text-xs shadow-[0_8px_24px_-8px_rgba(0,0,0,0.7)] backdrop-blur" style={{ left: `${((padL + slot * (hover + 0.5)) / W) * 100}%` }}>
             <div className="font-semibold text-[var(--cream)]">{fmtFull(ht.d, mode)}</div>
             <div className="mt-0.5" style={{ color: GOLD }}>+{ht.courses.toLocaleString()} courses</div>
             {showUsers && <div style={{ color: BLUE }}>+{ht.users.toLocaleString()} users</div>}

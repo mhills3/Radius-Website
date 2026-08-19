@@ -25,7 +25,7 @@ const fmtDay = (date: string) => new Date(`${date}T12:00:00`).toLocaleDateString
 const linkLabel = (url: string, i: number, total: number) => {
   const email = url.includes("mail.google.com");
   if (total > 1) return `${email ? "Email" : "Discord"} ${i + 1}`;
-  return email ? "Open email thread" : "View in Discord";
+  return email ? "Email thread" : "View in Discord";
 };
 
 function SevDot({ p }: { p?: string }) {
@@ -42,8 +42,8 @@ function SourceIcons({ sources }: { sources?: string[] }) {
   );
 }
 
-function ItemRow({ row, expanded, onToggle, selected, onSelect, onReviewed, showSection, date }: {
-  row: Row; expanded: boolean; onToggle: () => void; selected: boolean; onSelect: () => void;
+function ItemCard({ row, selected, onSelect, onReviewed, showSection, date }: {
+  row: Row; selected: boolean; onSelect: () => void;
   onReviewed: (id: string, reviewed: boolean) => void; showSection: boolean; date: string;
 }) {
   const [busy, setBusy] = useState(false);
@@ -61,45 +61,32 @@ function ItemRow({ row, expanded, onToggle, selected, onSelect, onReviewed, show
   };
   const copyPrompt = async () => { try { await navigator.clipboard.writeText(row.prompt || ""); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* ignore */ } };
 
-  return (
-    <div className={`border-b border-[var(--hair)] ${row.reviewed && !expanded ? "opacity-45" : ""}`}>
-      <div className="flex items-center gap-3 py-2.5" >
-        <input type="checkbox" checked={selected} onChange={onSelect} onClick={(e) => e.stopPropagation()} className="h-4 w-4 shrink-0 cursor-pointer accent-[var(--gold)]" />
-        <button onClick={onToggle} className="flex min-w-0 flex-1 items-center gap-3 text-left">
-          <SevDot p={row.priority} />
-          {row.platform && row.platform !== "unknown" && <span className="shrink-0 text-[11px] font-bold uppercase tracking-wide text-[var(--sage-dim)]">{row.platform}</span>}
-          <SourceIcons sources={row.sources} />
-          {showSection && <span className="shrink-0 text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--sage-dim)]/70">{SECTIONS.find((s) => s.key === row.section)?.short}</span>}
-          {row.theme && <span className="shrink-0 text-[11px] font-semibold text-[var(--sage-dim)]">{row.theme}</span>}
-          <span className={`min-w-0 flex-1 truncate text-[14px] ${row.reviewed ? "text-[var(--sage)]" : "text-[var(--cream)]"}`}>{row.description}</span>
-        </button>
-        <span style={NUM} className={`shrink-0 text-[15px] font-bold ${row.count > 1 ? "text-[var(--gold)]" : "text-[var(--sage-dim)]"}`}>{row.count}</span>
-        <button onClick={onToggle} className="shrink-0 text-[var(--sage-dim)] transition-colors hover:text-[var(--sage)]">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`h-4 w-4 transition-transform ${expanded ? "rotate-90" : ""}`}><path d="M9 18l6-6-6-6" /></svg>
-        </button>
-      </div>
+  const short = SECTIONS.find((s) => s.key === row.section)?.short;
 
-      {expanded && (
-        <div className="pb-4 pl-7 pr-1">
-          <p className="text-[14px] leading-snug text-[var(--text-body)]">{row.description}</p>
-          {row.prompt && (
-            <div className="mt-3 rounded-xl bg-white/[0.02] px-3.5 py-2.5">
-              <div className="mb-1.5 flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--sage-dim)]">Claude Code prompt</span>
-                <button onClick={copyPrompt} className="rounded-full bg-[var(--gold)]/12 px-3 py-1 text-[11px] font-bold text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/20">{copied ? "Copied ✓" : "Copy prompt"}</button>
-              </div>
-              <pre className="whitespace-pre-wrap text-[12.5px] leading-relaxed text-[var(--text-body)]" style={{ fontFamily: "inherit" }}>{row.prompt}</pre>
-            </div>
-          )}
-          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
-            {row.links.map((l, i) => (
-              <a key={l} href={l} target="_blank" rel="noopener" className="text-[12.5px] font-bold hover:underline" style={{ color: BLUE }}>{linkLabel(l, i, row.links.length)}</a>
-            ))}
-            <button onClick={toggleReviewed} disabled={busy} className="ml-auto rounded-full bg-[var(--gold)] px-4 py-1.5 text-[12px] font-bold text-[#141B16] transition-colors hover:bg-[var(--gold-bright)] disabled:opacity-50">{busy ? "…" : row.reviewed ? "Mark unreviewed" : "Mark reviewed"}</button>
+  return (
+    <div className={`rounded-xl bg-white/[0.03] px-4 py-3 transition-colors hover:bg-white/[0.055] ${row.reviewed ? "opacity-45" : ""}`}>
+      <div className="flex items-start gap-3">
+        <input type="checkbox" checked={selected} onChange={onSelect} className="mt-1 h-4 w-4 shrink-0 cursor-pointer accent-[var(--gold)]" />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px]">
+            <SevDot p={row.priority} />
+            {showSection && short && <span className="font-bold uppercase tracking-[0.1em] text-[var(--sage-dim)]">{short}</span>}
+            {row.platform && row.platform !== "unknown" && <span className="font-bold uppercase tracking-wide text-[var(--sage-dim)]">{row.platform}</span>}
+            {row.theme && <span className="font-semibold text-[var(--sage)]">{row.theme}</span>}
+            <SourceIcons sources={row.sources} />
           </div>
-          {err && <div className="mt-2 text-[12px] font-semibold text-[#e0873f]">{err}</div>}
+          <p className="mt-1.5 line-clamp-2 text-[14px] leading-snug text-[var(--cream)]">{row.description}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-x-3.5 gap-y-1.5 text-[12px]">
+            {row.links.map((l, i) => (
+              <a key={l} href={l} target="_blank" rel="noopener" className="font-bold hover:underline" style={{ color: BLUE }}>{linkLabel(l, i, row.links.length)}</a>
+            ))}
+            {row.prompt && <button onClick={copyPrompt} className="font-bold text-[var(--gold)] hover:underline">{copied ? "Copied ✓" : "Copy prompt"}</button>}
+            <button onClick={toggleReviewed} disabled={busy} className="ml-auto rounded-full bg-[var(--gold)] px-3.5 py-1 text-[11.5px] font-bold text-[#141B16] transition-colors hover:bg-[var(--gold-bright)] disabled:opacity-50">{busy ? "…" : row.reviewed ? "Undo" : "Reviewed"}</button>
+          </div>
+          {err && <div className="mt-1.5 text-[12px] font-semibold text-[#e0873f]">{err}</div>}
         </div>
-      )}
+        <span style={NUM} className={`shrink-0 text-[22px] font-black leading-none ${row.count > 1 ? "text-[var(--gold)]" : "text-[var(--sage-dim)]"}`}>{row.count}</span>
+      </div>
     </div>
   );
 }
@@ -114,12 +101,10 @@ export default function DigestQueue() {
   const [digest, setDigest] = useState<Digest | null | undefined>(undefined);
   const [showIgnored, setShowIgnored] = useState(false);
 
-  // filters
   const [section, setSection] = useState<Section | "all">("all");
   const [platform, setPlatform] = useState<string>("all");
   const [unreviewedOnly, setUnreviewedOnly] = useState(false);
 
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
 
@@ -127,7 +112,7 @@ export default function DigestQueue() {
   useEffect(() => {
     if (!dates) return;
     if (dates.length === 0) { setDigest(null); return; }
-    setDigest(undefined); setExpandedId(null); setSel(new Set()); setShowIgnored(false);
+    setDigest(undefined); setSel(new Set()); setShowIgnored(false);
     getDigest(dates[idx]).then(setDigest).catch(() => setDigest(null));
   }, [dates, idx]);
 
@@ -166,11 +151,10 @@ export default function DigestQueue() {
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-10">
-      <Link href="/admin" className="text-[12px] font-semibold text-[var(--sage)] transition-colors hover:text-[var(--gold)]">← Admin</Link>
-      <div className="mt-2 font-mono text-[10px] font-bold uppercase tracking-[0.24em] text-[var(--gold)]">Staff</div>
+      <Link href="/admin" className="text-[12px] font-semibold text-[var(--sage)] transition-colors hover:text-[var(--gold)]">← The Circle</Link>
+      <div className="mt-2 font-mono text-[10px] font-bold uppercase tracking-[0.24em] text-[var(--gold)]">Internal use only</div>
       <h1 className={`${HEAD} mt-1 text-3xl font-black tracking-[-0.02em] sm:text-4xl`}>Community digest</h1>
 
-      {/* date pager */}
       <div className="mt-5 flex items-center justify-between gap-3">
         <button onClick={() => setIdx((i) => Math.max(0, i - 1))} disabled={!hasNewer} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--hair-strong)] px-3 py-1.5 text-[13px] font-bold text-[var(--sage)] transition-colors hover:text-[var(--cream)] disabled:opacity-40">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M15 18l-6-6 6-6" /></svg>Newer
@@ -185,8 +169,7 @@ export default function DigestQueue() {
       </div>
 
       {digest && (
-        // sticky filter bar
-        <div className="sticky top-[72px] z-20 -mx-6 mt-4 border-b border-[var(--hair)] bg-[var(--bg-deep)] px-6 py-2.5">
+        <div className="sticky top-[72px] z-20 -mx-6 mt-4 bg-[var(--bg-deep)] px-6 py-2.5">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             <div className="inline-flex rounded-full bg-white/[0.05] p-1">
               <Chip on={section === "all"} onClick={() => setSection("all")}>All</Chip>
@@ -213,12 +196,10 @@ export default function DigestQueue() {
       ) : filtered.length === 0 ? (
         <p className="mt-10 py-12 text-center text-[14px] text-[var(--sage-dim)]">Nothing matches these filters.</p>
       ) : (
-        <div className="mt-2 border-t border-[var(--hair)]">
+        <div className="mt-4 space-y-2 pb-24">
           {filtered.map((r) => (
-            <ItemRow
+            <ItemCard
               key={r.id} row={r} date={digest.date}
-              expanded={expandedId === r.id}
-              onToggle={() => setExpandedId((cur) => (cur === r.id ? null : r.id))}
               selected={sel.has(r.id)} onSelect={() => toggleSel(r.id)}
               onReviewed={(id, rv) => patchReviewed([id], rv)}
               showSection={section === "all"}
@@ -227,7 +208,6 @@ export default function DigestQueue() {
         </div>
       )}
 
-      {/* filter audit */}
       {digest && digest.ignored && digest.ignored.length > 0 && (
         <div className="mt-6">
           <button onClick={() => setShowIgnored((v) => !v)} className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-[var(--sage-dim)] transition-colors hover:text-[var(--sage)]">
@@ -244,7 +224,6 @@ export default function DigestQueue() {
         </div>
       )}
 
-      {/* bulk action bar */}
       {sel.size > 0 && (
         <div className="fixed inset-x-0 bottom-6 z-30 flex justify-center px-6">
           <div className="flex items-center gap-3 rounded-full bg-[var(--bg-mid)] px-4 py-2.5 shadow-[0_16px_40px_-12px_rgba(0,0,0,0.7)]">
