@@ -52,8 +52,9 @@ function Card({ r, onResolved }: { r: RemovalRequest; onResolved: (id: string) =
       if (res.error) { setErr(res.error); setBusy(null); return; }
       onResolved(r.id); // ok OR alreadyResolved — either way it's off the queue
     } catch (e) {
-      const { message, overridable } = parseResolveError(e);
-      setErr(message);
+      console.error("[resolveCourseRemoval] failed:", e); // surfaces code/message/details in devtools
+      const { code, message, overridable } = parseResolveError(e);
+      setErr(`${message} · ${code}`);
       // The ownership precondition can be forced through with "Approve anyway"; the name-mismatch guard can't.
       setCanOverride(decision === "approve" && overridable && !override);
       setBusy(null);

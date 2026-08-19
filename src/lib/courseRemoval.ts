@@ -71,16 +71,16 @@ export async function resolveCourseRemoval(requestId: string, decision: "approve
   return res.data ?? {};
 }
 
-/** Pull a readable message + whether the failure is the overridable ownership precondition. */
-export function parseResolveError(e: unknown): { message: string; overridable: boolean } {
+/** Pull a readable message, the error code, and whether it's the overridable ownership precondition. */
+export function parseResolveError(e: unknown): { code: string; message: string; overridable: boolean } {
   const err = (e ?? {}) as { code?: string; message?: string; details?: { requiresOverride?: boolean; reason?: string } };
-  const code = (err.code || "").replace(/^functions\//, "");
+  const code = (err.code || "").replace(/^functions\//, "") || "unknown";
   const message = err.message || "Something went wrong.";
   const details = err.details;
   const nameMismatch = details?.reason === "name_mismatch" || /\bname\b|no longer match|snapshot|renamed/i.test(message);
   // Ownership precondition is the one staff can override; the name-mismatch guard is a hard stop.
   const overridable = code === "failed-precondition" && !nameMismatch && (details?.requiresOverride === true || /own|builder|override/i.test(message) || true);
-  return { message, overridable };
+  return { code, message, overridable };
 }
 
 const MAP_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "pk.eyJ1IjoibWlrZXkzIiwiYSI6ImNtb3Fra25hZzB6dnIycHB6ZHMxcjIwNHYifQ.tyyS7i-aoR54_l11rW0Khg";
