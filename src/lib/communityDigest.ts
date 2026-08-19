@@ -79,3 +79,10 @@ export async function markDigestItemReviewed(date: string, itemId: string, revie
   const res = await fn({ date, itemId, reviewed });
   return res.data ?? {};
 }
+
+/** Bulk mark many items in one transaction — staff-gated, recomputes count once. */
+export async function markDigestItemsReviewed(date: string, itemIds: string[], reviewed: boolean): Promise<ReviewResult & { updated?: number }> {
+  const fn = httpsCallable<{ date: string; itemIds: string[]; reviewed: boolean }, ReviewResult & { updated?: number }>(functions, "markDigestItemsReviewed");
+  const res = await fn({ date, itemIds, reviewed });
+  return res.data ?? {};
+}
