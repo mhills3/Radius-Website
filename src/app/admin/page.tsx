@@ -19,7 +19,7 @@ function ToolCard({ t }: { t: Tool }) {
         {t.live
           ? (t.count != null && t.count > 0
               ? <span className={`${HEAD} rounded-full bg-[var(--gold)] px-2.5 py-1 text-[12px] font-bold text-[#141B16]`}>{t.count} pending</span>
-              : t.count != null ? <span className="text-[12px] font-semibold text-[var(--sage-dim)]">Clear</span> : null)
+              : t.count != null ? <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#5fcf80]"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M20 6L9 17l-5-5" /></svg>All caught up</span> : null)
           : <span className={`${HEAD} rounded-full bg-white/[0.06] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-[var(--sage-dim)]`}>Soon</span>}
       </div>
       <div className={`${HEAD} mt-4 text-[19px] font-bold ${t.live ? "text-[var(--cream)]" : "text-[var(--sage)]"}`}>{t.title}</div>
