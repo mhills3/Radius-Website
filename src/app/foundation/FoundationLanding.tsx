@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Logo from "@/components/Logo";
 
 function AppleIcon() {
@@ -10,26 +10,63 @@ function PlayIcon() {
   return <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5"><path d="M3.6 2.4 13 12 3.6 21.6c-.3-.2-.5-.6-.5-1V3.4c0-.4.2-.8.5-1ZM14.2 13.2l2.6 2.6-9.7 5.5 7.1-8.1ZM17.9 9.4l2.7 1.5c.6.4.6 1.3 0 1.7l-2.8 1.6-2.8-2.8 2.9-2ZM7.1 2.4l9.7 5.5-2.6 2.6L7.1 2.4Z" /></svg>;
 }
 
-export default function FoundationLanding({ appStore, googlePlay }: { appStore: string; googlePlay: string }) {
+export default function FoundationLanding({ appStore, googlePlay, qrSvg }: { appStore: string; googlePlay: string; qrSvg: string }) {
+  const [redirecting, setRedirecting] = useState(false);
+
   useEffect(() => {
-    // Count desktop visits under the SAME event the mobile MP hits use, so /foundation has one clean number.
+    const ua = navigator.userAgent || "";
+    // Belt-and-suspenders: the server already redirects phones before this renders, but if one ever
+    // lands here (edge cache, in-app browser, prefetch) send it straight to the store anyway.
+    if (/iPhone|iPad|iPod/i.test(ua)) {
+      window.gtag?.("event", "foundation_visit", { source: "foundation", platform: "ios" });
+      setRedirecting(true);
+      window.location.replace(appStore);
+      return;
+    }
+    if (/Android/i.test(ua)) {
+      window.gtag?.("event", "foundation_visit", { source: "foundation", platform: "android" });
+      setRedirecting(true);
+      window.location.replace(googlePlay);
+      return;
+    }
+    // desktop — count it under the same event so /foundation has one clean number
     window.gtag?.("event", "foundation_visit", { source: "foundation", platform: "desktop" });
-  }, []);
+  }, [appStore, googlePlay]);
+
+  if (redirecting) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[var(--bg-deep)] text-[var(--sage)]">
+        <svg className="h-6 w-6 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[var(--bg-deep)] px-6 py-20 text-[var(--cream)]">
+    <div className="flex min-h-screen items-center justify-center bg-[var(--bg-deep)] px-6 py-16 text-[var(--cream)]">
       <div className="w-full max-w-md text-center">
         <Logo className="mx-auto h-9 w-[128px] text-[var(--cream)]" />
         <div className="mt-8 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">Play smarter, not harder</div>
         <h1 className="mt-2 font-[family-name:var(--font-heading)] text-3xl font-black tracking-[-0.02em] sm:text-4xl">Get Radius</h1>
-        <p className="mx-auto mt-3 max-w-sm text-[15px] text-[var(--text-body)]">Your caddy, coach, and disc golf community in one app. Grab it free and start dialing in your game.</p>
+        <p className="mx-auto mt-3 max-w-sm text-[15px] text-[var(--text-body)]">Your caddy, coach, and disc golf community in one app. It&apos;s a phone app — scan to install.</p>
 
-        <div className="mt-8 flex flex-col gap-3">
-          <a href={appStore} target="_blank" rel="noopener" className="inline-flex items-center justify-center gap-2.5 rounded-full bg-[var(--gold)] px-6 py-3.5 text-sm font-bold text-[#16221b] shadow-[0_10px_30px_-12px_rgba(246,193,101,0.6)] transition-all hover:-translate-y-0.5 hover:bg-[var(--gold-bright)]"><AppleIcon /> Download on the App Store</a>
-          <a href={googlePlay} target="_blank" rel="noopener" className="inline-flex items-center justify-center gap-2.5 rounded-full border border-[var(--hair-strong)] px-6 py-3.5 text-sm font-bold text-[var(--cream)] transition-colors hover:border-[var(--gold)]/50 hover:text-white"><PlayIcon /> Get it on Google Play</a>
+        {/* Scan-to-install: a phone camera hits /foundation and auto-redirects to the right store. This is
+            the reliable desktop path — a direct App Store link opens the Mac App Store, where an
+            iPhone-only app shows an error. */}
+        <div className="mt-8 flex flex-col items-center">
+          <div className="rounded-2xl bg-white p-4 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.6)]">
+            <div className="h-44 w-44 [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: qrSvg }} />
+          </div>
+          <p className="mt-3 text-[13px] font-semibold text-[var(--cream)]">Point your phone camera here</p>
+          <p className="text-xs text-[var(--sage-dim)]">It opens your App Store or Google Play automatically.</p>
         </div>
 
-        <p className="mt-6 text-xs text-[var(--sage-dim)]">On your phone? This link drops you straight into your store.</p>
+        <div className="mt-8">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--sage-dim)]">Or open a store directly</div>
+          <div className="mt-3 flex flex-col gap-3">
+            <a href={appStore} target="_blank" rel="noopener" className="inline-flex items-center justify-center gap-2.5 rounded-full bg-[var(--gold)] px-6 py-3.5 text-sm font-bold text-[#16221b] shadow-[0_10px_30px_-12px_rgba(246,193,101,0.6)] transition-all hover:-translate-y-0.5 hover:bg-[var(--gold-bright)]"><AppleIcon /> App Store</a>
+            <a href={googlePlay} target="_blank" rel="noopener" className="inline-flex items-center justify-center gap-2.5 rounded-full border border-[var(--hair-strong)] px-6 py-3.5 text-sm font-bold text-[var(--cream)] transition-colors hover:border-[var(--gold)]/50 hover:text-white"><PlayIcon /> Google Play</a>
+          </div>
+        </div>
       </div>
     </div>
   );

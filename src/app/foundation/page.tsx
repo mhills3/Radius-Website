@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
+import QRCode from "qrcode";
 import FoundationLanding from "./FoundationLanding";
 
 // Dedicated CTA link for the Foundation creator video — memorable enough to say out loud
@@ -20,6 +21,7 @@ const APP_STORE = "https://apps.apple.com/us/app/radius-disc-golf/id6760574186";
 const GOOGLE_PLAY = "https://play.google.com/store/apps/details?id=com.michaelhills.radiusandroid";
 const GA_MEASUREMENT_ID = "G-JWD14Z58WV";
 const SOURCE = "foundation";
+const SELF_URL = "https://radiusdiscgolf.com/foundation"; // what the desktop QR encodes → phone re-hits this and auto-redirects
 
 type Geo = { city: string; region: string; country: string };
 
@@ -64,6 +66,8 @@ export default async function FoundationPage() {
     redirect(`${APP_STORE}?ct=${encodeURIComponent(SOURCE)}`);
   }
 
-  // desktop / unknown → a proper two-button landing (the client fires the desktop foundation_visit event)
-  return <FoundationLanding appStore={APP_STORE} googlePlay={GOOGLE_PLAY} />;
+  // desktop / unknown → a proper landing: a scan-to-install QR (a phone hitting this URL auto-redirects)
+  // plus the store buttons. The client also fires the desktop foundation_visit event.
+  const qrSvg = await QRCode.toString(SELF_URL, { type: "svg", margin: 1, errorCorrectionLevel: "M", color: { dark: "#16221b", light: "#ffffff" } });
+  return <FoundationLanding appStore={APP_STORE} googlePlay={GOOGLE_PLAY} qrSvg={qrSvg} />;
 }
