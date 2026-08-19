@@ -6,9 +6,7 @@ import { useEffect, useState } from "react";
 import Logo from "@/components/Logo";
 import { useAuth } from "@/components/AuthProvider";
 import NotificationBell from "@/components/NotificationBell";
-import { getPendingRemovalCount } from "@/lib/courseRemoval";
-import { getPendingFulfillmentCount } from "@/lib/rewards";
-import { getUnreviewedDigestCount } from "@/lib/communityDigest";
+import { getAdminQueues } from "@/lib/adminQueues";
 
 const APP_STORE = "https://apps.apple.com/us/app/radius-disc-golf/id6760574186";
 const GOOGLE_PLAY = "https://play.google.com/store/apps/details?id=com.michaelhills.radiusandroid";
@@ -41,7 +39,12 @@ export default function Nav() {
 
   useEffect(() => {
     if (!profile?.staff) return;
-    Promise.all([getPendingRemovalCount().catch(() => 0), getPendingFulfillmentCount().catch(() => 0), getUnreviewedDigestCount().catch(() => 0)]).then(([a, b, c]) => setAdminPending(a + b + c));
+    // Same source as the /admin header total, so the badge and the page can't disagree. Refresh on
+    // focus so it doesn't go stale after acting on a queue in another tab/page.
+    const load = () => getAdminQueues().then((q) => setAdminPending(q.total)).catch(() => {});
+    load();
+    window.addEventListener("focus", load);
+    return () => window.removeEventListener("focus", load);
   }, [profile?.staff]);
 
   useEffect(() => {

@@ -2,96 +2,103 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { getPendingRemovalCount } from "@/lib/courseRemoval";
-import { getPendingFulfillmentCount } from "@/lib/rewards";
-import { getUnreviewedDigestCount } from "@/lib/communityDigest";
-import GrowthChart from "@/components/growth/GrowthChart";
+import { getAdminQueues, type AdminQueues, type QueueMeta } from "@/lib/adminQueues";
+import GrowthStrip from "@/components/growth/GrowthStrip";
 import type { GrowthData } from "@/lib/growth";
 
 const HEAD = "font-[family-name:var(--font-heading)]";
+const NUM = { fontFamily: "var(--font-body)", fontVariantNumeric: "tabular-nums" } as const; // Inter numerals
 
-// Adding a staff tool = add an entry here. Live tools get an href; deferred ones render as
-// dimmed "Coming soon" cards so the hub already shows the roadmap without a rewrite.
-type Tool = { title: string; desc: string; icon: ReactNode; href?: string; count?: number | null; live: boolean };
+// Static presentation per queue; live count + freshness come from getAdminQueues().
+const DEFS: Record<QueueMeta["key"], { name: string; desc: string; href: string; icon: ReactNode }> = {
+  digest: {
+    name: "Community Digest", desc: "Bugs, requests, questions", href: "/admin/digest",
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>,
+  },
+  fulfillment: {
+    name: "Reward Fulfillment", desc: "Ship builder gear", href: "/admin/fulfillment",
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><path d="m3.3 7 8.7 5 8.7-5M12 22V12" /></svg>,
+  },
+  removals: {
+    name: "Course Removals", desc: "Pull courses from the directory", href: "/admin/removals",
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /></svg>,
+  },
+};
 
-function ToolCard({ t }: { t: Tool }) {
-  const body = (
-    <>
-      <div className="flex items-start justify-between gap-3">
-        <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${t.live ? "bg-[var(--gold)]/15 text-[var(--gold)]" : "bg-white/[0.04] text-[var(--sage-dim)]"}`}>{t.icon}</span>
-        {t.live
-          ? (t.count != null && t.count > 0
-              ? <span className={`${HEAD} rounded-full bg-[var(--gold)] px-2.5 py-1 text-[12px] font-bold text-[#141B16]`}>{t.count} pending</span>
-              : t.count != null ? <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#5fcf80]"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M20 6L9 17l-5-5" /></svg>All caught up</span> : null)
-          : <span className={`${HEAD} rounded-full bg-white/[0.06] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-[var(--sage-dim)]`}>Soon</span>}
+const ago = (ms: number) => {
+  const s = Math.max(0, Date.now() - ms) / 1000;
+  if (s < 3600) return `${Math.max(1, Math.round(s / 60))}m ago`;
+  if (s < 86400) return `${Math.round(s / 3600)}h ago`;
+  const d = Math.round(s / 86400);
+  return `${d} day${d === 1 ? "" : "s"} ago`;
+};
+const waiting = (ms: number) => {
+  const h = Math.max(0, Date.now() - ms) / 3600000;
+  if (h < 24) return `${Math.max(1, Math.round(h))}h`;
+  const d = Math.round(h / 24);
+  return `${d} day${d === 1 ? "" : "s"}`;
+};
+
+// subtitle: clear → just "All caught up"; otherwise "description · freshness"
+function subtitle(q: QueueMeta): string {
+  const desc = DEFS[q.key].desc;
+  if (q.freshness.type === "lastRun") return `${desc} · last run ${ago(q.freshness.ms)}`;
+  if (q.freshness.type === "oldest") return `${desc} · oldest waiting ${waiting(q.freshness.ms)}`;
+  return "All caught up";
+}
+
+function Row({ q }: { q: QueueMeta }) {
+  const { name, href, icon } = DEFS[q.key];
+  const active = q.count > 0;
+  return (
+    <Link href={href} className={`group flex items-center gap-4 py-4 transition-opacity ${active ? "" : "opacity-50"}`}>
+      <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${active ? "bg-[var(--gold)]/12 text-[var(--gold)]" : "bg-white/[0.04] text-[var(--sage-dim)]"}`}>{icon}</span>
+      <div className="min-w-0 flex-1">
+        <div className={`${HEAD} text-[16px] font-bold text-[var(--cream)]`}>{name}</div>
+        <div className="truncate text-[13px] text-[var(--sage-dim)]">{subtitle(q)}</div>
       </div>
-      <div className={`${HEAD} mt-4 text-[19px] font-bold ${t.live ? "text-[var(--cream)]" : "text-[var(--sage)]"}`}>{t.title}</div>
-      <p className="mt-1 text-[13.5px] leading-snug text-[var(--text-body)]">{t.desc}</p>
-    </>
+      <span style={NUM} className={`text-[22px] font-bold tabular-nums ${active ? "text-[var(--gold)]" : "text-[var(--sage-dim)]"}`}>{q.count}</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 shrink-0 text-[var(--sage-dim)] transition-colors group-hover:text-[var(--sage)]"><path d="M9 18l6-6-6-6" /></svg>
+    </Link>
   );
-  const cls = "block rounded-2xl border p-5 shadow-sm transition-colors";
-  return t.live && t.href
-    ? <Link href={t.href} className={`${cls} border-[var(--hair)] bg-[var(--bg-mid)] hover:border-[var(--gold)]/40`}>{body}</Link>
-    : <div className={`${cls} border-[var(--hair)] bg-[var(--bg-mid)] opacity-70`}>{body}</div>;
 }
 
 export default function AdminHub({ growth }: { growth: GrowthData }) {
-  const [pending, setPending] = useState<number | null>(null);
-  const [fulfillPending, setFulfillPending] = useState<number | null>(null);
-  const [digestUnreviewed, setDigestUnreviewed] = useState<number | null>(null);
-  useEffect(() => {
-    getPendingRemovalCount().then(setPending).catch(() => setPending(0));
-    getPendingFulfillmentCount().then(setFulfillPending).catch(() => setFulfillPending(0));
-    getUnreviewedDigestCount().then(setDigestUnreviewed).catch(() => setDigestUnreviewed(0));
-  }, []);
+  const [data, setData] = useState<AdminQueues | null>(null);
+  useEffect(() => { getAdminQueues().then(setData).catch(() => setData({ queues: [], total: 0 })); }, []);
 
-  const tools: Tool[] = [
-    {
-      title: "Course Removals", desc: "Review requests to pull a course from the directory.", href: "/admin/removals", count: pending, live: true,
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /></svg>,
-    },
-    {
-      title: "Reward Fulfillment", desc: "Ship builder gear + tournament bags — address reads onto a label.", href: "/admin/fulfillment", count: fulfillPending, live: true,
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><path d="m3.3 7 8.7 5 8.7-5M12 22V12" /></svg>,
-    },
-    {
-      title: "Community Digest", desc: "Daily classified digest of Discord — bugs, requests, questions, churn signals.", href: "/admin/digest", count: digestUnreviewed, live: true,
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>,
-    },
-    {
-      title: "Course Approvals", desc: "Review new course submissions before they go public.", live: false,
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><path d="M22 4 12 14.01l-3-3" /></svg>,
-    },
-    {
-      title: "Staff Applications", desc: "Review requests for staff access.", live: false,
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM19 8v6M22 11h-6" /></svg>,
-    },
-  ];
-  const left = tools.slice(0, 3);  // live queues
-  const right = tools.slice(3);    // deferred
+  const queues = data ? [...data.queues].sort((a, b) => b.count - a.count) : null;
+  const total = data?.total ?? 0;
 
   return (
-    <div className="mx-auto max-w-7xl px-6 py-10">
+    <div className="mx-auto max-w-3xl px-6 py-10">
       <div className="font-mono text-[10px] font-bold uppercase tracking-[0.24em] text-[var(--gold)]">Staff</div>
-      <h1 className={`${HEAD} mt-1 text-3xl font-black tracking-[-0.02em] sm:text-4xl`}>Admin</h1>
-      <p className="mt-2 max-w-xl text-[14px] text-[var(--text-body)]">Radius staff tools + live growth. Pick a queue to work.</p>
+      <div className="mt-1 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+        <h1 className={`${HEAD} text-3xl font-black tracking-[-0.02em] sm:text-4xl`}>Admin</h1>
+        {data && (
+          total > 0
+            ? <span className="text-[15px] text-[var(--text-body)]"><b style={NUM} className="text-[var(--gold)]">{total}</b> item{total === 1 ? "" : "s"} need you</span>
+            : <span className="text-[15px] text-[var(--sage-dim)]">You&apos;re all caught up</span>
+        )}
+      </div>
 
-      {/* growth chart is the center hero; the tool cards flank it on wide screens and stack below on narrow */}
-      <div className="mt-8 grid gap-5 lg:grid-cols-[minmax(0,230px)_minmax(0,1fr)_minmax(0,230px)]">
-        <div className="rounded-3xl border border-white/[0.08] bg-white/[0.03] p-4 sm:p-6 lg:col-start-2 lg:row-start-1">
-          <div className="mb-4 flex items-center gap-2">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#5fcf80]" />
-            <span className={`${HEAD} text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--sage)]`}>Radius pulse · live growth</span>
-          </div>
-          <GrowthChart data={growth} />
-        </div>
+      {/* queue list — no cards, hairline dividers, sorted by pending desc */}
+      <div className="mt-6 divide-y divide-[var(--hair)] border-t border-[var(--hair)]">
+        {queues === null ? (
+          <div className="flex justify-center py-12 text-[var(--sage)]"><svg className="h-6 w-6 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg></div>
+        ) : (
+          queues.map((q) => <Row key={q.key} q={q} />)
+        )}
+        <div className="py-3.5 text-[12.5px] text-[var(--sage-dim)]">Coming soon · Course Approvals · Staff Applications</div>
+      </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:col-start-1 lg:row-start-1 lg:grid-cols-1 lg:content-start">
-          {left.map((t) => <ToolCard key={t.title} t={t} />)}
+      {/* demoted: Radius pulse as a compact strip */}
+      <div className="mt-10">
+        <div className="mb-3 flex items-center gap-2">
+          <span className="h-1.5 w-1.5 rounded-full bg-[#5fcf80]" />
+          <span className={`${HEAD} text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--sage)]`}>Radius pulse</span>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:col-start-3 lg:row-start-1 lg:grid-cols-1 lg:content-start">
-          {right.map((t) => <ToolCard key={t.title} t={t} />)}
-        </div>
+        <GrowthStrip data={growth} />
       </div>
     </div>
   );
