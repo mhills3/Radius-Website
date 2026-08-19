@@ -61,12 +61,26 @@ export interface ResolveResult { ok?: boolean; alreadyResolved?: boolean; error?
 /**
  * THE ONLY way to act on a request. The callable re-checks staff server-side with the Admin SDK and
  * performs the soft delete (approve → isDraft + reviewStatus "removed"). Idempotent — a double-click
- * returns { alreadyResolved: true }. Never write the decision to Firestore from the client.
+ * returns { alreadyResolved: true }. It throws typed HttpsErrors (failed-precondition) when the
+ * requester doesn't own the course (pass override: true to proceed anyway) or the course name no
+ * longer matches the reviewed snapshot. Never write the decision to Firestore from the client.
  */
-export async function resolveCourseRemoval(requestId: string, decision: "approve" | "deny", note?: string): Promise<ResolveResult> {
-  const fn = httpsCallable<{ requestId: string; decision: "approve" | "deny"; note?: string }, ResolveResult>(functions, "resolveCourseRemoval");
-  const res = await fn({ requestId, decision, note });
+export async function resolveCourseRemoval(requestId: string, decision: "approve" | "deny", note?: string, override?: boolean): Promise<ResolveResult> {
+  const fn = httpsCallable<{ requestId: string; decision: "approve" | "deny"; note?: string; override?: boolean }, ResolveResult>(functions, "resolveCourseRemoval");
+  const res = await fn({ requestId, decision, ...(note ? { note } : {}), ...(override ? { override: true } : {}) });
   return res.data ?? {};
+}
+
+/** Pull a readable message + whether the failure is the overridable ownership precondition. */
+export function parseResolveError(e: unknown): { message: string; overridable: boolean } {
+  const err = (e ?? {}) as { code?: string; message?: string; details?: { requiresOverride?: boolean; reason?: string } };
+  const code = (err.code || "").replace(/^functions\//, "");
+  const message = err.message || "Something went wrong.";
+  const details = err.details;
+  const nameMismatch = details?.reason === "name_mismatch" || /\bname\b|no longer match|snapshot|renamed/i.test(message);
+  // Ownership precondition is the one staff can override; the name-mismatch guard is a hard stop.
+  const overridable = code === "failed-precondition" && !nameMismatch && (details?.requiresOverride === true || /own|builder|override/i.test(message) || true);
+  return { message, overridable };
 }
 
 const MAP_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "pk.eyJ1IjoibWlrZXkzIiwiYSI6ImNtb3Fra25hZzB6dnIycHB6ZHMxcjIwNHYifQ.tyyS7i-aoR54_l11rW0Khg";

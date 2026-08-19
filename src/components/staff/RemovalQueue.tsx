@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getRemovalRequests, resolveCourseRemoval, twoPinMapUrl, type RemovalRequest, type DuplicateCandidate } from "@/lib/courseRemoval";
+import { getRemovalRequests, resolveCourseRemoval, parseResolveError, twoPinMapUrl, type RemovalRequest, type DuplicateCandidate } from "@/lib/courseRemoval";
 
 const HEAD = "font-[family-name:var(--font-heading)]";
 const REASON: Record<string, string> = { duplicate: "Duplicate", mistake: "Mistake", closed: "Course closed", wrong_location: "Wrong location", other: "Other" };
@@ -38,20 +38,25 @@ function Card({ r, onResolved }: { r: RemovalRequest; onResolved: (id: string) =
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState<"approve" | "deny" | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [canOverride, setCanOverride] = useState(false);
   const ev = r.evidence || {};
   const snap = r.courseSnapshot || {};
   const dups = ev.likelyDuplicates || [];
   const invalid = r.status === "invalid";
   const map = twoPinMapUrl(snap, dups[0] ?? null);
 
-  const act = async (decision: "approve" | "deny") => {
-    setBusy(decision); setErr(null);
+  const act = async (decision: "approve" | "deny", override = false) => {
+    setBusy(decision); setErr(null); if (!override) setCanOverride(false);
     try {
-      const res = await resolveCourseRemoval(r.id, decision, note.trim() || undefined);
+      const res = await resolveCourseRemoval(r.id, decision, note.trim() || undefined, override);
       if (res.error) { setErr(res.error); setBusy(null); return; }
       onResolved(r.id); // ok OR alreadyResolved — either way it's off the queue
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Something went wrong."); setBusy(null);
+      const { message, overridable } = parseResolveError(e);
+      setErr(message);
+      // The ownership precondition can be forced through with "Approve anyway"; the name-mismatch guard can't.
+      setCanOverride(decision === "approve" && overridable && !override);
+      setBusy(null);
     }
   };
 
@@ -118,7 +123,17 @@ function Card({ r, onResolved }: { r: RemovalRequest; onResolved: (id: string) =
       {/* decision */}
       <div className="mt-5 border-t border-[var(--hair)] pt-4">
         <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (optional) — attached to the decision" rows={2} className="w-full resize-none rounded-xl border border-[var(--hair)] bg-white/[0.03] px-3.5 py-2.5 text-[14px] text-[var(--cream)] placeholder-[var(--sage-dim)] outline-none focus:border-[var(--gold)]/50" />
-        {err && <div className="mt-2 text-[13px] font-semibold text-[#e0873f]">{err}</div>}
+        {err && (
+          <div className="mt-3 rounded-xl border border-[#e0873f]/40 bg-[#e0873f]/[0.08] px-4 py-3">
+            <div className="text-[13px] font-semibold text-[#e0873f]">{err}</div>
+            {canOverride && (
+              <>
+                <p className="mt-1 text-[12px] text-[var(--sage)]">The requester doesn&apos;t own this course. You can still remove it if you&apos;ve verified it should go.</p>
+                <button onClick={() => act("approve", true)} disabled={!!busy} className="mt-2.5 rounded-full bg-[#e0873f] px-4 py-2 text-[12.5px] font-bold text-[#141B16] transition-colors hover:bg-[#e89a5f] disabled:opacity-50">{busy === "approve" ? "Approving…" : "Approve anyway"}</button>
+              </>
+            )}
+          </div>
+        )}
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
           <p className="max-w-md text-[11.5px] leading-snug text-[var(--sage-dim)]">Approving is a <b className="text-[var(--sage)]">soft delete</b> — it sets <code className="text-[var(--cream)]">isDraft</code> + <code className="text-[var(--cream)]">reviewStatus: &ldquo;removed&rdquo;</code>, so the course leaves the map while existing rounds keep resolving. Nothing is destroyed.</p>
           <div className="flex shrink-0 gap-2.5">
