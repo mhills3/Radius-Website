@@ -396,7 +396,7 @@ export default function CourseDetailClient({ slug, initialCourse }: { slug: stri
                     <div key={h.holeNumber} onMouseEnter={() => setActiveHole(h.holeNumber)} onMouseLeave={() => setActiveHole(null)} className={`flex items-center gap-3 border-b border-[var(--c-line)] px-4 py-2.5 transition-colors last:border-0 ${activeHole === h.holeNumber ? "bg-[var(--gold)]/[0.12]" : "hover:bg-[var(--c-raise)]"}`}>
                       <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold ${activeHole === h.holeNumber ? "bg-[var(--gold)] text-[#141b16]" : "bg-[var(--c-chip)] text-[var(--c-ink)]"}`}>{h.holeNumber}</span>
                       <span className="w-14 shrink-0 text-sm font-bold">Par {h.par}</span>
-                      <span className="min-w-0 flex-1 truncate text-xs text-[var(--c-muted)]">{[h.elevation].filter((x) => x && x !== "Flat").join(" · ") || h.holeType || ""}</span>
+                      <span className="min-w-0 flex-1 truncate text-xs text-[var(--c-muted)]">{h.holeType || ""}</span>
                       <span className="w-16 shrink-0 text-right text-sm font-semibold text-[var(--c-body)]">{h.distance > 0 ? fmtDist(h.distance, metric) : "—"}</span>
                     </div>
                   );
