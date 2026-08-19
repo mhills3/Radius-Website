@@ -1,0 +1,72 @@
+import { db, functions } from "./firebase";
+import { doc, getDoc, collection, getDocs, query, orderBy, limit } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
+
+// Written by the daily `communityDigest` scheduled function. One doc per day (id = YYYY-MM-DD),
+// history preserved. Every item carries the Discord message link(s) so staff can jump to the thread.
+export type DigestPlatform = "iOS" | "Android" | "web" | "unknown";
+export interface DigestItem {
+  id: string;
+  description: string;
+  count: number;            // distinct reporters/requesters (server-computed)
+  links: string[];          // Discord message links
+  reviewed: boolean;
+  platform?: DigestPlatform; // bugs only
+  kind?: "praise" | "churn_risk"; // notable only
+}
+export interface DigestCategories {
+  bugs: DigestItem[];
+  features: DigestItem[];
+  questions: DigestItem[];
+  notable: DigestItem[];
+}
+export interface Digest {
+  date: string;             // YYYY-MM-DD (doc id)
+  createdAt?: unknown;
+  rangeStartMs?: number;
+  rangeEndMs?: number;
+  channelsScanned?: number;
+  messageCount?: number;
+  categories: DigestCategories;
+  itemCount?: number;
+  reviewedCount?: number;
+}
+
+const emptyCats = (): DigestCategories => ({ bugs: [], features: [], questions: [], notable: [] });
+const allItems = (d: Digest): DigestItem[] => [...d.categories.bugs, ...d.categories.features, ...d.categories.questions, ...d.categories.notable];
+
+/** Dates that have a digest, newest first — drives the date pager. */
+export async function listDigestDates(max = 60): Promise<string[]> {
+  try {
+    const snap = await getDocs(query(collection(db, "communityDigests"), orderBy("date", "desc"), limit(max)));
+    return snap.docs.map((d) => d.id);
+  } catch { return []; }
+}
+
+export async function getDigest(date: string): Promise<Digest | null> {
+  const snap = await getDoc(doc(db, "communityDigests", date));
+  if (!snap.exists()) return null;
+  const d = snap.data() as Partial<Digest>;
+  return { ...d, date: snap.id, categories: { ...emptyCats(), ...(d.categories || {}) } };
+}
+
+export async function getLatestDigest(): Promise<Digest | null> {
+  const dates = await listDigestDates(1);
+  if (dates.length === 0) return null;
+  return getDigest(dates[0]);
+}
+
+/** Unreviewed items in the latest digest — the /admin card badge + the nav badge. */
+export async function getUnreviewedDigestCount(): Promise<number> {
+  const latest = await getLatestDigest();
+  if (!latest) return 0;
+  return allItems(latest).filter((it) => !it.reviewed).length;
+}
+
+export interface ReviewResult { ok?: boolean; reviewedCount?: number; error?: string }
+/** Mark an item reviewed/unreviewed. Staff-gated callable (re-checks staff, recomputes count). */
+export async function markDigestItemReviewed(date: string, itemId: string, reviewed: boolean): Promise<ReviewResult> {
+  const fn = httpsCallable<{ date: string; itemId: string; reviewed: boolean }, ReviewResult>(functions, "markDigestItemReviewed");
+  const res = await fn({ date, itemId, reviewed });
+  return res.data ?? {};
+}

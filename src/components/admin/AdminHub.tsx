@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { getPendingRemovalCount } from "@/lib/courseRemoval";
 import { getPendingFulfillmentCount } from "@/lib/rewards";
+import { getUnreviewedDigestCount } from "@/lib/communityDigest";
 import GrowthChart from "@/components/growth/GrowthChart";
 import type { GrowthData } from "@/lib/growth";
 
@@ -37,9 +38,11 @@ function ToolCard({ t }: { t: Tool }) {
 export default function AdminHub({ growth }: { growth: GrowthData }) {
   const [pending, setPending] = useState<number | null>(null);
   const [fulfillPending, setFulfillPending] = useState<number | null>(null);
+  const [digestUnreviewed, setDigestUnreviewed] = useState<number | null>(null);
   useEffect(() => {
     getPendingRemovalCount().then(setPending).catch(() => setPending(0));
     getPendingFulfillmentCount().then(setFulfillPending).catch(() => setFulfillPending(0));
+    getUnreviewedDigestCount().then(setDigestUnreviewed).catch(() => setDigestUnreviewed(0));
   }, []);
 
   const tools: Tool[] = [
@@ -52,6 +55,10 @@ export default function AdminHub({ growth }: { growth: GrowthData }) {
       icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><path d="m3.3 7 8.7 5 8.7-5M12 22V12" /></svg>,
     },
     {
+      title: "Community Digest", desc: "Daily classified digest of Discord — bugs, requests, questions, churn signals.", href: "/admin/digest", count: digestUnreviewed, live: true,
+      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>,
+    },
+    {
       title: "Course Approvals", desc: "Review new course submissions before they go public.", live: false,
       icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><path d="M22 4 12 14.01l-3-3" /></svg>,
     },
@@ -60,8 +67,8 @@ export default function AdminHub({ growth }: { growth: GrowthData }) {
       icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM19 8v6M22 11h-6" /></svg>,
     },
   ];
-  const left = tools.slice(0, 2);
-  const right = tools.slice(2);
+  const left = tools.slice(0, 3);  // live queues
+  const right = tools.slice(3);    // deferred
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-10">

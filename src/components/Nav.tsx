@@ -8,6 +8,7 @@ import { useAuth } from "@/components/AuthProvider";
 import NotificationBell from "@/components/NotificationBell";
 import { getPendingRemovalCount } from "@/lib/courseRemoval";
 import { getPendingFulfillmentCount } from "@/lib/rewards";
+import { getUnreviewedDigestCount } from "@/lib/communityDigest";
 
 const APP_STORE = "https://apps.apple.com/us/app/radius-disc-golf/id6760574186";
 const GOOGLE_PLAY = "https://play.google.com/store/apps/details?id=com.michaelhills.radiusandroid";
@@ -40,7 +41,7 @@ export default function Nav() {
 
   useEffect(() => {
     if (!profile?.staff) return;
-    Promise.all([getPendingRemovalCount().catch(() => 0), getPendingFulfillmentCount().catch(() => 0)]).then(([a, b]) => setAdminPending(a + b));
+    Promise.all([getPendingRemovalCount().catch(() => 0), getPendingFulfillmentCount().catch(() => 0), getUnreviewedDigestCount().catch(() => 0)]).then(([a, b, c]) => setAdminPending(a + b + c));
   }, [profile?.staff]);
 
   useEffect(() => {
