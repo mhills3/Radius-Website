@@ -22,6 +22,19 @@ function PlatformChip({ p }: { p?: string }) {
   if (!p) return null;
   return <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[11px] font-bold text-[var(--sage)]">{p}</span>;
 }
+// where the item came from — community data, so it carries the blue accent.
+function SourceChip({ sources }: { sources?: string[] }) {
+  if (!sources || sources.length === 0) return null;
+  const d = sources.includes("discord");
+  const e = sources.includes("email");
+  const label = d && e ? "Discord + Email" : e ? "Email" : "Discord";
+  return <span className="rounded-full px-2 py-0.5 text-[11px] font-bold" style={{ background: `${BLUE}26`, color: BLUE }}>{label}</span>;
+}
+const linkLabel = (url: string, i: number, total: number) => {
+  const kind = url.includes("mail.google.com") ? "email thread" : url.includes("discord.com") ? "Discord" : "source";
+  const verb = kind === "email thread" ? "Open" : "View in";
+  return total > 1 ? `${kind === "email thread" ? "Email" : kind} ${i + 1}` : `${verb} ${kind}`;
+};
 function KindChip({ k }: { k?: string }) {
   if (k === "churn_risk") return <span className="rounded-full bg-[#e0873f]/15 px-2 py-0.5 text-[11px] font-bold text-[#e0873f]">Churn risk</span>;
   if (k === "praise") return <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[11px] font-bold text-[var(--sage)]">Praise</span>;
@@ -50,6 +63,7 @@ function Item({ date, item, onToggled }: { date: string; item: DigestItem; onTog
       <div className="flex items-start justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           {item.count > 1 && <span className={`${HEAD} rounded-full bg-[var(--gold)] px-2 py-0.5 text-[12px] font-bold text-[#141B16]`}>×{item.count}</span>}
+          <SourceChip sources={item.sources} />
           <PlatformChip p={item.platform} />
           <KindChip k={item.kind} />
         </div>
@@ -59,12 +73,19 @@ function Item({ date, item, onToggled }: { date: string; item: DigestItem; onTog
       <p className="mt-2 text-[14.5px] leading-snug text-[var(--cream)]">{item.description}</p>
 
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
-        {item.links.map((l, i) => (
-          <a key={l} href={l} target="_blank" rel="noopener" className="inline-flex items-center gap-1.5 text-[12.5px] font-bold hover:underline" style={{ color: BLUE }}>
-            <svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5"><path d="M20.3 4.4A19.8 19.8 0 0 0 15.4 3l-.25.5a18.3 18.3 0 0 1 4.36 1.36 15 15 0 0 0-4.44-1.4 13.8 13.8 0 0 0-6.14 0A15 15 0 0 0 4.5 4.86 18.3 18.3 0 0 1 8.85 3.5L8.6 3a19.8 19.8 0 0 0-4.9 1.4C1 8.9.3 13.3.65 17.6a19.9 19.9 0 0 0 6 3l.8-1.1a13 13 0 0 1-2.02-.98l.5-.37a14.2 14.2 0 0 0 12.14 0l.5.37c-.64.38-1.32.71-2.03.98l.8 1.1a19.9 19.9 0 0 0 6-3c.4-5-.68-9.36-3.36-13.2ZM8.9 15c-1.16 0-2.12-1.07-2.12-2.38S7.72 10.2 8.9 10.2s2.13 1.08 2.11 2.4c0 1.32-.94 2.4-2.11 2.4Zm6.2 0c-1.16 0-2.12-1.07-2.12-2.38s.94-2.4 2.12-2.4 2.13 1.08 2.11 2.4c0 1.32-.93 2.4-2.11 2.4Z" /></svg>
-            {item.links.length > 1 ? `Discord ${i + 1}` : "View in Discord"}
-          </a>
-        ))}
+        {item.links.map((l, i) => {
+          const isEmail = l.includes("mail.google.com");
+          return (
+            <a key={l} href={l} target="_blank" rel="noopener" className="inline-flex items-center gap-1.5 text-[12.5px] font-bold hover:underline" style={{ color: BLUE }}>
+              {isEmail ? (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 7 9 6 9-6" /></svg>
+              ) : (
+                <svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5"><path d="M20.3 4.4A19.8 19.8 0 0 0 15.4 3l-.25.5a18.3 18.3 0 0 1 4.36 1.36 15 15 0 0 0-4.44-1.4 13.8 13.8 0 0 0-6.14 0A15 15 0 0 0 4.5 4.86 18.3 18.3 0 0 1 8.85 3.5L8.6 3a19.8 19.8 0 0 0-4.9 1.4C1 8.9.3 13.3.65 17.6a19.9 19.9 0 0 0 6 3l.8-1.1a13 13 0 0 1-2.02-.98l.5-.37a14.2 14.2 0 0 0 12.14 0l.5.37c-.64.38-1.32.71-2.03.98l.8 1.1a19.9 19.9 0 0 0 6-3c.4-5-.68-9.36-3.36-13.2ZM8.9 15c-1.16 0-2.12-1.07-2.12-2.38S7.72 10.2 8.9 10.2s2.13 1.08 2.11 2.4c0 1.32-.94 2.4-2.11 2.4Zm6.2 0c-1.16 0-2.12-1.07-2.12-2.38s.94-2.4 2.12-2.4 2.13 1.08 2.11 2.4c0 1.32-.93 2.4-2.11 2.4Z" /></svg>
+              )}
+              {linkLabel(l, i, item.links.length)}
+            </a>
+          );
+        })}
         <button onClick={toggle} disabled={busy} className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-[var(--gold)]/40 px-3.5 py-1.5 text-[12px] font-bold text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/10 disabled:opacity-50">
           {busy ? "…" : item.reviewed ? "Undo" : "Mark reviewed"}
         </button>

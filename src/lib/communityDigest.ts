@@ -8,8 +8,9 @@ export type DigestPlatform = "iOS" | "Android" | "web" | "unknown";
 export interface DigestItem {
   id: string;
   description: string;
-  count: number;            // distinct reporters/requesters (server-computed)
-  links: string[];          // Discord message links
+  count: number;            // distinct reporters/requesters across sources (server-computed)
+  links: string[];          // Discord message and/or Gmail thread links
+  sources?: string[];       // "discord" and/or "email"
   reviewed: boolean;
   platform?: DigestPlatform; // bugs only
   kind?: "praise" | "churn_risk"; // notable only
