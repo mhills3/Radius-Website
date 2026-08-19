@@ -7,6 +7,7 @@ export type Tier = "gear" | "bag";
 // milestone → merch tier. builder-25 earns the gear bundle, builder-50 earns the tournament bag.
 const MILESTONES: [string, Tier][] = [["builder-25", "gear"], ["builder-50", "bag"]];
 export const TIER_LABEL: Record<Tier, string> = { gear: "Gear bundle", bag: "Tournament bag" };
+const milestonesToTiers = (keys: string[] = []): Tier[] => { const s = new Set(keys); return MILESTONES.filter(([k]) => s.has(k)).map(([, t]) => t); };
 
 export interface Claimable {
   canonicalId: string;
@@ -60,6 +61,42 @@ export async function submitFulfillment(claim: Claimable, input: FulfillmentInpu
     submittedAt: Date.now(),
     platform: "web",
   });
+}
+
+// ---------- tokenised claim (emailed "?t=" link, no login) ----------
+export interface TokenClaim {
+  token: string;
+  userId: string;
+  milestoneKeys: string[];
+  tiers: Tier[];        // derived from milestoneKeys
+  name: string;
+  username: string;
+  email: string;
+  courseCount: number;
+}
+
+/** Resolve a signed claim link (?t=TOKEN) with NO login. The callable validates the token server-side
+ *  and returns who it's for. Throws typed HttpsErrors whose messages are written for the player
+ *  ("This link has already been used", "This link expired — open Builder Rewards in the app…"). */
+export async function resolveClaimToken(token: string): Promise<TokenClaim> {
+  const fn = httpsCallable<{ token: string }, { userId: string; milestoneKeys?: string[]; name?: string; username?: string; email?: string; courseCount?: number }>(functions, "resolveClaimToken");
+  const { data: d } = await fn({ token });
+  return {
+    token, userId: d.userId, milestoneKeys: d.milestoneKeys || [], tiers: milestonesToTiers(d.milestoneKeys),
+    name: d.name || "", username: d.username || "", email: d.email || "", courseCount: typeof d.courseCount === "number" ? d.courseCount : 0,
+  };
+}
+
+/** Submit a tokenised claim. The callable BURNS the token and creates the claim in one transaction, so a
+ *  double-submit can't mint two claims. Throws player-facing HttpsErrors on a used/expired token. */
+export async function submitClaimWithToken(token: string, form: FulfillmentInput): Promise<void> {
+  const t = (s?: string) => (s || "").trim();
+  const fn = httpsCallable<{ token: string; form: FulfillmentInput }, { ok?: boolean }>(functions, "submitClaimWithToken");
+  await fn({ token, form: {
+    fullName: t(form.fullName), email: t(form.email), address1: t(form.address1), address2: t(form.address2),
+    city: t(form.city), region: t(form.region), postcode: t(form.postcode), country: t(form.country), phone: t(form.phone),
+    bagRequest: t(form.bagRequest), bagLink: t(form.bagLink), notes: t(form.notes),
+  } });
 }
 
 // ---------- staff queue ----------
