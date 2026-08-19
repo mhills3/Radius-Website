@@ -9,6 +9,7 @@ const DAY = 86400000;
 
 type Mode = "week" | "month" | "all";
 type Metric = "total" | "added";
+type ChartType = "line" | "bar";
 
 function downsample(points: GrowthPoint[], mode: Mode): GrowthPoint[] {
   if (mode === "all" || points.length <= 2) return points;
@@ -30,8 +31,9 @@ const fmtMonthLong = (ms: number) => new Date(ms).toLocaleDateString("en-US", { 
 const fmtFull = (ms: number) => new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
 export default function GrowthChart({ data }: { data: GrowthData }) {
-  const [mode, setMode] = useState<Mode>("week");
+  const [mode, setMode] = useState<Mode>("month");
   const [metric, setMetric] = useState<Metric>("total");
+  const [chartType, setChartType] = useState<ChartType>("bar");
   const [hover, setHover] = useState<number | null>(null);
 
   const cum = useMemo(() => downsample(data.points, mode), [data.points, mode]);
@@ -56,7 +58,7 @@ export default function GrowthChart({ data }: { data: GrowthData }) {
   const niceMax = metric === "total" ? (Math.ceil(maxY / 100) * 100 || maxY) : (Math.ceil(maxY / 5) * 5 || maxY);
   const sx = (d: number) => padL + ((d - x0) / (x1 - x0)) * gw;
   const sy = (v: number) => padT + gh - (v / niceMax) * gh;
-  const bars = metric === "added";
+  const bars = chartType === "bar";
   const path = (key: "courses" | "users") => pts.map((p, i) => `${i === 0 ? "M" : "L"}${sx(p.d).toFixed(1)},${sy(p[key]).toFixed(1)}`).join(" ");
   const area = (key: "courses" | "users") => `${path(key)} L${sx(pts[pts.length - 1].d).toFixed(1)},${baseY.toFixed(1)} L${sx(pts[0].d).toFixed(1)},${baseY.toFixed(1)} Z`;
 
@@ -102,6 +104,7 @@ export default function GrowthChart({ data }: { data: GrowthData }) {
           {showUsers && <span className="inline-flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{ background: BLUE }} /><span className="text-[var(--text-body)]">Users</span> <b className="text-[var(--cream)]">{data.usersTotal.toLocaleString()}</b></span>}
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Toggle value={chartType} set={setChartType} opts={[{ v: "bar", label: "Bars" }, { v: "line", label: "Line" }]} />
           <Toggle value={metric} set={setMetric} opts={[{ v: "total", label: "Total" }, { v: "added", label: "Added" }]} />
           <Toggle value={mode} set={setMode} opts={[{ v: "week", label: "Weekly" }, { v: "month", label: "Monthly" }, { v: "all", label: "All days" }]} />
         </div>
