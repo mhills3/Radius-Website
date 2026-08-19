@@ -4,7 +4,7 @@ export const metadata = {
   alternates: { canonical: "https://radiusdiscgolf.com/rewards" },
 };
 
-const DISCORD = "https://discord.gg/JW2SvWfCq";
+const DISCORD = "https://discord.gg/K396RywHx";
 
 const TIERS = [
   {
