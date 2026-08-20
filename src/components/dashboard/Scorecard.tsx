@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { type DecodedRound, computeRoundStats, type RoundStats } from "@/lib/rounds";
-import { getPutterDiscNames } from "@/lib/bag";
+import { getPuttingPutterNames } from "@/lib/bag";
 import { useAuth } from "@/components/AuthProvider";
 import { usePro } from "@/lib/usePro";
 import ProGate from "@/components/ProGate";
@@ -77,14 +77,14 @@ type Tab = "scorecard" | "stats" | "insights";
 export default function Scorecard({ round, onClose, rounds }: { round: DecodedRound; onClose: () => void; rounds?: DecodedRound[] }) {
   const [tab, setTab] = useState<Tab>("scorecard");
   const pro = usePro();
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const [putterNames, setPutterNames] = useState<Set<string>>(new Set());
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
-  useEffect(() => { let alive = true; getPutterDiscNames().then((s) => alive && setPutterNames(s)).catch(() => {}); return () => { alive = false; }; }, []);
+  useEffect(() => { if (!user?.uid) return; let alive = true; getPuttingPutterNames(user.uid).then((s) => alive && setPutterNames(s)).catch(() => {}); return () => { alive = false; }; }, [user?.uid]);
 
   const scHoles = round.holes.filter((h) => h.played).map((h) => ({ holeNumber: h.holeNumber, par: h.par, score: h.score, distance: h.distance || undefined }));
   const rel = round.relativeToPar;

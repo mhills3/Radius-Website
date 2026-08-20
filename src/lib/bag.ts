@@ -170,6 +170,15 @@ export async function getPutterDiscNames(): Promise<Set<string>> {
   return new Set(cat.filter((d) => normCat(d.category) === "PUTTER").map((d) => d.name));
 }
 
+/** The user's OWN bag discs flagged `isPuttingPutter` — mirrors iOS `UserProfile.puttingPutterNames`
+ *  (Set(myBag where isPuttingPutter)). This is the NARROW set that Round.puttTally / greenHitRate use.
+ *  Do NOT use getPutterDiscNames() (whole-catalog putter CATEGORY) for per-round putting — that
+ *  counts approach/tee shots thrown with any putter-molded disc as missed putts, halving C1 %. */
+export async function getPuttingPutterNames(uid: string): Promise<Set<string>> {
+  const bag = await getBag(uid);
+  return new Set(bag.rawDiscs.filter((d) => d.isPuttingPutter).map((d) => d.discName));
+}
+
 // Decode a base64 string as UTF-8. `atob` alone yields a Latin-1 "binary string", which
 // corrupts multibyte UTF-8 (accents/diacritics → mojibake like "bílý" → "bÃ­lÃ½"); reinterpret
 // the decoded bytes through TextDecoder so disc names/nicknames keep their real characters.

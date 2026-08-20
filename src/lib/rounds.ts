@@ -141,8 +141,16 @@ export function computeRoundStats(round: DecodedRound, putterNames: Set<string> 
       if (cur.discName === "Score") continue;
       const dtb = cur.distanceToBasket;
       let ring: "c1" | "c2" | null = null;
-      if (putterNames.has(cur.discName) && dtb != null) {
-        ring = dtb <= 33 ? "c1" : dtb <= 66 ? "c2" : null;
+      if (putterNames.has(cur.discName)) {
+        // iOS puttTally: a legacy Standard "landing" row (no GPS, no lie, distance 0, result Circle 1/2)
+        // stamps its OWN dtb as the landing (~0), so ring it by the PREVIOUS throw's distance instead —
+        // otherwise a 40 ft C2 putt buckets as C1 and C2 shows no attempts.
+        const legacyLanding = cur.lat == null && !cur.lie && (cur.distance ?? 0) === 0 && (cur.result === "Circle 1" || cur.result === "Circle 2");
+        if (legacyLanding) {
+          if (prevRealDtb != null) ring = prevRealDtb <= 33 ? "c1" : prevRealDtb <= 66 ? "c2" : null;
+        } else if (dtb != null) {
+          ring = dtb <= 33 ? "c1" : dtb <= 66 ? "c2" : null;
+        }
       } else if (cur.lie === "putt-c1" || cur.lie === "tap-in") {
         ring = "c1";
       } else if (cur.lie === "putt-c2") {
