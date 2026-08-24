@@ -108,39 +108,6 @@ function Panel({ src, alt, className = "" }: { src: string; alt: string; classNa
   );
 }
 
-// Signature Radius motif: the aerial range-ring / GPS-targeting HUD (distance rings + ticks + crosshair).
-function RangeRings({ className = "" }: { className?: string }) {
-  const cx = 200, cy = 200;
-  const rings = [72, 118, 160, 196];
-  const ticks = Array.from({ length: 60 });
-  return (
-    <svg viewBox="0 0 400 400" className={className} aria-hidden>
-      <defs>
-        <radialGradient id="ringGlow" cx="50%" cy="50%" r="50%">
-          <stop offset="52%" stopColor="transparent" />
-          <stop offset="100%" stopColor="rgba(246,193,101,0.05)" />
-        </radialGradient>
-      </defs>
-      <circle cx={cx} cy={cy} r={196} fill="url(#ringGlow)" />
-      {rings.map((r, i) => (
-        <circle key={r} cx={cx} cy={cy} r={r} fill="none" stroke="rgba(246,193,101,0.3)" strokeWidth={i === rings.length - 1 ? 1 : 0.7} strokeDasharray={i % 2 ? "1.5 8" : "1 6"} opacity={1 - i * 0.17} />
-      ))}
-      {ticks.map((_, i) => {
-        const a = (i / ticks.length) * 2 * Math.PI;
-        const r2 = i % 5 === 0 ? 185 : 190;
-        return <line key={i} x1={cx + 196 * Math.cos(a)} y1={cy + 196 * Math.sin(a)} x2={cx + r2 * Math.cos(a)} y2={cy + r2 * Math.sin(a)} stroke="rgba(246,193,101,0.32)" strokeWidth={0.7} />;
-      })}
-      <line x1={cx} y1={cy - 196} x2={cx} y2={cy + 196} stroke="rgba(245,237,225,0.05)" strokeWidth={0.7} />
-      <line x1={cx - 196} y1={cy} x2={cx + 196} y2={cy} stroke="rgba(245,237,225,0.05)" strokeWidth={0.7} />
-      {([[72, "100"], [118, "200"], [160, "300"]] as const).map(([r, l]) => (
-        <text key={l} x={cx + 5} y={cy - r + 3} fontSize={7.5} fill="rgba(168,179,145,0.5)" fontFamily="var(--font-body)" letterSpacing="0.5">{l} FT</text>
-      ))}
-      <circle cx={cx} cy={cy} r={3} fill="var(--gold)" />
-      <circle cx={cx} cy={cy} r={8} fill="none" stroke="var(--gold)" strokeWidth={0.8} opacity={0.5} />
-    </svg>
-  );
-}
-
 function StoreButtons() {
   const base = "inline-flex items-center justify-center gap-2 rounded-full px-6 py-3.5 text-sm font-bold transition-transform hover:-translate-y-0.5";
   return (
@@ -161,17 +128,14 @@ export default function FeaturesPage() {
   return (
     <div className="bg-[var(--bg-deep)] text-[var(--cream)]">
       {/* ===================== HERO ===================== */}
-      <section className="relative isolate flex min-h-[92vh] items-center overflow-hidden bg-[#0a1310]">
-        {/* topographic contour texture */}
-        <div className="pointer-events-none absolute inset-0 -z-20 opacity-[0.05]" style={{ maskImage: "url(/topo.png)", WebkitMaskImage: "url(/topo.png)", maskSize: "cover", WebkitMaskSize: "cover", backgroundColor: "#fff" }} aria-hidden />
-        <div className="pointer-events-none absolute -left-48 -top-24 -z-10 h-[760px] w-[760px] rounded-full bg-[radial-gradient(circle,rgba(246,193,101,0.11),transparent_60%)]" />
-        <div className="pointer-events-none absolute -bottom-40 right-0 -z-10 h-[720px] w-[720px] translate-x-1/5 rounded-full" style={{ background: `radial-gradient(circle, ${GREEN}22, transparent 60%)` }} />
-        {/* baseline coordinate rule */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-px bg-[linear-gradient(to_right,transparent,rgba(246,193,101,0.18),transparent)]" />
+      <section className="relative isolate flex min-h-[90vh] items-center overflow-hidden">
+        {/* clean, like the app preview panels: near-black → forest, soft green glow behind the phone */}
+        <div className="pointer-events-none absolute inset-0 -z-20 bg-[linear-gradient(160deg,#070d0a_0%,#0a130f_55%,#0c1a13_100%)]" />
+        <div className="pointer-events-none absolute right-[6%] top-1/2 -z-10 h-[860px] w-[860px] -translate-y-1/2 rounded-full" style={{ background: `radial-gradient(circle, ${GREEN}33, transparent 58%)` }} />
 
-        <div className="relative mx-auto grid w-full max-w-7xl items-center gap-8 px-6 pb-16 pt-28 lg:grid-cols-[1.05fr_0.95fr] lg:gap-4 lg:pt-20">
+        <div className="relative mx-auto grid w-full max-w-7xl items-center gap-10 px-6 pb-16 pt-28 lg:grid-cols-[1.05fr_0.95fr] lg:pt-20">
           {/* left copy */}
-          <div className="relative z-10 text-center lg:text-left">
+          <div className="text-center lg:text-left">
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[var(--gold)]/25 bg-[var(--gold)]/[0.06] px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--gold)]">
               <span className="h-1.5 w-1.5 rounded-full bg-[var(--gold)] shadow-[0_0_8px_var(--gold)]" /> The complete disc golf companion
             </div>
@@ -189,35 +153,15 @@ export default function FeaturesPage() {
             </div>
           </div>
 
-          {/* right: phone video floating over the range-ring HUD */}
-          <div className="relative flex min-h-[420px] items-center justify-center lg:min-h-[560px] lg:justify-end">
-            <RangeRings className="pointer-events-none absolute left-1/2 top-1/2 -z-0 h-[min(118vw,660px)] w-[min(118vw,660px)] -translate-x-1/2 -translate-y-1/2 opacity-80 lg:left-[46%]" />
+          {/* right: phone video with a green halo, matching the preview panels */}
+          <div className="flex justify-center lg:justify-end">
             <div className="relative">
-              <div className="pointer-events-none absolute inset-0 -z-10 scale-110 rounded-full" style={{ background: `radial-gradient(circle, ${GREEN}33, transparent 58%)` }} />
-              <PhoneFrame className="w-[254px] rotate-[3deg] shadow-[0_60px_120px_-40px_rgba(0,0,0,0.85)] sm:w-[292px]">
+              <div className="pointer-events-none absolute inset-0 -z-10 scale-[1.35] rounded-full" style={{ background: `radial-gradient(circle, ${GREEN}55, transparent 60%)` }} />
+              <PhoneFrame className="w-[268px] shadow-[0_50px_110px_-35px_rgba(0,0,0,0.85)] sm:w-[312px]">
                 <video className="h-full w-full object-cover" autoPlay muted loop playsInline poster="/features/preview-poster.jpg">
                   <source src="/features/preview.mp4" type="video/mp4" />
                 </video>
               </PhoneFrame>
-
-              {/* HUD callout — the app's signature smart-distance readout */}
-              <div className="absolute -left-8 top-14 hidden rounded-2xl border border-white/10 bg-black/70 px-3.5 py-2.5 shadow-[0_18px_44px_-16px_rgba(0,0,0,0.85)] backdrop-blur-md sm:block lg:-left-14">
-                <div className="text-[9px] font-bold uppercase tracking-[0.14em] text-[var(--gold)]">Radius smart distance</div>
-                <div className="mt-1 flex items-baseline gap-2" style={{ fontFamily: "var(--font-body)" }}>
-                  <span className="text-sm text-[var(--sage-dim)] line-through">302</span>
-                  <span className="text-2xl font-black leading-none text-[var(--cream)]">275<span className="ml-0.5 text-xs font-bold text-[var(--sage)]">ft</span></span>
-                </div>
-                <div className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-[var(--sage-dim)]">plays like · wind &amp; slope</div>
-              </div>
-
-              {/* HUD callout — Game IQ */}
-              <div className="absolute -right-6 bottom-20 hidden items-center gap-2.5 rounded-2xl border border-white/10 bg-black/70 px-3.5 py-2.5 shadow-[0_18px_44px_-16px_rgba(0,0,0,0.85)] backdrop-blur-md sm:flex lg:-right-10">
-                <div className="grid h-9 w-9 place-items-center rounded-full border border-[var(--gold)]/40 text-sm font-black text-[var(--gold)]" style={{ fontFamily: "var(--font-body)" }}>85</div>
-                <div>
-                  <div className="text-[9px] font-bold uppercase tracking-[0.14em] text-[var(--gold)]">Game IQ</div>
-                  <div className="text-[11px] font-semibold text-[var(--cream)]">Pro · V</div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
