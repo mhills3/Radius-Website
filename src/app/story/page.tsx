@@ -31,28 +31,17 @@ const TEAM = [
 
 export default function StoryPage() {
   return (
-    <div className="bg-[#faf8f3] text-[#16221b]">
-      {/* ===== HERO — immersive, Radius-centric ===== */}
-      <section className="relative isolate flex min-h-screen items-center justify-center overflow-hidden bg-[var(--bg-deep)] text-[var(--cream)]">
-        {/* cinematic backdrop */}
-        <Image src="/course/putt.jpg" alt="" fill priority quality={90} sizes="100vw" className="-z-30 object-cover object-center opacity-[0.4]" />
-        <div className="absolute inset-0 -z-20 bg-[radial-gradient(ellipse_62%_58%_at_50%_42%,transparent,rgba(11,18,13,0.72)_72%,#0b120d)]" />
-        <div className="absolute inset-0 -z-20 bg-[linear-gradient(to_bottom,rgba(11,18,13,0.5),rgba(11,18,13,0.3)_38%,var(--bg-deep))]" />
-        <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden style={{ maskImage: "url(/topo.png)", WebkitMaskImage: "url(/topo.png)", maskSize: "cover", WebkitMaskSize: "cover", backgroundColor: "#fff", opacity: 0.05 }} />
-        {/* the radius — concentric rings (brand signature) */}
-        <svg className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[1500px] w-[1500px] -translate-x-1/2 -translate-y-1/2" viewBox="0 0 1500 1500" fill="none" aria-hidden="true">
-          {([[180, 0.26], [340, 0.18], [500, 0.12], [660, 0.08], [740, 0.05]] as const).map(([r, o]) => (
-            <circle key={r} cx="750" cy="750" r={r} stroke="rgb(246,193,101)" strokeOpacity={o} strokeWidth="1.25" />
-          ))}
-          <circle cx="750" cy="750" r="4" fill="rgb(246,193,101)" fillOpacity="0.5" />
-        </svg>
-        <div className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[620px] w-[620px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(246,193,101,0.15),transparent_60%)]" />
+    <div className="bg-[var(--bg-deep)] text-[var(--cream)]">
+      {/* ===== HERO — cinematic, clean ===== */}
+      <section className="relative isolate flex min-h-screen items-center justify-center overflow-hidden">
+        <Image src="/course/putt.jpg" alt="" fill priority quality={90} sizes="100vw" className="-z-30 object-cover object-center opacity-[0.5]" />
+        <div className="absolute inset-0 -z-20 bg-[linear-gradient(to_bottom,rgba(8,13,10,0.55),rgba(8,13,10,0.3)_36%,rgba(8,13,10,0.78)_82%,var(--bg-deep))]" />
 
-        <div className="relative z-10 mx-auto max-w-3xl px-6 pb-20 pt-28 text-center">
-          <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold)] backdrop-blur">
+        <div className="relative z-10 mx-auto max-w-3xl px-6 pb-24 pt-28 text-center">
+          <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.05] px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold)] backdrop-blur">
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--gold)] shadow-[0_0_8px_var(--gold)]" /> Our story
           </div>
-          <h1 className="font-[family-name:var(--font-heading)] text-[3.25rem] font-extrabold leading-[0.9] tracking-[-0.04em] drop-shadow-[0_2px_30px_rgba(0,0,0,0.5)] sm:text-7xl md:text-[6.5rem]">
+          <h1 className="font-[family-name:var(--font-heading)] text-[3.4rem] font-extrabold leading-[0.9] tracking-[-0.04em] drop-shadow-[0_2px_40px_rgba(0,0,0,0.6)] sm:text-7xl md:text-[6.5rem]">
             Why Radius<br />exists.
           </h1>
           <p className="mx-auto mt-7 max-w-xl text-lg leading-relaxed text-[rgba(245,237,225,0.86)] md:text-xl">
@@ -70,50 +59,49 @@ export default function StoryPage() {
       </section>
 
       {/* ===== THE BELIEF ===== */}
-      <section className="bg-[#faf8f3]">
+      <section className="relative border-t border-white/[0.06]">
         <div className="mx-auto max-w-4xl px-6 py-20 text-center md:py-28">
           <div className="mx-auto mb-6 h-px w-10 bg-[var(--gold)]/60" />
-          <div className="mb-4 text-[11px] font-bold uppercase tracking-[0.2em] text-[#9a7a3a]">The belief</div>
+          <div className="mb-4 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">The belief</div>
           <h2 className="font-[family-name:var(--font-heading)] text-4xl font-extrabold leading-[1.08] tracking-[-0.03em] md:text-[3.4rem]">
             Disc golf deserves{" "}
-            <span className="bg-gradient-to-br from-[#e0a23a] to-[#b5832f] bg-clip-text text-transparent">integration.</span>
+            <span className="bg-gradient-to-br from-[#f8cf80] to-[#e0a23a] bg-clip-text text-transparent">integration.</span>
           </h2>
-          <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-[#46554c]">
+          <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-[var(--text-body)]">
             Every piece already exists. We&apos;re not building one more piece — we&apos;re bringing them together so the whole sport gets smarter, together.
           </p>
         </div>
       </section>
 
-      {/* ===== A LETTER FROM THE FOUNDER ===== */}
-      <section className="border-y border-black/[0.06] bg-white">
-        <div className="mx-auto grid max-w-5xl gap-x-14 gap-y-10 px-6 py-20 md:py-28 lg:grid-cols-[260px_1fr]">
+      {/* ===== A LETTER FROM THE FOUNDER — editorial ===== */}
+      <section className="border-y border-white/[0.06] bg-[#0b1310]">
+        <div className="mx-auto grid max-w-5xl gap-x-14 gap-y-10 px-6 py-20 md:py-28 lg:grid-cols-[240px_1fr]">
           <aside className="lg:sticky lg:top-28 lg:self-start">
-            <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#9a7a3a]">A letter from the founder</div>
+            <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">A letter from the founder</div>
             <div className="mt-5 flex items-center gap-3.5 lg:flex-col lg:items-start lg:gap-4">
               <div className="h-20 w-20 shrink-0 rounded-full bg-[var(--bg-mid)] bg-no-repeat ring-2 ring-[var(--gold)]/40" role="img" aria-label="Mikey Hills" style={{ backgroundImage: "url(/team/mikey.png)", backgroundSize: "135%", backgroundPosition: "center 26%" }} />
               <div>
-                <div className="font-[family-name:var(--font-heading)] text-lg font-bold">Mikey Hills</div>
-                <div className="text-sm text-[#8a968d]">Founder, Radius</div>
+                <div className="font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">Mikey Hills</div>
+                <div className="text-sm text-[var(--sage-dim)]">Founder, Radius</div>
               </div>
             </div>
-            <p className="mt-5 hidden text-sm leading-relaxed text-[#8a968d] lg:block">How a disc-picker became the home of disc golf — in his words.</p>
+            <p className="mt-5 hidden text-sm leading-relaxed text-[var(--sage-dim)] lg:block">How a disc-picker became the home of disc golf — in his words.</p>
           </aside>
 
           <div className="max-w-2xl">
-            <p className="mb-6 text-lg leading-[1.75] text-[#2c3a32] first-letter:float-left first-letter:mr-3 first-letter:mt-1.5 first-letter:font-[family-name:var(--font-heading)] first-letter:text-[4.5rem] first-letter:font-extrabold first-letter:leading-[0.72] first-letter:text-[#9a7a3a]">{ARTICLE[0]}</p>
-            {ARTICLE.slice(1).map((p) => <p key={p} className="mb-6 text-lg leading-[1.75] text-[#2c3a32]">{p}</p>)}
+            <p className="mb-6 text-lg leading-[1.8] text-[rgba(245,237,225,0.86)] first-letter:float-left first-letter:mr-3 first-letter:mt-1.5 first-letter:font-[family-name:var(--font-heading)] first-letter:text-[4.5rem] first-letter:font-extrabold first-letter:leading-[0.72] first-letter:text-[var(--gold)]">{ARTICLE[0]}</p>
+            {ARTICLE.slice(1).map((p) => <p key={p} className="mb-6 text-lg leading-[1.8] text-[rgba(245,237,225,0.86)]">{p}</p>)}
             <blockquote className="my-10 border-l-[3px] border-[var(--gold)] pl-6">
-              <p className="font-[family-name:var(--font-heading)] text-2xl font-bold leading-snug tracking-[-0.02em] text-[#16221b] md:text-[1.65rem]">There was no system. No feedback loop. No real way to get better with intention.</p>
+              <p className="font-[family-name:var(--font-heading)] text-2xl font-bold leading-snug tracking-[-0.02em] text-[var(--cream)] md:text-[1.65rem]">There was no system. No feedback loop. No real way to get better with intention.</p>
             </blockquote>
-            {ARTICLE_CONT.map((p) => <p key={p} className="mb-6 text-lg leading-[1.75] text-[#2c3a32]">{p}</p>)}
-            <p className="mt-8 font-[family-name:var(--font-heading)] text-2xl font-extrabold tracking-[-0.02em] text-[#9a7a3a]">That&apos;s why Radius exists.</p>
+            {ARTICLE_CONT.map((p) => <p key={p} className="mb-6 text-lg leading-[1.8] text-[rgba(245,237,225,0.86)]">{p}</p>)}
+            <p className="mt-8 font-[family-name:var(--font-heading)] text-2xl font-extrabold tracking-[-0.02em] text-[var(--gold)]">That&apos;s why Radius exists.</p>
           </div>
         </div>
       </section>
 
-      {/* ===== THE JOURNEY — dark timeline ===== */}
-      <section className="relative overflow-hidden bg-[var(--bg-deep)] text-[var(--cream)]">
-        <div className="pointer-events-none absolute inset-0" aria-hidden style={{ maskImage: "url(/topo.png)", WebkitMaskImage: "url(/topo.png)", maskSize: "cover", WebkitMaskSize: "cover", backgroundColor: "#fff", opacity: 0.04 }} />
+      {/* ===== THE JOURNEY — timeline ===== */}
+      <section className="relative overflow-hidden">
         <div className="relative mx-auto max-w-6xl px-6 py-20 md:py-28">
           <div className="text-center">
             <div className="mb-4 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">The build</div>
@@ -124,7 +112,7 @@ export default function StoryPage() {
             {JOURNEY.map((s) => (
               <div key={s.n} className="relative text-center md:text-left">
                 <div className="mx-auto grid h-14 w-14 place-items-center rounded-full border border-[var(--gold)]/40 bg-[var(--bg-deep)] font-[family-name:var(--font-heading)] text-lg font-extrabold text-[var(--gold)] shadow-[0_0_0_6px_var(--bg-deep)] md:mx-0">{s.n}</div>
-                <h3 className="mt-5 font-[family-name:var(--font-heading)] text-lg font-bold">{s.t}</h3>
+                <h3 className="mt-5 font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">{s.t}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-[var(--text-body)]">{s.d}</p>
               </div>
             ))}
@@ -133,49 +121,49 @@ export default function StoryPage() {
       </section>
 
       {/* ===== THE TEAM ===== */}
-      <section className="bg-[#faf8f3]">
+      <section className="relative border-t border-white/[0.06] bg-[#0b1310]">
         <div className="mx-auto max-w-4xl px-6 py-20 text-center md:py-24">
-          <div className="mb-4 text-[11px] font-bold uppercase tracking-[0.2em] text-[#9a7a3a]">The team</div>
+          <div className="mb-4 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">The team</div>
           <h2 className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-[-0.03em] md:text-[2.5rem]">The people behind Radius</h2>
-          <p className="mx-auto mt-4 max-w-xl text-[#46554c]">Nick and Ben saw the same potential in what disc golf could become — and have been part of this from the beginning.</p>
+          <p className="mx-auto mt-4 max-w-xl text-[var(--text-body)]">Nick and Ben saw the same potential in what disc golf could become — and have been part of this from the beginning.</p>
           <div className="mt-12 grid gap-8 sm:grid-cols-3">
             {TEAM.map((m) => (
-              <div key={m.name} className="group flex flex-col items-center rounded-3xl border border-black/8 bg-white p-8 shadow-sm transition-all hover:-translate-y-1.5 hover:shadow-[0_22px_48px_-18px_rgba(0,0,0,0.3)]">
+              <div key={m.name} className="group flex flex-col items-center rounded-3xl border border-white/[0.07] bg-white/[0.03] p-8 transition-all hover:-translate-y-1.5 hover:border-[var(--gold)]/30 hover:bg-white/[0.05]">
                 <div role="img" aria-label={m.name} className="h-28 w-28 rounded-full bg-[var(--bg-mid)] bg-no-repeat ring-2 ring-[var(--gold)]/40 transition-transform duration-300 group-hover:scale-105" style={{ backgroundImage: `url(${m.img})`, backgroundSize: m.size, backgroundPosition: m.pos }} />
-                <div className="mt-5 font-[family-name:var(--font-heading)] text-lg font-bold">{m.name}</div>
-                <div className="mt-1.5 rounded-full bg-[var(--gold)]/15 px-3 py-0.5 text-xs font-bold text-[#9a7a3a]">{m.role}</div>
+                <div className="mt-5 font-[family-name:var(--font-heading)] text-lg font-bold text-[var(--cream)]">{m.name}</div>
+                <div className="mt-1.5 rounded-full bg-[var(--gold)]/15 px-3 py-0.5 text-xs font-bold text-[var(--gold)]">{m.role}</div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ===== FAITH — verse + the heart behind it (light) ===== */}
-      <section className="bg-[#f3eee4]">
-        <div className="mx-auto max-w-2xl px-6 py-16 text-center md:py-20">
+      {/* ===== FAITH — verse + the heart behind it ===== */}
+      <section className="relative border-t border-white/[0.06]">
+        <div className="mx-auto max-w-2xl px-6 py-16 text-center md:py-24">
           <div className="mx-auto mb-6 h-px w-10 bg-[var(--gold)]/60" />
           <blockquote>
-            <p className="font-[family-name:var(--font-heading)] text-base font-medium leading-[1.6] tracking-[-0.01em] text-[#2c3a32] md:text-xl md:leading-[1.55]">
+            <p className="font-[family-name:var(--font-heading)] text-base font-medium leading-[1.6] tracking-[-0.01em] text-[rgba(245,237,225,0.82)] md:text-xl md:leading-[1.55]">
               Whom have I in heaven but You? And there is none upon earth that I desire besides You. My flesh and my heart fail; but God is the strength of my heart and my portion forever.
             </p>
           </blockquote>
-          <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.22em] text-[#9a7a3a]">Psalm 73:25–26</p>
+          <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.22em] text-[var(--gold)]">Psalm 73:25–26</p>
           <div className="mx-auto my-9 h-px w-16 bg-gradient-to-r from-transparent via-[var(--gold)]/50 to-transparent" />
-          <p className="mx-auto max-w-md font-[family-name:var(--font-heading)] text-base font-bold leading-[1.7] tracking-[-0.01em] text-[#16221b] md:text-lg">
-            Even if Radius succeeds, <span className="text-[#9a7a3a]">Christ is better.</span><br />
-            Even if Radius fails, <span className="text-[#9a7a3a]">Christ is enough.</span>
+          <p className="mx-auto max-w-md font-[family-name:var(--font-heading)] text-base font-bold leading-[1.7] tracking-[-0.01em] text-[var(--cream)] md:text-lg">
+            Even if Radius succeeds, <span className="text-[var(--gold)]">Christ is better.</span><br />
+            Even if Radius fails, <span className="text-[var(--gold)]">Christ is enough.</span>
           </p>
         </div>
       </section>
 
       {/* ===== CTA — photo finale ===== */}
-      <section className="relative isolate overflow-hidden bg-[var(--bg-deep)] text-[var(--cream)]">
-        <Image src="/course/bag-walk.jpg" alt="" fill sizes="100vw" quality={90} className="-z-10 object-cover object-[center_30%]" />
-        <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_bottom,rgba(15,24,19,0.62),rgba(15,24,19,0.55)_40%,rgba(15,24,19,0.82))]" />
+      <section className="relative isolate overflow-hidden border-t border-white/[0.06]">
+        <Image src="/course/bag-walk.jpg" alt="" fill sizes="100vw" quality={90} className="-z-10 object-cover object-[center_30%] opacity-70" />
+        <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_bottom,rgba(10,15,12,0.66),rgba(10,15,12,0.58)_40%,rgba(10,15,12,0.88))]" />
         <div className="relative mx-auto max-w-3xl px-6 py-28 text-center md:py-32">
           <h2 className="font-[family-name:var(--font-heading)] text-4xl font-extrabold tracking-[-0.03em] drop-shadow md:text-5xl">Come be part of it.</h2>
           <p className="mx-auto mt-3 max-w-md text-[rgba(245,237,225,0.9)]">Track your game, find your people, and help push the sport forward.</p>
-          <Link href="/login" className="mt-7 inline-block rounded-full bg-[var(--gold)] px-8 py-4 text-sm font-bold text-[#16221b] shadow-[0_10px_30px_rgba(246,193,101,0.4)] transition-all hover:-translate-y-0.5 hover:bg-[var(--gold-bright)]">Join Free</Link>
+          <Link href="/login" className="mt-7 inline-block rounded-full bg-[var(--gold)] px-8 py-4 text-sm font-bold text-[#16221b] shadow-[0_10px_34px_-6px_rgba(246,193,101,0.5)] transition-all hover:-translate-y-0.5 hover:bg-[var(--gold-bright)]">Join Free</Link>
         </div>
       </section>
     </div>
