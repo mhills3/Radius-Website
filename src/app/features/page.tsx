@@ -14,52 +14,36 @@ const APP_STORE = "https://apps.apple.com/us/app/radius-disc-golf/id6760574186";
 const GOOGLE_PLAY = "https://play.google.com/store/apps/details?id=com.michaelhills.radiusandroid";
 const GREEN = "#5fb87a";
 
-// The composed App Store preview panels already carry a phone/watch + green glow + a baked headline,
-// so they're shown as-is (no phone frame). Our copy adds the substance beneath each headline.
 type Feature = { eyebrow: string; title: string; body: string; bullets: string[]; img: string };
 
 const FEATURES: Feature[] = [
   {
     eyebrow: "Home",
     title: "Your whole game, the second you open it",
-    body: "Last round, the closest course to tee off, and the one thing to work on next — surfaced the moment you land on the home screen. No digging.",
+    body: "Last round, the closest course to tee off, and the one thing to work on next — surfaced the moment you open the app. No digging.",
     bullets: ["Your last round at a glance, hole by hole", "Nearest course + one-tap to start playing", "A personalized “what to work on” every day"],
     img: "/features/home.png",
   },
   {
-    eyebrow: "Round detail",
-    title: "Not just a score — the whole story",
-    body: "Every round comes back as an immersive breakdown: throw quality, the holes that won it and lost it, and exactly where the strokes went. It quietly makes you better over time.",
-    bullets: ["Hole-by-hole round detail, tap any hole", "Throw-quality grade for the whole round", "Unlimited scorecards — every round, free"],
-    img: "/features/round.png",
-  },
-  {
-    eyebrow: "Your Caddy",
-    title: "Know what to throw, every hole",
-    body: "Radius reads the shot and suggests a disc and a line — built from your own bag and how you actually throw. It informs; you decide. That's playing smarter.",
-    bullets: ["Disc + line suggestions tuned to your arm", "Built from your bag and your tendencies", "Always your call — never automated"],
-    img: "/features/caddy.png",
-  },
-  {
     eyebrow: "Putting",
-    title: "Turn missed putts into made ones",
-    body: "Every miss is mapped by zone and distance on real hole maps with regulation circles — so you train the actual leak instead of guessing. The reps you put in show up on the course.",
-    bullets: ["See where putts miss — by zone and distance", "Regulation C1 / C2 rings (33 / 66 ft)", "Every make and miss feeds your stats"],
+    title: "See exactly where your putts miss",
+    body: "Every miss mapped by zone and distance against regulation circles — so you train the real leak instead of guessing. The reps you put in show up on the course.",
+    bullets: ["Miss map by zone and distance", "Regulation C1 / C2 rings (33 / 66 ft)", "Every make and miss feeds your stats"],
     img: "/features/putting.png",
   },
   {
     eyebrow: "Courses",
     title: "Show up with a plan, not a guess",
-    body: "Satellite hole maps, real community-built layouts, and leaderboards for courses everywhere — so you know the course before you ever tee off.",
-    bullets: ["Satellite maps with every hole", "Community-built layouts you can trust", "Course leaderboards and your personal bests"],
+    body: "Satellite hole maps, real community-built layouts, and every course near you — find your next round in a tap and know the course before you tee off.",
+    bullets: ["Every course near you on the map", "Satellite hole maps + real layouts", "Leaderboards and your personal bests"],
     img: "/features/courses.png",
   },
   {
-    eyebrow: "Your record",
-    title: "Every round, on the record",
-    body: "Your full history, personal bests, and the trend line that proves it — your game, documented, so progress is something you can actually see.",
-    bullets: ["Complete round history in one place", "Personal bests and course records", "Trends that show the climb over time"],
-    img: "/features/record.png",
+    eyebrow: "Community",
+    title: "Your game, and your people",
+    body: "Your profile, your record, and a feed built for disc golfers — follow friends, share your best rounds, and watch the whole sport grow.",
+    bullets: ["Your rank, PRs and full round history", "Follow friends and share your rounds", "A feed built for disc golfers"],
+    img: "/features/profile.png",
   },
 ];
 
@@ -71,7 +55,7 @@ const PERSONAS = [
   { icon: <PIcon><path d="M12 21v-8" /><path d="M12 13c-3.3 0-6-2.4-6-5.5C9.3 7.5 12 9.9 12 13Z" /><path d="M12 11c0-2.8 2.4-5 5.5-5C17.5 8.8 15.1 11 12 11Z" /></PIcon>, who: "New to the game", line: "Learn what to throw and why, with simple guidance that grows as you do." },
   { icon: <PIcon><circle cx="12" cy="12" r="4" /><path d="M12 2v2.4M12 19.6V22M22 12h-2.4M4.4 12H2M19.07 4.93l-1.7 1.7M6.63 17.37l-1.7 1.7M19.07 19.07l-1.7-1.7M6.63 6.63l-1.7-1.7" /></PIcon>, who: "Weekend casual", line: "Track rounds with friends, run fun game modes, and watch yourself get better." },
   { icon: <PIcon><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1.5" /></PIcon>, who: "League competitor", line: "Dial in your bag, study courses before you play, and climb the rankings." },
-  { icon: <PIcon><path d="M8 21h8" /><path d="M12 17.5V21" /><path d="M7 4.5h10V9a5 5 0 0 1-10 0V4.5Z" /><path d="M7 6.5H5a2 2 0 0 0-2 2c0 1.8 1.6 3.3 4 3.5" /><path d="M17 6.5h2a2 2 0 0 1 2 2c0 1.8-1.6 3.3-4 3.5" /></PIcon>, who: "Touring pro", line: "Deep stats and a Game IQ that scales all the way to MPO to sharpen every shot." },
+  { icon: <PIcon><path d="M8 21h8" /><path d="M12 17.5V21" /><path d="M7 4.5h10V9a5 5 0 0 1-10 0V4.5Z" /><path d="M7 6.5H5a2 2 0 0 0-2 2c0 1.8 1.6 3.3 4 3.5" /><path d="M17 6.5h2a2 2 0 0 1 2 2c0 1.8-1.6 3.3-4 3.5" /></PIcon>, who: "Touring pro", line: "Deep stats and a Game IQ that scales all the way to Champion to sharpen every shot." },
 ];
 
 // Real rank tiers, straight from the app's rank system (Rookie → Champion).
@@ -84,23 +68,22 @@ const WATCH = [
   { src: "/features/watch-score.png", label: "Score the hole" },
 ];
 
+// Clean device frame — the screenshots carry their own status bar, so no added notch.
 function PhoneFrame({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`relative shrink-0 rounded-[2.6rem] border border-white/12 bg-[#0d140f] p-2.5 shadow-[0_40px_90px_-30px_rgba(0,0,0,0.7)] ${className}`}>
-      <div className="relative aspect-[886/1920] overflow-hidden rounded-[2.05rem] bg-black">{children}</div>
-      <div className="pointer-events-none absolute left-1/2 top-[14px] z-10 h-[22px] w-[88px] -translate-x-1/2 rounded-full bg-[#0d140f]" />
+    <div className={`relative shrink-0 rounded-[2.6rem] border border-white/12 bg-[#0d140f] p-2.5 shadow-[0_40px_90px_-30px_rgba(0,0,0,0.72)] ${className}`}>
+      <div className="relative aspect-[1179/2556] overflow-hidden rounded-[2.05rem] bg-black">{children}</div>
     </div>
   );
 }
 
-// A composed marketing panel. Its own background is feathered at the edges so the rectangle melts
-// into the dark page (no boxy seams), with a soft green halo behind it.
-const FEATHER = "radial-gradient(116% 92% at 50% 44%, #000 56%, transparent 100%)";
-function Panel({ src, alt, className = "" }: { src: string; alt: string; className?: string }) {
+function ScreenPhone({ src, alt, className = "", priority = false }: { src: string; alt: string; className?: string; priority?: boolean }) {
   return (
     <div className={`relative ${className}`}>
-      <div className="pointer-events-none absolute inset-0 -z-10 scale-[1.08] rounded-full bg-[radial-gradient(circle,rgba(95,184,122,0.18),transparent_58%)]" />
-      <Image src={src} alt={alt} width={900} height={1951} sizes="(min-width:768px) 420px, 78vw" className="h-auto w-full" style={{ WebkitMaskImage: FEATHER, maskImage: FEATHER }} />
+      <div className="pointer-events-none absolute -inset-8 -z-10 rounded-full bg-[radial-gradient(circle,rgba(95,184,122,0.13),transparent_66%)]" />
+      <PhoneFrame className="w-full">
+        <Image src={src} alt={alt} fill sizes="320px" quality={92} className="object-cover" priority={priority} />
+      </PhoneFrame>
     </div>
   );
 }
@@ -126,12 +109,10 @@ export default function FeaturesPage() {
     <div className="bg-[var(--bg-deep)] text-[var(--cream)]">
       {/* ===================== HERO ===================== */}
       <section className="relative isolate flex min-h-[90vh] items-center overflow-hidden">
-        {/* clean, like the app preview panels: near-black → forest, soft green glow behind the phone */}
         <div className="pointer-events-none absolute inset-0 -z-20 bg-[linear-gradient(160deg,#070d0a_0%,#0a130f_55%,#0c1a13_100%)]" />
-        <div className="pointer-events-none absolute right-[6%] top-1/2 -z-10 h-[860px] w-[860px] -translate-y-1/2 rounded-full" style={{ background: `radial-gradient(circle, ${GREEN}33, transparent 58%)` }} />
+        <div className="pointer-events-none absolute right-[6%] top-1/2 -z-10 h-[820px] w-[820px] -translate-y-1/2 rounded-full" style={{ background: `radial-gradient(circle, ${GREEN}30, transparent 60%)` }} />
 
         <div className="relative mx-auto grid w-full max-w-7xl items-center gap-10 px-6 pb-16 pt-28 lg:grid-cols-[1.05fr_0.95fr] lg:pt-20">
-          {/* left copy */}
           <div className="text-center lg:text-left">
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[var(--gold)]/25 bg-[var(--gold)]/[0.06] px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--gold)]">
               <span className="h-1.5 w-1.5 rounded-full bg-[var(--gold)] shadow-[0_0_8px_var(--gold)]" /> The complete disc golf companion
@@ -150,7 +131,6 @@ export default function FeaturesPage() {
             </div>
           </div>
 
-          {/* right: phone video with a green halo, matching the preview panels */}
           <div className="flex justify-center lg:justify-end">
             <div className="relative">
               <div className="pointer-events-none absolute inset-0 -z-10 scale-[1.35] rounded-full" style={{ background: `radial-gradient(circle, ${GREEN}55, transparent 60%)` }} />
@@ -189,7 +169,7 @@ export default function FeaturesPage() {
       <section className="relative overflow-hidden">
         <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-6 py-16 md:py-24 lg:grid-cols-[0.95fr_1.05fr]">
           <div className="flex justify-center lg:order-2 lg:justify-end">
-            <Panel src="/features/gameiq.png" alt="Radius Game IQ and your rank" className="w-[300px] sm:w-[360px]" />
+            <ScreenPhone src="/features/gameiq.png" alt="Radius Game IQ and your rank" className="w-[260px] sm:w-[300px]" />
           </div>
           <div className="lg:order-1">
             <div className="mb-4 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">The Radius difference · Game IQ</div>
@@ -197,7 +177,7 @@ export default function FeaturesPage() {
               One number for how good<br className="hidden md:block" /> you actually are.
             </h2>
             <p className="mt-5 max-w-md text-lg leading-relaxed text-[var(--text-body)]">
-              Every round feeds one honest score — your Game IQ — and a rank that climbs from Rec all the way to MPO. Finally, a clear answer to the only question that matters: <span className="font-semibold text-[var(--cream)]">am I getting better?</span>
+              Every round feeds one honest score — your Game IQ — and a rank that climbs from Rookie all the way to Champion. Finally, a clear answer to the only question that matters: <span className="font-semibold text-[var(--cream)]">am I getting better?</span>
             </p>
             <div className="mt-8">
               <div className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--sage-dim)]">30 ranks · 6 tiers to climb</div>
@@ -222,9 +202,9 @@ export default function FeaturesPage() {
         </div>
         <div className="mx-auto max-w-6xl px-6 pb-6">
           {FEATURES.map((f, i) => (
-            <div key={f.title} className={`flex flex-col items-center gap-8 py-10 md:gap-16 md:py-14 ${i % 2 === 1 ? "md:flex-row-reverse" : "md:flex-row"}`}>
+            <div key={f.title} className={`flex flex-col items-center gap-10 py-12 md:gap-16 md:py-16 ${i % 2 === 1 ? "md:flex-row-reverse" : "md:flex-row"}`}>
               <div className="flex flex-1 justify-center">
-                <Panel src={f.img} alt={f.title} className="w-[288px] sm:w-[352px]" />
+                <ScreenPhone src={f.img} alt={f.title} className="w-[248px] sm:w-[280px]" />
               </div>
               <div className="flex-1">
                 <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">{f.eyebrow}</div>
@@ -245,31 +225,23 @@ export default function FeaturesPage() {
       </section>
 
       {/* ===================== SHOT TRACKING + WATCH ===================== */}
-      <section className="relative overflow-hidden border-t border-white/[0.06]">
-        <div className="pointer-events-none absolute left-1/2 top-0 h-[600px] w-[900px] -translate-x-1/2 rounded-full" style={{ background: `radial-gradient(circle, ${GREEN}18, transparent 62%)` }} />
-        <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-6 py-16 md:py-24 lg:grid-cols-2">
-          <div className="flex justify-center lg:justify-start">
-            <Panel src="/features/track.png" alt="Shot tracking with the Apple Watch companion" className="w-[300px] sm:w-[368px]" />
-          </div>
-          <div>
-            <div className="mb-4 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">Shot tracking · Apple Watch</div>
-            <h2 className="font-[family-name:var(--font-heading)] text-4xl font-extrabold leading-[1.05] tracking-[-0.03em] md:text-5xl">
-              Every throw, tracked —<br className="hidden md:block" /> even from your wrist.
-            </h2>
-            <p className="mt-5 max-w-md text-lg leading-relaxed text-[var(--text-body)]">
-              Real GPS distances, live wind, and one-tap throw logging on the course. Leave the phone in the bag — get distance, disc picks, your Caddy, and scoring right on Apple Watch.
-            </p>
-            <div className="mt-9 grid grid-cols-4 gap-3 sm:gap-4">
-              {WATCH.map((w) => (
-                <div key={w.label} className="text-center">
-                  <div className="overflow-hidden rounded-[1.4rem] border border-white/10 bg-black shadow-[0_18px_40px_-20px_rgba(0,0,0,0.8)]">
-                    <Image src={w.src} alt={w.label} width={368} height={448} sizes="120px" className="h-auto w-full" />
-                  </div>
-                  <div className="mt-2 text-[10.5px] font-semibold leading-tight text-[var(--sage-dim)]">{w.label}</div>
-                </div>
-              ))}
+      <section className="relative border-t border-white/[0.06]">
+        <div className="mx-auto max-w-3xl px-6 pt-16 text-center md:pt-24">
+          <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">Shot tracking · Apple Watch</div>
+          <h2 className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-[-0.03em] md:text-[2.75rem]">Every throw, tracked — even from your wrist.</h2>
+          <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-[var(--text-body)]">
+            Real GPS distances, live wind, and one-tap throw logging on the course. Leave the phone in the bag — get distance, disc picks, your Caddy, and scoring right on Apple Watch.
+          </p>
+        </div>
+        <div className="mx-auto grid max-w-4xl grid-cols-2 gap-5 px-6 py-14 sm:grid-cols-4">
+          {WATCH.map((w) => (
+            <div key={w.label} className="text-center">
+              <div className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-black shadow-[0_20px_44px_-22px_rgba(0,0,0,0.8)]">
+                <Image src={w.src} alt={w.label} width={368} height={448} sizes="180px" className="h-auto w-full" />
+              </div>
+              <div className="mt-2.5 text-[12px] font-semibold text-[var(--sage-dim)]">{w.label}</div>
             </div>
-          </div>
+          ))}
         </div>
       </section>
 
