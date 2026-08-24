@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import CourseCount from "@/components/CourseCount";
+import { TIER_LIST } from "@/lib/rank";
 
 export const metadata: Metadata = {
   title: "Features — Radius",
@@ -73,14 +74,8 @@ const PERSONAS = [
   { icon: <PIcon><path d="M8 21h8" /><path d="M12 17.5V21" /><path d="M7 4.5h10V9a5 5 0 0 1-10 0V4.5Z" /><path d="M7 6.5H5a2 2 0 0 0-2 2c0 1.8 1.6 3.3 4 3.5" /><path d="M17 6.5h2a2 2 0 0 1 2 2c0 1.8-1.6 3.3-4 3.5" /></PIcon>, who: "Touring pro", line: "Deep stats and a Game IQ that scales all the way to MPO to sharpen every shot." },
 ];
 
-const TIERS = [
-  { label: "Rec", color: "#8a968d" },
-  { label: "Amateur", color: "#5fb87a" },
-  { label: "Advanced", color: "#4d94fa" },
-  { label: "Expert", color: "#c08bff" },
-  { label: "Elite", color: "#f6c165" },
-  { label: "MPO", color: "#e0584f" },
-];
+// Real rank tiers, straight from the app's rank system (Rookie → Champion).
+const TIERS = TIER_LIST.map((t) => ({ label: t.display, color: t.color }));
 
 const WATCH = [
   { src: "/features/watch-distance.png", label: "Distance to basket" },
@@ -98,12 +93,14 @@ function PhoneFrame({ children, className = "" }: { children: React.ReactNode; c
   );
 }
 
-// A composed marketing panel — self-contained (phone/watch + glow + headline); rendered with a soft green halo.
+// A composed marketing panel. Its own background is feathered at the edges so the rectangle melts
+// into the dark page (no boxy seams), with a soft green halo behind it.
+const FEATHER = "radial-gradient(116% 92% at 50% 44%, #000 56%, transparent 100%)";
 function Panel({ src, alt, className = "" }: { src: string; alt: string; className?: string }) {
   return (
     <div className={`relative ${className}`}>
-      <div className="pointer-events-none absolute inset-0 -z-10 scale-110 rounded-[3rem] bg-[radial-gradient(circle,rgba(95,184,122,0.16),transparent_60%)]" />
-      <Image src={src} alt={alt} width={900} height={1951} sizes="(min-width:768px) 420px, 78vw" className="h-auto w-full" />
+      <div className="pointer-events-none absolute inset-0 -z-10 scale-[1.08] rounded-full bg-[radial-gradient(circle,rgba(95,184,122,0.18),transparent_58%)]" />
+      <Image src={src} alt={alt} width={900} height={1951} sizes="(min-width:768px) 420px, 78vw" className="h-auto w-full" style={{ WebkitMaskImage: FEATHER, maskImage: FEATHER }} />
     </div>
   );
 }
@@ -190,8 +187,6 @@ export default function FeaturesPage() {
 
       {/* ===================== GAME IQ SPOTLIGHT ===================== */}
       <section className="relative overflow-hidden">
-        <div className="pointer-events-none absolute inset-0" style={{ maskImage: "url(/topo.png)", WebkitMaskImage: "url(/topo.png)", maskSize: "cover", WebkitMaskSize: "cover", backgroundColor: "#fff", opacity: 0.04 }} aria-hidden />
-        <div className="pointer-events-none absolute right-0 top-1/2 h-[640px] w-[640px] -translate-y-1/2 translate-x-1/3 rounded-full bg-[radial-gradient(circle,rgba(246,193,101,0.1),transparent_62%)]" />
         <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-6 py-16 md:py-24 lg:grid-cols-[0.95fr_1.05fr]">
           <div className="flex justify-center lg:order-2 lg:justify-end">
             <Panel src="/features/gameiq.png" alt="Radius Game IQ and your rank" className="w-[300px] sm:w-[360px]" />
