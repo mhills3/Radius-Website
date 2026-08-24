@@ -68,21 +68,23 @@ const WATCH = [
   { src: "/features/watch-score.png", label: "Score the hole" },
 ];
 
-// Clean device frame — the screenshots carry their own status bar, so no added notch.
-function PhoneFrame({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+// Clean device frame with a machined-metal edge + glass sheen. Screenshots carry their own status bar.
+function PhoneFrame({ children, className = "", style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
   return (
-    <div className={`relative shrink-0 rounded-[2.6rem] border border-white/12 bg-[#0d140f] p-2.5 shadow-[0_40px_90px_-30px_rgba(0,0,0,0.72)] ${className}`}>
-      <div className="relative aspect-[1179/2556] overflow-hidden rounded-[2.05rem] bg-black">{children}</div>
+    <div className={`relative shrink-0 rounded-[2.7rem] border border-white/[0.14] bg-gradient-to-b from-[#161f19] to-[#090e0b] p-[9px] shadow-[0_50px_110px_-30px_rgba(0,0,0,0.85)] ${className}`} style={style}>
+      <div className="relative aspect-[1179/2556] overflow-hidden rounded-[2.1rem] bg-black ring-1 ring-black/60">{children}</div>
+      <div className="pointer-events-none absolute inset-0 rounded-[2.7rem] bg-[linear-gradient(135deg,rgba(255,255,255,0.1),transparent_34%)]" />
     </div>
   );
 }
 
-function ScreenPhone({ src, alt, className = "", priority = false }: { src: string; alt: string; className?: string; priority?: boolean }) {
+function ScreenPhone({ src, alt, className = "", priority = false, tilt = 0 }: { src: string; alt: string; className?: string; priority?: boolean; tilt?: number }) {
   return (
     <div className={`relative ${className}`}>
-      <div className="pointer-events-none absolute -inset-8 -z-10 rounded-full bg-[radial-gradient(circle,rgba(95,184,122,0.13),transparent_66%)]" />
-      <PhoneFrame className="w-full">
-        <Image src={src} alt={alt} fill sizes="320px" quality={92} className="object-cover" priority={priority} />
+      {/* stage spotlight so the dark screen reads against the dark page */}
+      <div className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[122%] w-[150%] -translate-x-1/2 -translate-y-1/2" style={{ background: `radial-gradient(closest-side, ${GREEN}3a, transparent 72%)` }} />
+      <PhoneFrame className="w-full" style={tilt ? { transform: `rotate(${tilt}deg)` } : undefined}>
+        <Image src={src} alt={alt} fill sizes="360px" quality={92} className="object-cover" priority={priority} />
       </PhoneFrame>
     </div>
   );
@@ -169,7 +171,7 @@ export default function FeaturesPage() {
       <section className="relative overflow-hidden">
         <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-6 py-16 md:py-24 lg:grid-cols-[0.95fr_1.05fr]">
           <div className="flex justify-center lg:order-2 lg:justify-end">
-            <ScreenPhone src="/features/gameiq.png" alt="Radius Game IQ and your rank" className="w-[260px] sm:w-[300px]" />
+            <ScreenPhone src="/features/gameiq.png" alt="Radius Game IQ and your rank" tilt={3} className="w-[280px] sm:w-[326px]" />
           </div>
           <div className="lg:order-1">
             <div className="mb-4 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">The Radius difference · Game IQ</div>
@@ -200,27 +202,34 @@ export default function FeaturesPage() {
           <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">Everything, working together</div>
           <h2 className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-[-0.03em] md:text-[2.75rem]">Not a scorecard. A whole system.</h2>
         </div>
-        <div className="mx-auto max-w-6xl px-6 pb-6">
-          {FEATURES.map((f, i) => (
-            <div key={f.title} className={`flex flex-col items-center gap-10 py-12 md:gap-16 md:py-16 ${i % 2 === 1 ? "md:flex-row-reverse" : "md:flex-row"}`}>
-              <div className="flex flex-1 justify-center">
-                <ScreenPhone src={f.img} alt={f.title} className="w-[248px] sm:w-[280px]" />
+        <div className="mx-auto max-w-6xl px-6 pb-10">
+          {FEATURES.map((f, i) => {
+            const flip = i % 2 === 1;
+            return (
+              <div key={f.title} className="grid items-center gap-10 py-12 md:grid-cols-2 md:gap-20 md:py-16">
+                <div className={flip ? "md:order-2" : ""}>
+                  <div className="mb-4 flex items-center gap-3">
+                    <span className="font-[family-name:var(--font-heading)] text-[15px] font-black tabular-nums text-[var(--gold)]" style={{ fontVariantNumeric: "tabular-nums" }}>0{i + 1}</span>
+                    <span className="h-px w-8 bg-[var(--gold)]/40" />
+                    <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">{f.eyebrow}</span>
+                  </div>
+                  <h3 className="font-[family-name:var(--font-heading)] text-[2.1rem] font-extrabold leading-[1.05] tracking-[-0.02em] md:text-[2.7rem]">{f.title}</h3>
+                  <p className="mt-5 max-w-md text-[1.05rem] leading-relaxed text-[var(--text-body)]">{f.body}</p>
+                  <ul className="mt-6 space-y-3">
+                    {f.bullets.map((b) => (
+                      <li key={b} className="flex items-start gap-3 text-[rgba(245,237,225,0.84)]">
+                        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold" style={{ background: `${GREEN}22`, color: GREEN }}>✓</span>
+                        {b}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className={`flex justify-center ${flip ? "md:order-1 md:justify-start" : "md:justify-end"}`}>
+                  <ScreenPhone src={f.img} alt={f.title} tilt={flip ? -3 : 3} className="w-[276px] sm:w-[318px]" />
+                </div>
               </div>
-              <div className="flex-1">
-                <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">{f.eyebrow}</div>
-                <h3 className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-[-0.02em] md:text-4xl">{f.title}</h3>
-                <p className="mt-4 max-w-md text-lg leading-relaxed text-[var(--text-body)]">{f.body}</p>
-                <ul className="mt-6 space-y-3">
-                  {f.bullets.map((b) => (
-                    <li key={b} className="flex items-start gap-3 text-[rgba(245,237,225,0.82)]">
-                      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold" style={{ background: `${GREEN}22`, color: GREEN }}>✓</span>
-                      {b}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
