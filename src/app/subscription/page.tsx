@@ -29,7 +29,7 @@ const PLANS = [
 ];
 
 const TIMELINE = [
-  { icon: "🔓", day: "Today", body: "Unlock everything — unlimited Caddy, full Game IQ insights, your whole history, and every game mode." },
+  { icon: "🔓", day: "Today", body: "Unlock everything — unlimited Caddy, full Game IQ insights, your Improve plan, and every game mode." },
   { icon: "🔔", day: "Day 5", body: "We'll send a reminder before your trial ends. No surprises, ever." },
   { icon: "◎", day: "Day 7", body: "Your plan begins at $3.33/mo (annual). Cancel any time before and pay nothing." },
 ];
@@ -38,7 +38,7 @@ const VERSUS = [
   { free: "Your score at the end of the round", pro: "A clear plan to shoot it lower" },
   { free: "A taste of the Caddy", pro: "Smart guidance on every single hole" },
   { free: "Your Game IQ number", pro: "The full breakdown behind it" },
-  { free: "Your recent rounds", pro: "Your entire history & every trend" },
+  { free: "Every round you play, saved forever", pro: "The trends and weak spots hidden inside them" },
 ];
 
 const BENEFITS = [
@@ -58,7 +58,7 @@ const BENEFITS = [
   },
   {
     title: "Your whole game, unlocked",
-    body: "Unlimited round history, full bag analysis, complete performance stats, and every game mode — nothing held back.",
+    body: "Full bag analysis, complete performance stats, a personalized Improve plan, and every game mode — the deep tools, nothing held back.",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><path d="M12 3l9 5-9 5-9-5 9-5z" /><path d="M3 13l9 5 9-5" /></svg>
     ),
@@ -67,6 +67,7 @@ const BENEFITS = [
 
 const COMPARE: { label: string; free: boolean; pro: boolean }[] = [
   { label: "Unlimited scorecards — every round, no limits", free: true, pro: true },
+  { label: "Your full round history — every round, forever", free: true, pro: true },
   { label: "Satellite hole maps & course leaderboards", free: true, pro: true },
   { label: "Disc scanning & bag builder", free: true, pro: true },
   { label: "Community: posts, follows & courses", free: true, pro: true },
@@ -79,7 +80,7 @@ const COMPARE: { label: string; free: boolean; pro: boolean }[] = [
   { label: "Full Game IQ Insights — skill breakdown & weaknesses", free: false, pro: true },
   { label: "Unlimited Caddy — guidance on every hole", free: false, pro: true },
   { label: "Full bag analysis & optimization", free: false, pro: true },
-  { label: "Your entire round history & every trend", free: false, pro: true },
+  { label: "The Improve plan — personalized coaching for your weak spots", free: false, pro: true },
   { label: "All game modes unlocked", free: false, pro: true },
 ];
 
@@ -89,7 +90,7 @@ const PRO_SHOTS = [
   { img: "/features/putting.png", title: "Putting practice", body: "See where every putt misses on real hole maps with regulation C1 / C2 rings." },
 ];
 
-const FREE_CHIPS = ["Unlimited scorecards", "Satellite course maps", "Disc scanning", "Game IQ score", "Per-round stats", "Community & feed"];
+const FREE_CHIPS = ["Unlimited scorecards", "Your full round history", "Satellite course maps", "Disc scanning", "Game IQ score", "Per-round stats", "Community & feed"];
 
 export default function SubscriptionPage() {
   const [annual, setAnnual] = useState(true);
@@ -149,7 +150,7 @@ export default function SubscriptionPage() {
             <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">Radius Pro</div>
             <h2 className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-[-0.03em] md:text-[2.75rem]">The upgrades worth playing for.</h2>
             <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-[var(--text-body)]">
-              Your scorecard stays free and unlimited — we&apos;ll never gate that, unlike other apps. <span className="font-semibold text-[var(--cream)]">Pro is where your game gets sharper.</span>
+              Your scorecards <span className="font-semibold text-[var(--cream)]">and your full round history</span> are free, forever — every round, no caps, no 3-round wall. We never lock your own data. <span className="font-semibold text-[var(--cream)]">Pro is where your game gets sharper: the insights, the stats, and a plan to improve.</span>
             </p>
           </div>
 
