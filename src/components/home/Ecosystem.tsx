@@ -4,11 +4,11 @@ import Link from "next/link";
 type Tile = { img: string; eyebrow: string; title: string; body?: string; className: string; objY?: string };
 
 const TILES: Tile[] = [
-  { img: "/course/social.jpg", eyebrow: "Game IQ", title: "Know exactly how good you are", body: "One honest score. 30 ranks. Rec all the way to MPO.", className: "col-span-2 row-span-2 lg:col-span-4", objY: "object-center" },
-  { img: "/course/bag-walk.jpg", eyebrow: "Your Bag", title: "Every disc, scored & organized", className: "col-span-2 sm:col-span-1 lg:col-span-2", objY: "object-center" },
-  { img: "/course/group.jpg", eyebrow: "Community", title: "Find your people", className: "col-span-2 sm:col-span-1 lg:col-span-2", objY: "object-[center_22%]" },
-  { img: "/course/basket.jpg", eyebrow: "Courses", title: "Know every hole before you tee off", className: "col-span-2 sm:col-span-1 lg:col-span-3", objY: "object-center" },
-  { img: "/course/action.jpg", eyebrow: "Your Caddy", title: "A smart play on every hole", className: "col-span-2 sm:col-span-1 lg:col-span-3", objY: "object-[center_30%]" },
+  { img: "/course/gameiq-throw.jpg", eyebrow: "Game IQ", title: "Know exactly how good you are", body: "One honest score. 30 ranks. Rookie all the way to Champion.", className: "col-span-2 row-span-2 lg:col-span-2 lg:row-span-2", objY: "object-[center_26%]" },
+  { img: "/course/caddy-duo.jpg", eyebrow: "Your Caddy", title: "A smart play on every hole", className: "col-span-2 row-span-2 lg:col-span-2 lg:row-span-2", objY: "object-[center_26%]" },
+  { img: "/course/bag-walk.jpg", eyebrow: "Your Bag", title: "Every disc, scored & organized", className: "col-span-1 lg:col-span-2 lg:row-span-1", objY: "object-center" },
+  { img: "/course/group.jpg", eyebrow: "Community", title: "Find your people", className: "col-span-1 lg:col-span-2 lg:row-span-1", objY: "object-[center_22%]" },
+  { img: "/course/basket.jpg", eyebrow: "Courses", title: "Know every hole before you tee off", className: "col-span-2 lg:col-span-6 lg:row-span-1", objY: "object-center" },
 ];
 
 export default function Ecosystem() {
@@ -32,7 +32,7 @@ export default function Ecosystem() {
         </div>
 
         {/* bento */}
-        <div className="mt-14 grid auto-rows-[200px] grid-cols-2 gap-4 lg:grid-cols-6 lg:auto-rows-[218px]">
+        <div className="mt-14 grid auto-rows-[170px] grid-cols-2 gap-4 sm:auto-rows-[190px] lg:grid-cols-6 lg:auto-rows-[220px]">
           {TILES.map((t) => (
             <Link key={t.title} href="/features" className={`group relative overflow-hidden rounded-3xl border border-white/8 bg-[var(--bg-mid)] ring-1 ring-inset ring-white/5 transition-all hover:ring-[var(--gold)]/30 ${t.className}`}>
               <Image src={t.img} alt={t.title} fill sizes="(max-width:1024px) 50vw, 40vw" className={`object-cover ${t.objY} transition-transform duration-700 group-hover:scale-[1.05]`} />
