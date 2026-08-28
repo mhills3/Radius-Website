@@ -4,10 +4,11 @@ import Link from "next/link";
 type Tile = { img: string; eyebrow: string; title: string; body?: string; className: string; objY?: string };
 
 const TILES: Tile[] = [
-  { img: "/course/gameiq-throw.jpg", eyebrow: "Game IQ", title: "Know exactly how good you are", body: "One honest score. 30 ranks. Rookie all the way to Champion.", className: "col-span-2 row-span-2 lg:col-span-2 lg:row-span-2", objY: "object-[center_26%]" },
-  { img: "/course/caddy-duo.jpg", eyebrow: "Your Caddy", title: "A smart play on every hole", className: "col-span-2 row-span-2 lg:col-span-2 lg:row-span-2", objY: "object-[center_26%]" },
+  // The two tall portrait tiles sit at opposite ends, with Bag + Community stacked between them.
+  { img: "/course/gameiq-throw.jpg", eyebrow: "Game IQ", title: "Know exactly how good you are", body: "One honest score. 30 ranks. Rookie all the way to Champion.", className: "col-span-2 row-span-2 lg:col-span-2 lg:row-span-2", objY: "object-center" },
   { img: "/course/bag-walk.jpg", eyebrow: "Your Bag", title: "Every disc, scored & organized", className: "col-span-1 lg:col-span-2 lg:row-span-1", objY: "object-center" },
   { img: "/course/group.jpg", eyebrow: "Community", title: "Find your people", className: "col-span-1 lg:col-span-2 lg:row-span-1", objY: "object-[center_22%]" },
+  { img: "/course/caddy-duo.jpg", eyebrow: "Your Caddy", title: "A smart play on every hole", className: "col-span-2 row-span-2 lg:col-span-2 lg:row-span-2", objY: "object-center" },
   { img: "/course/basket.jpg", eyebrow: "Courses", title: "Know every hole before you tee off", className: "col-span-2 lg:col-span-6 lg:row-span-1", objY: "object-center" },
 ];
 
