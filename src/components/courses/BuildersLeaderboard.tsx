@@ -8,6 +8,13 @@ import { getRanksFor, type RankInfo } from "@/lib/community";
 const HEAD = "font-[family-name:var(--font-heading)]";
 const LEGEND = 100; // 100+ courses built → Legend treatment (matches the courses widget)
 
+// Podium medals — gold / silver / bronze.
+const MEDALS: Record<number, { label: string; icon: string; color: string; soft: string }> = {
+  1: { label: "1st", icon: "🏆", color: "#f6c165", soft: "rgba(246,193,101,0.12)" },
+  2: { label: "2nd", icon: "🥈", color: "#cfd6e0", soft: "rgba(207,214,224,0.09)" },
+  3: { label: "3rd", icon: "🥉", color: "#dca06e", soft: "rgba(220,160,110,0.10)" },
+};
+
 function LegendMark({ className = "" }: { className?: string }) {
   return <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-label="Legend"><path d="M5 19h14l1.5-10-4.5 3.5L12 6l-4 6.5L3.5 9 5 19z" /></svg>;
 }
@@ -32,11 +39,17 @@ export default function BuildersLeaderboard() {
     return <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: `${r.color ?? "#8a968d"}22`, color: r.color ?? "#8a968d" }}>{r.tier}</span>;
   }
 
-  function Avatar({ b, className = "" }: { b: Builder; className?: string }) {
+  function Avatar({ b, className = "", ringColor }: { b: Builder; className?: string; ringColor?: string }) {
     const photo = photoOf(b);
     const legend = b.count >= LEGEND;
+    // Legend avatars have a GOLD fill, so the fallback initial must be dark to stay visible.
+    const bg = legend ? "bg-gradient-to-br from-[var(--gold-bright)] to-[var(--gold)] text-[#141B16]" : "bg-[var(--gold)]/15 text-[var(--gold)]";
+    const ringCls = ringColor ? "" : legend ? "ring-2 ring-[var(--gold)]/40" : "ring-1 ring-white/10";
     return (
-      <span className={`grid shrink-0 place-items-center overflow-hidden rounded-full font-bold text-[var(--gold)] ${legend ? "bg-gradient-to-br from-[var(--gold-bright)] to-[var(--gold)] ring-2 ring-[var(--gold)]/40" : "bg-[var(--gold)]/15 ring-1 ring-white/10"} ${className}`}>
+      <span
+        className={`grid shrink-0 place-items-center overflow-hidden rounded-full font-bold ${bg} ${ringCls} ${className}`}
+        style={ringColor ? { boxShadow: `0 0 0 3px ${ringColor}, 0 0 28px -8px ${ringColor}` } : undefined}
+      >
         {photo ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={photo} alt="" loading="lazy" className="h-full w-full object-cover" />
@@ -65,23 +78,31 @@ export default function BuildersLeaderboard() {
         <>
           {/* podium — top 3 */}
           {top3.length >= 3 && (
-            <div className="mt-10 grid grid-cols-3 gap-3 sm:gap-5">
+            <div className="mt-12 grid grid-cols-3 items-end gap-3 sm:gap-5">
               {[top3[1], top3[0], top3[2]].map((b, order) => {
                 const place = order === 0 ? 2 : order === 1 ? 1 : 3;
+                const m = MEDALS[place];
                 const first = place === 1;
                 const legend = b.count >= LEGEND;
                 const Wrap: React.ElementType = profileHref(b) ? Link : "div";
                 return (
-                  <Wrap key={b.id + place} {...(profileHref(b) ? { href: profileHref(b)! } : {})} className={`group flex flex-col items-center rounded-3xl border p-4 text-center transition-all sm:p-5 ${first ? "-mt-4 border-[var(--gold)]/40 bg-[var(--gold)]/[0.06] shadow-[0_0_40px_-14px_rgba(246,193,101,0.5)] sm:-mt-6" : "border-white/[0.08] bg-white/[0.03]"} hover:-translate-y-0.5`}>
-                    <div className={`${HEAD} text-[13px] font-black ${first ? "text-[var(--gold)]" : "text-[var(--sage-dim)]"}`}>{first ? "🏆 1st" : place === 2 ? "2nd" : "3rd"}</div>
-                    <Avatar b={b} className={first ? "mt-3 h-20 w-20 text-2xl" : "mt-3 h-16 w-16 text-xl"} />
-                    <div className="mt-3 flex items-center gap-1">
-                      {legend && <LegendMark className="h-3.5 w-3.5 text-[var(--gold-bright)]" />}
-                      <span className={`${HEAD} truncate text-[15px] font-bold ${legend ? "bg-gradient-to-r from-[#f0c377] to-[#f7dca0] bg-clip-text text-transparent" : "text-[var(--cream)]"}`}>{b.name}</span>
+                  <Wrap
+                    key={b.id + place}
+                    {...(profileHref(b) ? { href: profileHref(b)! } : {})}
+                    className={`group relative flex flex-col items-center overflow-hidden rounded-3xl border p-4 text-center transition-transform hover:-translate-y-1 sm:p-6 ${first ? "-mt-3 sm:-mt-9" : ""}`}
+                    style={{ borderColor: `${m.color}5c`, background: `linear-gradient(180deg, ${m.soft}, rgba(255,255,255,0.014) 62%)`, boxShadow: first ? `0 0 64px -18px ${m.color}` : `0 0 42px -24px ${m.color}` }}
+                  >
+                    {/* medal shimmer strip along the top */}
+                    <span className="pointer-events-none absolute inset-x-0 top-0 h-[3px]" style={{ background: `linear-gradient(90deg, transparent, ${m.color}, transparent)` }} />
+                    <div className={`${HEAD} inline-flex items-center gap-1.5 text-[13px] font-black`} style={{ color: m.color }}><span className="text-[15px]">{m.icon}</span> {m.label}</div>
+                    <Avatar b={b} ringColor={m.color} className={first ? "mt-3.5 h-[86px] w-[86px] text-2xl sm:h-24 sm:w-24 sm:text-3xl" : "mt-3.5 h-16 w-16 text-xl sm:h-[76px] sm:w-[76px] sm:text-2xl"} />
+                    <div className="mt-3.5 flex items-center gap-1">
+                      {legend && <LegendMark className="h-3.5 w-3.5 shrink-0 text-[var(--gold-bright)]" />}
+                      <span className={`${HEAD} truncate text-[15px] font-bold sm:text-base ${legend ? "bg-gradient-to-r from-[#f0c377] to-[#f7dca0] bg-clip-text text-transparent" : "text-[var(--cream)]"}`}>{b.name}</span>
                     </div>
                     {b.username && <div className="truncate text-[11px] text-[var(--sage-dim)]">@{b.username}</div>}
                     <div className="mt-2.5 flex items-baseline gap-1">
-                      <span style={{ fontFamily: "var(--font-body)", fontVariantNumeric: "tabular-nums" }} className={`text-2xl font-black ${first ? "text-[var(--gold)]" : "text-[var(--cream)]"}`}>{b.count}</span>
+                      <span style={{ color: m.color, fontFamily: "var(--font-body)", fontVariantNumeric: "tabular-nums" }} className="text-2xl font-black sm:text-[28px]">{b.count}</span>
                       <span className="text-[11px] font-semibold text-[var(--sage-dim)]">courses</span>
                     </div>
                   </Wrap>
