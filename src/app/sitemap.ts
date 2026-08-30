@@ -9,7 +9,7 @@ import { getPublishedStories } from "@/lib/storiesServer";
 const BASE = "https://radiusdiscgolf.com";
 export const revalidate = 86400; // rebuild daily
 
-const STATIC_PATHS = ["", "/features", "/courses", "/discs", "/community", "/leaderboard", "/stories", "/learn", "/subscription", "/story", "/creators", "/contact", "/rewards"];
+const STATIC_PATHS = ["", "/features", "/courses", "/discs", "/community", "/leaderboard", "/stories", "/learn", "/subscription", "/story", "/contact", "/rewards"];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticEntries: MetadataRoute.Sitemap = STATIC_PATHS.map((p) => ({

@@ -4,6 +4,7 @@ export const metadata = {
   title: "Creators",
   description: "Partner with Radius. Share the home of disc golf with your audience — and get rewarded with cash, commission, and a free year of Radius.",
   alternates: { canonical: "https://radiusdiscgolf.com/creators" },
+  robots: { index: false, follow: false }, // page kept but not surfaced/indexed
 };
 
 const PACKAGE = [

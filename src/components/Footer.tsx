@@ -22,7 +22,6 @@ const COLUMNS: { heading: string; links: { label: string; href: string; external
       { label: "Features", href: "/features" },
       { label: "Subscription", href: "/subscription" },
       { label: "Our Story", href: "/story" },
-      { label: "Creators", href: "/creators" },
       { label: "Rewards", href: "/rewards" },
     ],
   },
