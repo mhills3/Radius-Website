@@ -458,6 +458,12 @@ export default function CoursesPage() {
                       );
                     })}
                   </div>
+                  {builders.length >= 10 && (
+                    <Link href="/courses/builders" className="group mt-3 flex items-center justify-center gap-1.5 rounded-xl border border-[var(--c-line)] py-2 text-[12px] font-bold text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/10">
+                      See top 25 builders
+                      <svg className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>
+                    </Link>
+                  )}
                 </div>
 
                 {mostPlayed.length > 0 && (
