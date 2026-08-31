@@ -112,7 +112,12 @@ export default function TrendingIssues() {
   const themes: ThemeGroup[] = useMemo(() => {
     const map = new Map<string, ThemeGroup>();
     for (const r of rows) {
-      const key = (r.theme || "").trim() || SECTION_LABEL[r.section];
+      // Bugs/requests carry a real theme. Questions and "notable" chatter don't, so give them a
+      // meaningful bucket instead of one giant catch-all — notable splits into praise vs churn risk.
+      const key = (r.theme || "").trim()
+        || (r.section === "notable"
+          ? (r.kind === "churn_risk" ? "Churn risk" : r.kind === "praise" ? "Praise" : "Feedback")
+          : SECTION_LABEL[r.section]);
       const g = map.get(key) ?? { theme: key, total: 0, items: [], sections: new Set<Section>() };
       g.total += r.count || 1;
       g.items.push(r);
@@ -138,7 +143,7 @@ export default function TrendingIssues() {
   const openColor = openGroup ? PALETTE[bars.findIndex((b) => b.theme === openGroup.theme) % PALETTE.length]?.c ?? "#f6c165" : "#f6c165";
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-10">
+    <div className="mx-auto max-w-6xl px-6 py-10">
       <Link href="/admin" className="text-[12px] font-semibold text-[var(--sage)] transition-colors hover:text-[var(--gold)]">← The Circle</Link>
       <div className="mt-2 font-mono text-[10px] font-bold uppercase tracking-[0.24em] text-[var(--gold)]">Internal use only</div>
       <h1 className={`${HEAD} mt-1 text-3xl font-black tracking-[-0.02em] sm:text-4xl`}>Trending issues</h1>
@@ -172,14 +177,14 @@ export default function TrendingIssues() {
           <div className="mt-7 overflow-hidden rounded-3xl border border-white/[0.07] bg-gradient-to-b from-white/[0.035] to-white/[0.01] p-5 pt-7 sm:p-7 sm:pt-9">
             <div className="relative">
               {/* gridlines */}
-              <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[220px]">
+              <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[300px] sm:h-[340px]">
                 {[0, 0.25, 0.5, 0.75, 1].map((f) => (
                   <div key={f} className="absolute inset-x-0 border-t border-dashed border-white/[0.06]" style={{ top: `${f * 100}%` }} />
                 ))}
               </div>
 
               {/* bars */}
-              <div className="relative flex items-end justify-between gap-1.5 sm:gap-2.5">
+              <div className="relative flex items-end justify-between gap-2 sm:gap-4">
                 {bars.map((g, i) => {
                   const pal = PALETTE[i % PALETTE.length];
                   const pct = max > 0 ? Math.max(4, (g.total / max) * 100) : 0;
@@ -194,9 +199,9 @@ export default function TrendingIssues() {
                       style={{ opacity: dim ? 0.4 : 1, transition: "opacity 250ms" }}
                     >
                       {/* plot region */}
-                      <div className="flex h-[220px] w-full items-end justify-center">
+                      <div className="flex h-[300px] w-full items-end justify-center sm:h-[340px]">
                         <div
-                          className="relative w-full max-w-[54px] rounded-t-lg transition-[height,box-shadow,transform] duration-700 ease-out group-hover:-translate-y-0.5 motion-reduce:transition-none"
+                          className="relative w-full max-w-[76px] rounded-t-xl transition-[height,box-shadow,transform] duration-700 ease-out group-hover:-translate-y-0.5 motion-reduce:transition-none"
                           style={{
                             height: grown ? `${pct}%` : "0%",
                             minHeight: "10px",
@@ -207,7 +212,7 @@ export default function TrendingIssues() {
                           }}
                         >
                           {/* glossy top highlight */}
-                          <span aria-hidden className="absolute inset-x-0 top-0 h-1/3 rounded-t-lg bg-gradient-to-b from-white/25 to-transparent" />
+                          <span aria-hidden className="absolute inset-x-0 top-0 h-1/3 rounded-t-xl bg-gradient-to-b from-white/25 to-transparent" />
                           {/* value */}
                           <span style={{ ...NUM, color: pal.g }} className="absolute -top-6 left-0 right-0 text-center text-[15px] font-black">{g.total}</span>
                         </div>
@@ -238,7 +243,7 @@ export default function TrendingIssues() {
                 <span className="text-[13px] text-[var(--sage-dim)]"><b style={{ ...NUM, color: openColor }}>{openGroup.total}</b> mentions · {openGroup.items.length} {openGroup.items.length === 1 ? "issue" : "issues"}</span>
                 <button onClick={() => setOpenTheme(null)} className="ml-auto text-[12px] font-bold text-[var(--sage)] transition-colors hover:text-[var(--cream)]">Close</button>
               </div>
-              <div className="mt-3 space-y-2 pb-8">
+              <div className="mt-3 grid grid-cols-1 gap-2 pb-8 md:grid-cols-2">
                 {openGroup.items.map((r) => <CaseCard key={r.id} row={r} />)}
               </div>
             </div>
