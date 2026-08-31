@@ -17,27 +17,17 @@ export interface Highlight {
 
 const UDG_ID = "UCoXpqth3OS3XzaRcp0TtvXw";
 
-// TEMP pin (2026-07-23): our Funsie Podcast interview holds the 3rd card until
-// it has run its course — delete this block and its use in getHighlights to unpin.
-const FUNSIE_CHANNEL_ID = "UCRqHVhM7qxc7Ids04D8inLw";
-const FUNSIE_INTERVIEW_ID = "OB2rUsyAWZo";
-async function getFunsieInterview(): Promise<Highlight> {
-  const vids = await fetchChannel(FUNSIE_CHANNEL_ID, "Funsie Podcast");
-  const found = vids.find((v) => v.id === FUNSIE_INTERVIEW_ID);
-  if (found) return { ...found, exclusive: true };
-  return (
-    {
-      id: FUNSIE_INTERVIEW_ID,
-      title: "How They Created a Groundbreaking Disc Golf App!",
-      channel: "Funsie Podcast",
-      channelId: FUNSIE_CHANNEL_ID,
-      published: Date.parse("2026-07-21T00:00:00Z"),
-      url: `https://www.youtube.com/watch?v=${FUNSIE_INTERVIEW_ID}`,
-      thumb: `https://i.ytimg.com/vi/${FUNSIE_INTERVIEW_ID}/hqdefault.jpg`,
-      exclusive: true,
-    }
-  );
-}
+// Radius Spotlight — our own video, pinned as the "Radius Exclusive" card on the highlights rail.
+const RADIUS_SPOTLIGHT: Highlight = {
+  id: "idApg7z3t-U",
+  title: "Radius Spotlight",
+  channel: "Radius",
+  channelId: "",
+  published: Date.parse("2026-08-30T00:00:00Z"),
+  url: "https://youtu.be/idApg7z3t-U",
+  thumb: "https://i.ytimg.com/vi/idApg7z3t-U/hqdefault.jpg",
+  exclusive: true,
+};
 
 // Order is cosmetic; UDG is pinned to the featured slot regardless.
 const CHANNELS: { name: string; id: string }[] = [
@@ -145,14 +135,9 @@ export async function getHighlights(limit = 12): Promise<Highlight[]> {
 
   const list = udgFresh ? [{ ...udg!, featured: true }, ...rest] : rest;
 
-  // TEMP: Funsie interview pinned — it leads the rail while the partner slot is
-  // vacant; the moment UDG posts fresh (reclaiming slot 1) it moves to card 3.
-  try {
-    const pinned = await getFunsieInterview();
-    const rotated = list.filter((v) => v.id !== pinned.id);
-    rotated.splice(udgFresh ? Math.min(2, rotated.length) : 0, 0, pinned);
-    return rotated.slice(0, limit);
-  } catch {
-    return list.slice(0, limit);
-  }
+  // Radius Spotlight pinned as the "Radius Exclusive" card — it leads the rail while the partner
+  // slot is vacant; the moment UDG posts fresh (reclaiming slot 1) it moves to card 3.
+  const rotated = list.filter((v) => v.id !== RADIUS_SPOTLIGHT.id);
+  rotated.splice(udgFresh ? Math.min(2, rotated.length) : 0, 0, RADIUS_SPOTLIGHT);
+  return rotated.slice(0, limit);
 }

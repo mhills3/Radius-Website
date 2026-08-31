@@ -73,6 +73,28 @@ export default function StoryPage() {
         </div>
       </section>
 
+      {/* ===== RADIUS SPOTLIGHT — the story on film ===== */}
+      <section className="relative border-t border-white/[0.06] bg-[#0b1310]">
+        <div className="mx-auto max-w-4xl px-6 py-16 md:py-20">
+          <div className="text-center">
+            <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">Radius Spotlight</div>
+            <h2 className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-[-0.03em] md:text-[2.5rem]">See the story in motion.</h2>
+          </div>
+          <div className="mt-8 overflow-hidden rounded-3xl border border-white/10 bg-black shadow-[0_44px_100px_-34px_rgba(0,0,0,0.85)] ring-1 ring-white/5">
+            <div className="relative aspect-video w-full">
+              <iframe
+                className="absolute inset-0 h-full w-full"
+                src="https://www.youtube-nocookie.com/embed/idApg7z3t-U?rel=0"
+                title="Radius Spotlight"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                loading="lazy"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ===== A LETTER FROM THE FOUNDER — editorial ===== */}
       <section className="border-y border-white/[0.06] bg-[#0b1310]">
         <div className="mx-auto grid max-w-5xl gap-x-14 gap-y-10 px-6 py-20 md:py-28 lg:grid-cols-[240px_1fr]">
