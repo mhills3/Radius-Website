@@ -1,6 +1,6 @@
 import { db } from "./firebase";
 import { collection, getDocs, getDoc, doc, setDoc, updateDoc, increment, query, orderBy, limit } from "firebase/firestore";
-import { rankForIQ } from "./rank";
+import { resolveRating } from "./rank";
 import { getProfileLite, resolveCanonicalId } from "./account";
 
 function uuid(): string {
@@ -289,7 +289,11 @@ export interface RankInfo {
   tier?: string;
   color?: string;
   level?: number;
-  iq?: number;
+  iq?: number;          // legacy alias for `value` (kept for existing callers)
+  value?: number;       // the displayed number
+  label?: string;       // "Radius Rating" | "Game IQ"
+  isRating?: boolean;   // true = Radius Rating, false = Game IQ fallback
+  provisional?: boolean;
   name?: string;
   photo?: string;
   username?: string;
@@ -311,10 +315,13 @@ export async function getRanksFor(ids: string[]): Promise<Map<string, RankInfo>>
         }
         const u = s.data();
         const base: RankInfo = { name: u.name as string | undefined, photo: safeHttp(u.profileImageUrl), username: (u.username as string) || undefined };
-        const iq = typeof u.gameIQ === "number" && u.gameIQ > 0 ? u.gameIQ : u.previousGameIQ ?? 0;
-        if (iq) {
-          const r = rankForIQ(iq);
-          out.set(id, { ...base, tier: r.tier, color: r.color, level: r.level, iq });
+        const disp = resolveRating({
+          radiusRating: typeof u.radiusRating === "number" ? (u.radiusRating as number) : undefined,
+          radiusRatingProvisional: u.radiusRatingProvisional === true,
+          gameIQ: typeof u.gameIQ === "number" && u.gameIQ > 0 ? (u.gameIQ as number) : (u.previousGameIQ as number) ?? 0,
+        });
+        if (disp.hasValue) {
+          out.set(id, { ...base, tier: disp.rank.tier, color: disp.rank.color, level: disp.rank.level, iq: disp.value, value: disp.value, label: disp.label, isRating: disp.isRating, provisional: disp.provisional });
         } else {
           out.set(id, base);
         }

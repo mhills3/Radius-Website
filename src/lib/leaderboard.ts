@@ -1,6 +1,6 @@
 import { db } from "./firebase";
-import { collection, getDocs, getDoc, doc, setDoc, query, orderBy, limit, where } from "firebase/firestore";
-import { rankForIQ } from "./rank";
+import { collection, getDocs, getDoc, doc, setDoc, query, orderBy, limit, where, type DocumentData, type QueryDocumentSnapshot } from "firebase/firestore";
+import { resolveRating } from "./rank";
 import { resolveCanonicalId } from "./account";
 import { isUSState, countryOf } from "./courses";
 
@@ -117,10 +117,57 @@ export interface LeaderRow {
   name: string;
   username?: string;
   photo?: string;
-  gameIQ: number;
+  value: number;        // the displayed number (Radius Rating, or Game IQ fallback)
+  isRating: boolean;    // true = Radius Rating, false = Game IQ
+  provisional: boolean;
+  label: string;        // "Radius Rating" | "Game IQ"
+  gameIQ: number;       // legacy alias for `value` (kept for existing consumers)
   tier: string;
   color: string;
   level: number;
+}
+
+// Map a user doc → a leaderboard row using Radius Rating with Game IQ fallback.
+// Returns null when the user has neither a rating nor an IQ.
+function toLeaderRow(id: string, u: DocumentData): (LeaderRow & { hidden: boolean }) | null {
+  const disp = resolveRating({
+    radiusRating: typeof u.radiusRating === "number" ? (u.radiusRating as number) : undefined,
+    radiusRatingProvisional: u.radiusRatingProvisional === true,
+    gameIQ: Number(u.gameIQ) || 0,
+  });
+  if (!disp.hasValue) return null;
+  return {
+    id,
+    name: (u.name as string) || "",
+    username: (u.username as string) || undefined,
+    photo: safeHttp(u.profileImageUrl),
+    value: disp.value,
+    isRating: disp.isRating,
+    provisional: disp.provisional,
+    label: disp.label,
+    gameIQ: disp.value,
+    tier: disp.rank.tier,
+    color: disp.rank.color,
+    level: disp.rank.level,
+    hidden: u.hideWebProfile === true,
+  };
+}
+
+// During the rollout most users are on Game IQ and a few on Radius Rating; pull the top of BOTH
+// orderings so neither population is missed, then sort by the resolved value (rating ≫ IQ, so rated
+// players naturally lead). The radiusRating query is empty until docs carry the field — that's fine.
+async function topUserDocs(cap: number, aliases: Set<string>): Promise<Map<string, DocumentData>> {
+  const emptyDocs = { docs: [] as QueryDocumentSnapshot[] };
+  const [byRating, byIQ] = await Promise.all([
+    getDocs(query(collection(db, "users"), orderBy("radiusRating", "desc"), limit(cap))).catch(() => emptyDocs),
+    getDocs(query(collection(db, "users"), orderBy("gameIQ", "desc"), limit(cap))).catch(() => emptyDocs),
+  ]);
+  const docs = new Map<string, DocumentData>();
+  for (const d of [...byRating.docs, ...byIQ.docs]) {
+    if (aliases.has(d.id) || docs.has(d.id)) continue;
+    docs.set(d.id, d.data());
+  }
+  return docs;
 }
 
 export interface ActiveRow { id: string; name: string; username?: string; photo?: string; rounds: number }
@@ -143,21 +190,13 @@ export async function getMostActivePlayers(max = 12): Promise<ActiveRow[]> {
 
 export async function getLeaderboard(max = 60): Promise<LeaderRow[]> {
   try {
-    const [snap, aliases] = await Promise.all([
-      getDocs(query(collection(db, "users"), orderBy("gameIQ", "desc"), limit(Math.max(max * 3, 40)))),
-      getAliasIds(),
-    ]);
-    const rows = snap.docs
-      .filter((d) => !aliases.has(d.id)) // drop duplicate alias accounts
-      .map((d) => {
-        const u = d.data();
-        return { id: d.id, name: (u.name as string) || "", username: (u.username as string) || undefined, photo: safeHttp(u.profileImageUrl), gameIQ: Number(u.gameIQ) || 0, hidden: u.hideWebProfile === true };
-      })
-      .filter((r) => r.gameIQ > 0 && r.name && !r.hidden && validHandle(r.username));
-    return dedupeByHandle(rows).slice(0, max).map((r) => {
-      const rk = rankForIQ(r.gameIQ);
-      return { id: r.id, name: r.name, username: r.username, photo: r.photo, gameIQ: r.gameIQ, tier: rk.tier, color: rk.color, level: rk.level };
-    });
+    const aliases = await getAliasIds();
+    const docs = await topUserDocs(Math.max(max * 3, 40), aliases);
+    const rows = [...docs.entries()]
+      .map(([id, u]) => toLeaderRow(id, u))
+      .filter((r): r is LeaderRow & { hidden: boolean } => !!r && !!r.name && !r.hidden && validHandle(r.username))
+      .sort((a, b) => b.value - a.value); // rating ≫ IQ, so rated players lead
+    return dedupeByHandle(rows).slice(0, max).map(({ hidden, ...r }) => { void hidden; return r; });
   } catch {
     return [];
   }
@@ -181,21 +220,20 @@ const hasRegion = (r?: Region) => !!(r && (r.state || r.country));
  */
 export async function getLeaderboardWithRegion(max = 250): Promise<GeoLeaderRow[]> {
   try {
-    const [snap, aliases] = await Promise.all([
-      getDocs(query(collection(db, "users"), orderBy("gameIQ", "desc"), limit(max + 150))),
-      getAliasIds(),
-    ]);
-    const base = snap.docs
-      .filter((d) => !aliases.has(d.id)) // drop duplicate alias accounts
-      .map((d) => {
-        const u = d.data();
+    const aliases = await getAliasIds();
+    const docs = await topUserDocs(max + 150, aliases);
+    const base = [...docs.entries()]
+      .map(([id, u]) => {
+        const row = toLeaderRow(id, u);
+        if (!row) return null;
         const rounds = Array.isArray(u.recentRounds) ? (u.recentRounds as { courseName?: string }[]) : [];
         const freq = new Map<string, number>();
         for (const r of rounds) { const n = ((r?.courseName || "") + "").trim(); if (n) freq.set(n, (freq.get(n) || 0) + 1); }
         const playedCourse = [...freq.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || "";
-        return { id: d.id, name: (u.name as string) || "", username: (u.username as string) || undefined, photo: safeHttp(u.profileImageUrl), gameIQ: Number(u.gameIQ) || 0, hidden: u.hideWebProfile === true, homeCourseId: (u.homeCourseId as string)?.trim() || "", playedCourse };
+        return { ...row, homeCourseId: (u.homeCourseId as string)?.trim() || "", playedCourse };
       })
-      .filter((r) => r.gameIQ > 0 && r.name && !r.hidden && validHandle(r.username));
+      .filter((r): r is LeaderRow & { hidden: boolean; homeCourseId: string; playedCourse: string } => !!r && !!r.name && !r.hidden && validHandle(r.username))
+      .sort((a, b) => b.value - a.value);
     const deduped = dedupeByHandle(base).slice(0, max);
 
     // 1) resolve each player's home course (by id) → region
@@ -212,10 +250,9 @@ export async function getLeaderboardWithRegion(max = 250): Promise<GeoLeaderRow[
     }));
 
     return deduped.map((r) => {
-      const rk = rankForIQ(r.gameIQ);
       const homeReg = r.homeCourseId ? byId.get(r.homeCourseId) : undefined;
       const reg = hasRegion(homeReg) ? homeReg : (r.playedCourse ? byName.get(r.playedCourse) : undefined);
-      return { id: r.id, name: r.name, username: r.username, photo: r.photo, gameIQ: r.gameIQ, tier: rk.tier, color: rk.color, level: rk.level, state: reg?.state, country: reg?.country, lat: reg?.lat, lng: reg?.lng };
+      return { id: r.id, name: r.name, username: r.username, photo: r.photo, value: r.value, isRating: r.isRating, provisional: r.provisional, label: r.label, gameIQ: r.gameIQ, tier: r.tier, color: r.color, level: r.level, state: reg?.state, country: reg?.country, lat: reg?.lat, lng: reg?.lng };
     });
   } catch {
     return [];
