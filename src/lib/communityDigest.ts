@@ -65,6 +65,17 @@ export async function getLatestDigest(): Promise<Digest | null> {
   return getDigest(dates[0]);
 }
 
+/** Every digest whose day falls in [startMs, endMs) — powers the weekly Trending Issues view. */
+export async function getDigestsInRange(startMs: number, endMs: number): Promise<Digest[]> {
+  const dates = await listDigestDates(180);
+  const inRange = dates.filter((d) => {
+    const t = Date.parse(`${d}T12:00:00`);
+    return t >= startMs && t < endMs;
+  });
+  const digs = await Promise.all(inRange.map((d) => getDigest(d)));
+  return digs.filter((d): d is Digest => !!d);
+}
+
 /** Unreviewed items in the latest digest — the /admin card badge + the nav badge. */
 export async function getUnreviewedDigestCount(): Promise<number> {
   const latest = await getLatestDigest();

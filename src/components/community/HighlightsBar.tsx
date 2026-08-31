@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { Highlight } from "@/lib/youtube";
 
 function timeAgo(ms: number): string {
@@ -101,8 +102,8 @@ export default function HighlightsBar() {
         <button onClick={() => scroll(1)} aria-label="Scroll right" className="absolute right-1 top-[30%] z-10 hidden h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-black/60 text-lg text-[var(--cream)] opacity-0 shadow-lg backdrop-blur transition-opacity duration-200 hover:bg-black/80 group-hover/rail:opacity-100 sm:grid">›</button>
       </div>
 
-      {active && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm" onClick={() => setActive(null)}>
+      {active && createPortal(
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm" onClick={() => setActive(null)}>
           <div className="w-full max-w-3xl" onClick={(e) => e.stopPropagation()}>
             <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-black ring-1 ring-white/10 shadow-2xl">
               <iframe
@@ -127,7 +128,8 @@ export default function HighlightsBar() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </section>
   );

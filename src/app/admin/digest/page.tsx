@@ -1,5 +1,5 @@
-import DigestQueue from "@/components/staff/DigestQueue";
+import TrendingIssues from "@/components/staff/TrendingIssues";
 
 export default function AdminDigestPage() {
-  return <DigestQueue />;
+  return <TrendingIssues />;
 }
