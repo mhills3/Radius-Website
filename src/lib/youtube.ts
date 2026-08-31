@@ -17,11 +17,12 @@ export interface Highlight {
 
 const UDG_ID = "UCoXpqth3OS3XzaRcp0TtvXw";
 
-// Radius Spotlight — our own video, pinned as the "Radius Exclusive" card on the highlights rail.
+// Pinned as the "Radius Exclusive" card on the highlights rail — Foundation's Robot-vs-Human
+// caddie battle, which pits the Radius caddy against a human.
 const RADIUS_SPOTLIGHT: Highlight = {
   id: "idApg7z3t-U",
-  title: "Radius Spotlight",
-  channel: "Radius",
+  title: "Robot vs. Human Disc Golf Caddie Battle at the Hardest Course",
+  channel: "Foundation Disc Golf",
   channelId: "",
   published: Date.parse("2026-08-30T00:00:00Z"),
   url: "https://youtu.be/idApg7z3t-U",

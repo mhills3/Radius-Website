@@ -77,15 +77,16 @@ export default function StoryPage() {
       <section className="relative border-t border-white/[0.06] bg-[#0b1310]">
         <div className="mx-auto max-w-4xl px-6 py-16 md:py-20">
           <div className="text-center">
-            <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">Radius Spotlight</div>
-            <h2 className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-[-0.03em] md:text-[2.5rem]">See the story in motion.</h2>
+            <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">The interview</div>
+            <h2 className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-[-0.03em] md:text-[2.5rem]">How Radius came to be.</h2>
+            <p className="mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-[var(--text-body)]">We sat down with the Funsie Podcast to tell the whole story — the why, the build, and where we&apos;re headed.</p>
           </div>
           <div className="mt-8 overflow-hidden rounded-3xl border border-white/10 bg-black shadow-[0_44px_100px_-34px_rgba(0,0,0,0.85)] ring-1 ring-white/5">
             <div className="relative aspect-video w-full">
               <iframe
                 className="absolute inset-0 h-full w-full"
-                src="https://www.youtube-nocookie.com/embed/idApg7z3t-U?rel=0"
-                title="Radius Spotlight"
+                src="https://www.youtube-nocookie.com/embed/OB2rUsyAWZo?rel=0"
+                title="How They Created a Groundbreaking Disc Golf App!"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowFullScreen
                 loading="lazy"

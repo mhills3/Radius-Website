@@ -8,6 +8,7 @@ const HEAD = "font-[family-name:var(--font-heading)]";
 const BLUE = "#4d94fa";
 const NUM = { fontFamily: "var(--font-body)", fontVariantNumeric: "tabular-nums" } as const; // Inter numerals
 const DAY = 86_400_000;
+const MAX_BARS = 12;
 
 type Section = "bugs" | "features" | "questions" | "notable";
 type Row = DigestItem & { section: Section; date: string };
@@ -16,6 +17,22 @@ const SECTION_LABEL: Record<Section, string> = { bugs: "Bugs", features: "Reques
 const SECTION_SHORT: Record<Section, string> = { bugs: "Bug", features: "Req", questions: "Q", notable: "Note" };
 const SECTIONS: Section[] = ["bugs", "features", "questions", "notable"];
 const PRIO_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 };
+
+// Premium multi-hue palette, assigned by rank so the busiest theme leads in gold.
+const PALETTE: { c: string; g: string }[] = [
+  { c: "#f6c165", g: "#f8d98f" }, // gold
+  { c: "#5fb87a", g: "#86d69c" }, // green
+  { c: "#4d94fa", g: "#80b5ff" }, // blue
+  { c: "#c98bdb", g: "#e2b0ee" }, // violet
+  { c: "#e0873f", g: "#f2a867" }, // amber
+  { c: "#4fd1c5", g: "#81e4dc" }, // teal
+  { c: "#f2708a", g: "#f89dad" }, // rose
+  { c: "#a0d95f", g: "#c2e88b" }, // lime
+  { c: "#7c9cff", g: "#a6bcff" }, // periwinkle
+  { c: "#e8b04b", g: "#f4cb7e" }, // honey
+  { c: "#6fc6a8", g: "#98dcc4" }, // sea
+  { c: "#d98b6f", g: "#ecb098" }, // clay
+];
 
 interface ThemeGroup { theme: string; total: number; items: Row[]; sections: Set<Section> }
 
@@ -72,41 +89,11 @@ function CaseCard({ row }: { row: Row }) {
   );
 }
 
-function Bar({ g, max, open, onToggle }: { g: ThemeGroup; max: number; open: boolean; onToggle: () => void }) {
-  const pct = max > 0 ? Math.max(4, (g.total / max) * 100) : 0;
-  const secs = SECTIONS.filter((s) => g.sections.has(s)).map((s) => SECTION_LABEL[s]).join(" · ");
-  return (
-    <div>
-      <button onClick={onToggle} className={`group w-full rounded-2xl px-4 py-3.5 text-left transition-colors ${open ? "bg-white/[0.05]" : "hover:bg-white/[0.03]"}`}>
-        <div className="flex items-center gap-3">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`h-3.5 w-3.5 shrink-0 text-[var(--sage-dim)] transition-transform ${open ? "rotate-90 text-[var(--gold)]" : "group-hover:text-[var(--sage)]"}`}><path d="M9 18l6-6-6-6" /></svg>
-          <span className={`${HEAD} min-w-0 flex-1 truncate text-[15px] font-bold ${open ? "text-[var(--gold)]" : "text-[var(--cream)]"}`}>{g.theme}</span>
-          <span className="shrink-0 text-[11.5px] text-[var(--sage-dim)]">{g.items.length} {g.items.length === 1 ? "issue" : "issues"}</span>
-          <span style={NUM} className="w-9 shrink-0 text-right text-[19px] font-black text-[var(--gold)]" title="Total reporters this week">{g.total}</span>
-        </div>
-        <div className="mt-2 flex items-center gap-3" style={{ marginLeft: "1.625rem" }}>
-          <span className="relative h-2.5 flex-1 overflow-hidden rounded-full bg-white/[0.05]">
-            <span
-              className="absolute inset-y-0 left-0 rounded-full transition-all duration-500"
-              style={{ width: `${pct}%`, background: open ? "linear-gradient(90deg, var(--gold), var(--gold-bright))" : "linear-gradient(90deg, rgba(246,193,101,0.55), rgba(246,193,101,0.85))" }}
-            />
-          </span>
-          <span className="shrink-0 text-[11px] text-[var(--sage-dim)]">{secs}</span>
-        </div>
-      </button>
-      {open && (
-        <div className="mt-1.5 space-y-2 pb-3 pl-6 pr-1">
-          {g.items.map((r) => <CaseCard key={r.id} row={r} />)}
-        </div>
-      )}
-    </div>
-  );
-}
-
 export default function TrendingIssues() {
   const [offset, setOffset] = useState(0);
   const [digests, setDigests] = useState<Digest[] | undefined>(undefined);
   const [openTheme, setOpenTheme] = useState<string | null>(null);
+  const [grown, setGrown] = useState(false);
 
   const { startMs, endMs } = useMemo(() => weekWindow(offset), [offset]);
 
@@ -136,9 +123,19 @@ export default function TrendingIssues() {
     return [...map.values()].sort((a, b) => (b.total - a.total) || (b.items.length - a.items.length));
   }, [rows]);
 
-  const max = themes[0]?.total ?? 0;
+  // (re)play the grow-in whenever the week's data changes
+  useEffect(() => {
+    setGrown(false);
+    const r = requestAnimationFrame(() => setGrown(true));
+    return () => cancelAnimationFrame(r);
+  }, [themes]);
+
+  const bars = themes.slice(0, MAX_BARS);
+  const max = bars[0]?.total ?? 0;
   const totalReporters = rows.reduce((n, r) => n + (r.count || 1), 0);
   const rangeLabel = `${fmtShort(startMs)} – ${fmtShort(endMs - DAY)}`;
+  const openGroup = themes.find((g) => g.theme === openTheme) ?? null;
+  const openColor = openGroup ? PALETTE[bars.findIndex((b) => b.theme === openGroup.theme) % PALETTE.length]?.c ?? "#f6c165" : "#f6c165";
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-10">
@@ -154,7 +151,7 @@ export default function TrendingIssues() {
         </button>
         <div className="min-w-0 text-center">
           <div className={`${HEAD} truncate text-[15px] font-bold text-[var(--cream)]`}>{offset === 0 ? "This week" : rangeLabel}</div>
-          <div className="text-[12px] text-[var(--sage-dim)]">{offset === 0 ? rangeLabel : `${offset} week${offset === 1 ? "" : "s"} ago`}{digests && rows.length > 0 ? <> · <span className="font-bold text-[var(--gold)]">{totalReporters}</span> mentions across {rows.length}</> : ""}</div>
+          <div className="text-[12px] text-[var(--sage-dim)]">{offset === 0 ? rangeLabel : `${offset} week${offset === 1 ? "" : "s"} ago`}{digests && rows.length > 0 ? <> · <span style={NUM} className="font-bold text-[var(--gold)]">{totalReporters}</span> mentions across {rows.length}</> : ""}</div>
         </div>
         <button onClick={() => setOffset((o) => Math.max(0, o - 1))} disabled={offset === 0} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--hair-strong)] px-3 py-1.5 text-[13px] font-bold text-[var(--sage)] transition-colors hover:text-[var(--cream)] disabled:opacity-40">
           Later<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M9 18l6-6-6-6" /></svg>
@@ -163,18 +160,92 @@ export default function TrendingIssues() {
 
       {digests === undefined ? (
         <div className="mt-12 flex justify-center text-[var(--sage)]"><svg className="h-6 w-6 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg></div>
-      ) : themes.length === 0 ? (
+      ) : bars.length === 0 ? (
         <div className="mt-12 py-16 text-center">
           <div className="text-3xl">🌤️</div>
           <p className="mt-2 text-[15px] font-semibold text-[var(--cream)]">Quiet week</p>
           <p className="mt-1 text-[13px] text-[var(--text-body)]">No issues surfaced in this window. Try an earlier week.</p>
         </div>
       ) : (
-        <div className="mt-6 space-y-1">
-          {themes.map((g) => (
-            <Bar key={g.theme} g={g} max={max} open={openTheme === g.theme} onToggle={() => setOpenTheme((t) => (t === g.theme ? null : g.theme))} />
-          ))}
-        </div>
+        <>
+          {/* ===== the chart ===== */}
+          <div className="mt-7 overflow-hidden rounded-3xl border border-white/[0.07] bg-gradient-to-b from-white/[0.035] to-white/[0.01] p-5 pt-7 sm:p-7 sm:pt-9">
+            <div className="relative">
+              {/* gridlines */}
+              <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[220px]">
+                {[0, 0.25, 0.5, 0.75, 1].map((f) => (
+                  <div key={f} className="absolute inset-x-0 border-t border-dashed border-white/[0.06]" style={{ top: `${f * 100}%` }} />
+                ))}
+              </div>
+
+              {/* bars */}
+              <div className="relative flex items-end justify-between gap-1.5 sm:gap-2.5">
+                {bars.map((g, i) => {
+                  const pal = PALETTE[i % PALETTE.length];
+                  const pct = max > 0 ? Math.max(4, (g.total / max) * 100) : 0;
+                  const sel = openTheme === g.theme;
+                  const dim = openTheme !== null && !sel;
+                  return (
+                    <button
+                      key={g.theme}
+                      onClick={() => setOpenTheme((t) => (t === g.theme ? null : g.theme))}
+                      title={`${g.theme} — ${g.total} mentions · ${g.items.length} ${g.items.length === 1 ? "issue" : "issues"}`}
+                      className="group flex min-w-0 flex-1 flex-col items-center outline-none"
+                      style={{ opacity: dim ? 0.4 : 1, transition: "opacity 250ms" }}
+                    >
+                      {/* plot region */}
+                      <div className="flex h-[220px] w-full items-end justify-center">
+                        <div
+                          className="relative w-full max-w-[54px] rounded-t-lg transition-[height,box-shadow,transform] duration-700 ease-out group-hover:-translate-y-0.5 motion-reduce:transition-none"
+                          style={{
+                            height: grown ? `${pct}%` : "0%",
+                            minHeight: "10px",
+                            background: `linear-gradient(180deg, ${pal.g}, ${pal.c})`,
+                            boxShadow: sel
+                              ? `0 0 0 2px ${pal.c}, 0 10px 34px -8px ${pal.c}`
+                              : `0 8px 26px -10px ${pal.c}`,
+                          }}
+                        >
+                          {/* glossy top highlight */}
+                          <span aria-hidden className="absolute inset-x-0 top-0 h-1/3 rounded-t-lg bg-gradient-to-b from-white/25 to-transparent" />
+                          {/* value */}
+                          <span style={{ ...NUM, color: pal.g }} className="absolute -top-6 left-0 right-0 text-center text-[15px] font-black">{g.total}</span>
+                        </div>
+                      </div>
+                      {/* label */}
+                      <span
+                        className="mt-3 line-clamp-2 h-8 w-full px-0.5 text-center text-[11px] font-bold leading-tight transition-colors"
+                        style={{ color: sel ? pal.g : "var(--sage)" }}
+                      >
+                        {g.theme}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            {themes.length > MAX_BARS && (
+              <p className="mt-4 text-center text-[11px] text-[var(--sage-dim)]">Showing the top {MAX_BARS} of {themes.length} themes this week</p>
+            )}
+          </div>
+
+          {/* ===== drill-down ===== */}
+          {openGroup ? (
+            <div className="mt-6">
+              <div className="flex items-center gap-2.5">
+                <span className="h-3.5 w-3.5 shrink-0 rounded-full" style={{ background: openColor, boxShadow: `0 0 14px -2px ${openColor}` }} />
+                <h2 className={`${HEAD} text-xl font-black text-[var(--cream)]`}>{openGroup.theme}</h2>
+                <span className="text-[13px] text-[var(--sage-dim)]"><b style={{ ...NUM, color: openColor }}>{openGroup.total}</b> mentions · {openGroup.items.length} {openGroup.items.length === 1 ? "issue" : "issues"}</span>
+                <button onClick={() => setOpenTheme(null)} className="ml-auto text-[12px] font-bold text-[var(--sage)] transition-colors hover:text-[var(--cream)]">Close</button>
+              </div>
+              <div className="mt-3 space-y-2 pb-8">
+                {openGroup.items.map((r) => <CaseCard key={r.id} row={r} />)}
+              </div>
+            </div>
+          ) : (
+            <p className="mt-6 text-center text-[13px] text-[var(--sage-dim)]">Tap a bar to see the cases behind it.</p>
+          )}
+        </>
       )}
     </div>
   );
