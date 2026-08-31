@@ -6,7 +6,7 @@ type Tile = { img: string; eyebrow: string; title: string; body?: string; classN
 // Explicit placement so the tiles interlock with no gaps: 6-col × 3-row grid on lg.
 // Row 1-2: [Game IQ tall] [Bag] [Caddy tall]   Row 2: [Game IQ] [Community] [Caddy]   Row 3: [Courses banner]
 const TILES: Tile[] = [
-  { img: "/course/gameiq-throw.jpg", eyebrow: "Game IQ", title: "Know exactly how good you are", body: "One honest score. 30 ranks. Rookie all the way to Champion.", className: "col-span-2 row-span-2 lg:col-start-1 lg:col-span-2 lg:row-start-1 lg:row-span-2", objY: "object-center" },
+  { img: "/course/gameiq-throw.jpg", eyebrow: "Radius Rating", title: "Know exactly how good you are", body: "One honest number. 30 ranks. Rookie all the way to Champion.", className: "col-span-2 row-span-2 lg:col-start-1 lg:col-span-2 lg:row-start-1 lg:row-span-2", objY: "object-center" },
   { img: "/course/bag-walk.jpg", eyebrow: "Your Bag", title: "Every disc, scored & organized", className: "col-span-1 lg:col-start-3 lg:col-span-2 lg:row-start-1 lg:row-span-1", objY: "object-center" },
   { img: "/course/group.jpg", eyebrow: "Community", title: "Find your people", className: "col-span-1 lg:col-start-3 lg:col-span-2 lg:row-start-2 lg:row-span-1", objY: "object-[center_22%]" },
   { img: "/course/caddy-duo.jpg", eyebrow: "Your Caddy", title: "A smart play on every hole", className: "col-span-2 row-span-2 lg:col-start-5 lg:col-span-2 lg:row-start-1 lg:row-span-2", objY: "object-center" },

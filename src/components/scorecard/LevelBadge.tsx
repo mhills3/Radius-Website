@@ -1,6 +1,6 @@
 "use client";
 
-import { rankForIQ } from "@/lib/rank";
+import { rankForIQ, rankForRating } from "@/lib/rank";
 
 // Tier emblem shapes (match the app's LevelBadge icons). Drawn on a viewBox of side `s`, centered.
 export function TierGlyph({ icon, color, s }: { icon: string; color: string; s: number }) {
@@ -30,8 +30,9 @@ export function TierEmblem({ icon, color, secondary, size = 44 }: { icon: string
   );
 }
 
-export default function LevelBadge({ iq, size = 78 }: { iq: number; size?: number }) {
-  const r = rankForIQ(iq);
+// Pass `rating` for the Radius Rating scale, or `iq` for the Game IQ fallback.
+export default function LevelBadge({ iq, rating, size = 78 }: { iq?: number; rating?: number; size?: number }) {
+  const r = typeof rating === "number" ? rankForRating(rating) : rankForIQ(iq ?? 0);
   const g = size * 0.46;                       // glyph box, lifted to clear the pip row
   const pipR = Math.max(1.5, size * 0.028);
   return (

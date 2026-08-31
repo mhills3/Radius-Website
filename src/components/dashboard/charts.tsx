@@ -20,8 +20,8 @@ export function CountUp({ value, duration = 1000, className }: { value: number; 
   return <span className={className}>{n}</span>;
 }
 
-/** Circular Game-IQ gauge: progress = 0..1 within the current rank. Colored by tier. */
-export function IqRing({ iq, progress, label, color = "#f8cf80", color2 = "#d4a04a" }: { iq: number; progress: number; label: string; color?: string; color2?: string }) {
+/** Circular rating gauge: progress = 0..1 within the current rank. Colored by tier. */
+export function IqRing({ iq, progress, label, caption = "Game IQ", color = "#f8cf80", color2 = "#d4a04a" }: { iq: number; progress: number; label: string; caption?: string; color?: string; color2?: string }) {
   const size = 196;
   const stroke = 14;
   const r = (size - stroke) / 2;
@@ -56,7 +56,7 @@ export function IqRing({ iq, progress, label, color = "#f8cf80", color2 = "#d4a0
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--sage-dim)]">Game IQ</span>
+        <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--sage-dim)]">{caption}</span>
         <CountUp value={iq} className="font-[family-name:var(--font-heading)] text-6xl font-extrabold leading-none tracking-tight text-[var(--cream)]" />
         <span className="mt-1.5 rounded-full px-3 py-0.5 text-xs font-bold" style={{ background: `${color}22`, color }}>{label}</span>
       </div>

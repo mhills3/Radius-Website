@@ -5,7 +5,7 @@ import { getDashboard, type Dashboard } from "@/lib/account";
 import { getDecodedRounds, computeCareerStats, computeStrokesGained, rankedCategories, type DecodedRound, type CareerStats, type StrokesGained } from "@/lib/rounds";
 import { getPutterDiscNames, getDiscCatalog, type DbDisc } from "@/lib/bag";
 import { getPracticeSessions, type RangeSession } from "@/lib/sessions";
-import { rankForIQ, rankLabel } from "@/lib/rank";
+import { rankLabel, resolveRating } from "@/lib/rank";
 import GameVisuals from "@/components/mygame/GameVisuals";
 import { usePro } from "@/lib/usePro";
 
@@ -37,15 +37,15 @@ export default function MyGameOverview({ uid }: { uid: string }) {
     return <div className="flex min-h-[40vh] items-center justify-center text-[var(--sage)]"><svg className="h-6 w-6 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg></div>;
   }
   if (!dash || !career || career.rounds === 0 || !sg) {
-    return <div className="flex min-h-[40vh] flex-col items-center justify-center text-center text-[var(--cream)]"><h2 className={`${HEAD} text-2xl font-extrabold`}>No stats yet</h2><p className="mt-2 max-w-md text-[var(--text-body)]">Play a round in the Radius app and your Game IQ, drives, hole map and strokes-gained show up here.</p></div>;
+    return <div className="flex min-h-[40vh] flex-col items-center justify-center text-center text-[var(--cream)]"><h2 className={`${HEAD} text-2xl font-extrabold`}>No stats yet</h2><p className="mt-2 max-w-md text-[var(--text-body)]">Play a round in the Radius app and your Radius Rating, drives, hole map and strokes-gained show up here.</p></div>;
   }
 
-  const iq = dash.iqCurrent ?? 0;
-  const rank = rankForIQ(iq);
+  // Radius Rating with Game IQ fallback — drives the hero number, tier, and label.
+  const disp = resolveRating({ radiusRating: dash.radiusRating, radiusRatingProvisional: dash.radiusRatingProvisional, gameIQ: dash.iqCurrent });
   const leak = rankedCategories(sg).filter((c) => c.eligible)[0];
-  const rankText = rankLabel(rank);
+  const rankText = rankLabel(disp.rank);
   const meta = `${career.rounds} round${career.rounds === 1 ? "" : "s"} · ${fmtToParAvg(career.avgToPar)} avg`;
   const insight = `You hit ${sg.teeFairwayPct}% of fairways and make ${sg.c1xPct}% inside the circle.${leak ? ` The strokes leak from your ${leak.name.toLowerCase()} — that's where the round is decided.` : ""}`;
 
-  return <GameVisuals iq={iq} rankText={rankText} meta={meta} insight={insight} rounds={rounds} range={range} catalog={catalog} putterNames={putterNames} pro={pro} />;
+  return <GameVisuals rating={disp} rankText={rankText} meta={meta} insight={insight} rounds={rounds} range={range} catalog={catalog} putterNames={putterNames} pro={pro} />;
 }

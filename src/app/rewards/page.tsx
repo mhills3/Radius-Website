@@ -39,7 +39,7 @@ const TIERS = [
 ];
 
 const LADDER = [
-  { n: "5", tier: "Starter", reward: "1 Year of Radius Pro", desc: "A full year of Caddy's Picks, Game IQ, and insights — on the house.", gate: "" },
+  { n: "5", tier: "Starter", reward: "1 Year of Radius Pro", desc: "A full year of Caddy's Picks, Radius Rating, and insights — on the house.", gate: "" },
   { n: "10", tier: "Builder", reward: "2 Years of Radius Pro", desc: "Double up — two full years of everything Pro has to offer.", gate: "" },
   { n: "25", tier: "Craftsman", reward: "Radius Gear Bundle", desc: "An exclusive custom Radius kit — our thanks, in physical form.", gate: "" },
   { n: "50", tier: "Architect", reward: "Premium Tournament Bag", desc: "A premium tournament bag of your pick, up to $200 — Squatch-tier quality.", gate: "Requires courses in 2+ states" },

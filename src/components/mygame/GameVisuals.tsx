@@ -5,6 +5,7 @@ import type { DecodedRound } from "@/lib/rounds";
 import type { RangeSession } from "@/lib/sessions";
 import type { DbDisc } from "@/lib/bag";
 import { driveDispersion, bagMeasured, holeByHole, latestSGRound, puttGreen } from "@/lib/gameViz";
+import type { RatingDisplay } from "@/lib/rank";
 import LevelBadge from "@/components/scorecard/LevelBadge";
 import Link from "next/link";
 
@@ -77,8 +78,8 @@ function SampleWrap({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function GameVisuals({ iq, rankText, meta, insight, rounds, range, catalog, putterNames, pro = true }: {
-  iq: number; rankText: string; meta: string; insight: string; rounds: DecodedRound[]; range: RangeSession[]; catalog: DbDisc[]; putterNames: Set<string>; pro?: boolean;
+export default function GameVisuals({ rating, rankText, meta, insight, rounds, range, catalog, putterNames, pro = true }: {
+  rating: RatingDisplay; rankText: string; meta: string; insight: string; rounds: DecodedRound[]; range: RangeSession[]; catalog: DbDisc[]; putterNames: Set<string>; pro?: boolean;
 }) {
   const dispReal = useMemo(() => driveDispersion(rounds, range), [rounds, range]);
   const bagReal = useMemo(() => bagMeasured(rounds, catalog), [rounds, catalog]);
@@ -97,13 +98,13 @@ export default function GameVisuals({ iq, rankText, meta, insight, rounds, range
 
   return (
     <div>
-      {/* header — gamified emblem + Game IQ */}
+      {/* header — gamified emblem + Radius Rating (Game IQ fallback) */}
       <div className="mb-8 flex items-center gap-5">
-        <LevelBadge iq={iq} size={72} />
+        {rating.isRating ? <LevelBadge rating={rating.value} size={72} /> : <LevelBadge iq={rating.value} size={72} />}
         <div className="min-w-0 flex-1">
-          <div className={eb} style={{ color: EB }}>Game IQ</div>
+          <div className={eb} style={{ color: EB }}>{rating.provisional ? `${rating.label} · PROV` : rating.label}</div>
           <div className="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-            <span style={{ ...MONO, fontSize: 56, fontWeight: 700, color: INK, lineHeight: 1, letterSpacing: "-0.02em" }}>{iq}</span>
+            <span style={{ ...MONO, fontSize: 56, fontWeight: 700, color: INK, lineHeight: 1, letterSpacing: "-0.02em" }}>{rating.value}</span>
             <span style={{ ...MONO, fontSize: 16, color: SAGE }}>{rankText}</span>
             <span className="ml-auto" style={{ ...MONO, fontSize: 13.5, color: EB }}>{meta}</span>
           </div>

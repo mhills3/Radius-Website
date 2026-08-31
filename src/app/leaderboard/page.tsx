@@ -27,8 +27,8 @@ function Row({ row, rank }: { row: GeoLeaderRow; rank: number }) {
         <div className="truncate text-xs text-[var(--sage-dim)]">{row.username ? `@${row.username}` : ""}{row.username && region ? " · " : ""}{region || ""}</div>
       </div>
       <div className="text-right">
-        <div className="font-[family-name:var(--font-heading)] text-xl font-extrabold text-[var(--cream)]">{row.gameIQ}</div>
-        <div className="text-[10px] uppercase tracking-wide text-[var(--sage-dim)]">Game IQ</div>
+        <div className="font-[family-name:var(--font-heading)] text-xl font-extrabold text-[var(--cream)]">{row.value}</div>
+        <div className="text-[10px] uppercase tracking-wide text-[var(--sage-dim)]">{row.isRating ? "Rating" : "Game IQ"}{row.provisional ? " · PROV" : ""}</div>
       </div>
     </div>
   );
@@ -73,8 +73,8 @@ export default function LeaderboardPage() {
         <div className="pointer-events-none absolute -right-32 -top-40 h-96 w-96 rounded-full bg-[radial-gradient(circle,rgba(246,193,101,0.14),transparent_70%)]" />
         <div className="relative mx-auto max-w-3xl px-6 pb-7 pt-12 text-center">
           <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">🏆 Rankings</div>
-          <h1 className="font-[family-name:var(--font-heading)] text-4xl font-extrabold tracking-[-0.03em] md:text-5xl">Game IQ Leaderboard</h1>
-          <p className="mt-3 text-[var(--text-body)]">The top disc golfers in {scopeLabel}, ranked by Game IQ — earned through real rounds.</p>
+          <h1 className="font-[family-name:var(--font-heading)] text-4xl font-extrabold tracking-[-0.03em] md:text-5xl">Radius Rating Leaderboard</h1>
+          <p className="mt-3 text-[var(--text-body)]">The top disc golfers in {scopeLabel}, ranked by their Radius Rating — earned through real rounds. Game IQ is shown for players not yet rated.</p>
 
           {/* scope filter */}
           <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
@@ -113,7 +113,8 @@ export default function LeaderboardPage() {
                     ) : (p.name || "?").charAt(0).toUpperCase()}
                   </span>
                   <span className="mt-2 truncate text-sm font-bold">{p.name}</span>
-                  <span className="font-[family-name:var(--font-heading)] text-lg font-extrabold" style={{ color: p.color }}>{p.gameIQ}</span>
+                  <span className="font-[family-name:var(--font-heading)] text-lg font-extrabold" style={{ color: p.color }}>{p.value}</span>
+                  <span className="text-[10px] uppercase tracking-wide text-[var(--sage-dim)]">{p.isRating ? "Rating" : "Game IQ"}{p.provisional ? " · PROV" : ""}</span>
                 </Link>
               );
             })}

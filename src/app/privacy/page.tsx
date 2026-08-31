@@ -21,7 +21,7 @@ const HTML = `
 <h2>Information We Collect</h2>
 <p><strong>Account Information:</strong> When you create an account, we collect your name, email address, username, and profile photo. During signup we also ask for your gender, which we use to place you in the appropriate division for rankings, leaderboards, and other competitive features. Depending on the sign-in method you choose, we may receive a basic account identifier from Apple or Google to authenticate you.</p>
 <p><strong>Player Profile Details:</strong> Information you add to your player profile, such as your throwing hand, throwing style, arm speed, bio, and home course. These details personalize features like Caddy recommendations and your public profile.</p>
-<p><strong>Gameplay Data:</strong> We collect data related to your disc golf rounds, including scores, disc selections, course information, hole-by-hole performance, and Game IQ metrics (distance control, accuracy, and putting scores).</p>
+<p><strong>Gameplay Data:</strong> We collect data related to your disc golf rounds, including scores, disc selections, course information, hole-by-hole performance, and Radius Rating metrics (distance control, accuracy, and putting scores).</p>
 <p><strong>Bag and Disc Data:</strong> Information about the discs in your bag, including disc names, manufacturers, flight numbers, nicknames, condition, and usage statistics.</p>
 <p><strong>Photos and Camera:</strong> With your permission, we access your camera and photo library so you can scan discs with the Disc Scanner, set a profile photo, and add course or gallery photos. Images you choose to upload are stored as described in "How Your Data Is Stored and Synced." We only access photos you select or capture for these features.</p>
 <p><strong>Location Data:</strong> With your permission, we collect location data to provide course maps, satellite imagery, distance measurements, and weather conditions during gameplay, and to help you find local casual rounds and meetups. You control location access through your device settings (see "Device Permissions").</p>
@@ -43,7 +43,7 @@ const HTML = `
 <ul>
   <li>Provide, operate, and maintain the App and its features</li>
   <li>Power Caddy recommendations based on your bag, the hole, and current conditions</li>
-  <li>Calculate and update your Game IQ performance metrics</li>
+  <li>Calculate and update your Radius Rating performance metrics</li>
   <li>Display satellite course maps and real-time weather data</li>
   <li>Enable community features such as the Discover feed, forums, local meetups, course building, and player connections</li>
   <li>Place you in the appropriate division for rankings, leaderboards, and other competitive features</li>
@@ -66,7 +66,7 @@ const HTML = `
 <p>Because Radius is cross-platform, data you create on one platform (for example, your bag or a round logged on Android) is synced through Firebase and can appear on your other signed-in devices and on the web dashboard.</p>
 
 <h2>Machine Learning and Recommendations</h2>
-<p>Radius uses machine learning to power features like Caddy disc recommendations, Game IQ scoring, and Disc Scanner identification. These features process your gameplay data, bag configuration, and environmental conditions (wind, temperature, hole layout) to generate personalized recommendations. This processing occurs on our servers and through the third-party providers listed below; the data used to generate recommendations is not sold or shared for unrelated purposes, and is not used to train third-party models except as permitted under our agreements with those providers.</p>
+<p>Radius uses machine learning to power features like Caddy disc recommendations, Radius Rating scoring, and Disc Scanner identification. These features process your gameplay data, bag configuration, and environmental conditions (wind, temperature, hole layout) to generate personalized recommendations. This processing occurs on our servers and through the third-party providers listed below; the data used to generate recommendations is not sold or shared for unrelated purposes, and is not used to train third-party models except as permitted under our agreements with those providers.</p>
 
 <h2>Analytics and Crash Reporting</h2>
 <p>To keep Radius reliable and to understand which features are used, we collect aggregate analytics and crash diagnostics through the following named providers:</p>
