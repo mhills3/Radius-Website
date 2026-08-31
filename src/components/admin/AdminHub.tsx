@@ -102,21 +102,38 @@ export default function AdminHub({ growth }: { growth: GrowthData }) {
   const totalUp = useCountUp(total);
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-12 sm:py-16">
-      <div className="font-mono text-[11px] font-bold uppercase tracking-[0.3em] text-[var(--gold)]">Internal use only</div>
-      <div className="mt-3 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-        <h1 className={`${HEAD} text-5xl font-black tracking-[-0.03em] sm:text-[64px] sm:leading-[0.95]`}>The Circle</h1>
-        {data && (total > 0 ? (
-          <div className="text-right">
-            <div style={NUM} className="text-5xl font-black leading-none text-[var(--gold)] sm:text-6xl">{totalUp}</div>
-            <div className="mt-1.5 text-[12px] font-bold uppercase tracking-[0.16em] text-[var(--sage)]">item{total === 1 ? "" : "s"} need you</div>
+    <div className="mx-auto max-w-5xl px-6 py-10 sm:py-14">
+      {/* ===== cinematic hero ===== */}
+      <div className="relative overflow-hidden rounded-[28px] border border-white/[0.08] shadow-[0_44px_110px_-44px_rgba(0,0,0,0.95)]">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/team/circle-hero.jpg" alt="" className="absolute inset-0 h-full w-full object-cover object-[center_38%]" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-deep)] via-[var(--bg-deep)]/60 to-[var(--bg-deep)]/5" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[var(--bg-deep)] via-[var(--bg-deep)]/35 to-transparent" />
+        <span aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--gold)]/50 to-transparent" />
+
+        <div className="relative flex min-h-[380px] flex-col justify-end p-7 sm:min-h-[440px] sm:p-10">
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--gold)] opacity-60" /><span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--gold)]" /></span>
+            <span className="font-mono text-[11px] font-bold uppercase tracking-[0.3em] text-[var(--gold)]">Internal use only</span>
           </div>
-        ) : (
-          <div className="text-[15px] font-semibold text-[var(--sage-dim)]">You&apos;re all caught up</div>
-        ))}
+          <div className="mt-3 flex flex-wrap items-end justify-between gap-x-8 gap-y-5">
+            <div className="min-w-0">
+              <h1 className={`${HEAD} text-5xl font-black tracking-[-0.03em] text-[var(--cream)] drop-shadow-[0_2px_24px_rgba(0,0,0,0.6)] sm:text-[68px] sm:leading-[0.92]`}>The Circle</h1>
+              <p className="mt-2.5 max-w-md text-[14.5px] leading-relaxed text-[var(--cream)]/70">Every signal from the community — bugs, requests, rewards, removals — gathered in one place for the people who keep Radius moving.</p>
+            </div>
+            {data && (total > 0 ? (
+              <div className="rounded-2xl border border-[var(--gold)]/25 bg-black/35 px-6 py-4 text-right backdrop-blur-md">
+                <div style={NUM} className="text-5xl font-black leading-none text-[var(--gold)] sm:text-6xl">{totalUp}</div>
+                <div className="mt-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--sage)]">item{total === 1 ? "" : "s"} need you</div>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-[#5fcf80]/25 bg-black/35 px-6 py-4 text-[14px] font-semibold text-[#8fe0a5] backdrop-blur-md">✓ All caught up</div>
+            ))}
+          </div>
+        </div>
       </div>
 
-      <div className="mt-10 space-y-3">
+      <div className="mt-8 space-y-3">
         {queues === null ? (
           <div className="flex justify-center py-16 text-[var(--sage)]"><svg className="h-7 w-7 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg></div>
         ) : (
@@ -134,6 +151,29 @@ export default function AdminHub({ growth }: { growth: GrowthData }) {
           <span className={`${HEAD} text-[12px] font-bold uppercase tracking-[0.2em] text-[var(--sage)]`}>Radius pulse</span>
         </div>
         <GrowthStrip data={growth} />
+      </div>
+
+      {/* ===== the crew ===== */}
+      <div className="mt-14">
+        <div className="mb-4 flex items-center gap-2.5">
+          <span className={`${HEAD} text-[12px] font-bold uppercase tracking-[0.2em] text-[var(--sage)]`}>The crew</span>
+          <span className="h-px flex-1 bg-[var(--hair)]" />
+          <span className="text-[12px] text-[var(--sage-dim)]">Why we do this</span>
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[
+            { src: "/team/crew-walk.jpg", pos: "object-center" },
+            { src: "/team/crew-handshake.jpg", pos: "object-center" },
+            { src: "/team/crew-hug.jpg", pos: "object-[center_30%]" },
+            { src: "/team/crew-highfive.jpg", pos: "object-center" },
+          ].map((c) => (
+            <div key={c.src} className="group relative aspect-[4/3] overflow-hidden rounded-2xl border border-white/[0.06]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={c.src} alt="" loading="lazy" className={`h-full w-full object-cover ${c.pos} transition-transform duration-500 group-hover:scale-[1.05]`} />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
