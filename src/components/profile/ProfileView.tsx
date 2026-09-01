@@ -133,7 +133,7 @@ export default function ProfileView({ canonicalId, identity }: { canonicalId: st
             <>
               {/* Rating feature (Game IQ fallback) */}
               <div className={`${card} flex flex-col items-center gap-6 p-6 sm:flex-row sm:items-center`}>
-                <IqRing iq={disp.value} progress={rankProgress(disp.value, rank)} label={rankLabel(rank)} caption={disp.provisional ? `${disp.label} · PROV` : disp.label} color={rank.color} color2={rank.secondary} />
+                <IqRing iq={disp.value} progress={rankProgress(disp.value, rank)} label={rankLabel(rank)} caption={disp.provisional ? `${disp.label} · PROV` : disp.label} captionGold={disp.isRating} color={rank.color} color2={rank.secondary} />
                 <div className="min-w-0 flex-1 text-center sm:text-left">
                   <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--gold)]">{disp.label}</div>
                   <div className="mt-0.5 font-[family-name:var(--font-heading)] text-2xl font-extrabold">{rankLabel(rank)}</div>

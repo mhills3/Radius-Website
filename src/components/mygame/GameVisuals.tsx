@@ -102,7 +102,7 @@ export default function GameVisuals({ rating, rankText, meta, insight, rounds, r
       <div className="mb-8 flex items-center gap-5">
         {rating.isRating ? <LevelBadge rating={rating.value} size={72} /> : <LevelBadge iq={rating.value} size={72} />}
         <div className="min-w-0 flex-1">
-          <div className={eb} style={{ color: EB }}>{rating.provisional ? `${rating.label} · PROV` : rating.label}</div>
+          <div className={eb} style={{ color: rating.isRating ? GOLD : EB }}>{rating.provisional ? `${rating.label} · PROV` : rating.label}</div>
           <div className="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1">
             <span style={{ ...MONO, fontSize: 56, fontWeight: 700, color: INK, lineHeight: 1, letterSpacing: "-0.02em" }}>{rating.value}</span>
             <span style={{ ...MONO, fontSize: 16, color: SAGE }}>{rankText}</span>

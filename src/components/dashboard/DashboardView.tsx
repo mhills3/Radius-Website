@@ -196,7 +196,7 @@ export default function DashboardView({ data, uid }: { data: Dashboard; uid: str
           <div className={`fade-up relative overflow-hidden lg:col-span-2 ${card}`}>
             <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-[radial-gradient(circle,rgba(246,193,101,0.15),transparent_70%)]" />
             <div className="relative flex flex-col items-center gap-6 sm:flex-row sm:gap-8">
-              <IqRing iq={disp.value} progress={progress} label={rankLabel(rank)} caption={disp.provisional ? `${disp.label} · PROV` : disp.label} color={rank.color} color2={rank.secondary} />
+              <IqRing iq={disp.value} progress={progress} label={rankLabel(rank)} caption={disp.provisional ? `${disp.label} · PROV` : disp.label} captionGold={disp.isRating} color={rank.color} color2={rank.secondary} />
               <div className="min-w-0 flex-1">
                 <button onClick={() => setShowRanks(true)} className="group mb-4 flex items-center gap-3 rounded-2xl p-1.5 -m-1.5 text-left transition-colors hover:bg-white/[0.04]">
                   <LevelBadge rank={rank} size={56} />

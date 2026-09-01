@@ -21,7 +21,7 @@ export function CountUp({ value, duration = 1000, className }: { value: number; 
 }
 
 /** Circular rating gauge: progress = 0..1 within the current rank. Colored by tier. */
-export function IqRing({ iq, progress, label, caption = "Game IQ", color = "#f8cf80", color2 = "#d4a04a" }: { iq: number; progress: number; label: string; caption?: string; color?: string; color2?: string }) {
+export function IqRing({ iq, progress, label, caption = "Game IQ", captionGold = false, color = "#f8cf80", color2 = "#d4a04a" }: { iq: number; progress: number; label: string; caption?: string; captionGold?: boolean; color?: string; color2?: string }) {
   const size = 196;
   const stroke = 14;
   const r = (size - stroke) / 2;
@@ -56,7 +56,7 @@ export function IqRing({ iq, progress, label, caption = "Game IQ", color = "#f8c
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center px-4">
-        <span className="max-w-full truncate text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--sage-dim)]">{caption}</span>
+        <span className={`max-w-full truncate font-bold uppercase ${captionGold ? "font-[family-name:var(--font-heading)] text-[10.5px] tracking-[0.2em] text-[var(--gold)]" : "text-[10px] tracking-[0.18em] text-[var(--sage-dim)]"}`}>{caption}</span>
         {/* Radius Rating is 3–4 digits (vs Game IQ's 2), so scale the number to fit the ring. */}
         <CountUp value={iq} className={`font-[family-name:var(--font-heading)] font-extrabold leading-none tracking-tight text-[var(--cream)] ${String(Math.round(iq)).length >= 4 ? "text-[2.7rem]" : String(Math.round(iq)).length === 3 ? "text-[3.25rem]" : "text-6xl"}`} />
         <span className="mt-1.5 rounded-full px-3 py-0.5 text-xs font-bold" style={{ background: `${color}22`, color }}>{label}</span>
