@@ -1,3 +1,5 @@
+import ContactForm from "./ContactForm";
+
 export const metadata = {
   title: "Contact",
   description: "Have feedback, found a bug, or want to partner with us? Get in touch.",
@@ -18,28 +20,7 @@ export default function ContactPage() {
           </p>
         </div>
 
-        <form action="https://formsubmit.co/info@radiusdiscgolf.com" method="POST" className="mt-10 space-y-4">
-          <input type="hidden" name="_subject" value="New Contact Message — Radius" />
-          <input type="hidden" name="_captcha" value="false" />
-          <input type="hidden" name="_template" value="table" />
-          <input type="hidden" name="_next" value="https://radiusdiscgolf.com/contact.html?submitted=1" />
-
-          <div>
-            <label className="mb-1.5 block text-sm font-semibold text-[#16221b]">Name</label>
-            <input name="name" placeholder="Your name" required className="w-full rounded-xl border border-black/10 bg-white px-4 py-3 text-sm text-[#16221b] placeholder-[#8a968d] outline-none transition-colors focus:border-[var(--gold)]" />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-semibold text-[#16221b]">Email</label>
-            <input type="email" name="email" placeholder="you@example.com" required className="w-full rounded-xl border border-black/10 bg-white px-4 py-3 text-sm text-[#16221b] placeholder-[#8a968d] outline-none transition-colors focus:border-[var(--gold)]" />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-semibold text-[#16221b]">Message</label>
-            <textarea name="message" rows={5} placeholder="What's on your mind?" required className="w-full rounded-xl border border-black/10 bg-white px-4 py-3 text-sm text-[#16221b] placeholder-[#8a968d] outline-none transition-colors focus:border-[var(--gold)]" />
-          </div>
-          <button type="submit" className="w-full rounded-full bg-[var(--gold)] px-6 py-4 text-sm font-bold text-[#16221b] transition-all hover:-translate-y-0.5 hover:bg-[var(--gold-bright)]">
-            Send message
-          </button>
-        </form>
+        <ContactForm />
 
         <p className="mt-8 text-center text-sm text-[#6b7a70]">
           Prefer email? Reach us at{" "}
