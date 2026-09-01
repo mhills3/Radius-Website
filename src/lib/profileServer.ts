@@ -11,6 +11,8 @@ export interface ProfileIdentity {
   username: string;
   photo?: string;
   gameIQ: number;
+  radiusRating?: number;          // iOS-mirrored Radius Rating (authoritative)
+  radiusRatingProvisional?: boolean;
   hidden: boolean;
   bio?: string;
   homeCourseName?: string;
@@ -42,7 +44,7 @@ export const getUserByUsername = cache(async (username: string, preferredId?: st
     structuredQuery: {
       from: [{ collectionId: "users" }],
       where: { fieldFilter: { field: { fieldPath: "username" }, op: "EQUAL", value: { stringValue: username } } },
-      select: { fields: ["name", "username", "profileImageUrl", "gameIQ", "previousGameIQ", "hideWebProfile", "bio", "homeCourseName", "homeCourseId"].map((f) => ({ fieldPath: f })) },
+      select: { fields: ["name", "username", "profileImageUrl", "gameIQ", "previousGameIQ", "radiusRating", "radiusRatingProvisional", "hideWebProfile", "bio", "homeCourseName", "homeCourseId"].map((f) => ({ fieldPath: f })) },
       limit: 5,
     },
   };
@@ -83,6 +85,10 @@ export const getUserByUsername = cache(async (username: string, preferredId?: st
     if (!photo) photo = await latestPostPhoto(best.id as string);
     const iqOf = (d: Record<string, unknown>) => (Number(d.gameIQ) > 0 ? Number(d.gameIQ) : Number(d.previousGameIQ) || 0);
     const iq = iqOf(best) || Math.max(0, ...docs.map(iqOf));
+    // Radius Rating (authoritative, iOS-mirrored) — highest across alias docs, with its own provisional flag.
+    const ratingOf = (d: Record<string, unknown>) => (Number(d.radiusRating) > 0 ? Number(d.radiusRating) : 0);
+    const ratingDoc = [best, ...docs].reduce((a, b) => (ratingOf(b) > ratingOf(a) ? b : a), best);
+    const radiusRating = ratingOf(ratingDoc) || undefined;
     const firstStr = (k: string) => ((best[k] as string)?.trim?.() || docs.map((d) => (d[k] as string)?.trim?.()).find(Boolean)) || undefined;
     return {
       id: best.id as string,
@@ -90,6 +96,8 @@ export const getUserByUsername = cache(async (username: string, preferredId?: st
       username: (best.username as string) || username,
       photo,
       gameIQ: iq,
+      radiusRating,
+      radiusRatingProvisional: radiusRating ? ratingDoc.radiusRatingProvisional === true : undefined,
       hidden: docs.some((d) => d.hideWebProfile === true),
       bio: firstStr("bio"),
       homeCourseName: firstStr("homeCourseName"),

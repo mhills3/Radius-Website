@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { type Dashboard, isProEntitled } from "@/lib/account";
-import { rankForIQ, rankLabel, rankProgress } from "@/lib/rank";
+import { rankForIQ, rankForRating, rankLabel, rankProgress, resolveRating } from "@/lib/rank";
 import { IqRing, AreaChart, BarList, CountUp } from "@/components/dashboard/charts";
 import LevelBadge from "@/components/rank/LevelBadge";
 import RankLibrary from "@/components/rank/RankLibrary";
@@ -46,7 +46,9 @@ function Stat({ label, value }: { label: string; value: string | number }) {
 }
 
 export default function DashboardView({ data, uid }: { data: Dashboard; uid: string }) {
-  const { profile, iqCurrent, iqHistory, rounds, topDiscs, bag, roundMetas, acesCount } = data;
+  const { profile, iqCurrent, iqHistory, radiusRating, radiusRatingProvisional, ratingHistory, rounds, topDiscs, bag, roundMetas, acesCount } = data;
+  // Radius Rating with Game IQ fallback — drives the hero number, tier, and history.
+  const disp = resolveRating({ radiusRating, radiusRatingProvisional, gameIQ: iqCurrent });
   const [decoded, setDecoded] = useState<DecodedRound[] | null>(null);
   const [openRound, setOpenRound] = useState<DecodedRound | null>(null);
   const metric = useMetricPref();
@@ -77,10 +79,12 @@ export default function DashboardView({ data, uid }: { data: Dashboard; uid: str
       setLoadingRound(null);
     }
   };
-  const rank = rankForIQ(iqCurrent);
-  const progress = rankProgress(iqCurrent, rank);
-  const toNext = rank.nextIQ != null ? Math.max(0, rank.nextIQ - iqCurrent) : 0;
-  const iqValues = iqHistory.map((p) => p.iq);
+  const rank = disp.rank;
+  const progress = rankProgress(disp.value, rank);
+  const toNext = rank.nextIQ != null ? Math.max(0, rank.nextIQ - disp.value) : 0;
+  const unit = disp.isRating ? "pts" : "IQ";
+  // History series: the rating trajectory for rated players, else the IQ history.
+  const iqValues = disp.isRating ? ratingHistory.map((p) => p.value) : iqHistory.map((p) => p.iq);
   const iqDelta = iqValues.length >= 2 ? iqValues[iqValues.length - 1] - iqValues[0] : 0;
 
   // Avg/best from the FULL history (roundMetas), not the capped recent list — otherwise the all-time best is wrong.
@@ -90,7 +94,7 @@ export default function DashboardView({ data, uid }: { data: Dashboard; uid: str
   // Scoring trend = 5 most recent rounds (roundMetas is date-desc), oldest→newest for the chart.
   const scoreSeries = roundMetas.filter((m) => m.scoreToPar != null).slice(0, 5).reverse().map((m) => m.scoreToPar as number);
 
-  const topIQ = iqValues.length ? Math.max(...iqValues) : iqCurrent;
+  const topIQ = iqValues.length ? Math.max(...iqValues) : disp.value;
   const now = new Date();
   const thisYear = now.getFullYear();
   const roundsThisYear = roundMetas.filter((m) => new Date(m.date).getFullYear() === thisYear).length;
@@ -136,7 +140,7 @@ export default function DashboardView({ data, uid }: { data: Dashboard; uid: str
   const badges = [
     { icon: "🎯", name: "First Ace", desc: acesCount > 0 ? `${acesCount} logged` : "Hole in one", got: acesCount > 0 },
     { icon: "🔥", name: "Sub-Par Round", desc: "Finish under par", got: subPar },
-    { icon: "💎", name: "Pro Tier", desc: "Reach Pro rank", got: iqCurrent >= 75 },
+    { icon: "💎", name: "Pro Tier", desc: "Reach Pro rank", got: disp.rank.level >= 21 },
     { icon: "💥", name: "Big Arm", desc: longestDrive >= 400 ? "400 ft drive" : `${Math.round(longestDrive)}/400 ft`, got: longestDrive >= 400 },
     { icon: "🗺️", name: "Explorer", desc: distinctCourses >= 5 ? "5+ courses" : `${distinctCourses}/5 courses`, got: distinctCourses >= 5 },
     { icon: "🏅", name: "50 Rounds", desc: totalRounds >= 50 ? "50 logged" : `${totalRounds}/50`, got: totalRounds >= 50 },
@@ -192,7 +196,7 @@ export default function DashboardView({ data, uid }: { data: Dashboard; uid: str
           <div className={`fade-up relative overflow-hidden lg:col-span-2 ${card}`}>
             <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-[radial-gradient(circle,rgba(246,193,101,0.15),transparent_70%)]" />
             <div className="relative flex flex-col items-center gap-6 sm:flex-row sm:gap-8">
-              <IqRing iq={iqCurrent} progress={progress} label={rankLabel(rank)} color={rank.color} color2={rank.secondary} />
+              <IqRing iq={disp.value} progress={progress} label={rankLabel(rank)} caption={disp.provisional ? `${disp.label} · PROV` : disp.label} color={rank.color} color2={rank.secondary} />
               <div className="min-w-0 flex-1">
                 <button onClick={() => setShowRanks(true)} className="group mb-4 flex items-center gap-3 rounded-2xl p-1.5 -m-1.5 text-left transition-colors hover:bg-white/[0.04]">
                   <LevelBadge rank={rank} size={56} />
@@ -202,7 +206,7 @@ export default function DashboardView({ data, uid }: { data: Dashboard; uid: str
                   </div>
                 </button>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--sage-dim)]">IQ history</span>
+                  <span className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--sage-dim)]">{disp.isRating ? "Rating history" : "IQ history"}</span>
                   {iqDelta !== 0 && (
                     <span className={`text-xs font-bold ${iqDelta > 0 ? "text-[#5fcf80]" : "text-[#f08c8c]"}`}>{iqDelta > 0 ? "▲" : "▼"} {Math.abs(iqDelta)}</span>
                   )}
@@ -211,10 +215,10 @@ export default function DashboardView({ data, uid }: { data: Dashboard; uid: str
                 <p className="mt-3 text-sm text-[var(--text-body)]">
                   {rank.nextIQ != null ? (
                     <>
-                      <span className="font-bold text-[var(--cream)]">{toNext}</span> IQ to <span className="font-semibold text-[var(--gold)]">{rankLabel(rankForIQ(rank.nextIQ))}</span>
+                      <span className="font-bold text-[var(--cream)]">{toNext}</span> {unit} to <span className="font-semibold text-[var(--gold)]">{rankLabel(disp.isRating ? rankForRating(rank.nextIQ) : rankForIQ(rank.nextIQ))}</span>
                     </>
                   ) : (
-                    "Top rank reached — MPO."
+                    "Top rank reached — Champion."
                   )}
                 </p>
               </div>
@@ -239,7 +243,7 @@ export default function DashboardView({ data, uid }: { data: Dashboard; uid: str
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               <PR icon="🏆" label="Best round" value={bestScore != null ? fmtScore(bestScore) : "—"} accent />
               <PR icon="🚀" label="Longest drive" value={profile.maxDistance ? fmtDist(profile.maxDistance, metric) : "—"} />
-              <PR icon="🧠" label="Top Game IQ" value={topIQ ? String(topIQ) : "—"} />
+              <PR icon="🧠" label={disp.isRating ? "Top rating" : "Top Game IQ"} value={topIQ ? String(topIQ) : "—"} />
               <PR icon="⛳" label="Total rounds" value={String(profile.roundsPlayed ?? roundMetas.length)} />
             </div>
           </div>
@@ -392,7 +396,7 @@ export default function DashboardView({ data, uid }: { data: Dashboard; uid: str
       </div>
 
       {openRound && <Scorecard round={openRound} onClose={() => setOpenRound(null)} />}
-      {showRanks && <RankLibrary currentTier={rank.tier} onClose={() => setShowRanks(false)} />}
+      {showRanks && <RankLibrary currentTier={rank.tier} isRating={disp.isRating} onClose={() => setShowRanks(false)} />}
     </div>
   );
 }

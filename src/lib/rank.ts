@@ -84,3 +84,75 @@ export function rankProgress(iq: number, r: Rank): number {
   if (span <= 0) return 1;
   return Math.max(0, Math.min(1, (iq - r.iqRequired) / span));
 }
+
+// ============================================================================
+// Radius Rating scale — same 6 tiers / 30 levels, re-keyed to the 4-digit
+// rating (iOS PlayerRank.ratingThresholds, rating spec §7). Bands:
+// Rookie <650 · Amateur 650–799 · Competitor 800–874 · Advanced 875–949 ·
+// Pro 950–1024 · Champion 1025+. Same names/colors/icons as Game IQ; only the
+// numeric floors differ. Lookup = last level whose floor ≤ rating (iOS forRating).
+// ============================================================================
+
+export const RATING_THRESHOLDS: number[] = [
+  0, 530, 560, 590, 620,       // Rookie I–V
+  650, 680, 710, 740, 770,     // Amateur I–V
+  800, 815, 830, 845, 860,     // Competitor I–V
+  875, 890, 905, 920, 935,     // Advanced I–V
+  950, 965, 980, 995, 1010,    // Pro I–V
+  1025, 1040, 1055, 1070, 1085,// Champion I–V
+];
+
+// Rating ranks reuse the Rank shape: iqRequired = rating floor, nextIQ = next floor.
+const ALL_RATING: Rank[] = RAW.map(([level, tierKey, subLevel], i) => ({
+  level,
+  tier: TIER[tierKey].display,
+  color: TIER[tierKey].color,
+  secondary: TIER[tierKey].secondary,
+  icon: TIER[tierKey].icon,
+  subLevel,
+  iqRequired: RATING_THRESHOLDS[i],
+  nextIQ: RATING_THRESHOLDS[i + 1] ?? null,
+}));
+
+export function rankForRating(rating: number): Rank {
+  let r = ALL_RATING[0];
+  for (const x of ALL_RATING) if (rating >= x.iqRequired) r = x;
+  return r;
+}
+
+// Tier bands on the rating scale — for the tiers modal / rank library.
+export const TIER_LIST_RATING: TierInfo[] = [
+  { ...TIER.ROOKIE, iqMin: 0, iqMax: 649 },
+  { ...TIER.AMATEUR, iqMin: 650, iqMax: 799 },
+  { ...TIER.COMPETITOR, iqMin: 800, iqMax: 874 },
+  { ...TIER.CONTENDER, iqMin: 875, iqMax: 949 },
+  { ...TIER.ELITE, iqMin: 950, iqMax: 1024 },
+  { ...TIER.PRO, iqMin: 1025, iqMax: 9999 }, // display as "1025+"
+];
+
+// ---- Unified accessor: Radius Rating with Game IQ fallback (transition) ----
+// While the iOS rating build rolls out, most users have no radiusRating yet, so
+// we fall back to their Game IQ number + IQ tier. Rated users show on the rating
+// scale; unrated users show on the IQ scale, each with its own tier.
+export interface RatingDisplay {
+  value: number;       // the number to render
+  isRating: boolean;   // true = Radius Rating, false = Game IQ fallback
+  rank: Rank;          // tier/level for badge + color
+  label: string;       // "Radius Rating" | "Game IQ"
+  shortLabel: string;  // "Rating" | "Game IQ"
+  provisional: boolean;
+  hasValue: boolean;   // false = unrated with no IQ either
+}
+
+export function resolveRating(opts: {
+  radiusRating?: number | null;
+  radiusRatingProvisional?: boolean | null;
+  gameIQ?: number | null;
+}): RatingDisplay {
+  const rr = opts.radiusRating;
+  if (typeof rr === "number" && rr > 0) {
+    return { value: rr, isRating: true, rank: rankForRating(rr), label: "Radius Rating", shortLabel: "Rating", provisional: !!opts.radiusRatingProvisional, hasValue: true };
+  }
+  const iq = opts.gameIQ ?? 0;
+  return { value: iq, isRating: false, rank: rankForIQ(iq), label: "Game IQ", shortLabel: "Game IQ", provisional: false, hasValue: iq > 0 };
+}

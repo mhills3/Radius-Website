@@ -28,6 +28,9 @@ export interface DecodedHole {
 export interface DecodedRound {
   roundId: string;
   courseName: string;
+  courseId?: string;  // identity-first course resolution for Radius Rating
+  layoutId?: string;  // which layout was played (nil = default)
+  gameMode?: string;  // "None" = a rated round; games (Wolf, etc.) are unrated
   date: number;
   isComplete: boolean;
   holes: DecodedHole[];
@@ -632,6 +635,9 @@ function parseRound(docId: string, data: any): Promise<DecodedRound | null> {
       return {
         roundId: (j.id as string) ?? docId,
         courseName: (j.courseName as string) ?? data.courseName ?? "Unknown course",
+        courseId: typeof j.courseId === "string" && j.courseId ? (j.courseId as string) : undefined,
+        layoutId: typeof j.layoutId === "string" && j.layoutId ? (j.layoutId as string) : undefined,
+        gameMode: typeof j.gameMode === "string" ? (j.gameMode as string) : "None",
         date: normEpoch(j.date ?? data.date, normEpoch(data.date, 0)),
         isComplete: Boolean(j.isComplete ?? data.isComplete),
         holes,

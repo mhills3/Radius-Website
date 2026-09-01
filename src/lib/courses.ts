@@ -36,6 +36,11 @@ export interface CourseHole {
   teeLng?: number;
   basketLat?: number;
   basketLng?: number;
+  // Radius Rating geometry (mirrored from iOS): raw GPS elevation delta, dogleg
+  // waypoints, and the GPS-path distance (tee→elbows→basket).
+  elevationFeet?: number;
+  elbows?: { lat: number; lng: number }[];
+  calculatedDistanceFt?: number;
 }
 
 export interface CourseReview {
@@ -140,6 +145,15 @@ export interface CourseScore {
   canonicalUid?: string;  // player's canonical id (alias logins collapse to this) — used for moderation
 }
 
+// Dogleg waypoints — [{lat,lng}] — mirrored from iOS for Radius Rating geometry.
+function holeElbows(h: DocumentData): { lat: number; lng: number }[] | undefined {
+  if (!Array.isArray(h?.elbows)) return undefined;
+  const out = h.elbows
+    .map((e: DocumentData) => ({ lat: e?.lat, lng: e?.lng }))
+    .filter((e: { lat: unknown; lng: unknown }) => typeof e.lat === "number" && typeof e.lng === "number") as { lat: number; lng: number }[];
+  return out.length ? out : undefined;
+}
+
 // Some courses store hole tee/basket coordinates but NO explicit `distance` — the apps compute it
 // from the tee→elbows→basket geometry. Mirror that so hole distances render everywhere.
 function holeGeoDistanceFt(h: DocumentData): number {
@@ -192,6 +206,9 @@ export function docToCourse(id: string, data: DocumentData): Course {
       teeLng: typeof h.teeLng === "number" ? h.teeLng : undefined,
       basketLat: typeof h.basketLat === "number" ? h.basketLat : undefined,
       basketLng: typeof h.basketLng === "number" ? h.basketLng : undefined,
+      elevationFeet: typeof h.elevationFeet === "number" ? h.elevationFeet : undefined,
+      elbows: holeElbows(h),
+      calculatedDistanceFt: holeGeoDistanceFt(h),
     })),
     layouts: Array.isArray(data.layouts)
       ? data.layouts.map((l: DocumentData) => {
@@ -206,6 +223,9 @@ export function docToCourse(id: string, data: DocumentData): Course {
             teeLng: typeof h.teeLng === "number" ? h.teeLng : undefined,
             basketLat: typeof h.basketLat === "number" ? h.basketLat : undefined,
             basketLng: typeof h.basketLng === "number" ? h.basketLng : undefined,
+            elevationFeet: typeof h.elevationFeet === "number" ? h.elevationFeet : undefined,
+            elbows: holeElbows(h),
+            calculatedDistanceFt: holeGeoDistanceFt(h),
           })).sort((a: CourseHole, b: CourseHole) => a.holeNumber - b.holeNumber);
           return {
             id: (l.id as string) ?? "",

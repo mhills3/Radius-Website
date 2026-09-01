@@ -19,7 +19,7 @@ const ARTICLE_CONT = [
 ];
 const JOURNEY = [
   { n: "01", t: "Training wheels", d: "A simple tool to tell you which disc to throw, and why." },
-  { n: "02", t: "A real system", d: "Game IQ, analytics, and a clear path to actually improve." },
+  { n: "02", t: "A real system", d: "Radius Rating, analytics, and a clear path to actually improve." },
   { n: "03", t: "A central hub", d: "Courses, discs, scores, stats & community — one home." },
   { n: "04", t: "A connected network", d: "The whole sport, learning and growing together." },
 ];

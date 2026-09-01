@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
 import { setProfileCover, getDashboard, type Dashboard } from "@/lib/account";
 import { uploadProfileCover } from "@/lib/postImage";
-import { rankForIQ, rankLabel, rankProgress } from "@/lib/rank";
+import { rankForIQ, rankForRating, rankLabel, rankProgress, resolveRating } from "@/lib/rank";
 import LevelBadge from "@/components/scorecard/LevelBadge";
 import RankTiersModal from "@/components/scorecard/RankTiersModal";
 import ProGate from "@/components/ProGate";
@@ -121,19 +121,24 @@ function StatRing({ value, unit, frac, label, size = 68 }: { value: string; unit
   );
 }
 
-// Cardless Game IQ status for the hero: dial with the score, tier emblem, and the IQ-history spark.
-function HeroIQ({ iq, history }: { iq: number; history: { t: number; iq: number }[] }) {
+// Cardless rating status for the hero: dial with the score, tier emblem, and the history spark.
+// Radius Rating with a Game IQ fallback — rated players show their rating + rating tier.
+function HeroIQ({ radiusRating, radiusRatingProvisional, iq, iqHistory, ratingHistory }: { radiusRating?: number; radiusRatingProvisional?: boolean; iq: number; iqHistory: { t: number; iq: number }[]; ratingHistory: { t: number; value: number }[] }) {
   const [tiers, setTiers] = useState(false);
-  const rank = rankForIQ(iq);
+  const disp = resolveRating({ radiusRating, radiusRatingProvisional, gameIQ: iq });
+  const rank = disp.rank;
   const rankText = rankLabel(rank);
-  const prog = rankProgress(iq, rank);
-  const toNext = rank.nextIQ != null ? Math.max(0, rank.nextIQ - iq) : 0;
-  const nextText = rank.nextIQ != null ? rankLabel(rankForIQ(rank.nextIQ)) : null;
-  const trend = history.length >= 2 ? history[history.length - 1].iq - history[history.length - 2].iq : 0;
+  const prog = rankProgress(disp.value, rank);
+  const toNext = rank.nextIQ != null ? Math.max(0, rank.nextIQ - disp.value) : 0;
+  const nextText = rank.nextIQ != null ? rankLabel(disp.isRating ? rankForRating(rank.nextIQ) : rankForIQ(rank.nextIQ)) : null;
+  const unit = disp.isRating ? "pts" : "IQ";
+  // History series: the rating trajectory for rated players, else the IQ history.
+  const series = disp.isRating ? ratingHistory.map((p) => p.value) : iqHistory.map((p) => p.iq);
+  const trend = series.length >= 2 ? series[series.length - 1] - series[series.length - 2] : 0;
   // dial geometry
   const S = 150, R = S / 2 - 9, C = 2 * Math.PI * R;
   // spark geometry
-  const pts = history.slice(-16).map((h) => h.iq);
+  const pts = series.slice(-16);
   const sw = 300, sh = 60, sp = 4;
   const smin = Math.min(...pts), smax = Math.max(...pts), sspan = smax - smin || 1;
   const sx = (i: number) => (pts.length <= 1 ? sw : (i / (pts.length - 1)) * sw);
@@ -153,21 +158,21 @@ function HeroIQ({ iq, history }: { iq: number; history: { t: number; iq: number 
           </g>
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <div className={`${HEAD} text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--sage-dim)]`}>Game IQ</div>
-          <div style={{ ...MONO, fontSize: 56, fontWeight: 700, lineHeight: 1, letterSpacing: "-0.03em", color: "var(--cream)" }}>{iq}</div>
+          <div className={`${HEAD} text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--sage-dim)]`}>{disp.provisional ? `${disp.label} · PROV` : disp.label}</div>
+          <div style={{ ...MONO, fontSize: 56, fontWeight: 700, lineHeight: 1, letterSpacing: "-0.03em", color: "var(--cream)" }}>{disp.value}</div>
         </div>
       </div>
       {/* rank + spark */}
       <div className="w-full min-w-0 flex-1">
         <button onClick={() => setTiers(true)} className="group flex items-center gap-3 text-left" title="See all rank tiers">
-          <LevelBadge iq={iq} size={40} />
+          {disp.isRating ? <LevelBadge rating={disp.value} size={40} /> : <LevelBadge iq={disp.value} size={40} />}
           <div className="min-w-0">
             <div className={`${HEAD} truncate text-[18px] font-bold text-[var(--cream)]`}>{rankText}</div>
             <div className="text-[12px] text-[var(--sage-dim)] transition-colors group-hover:text-[var(--sage)]" style={MONO}>Rank {rank.level} of 30 · view tiers</div>
           </div>
         </button>
         <div className="mt-4 flex items-center gap-2">
-          <span className={`${HEAD} text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--sage-dim)]`}>IQ History</span>
+          <span className={`${HEAD} text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--sage-dim)]`}>{disp.isRating ? "Rating History" : "IQ History"}</span>
           {trend !== 0 && (
             <span className="text-[12px] font-bold" style={{ color: trend > 0 ? "#8FBF9A" : "#C87F6A" }}>{trend > 0 ? "▲" : "▼"}{Math.abs(trend)}</span>
           )}
@@ -181,13 +186,13 @@ function HeroIQ({ iq, history }: { iq: number; history: { t: number; iq: number 
           </>}
         </svg>
         {toNext > 0 && nextText ? (
-          <div className="mt-2.5 text-[14px]" style={MONO}><span className="font-bold text-[var(--cream)]">{toNext} IQ</span><span className="text-[var(--sage-dim)]"> to </span><span className="font-bold text-[var(--gold)]">{nextText}</span></div>
+          <div className="mt-2.5 text-[14px]" style={MONO}><span className="font-bold text-[var(--cream)]">{toNext} {unit}</span><span className="text-[var(--sage-dim)]"> to </span><span className="font-bold text-[var(--gold)]">{nextText}</span></div>
         ) : (
           <div className="mt-2.5 text-[14px] font-bold text-[var(--gold)]" style={MONO}>Top rank reached</div>
         )}
       </div>
     </div>
-    {tiers && <RankTiersModal iq={iq} onClose={() => setTiers(false)} />}
+    {tiers && <RankTiersModal iq={disp.value} isRating={disp.isRating} onClose={() => setTiers(false)} />}
     </>
   );
 }
@@ -400,8 +405,8 @@ export default function HomeView({ uid }: { uid: string }) {
                 </div>
               )}
             </div>
-            {dash && dash.iqCurrent > 0
-              ? <HeroIQ iq={dash.iqCurrent} history={dash.iqHistory} />
+            {dash && (dash.iqCurrent > 0 || (dash.radiusRating ?? 0) > 0)
+              ? <HeroIQ radiusRating={dash.radiusRating} radiusRatingProvisional={dash.radiusRatingProvisional} iq={dash.iqCurrent} iqHistory={dash.iqHistory} ratingHistory={dash.ratingHistory} />
               : last ? <div className="w-full md:w-[300px]"><ToParLine round={last} w={300} h={88} /></div> : null}
           </div>
         </div>

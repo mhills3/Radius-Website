@@ -79,7 +79,7 @@ export default async function StoryPage({ params }: Props) {
         {post.tags.length > 0 && <div className="mt-10 flex flex-wrap gap-2">{post.tags.map((t) => <span key={t} className="rounded-full bg-black/[0.05] px-3 py-1 text-xs font-medium text-[#46554c]">#{t}</span>)}</div>}
         <div className="mt-10 overflow-hidden rounded-3xl border border-[var(--gold)]/25 bg-[var(--gold)]/10 p-8 text-center">
           <h3 className="font-[family-name:var(--font-heading)] text-2xl font-bold tracking-tight">Put it into practice with <span className="text-[#9a7a3a]">Radius</span></h3>
-          <p className="mx-auto mt-2 max-w-md text-sm text-[#46554c]">Track rounds, scan your bag, find courses, and watch your Game IQ climb.</p>
+          <p className="mx-auto mt-2 max-w-md text-sm text-[#46554c]">Track rounds, scan your bag, find courses, and watch your Radius Rating climb.</p>
           <Link href="/login" className="mt-5 inline-block rounded-full bg-[#16221b] px-8 py-3.5 text-sm font-bold text-[var(--cream)] transition-all hover:-translate-y-0.5 hover:bg-[#22332a]">Create your free account</Link>
         </div>
       </article>

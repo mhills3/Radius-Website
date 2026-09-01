@@ -6,7 +6,7 @@ import { TIER_LIST } from "@/lib/rank";
 
 export const metadata: Metadata = {
   title: "Features — Radius",
-  description: "A guided tour of Radius: Game IQ, your Caddy, shot tracking on Apple Watch, putting insight, courses, unlimited scorecards, and community. The disc golf app that actually makes you better. Play smarter, not harder.",
+  description: "A guided tour of Radius: your Radius Rating, your Caddy, shot tracking on Apple Watch, putting insight, courses, unlimited scorecards, and community. The disc golf app that actually makes you better. Play smarter, not harder.",
   alternates: { canonical: "https://radiusdiscgolf.com/features" },
 };
 
@@ -55,7 +55,7 @@ const PERSONAS = [
   { icon: <PIcon><path d="M12 21v-8" /><path d="M12 13c-3.3 0-6-2.4-6-5.5C9.3 7.5 12 9.9 12 13Z" /><path d="M12 11c0-2.8 2.4-5 5.5-5C17.5 8.8 15.1 11 12 11Z" /></PIcon>, who: "New to the game", line: "Learn what to throw and why, with simple guidance that grows as you do." },
   { icon: <PIcon><circle cx="12" cy="12" r="4" /><path d="M12 2v2.4M12 19.6V22M22 12h-2.4M4.4 12H2M19.07 4.93l-1.7 1.7M6.63 17.37l-1.7 1.7M19.07 19.07l-1.7-1.7M6.63 6.63l-1.7-1.7" /></PIcon>, who: "Weekend casual", line: "Track rounds with friends, run fun game modes, and watch yourself get better." },
   { icon: <PIcon><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1.5" /></PIcon>, who: "League competitor", line: "Dial in your bag, study courses before you play, and climb the rankings." },
-  { icon: <PIcon><path d="M8 21h8" /><path d="M12 17.5V21" /><path d="M7 4.5h10V9a5 5 0 0 1-10 0V4.5Z" /><path d="M7 6.5H5a2 2 0 0 0-2 2c0 1.8 1.6 3.3 4 3.5" /><path d="M17 6.5h2a2 2 0 0 1 2 2c0 1.8-1.6 3.3-4 3.5" /></PIcon>, who: "Touring pro", line: "Deep stats and a Game IQ that scales all the way to Champion to sharpen every shot." },
+  { icon: <PIcon><path d="M8 21h8" /><path d="M12 17.5V21" /><path d="M7 4.5h10V9a5 5 0 0 1-10 0V4.5Z" /><path d="M7 6.5H5a2 2 0 0 0-2 2c0 1.8 1.6 3.3 4 3.5" /><path d="M17 6.5h2a2 2 0 0 1 2 2c0 1.8-1.6 3.3-4 3.5" /></PIcon>, who: "Touring pro", line: "Deep stats and a Radius Rating that scales all the way to Champion to sharpen every shot." },
 ];
 
 // Real rank tiers, straight from the app's rank system (Rookie → Champion).
@@ -171,15 +171,15 @@ export default function FeaturesPage() {
       <section className="relative overflow-hidden">
         <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-6 py-16 md:py-24 lg:grid-cols-[0.95fr_1.05fr]">
           <div className="flex justify-center lg:order-2 lg:justify-end">
-            <ScreenPhone src="/features/gameiq.png" alt="Radius Game IQ and your rank" tilt={3} className="w-[280px] sm:w-[326px]" />
+            <ScreenPhone src="/features/gameiq.png" alt="Your Radius Rating and your rank" tilt={3} className="w-[280px] sm:w-[326px]" />
           </div>
           <div className="lg:order-1">
-            <div className="mb-4 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">The Radius difference · Game IQ</div>
+            <div className="mb-4 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--gold)]">The Radius difference · Radius Rating</div>
             <h2 className="font-[family-name:var(--font-heading)] text-4xl font-extrabold leading-[1.05] tracking-[-0.03em] md:text-5xl">
               One number for how good<br className="hidden md:block" /> you actually are.
             </h2>
             <p className="mt-5 max-w-md text-lg leading-relaxed text-[var(--text-body)]">
-              Every round feeds one honest score — your Game IQ — and a rank that climbs from Rookie all the way to Champion. Finally, a clear answer to the only question that matters: <span className="font-semibold text-[var(--cream)]">am I getting better?</span>
+              Every round you log is rated against the layout's difficulty, and your best rounds average into one honest number — your Radius Rating — with a rank that climbs from Rookie all the way to Champion. Finally, a clear answer to the only question that matters: <span className="font-semibold text-[var(--cream)]">am I getting better?</span>
             </p>
             <div className="mt-8">
               <div className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--sage-dim)]">30 ranks · 6 tiers to climb</div>

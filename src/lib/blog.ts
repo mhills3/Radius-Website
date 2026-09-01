@@ -212,7 +212,7 @@ End every practice session with **5 "money" putts** from your make-or-break dist
 ## Build a routine
 Pick the same stance, grip, and tempo every time. A repeatable routine removes doubt. Putt **every day**, even 15 minutes — consistency beats marathon sessions.
 
-Log your rounds in Radius and watch your Game IQ climb as your circle-1 percentage improves.`,
+Log your rounds in Radius and watch your Radius Rating climb as your circle-1 percentage improves.`,
   },
   {
     slug: "how-to-read-a-disc-golf-hole",

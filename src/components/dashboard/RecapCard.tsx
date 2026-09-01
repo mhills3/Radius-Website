@@ -1,6 +1,7 @@
 "use client";
 
 import { type Dashboard } from "@/lib/account";
+import { resolveRating } from "@/lib/rank";
 
 const WEEK = 7 * 86400000;
 const fmt = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `${n}`);
@@ -12,9 +13,11 @@ export default function RecapCard({ data }: { data: Dashboard }) {
   const thisWk = metas.filter((m) => now - m.date < WEEK);
   const best = thisWk.reduce<number | null>((b, m) => (typeof m.scoreToPar === "number" && (b == null || m.scoreToPar < b) ? m.scoreToPar : b), null);
   const holes = thisWk.reduce((s, m) => s + (m.holesPlayed || 0), 0);
-  const hist = data.iqHistory;
-  const weekAgoIq = [...hist].reverse().find((p) => p.t <= now - WEEK)?.iq ?? hist[0]?.iq ?? data.iqCurrent;
-  const iqChange = data.iqCurrent - weekAgoIq;
+  // Radius Rating with Game IQ fallback — rated players show "Rating {value}" off the rating trajectory.
+  const disp = resolveRating({ radiusRating: data.radiusRating, radiusRatingProvisional: data.radiusRatingProvisional, gameIQ: data.iqCurrent });
+  const hist = disp.isRating ? data.ratingHistory.map((p) => ({ t: p.t, v: p.value })) : data.iqHistory.map((p) => ({ t: p.t, v: p.iq }));
+  const weekAgo = [...hist].reverse().find((p) => p.t <= now - WEEK)?.v ?? hist[0]?.v ?? disp.value;
+  const change = disp.value - weekAgo;
   const Dot = () => <span className="text-[var(--sage-dim)]/50">·</span>;
 
   return (
@@ -27,7 +30,7 @@ export default function RecapCard({ data }: { data: Dashboard }) {
           <Dot /><span><b className="font-bold text-[var(--cream)]">{thisWk.length}</b> rounds</span>
           {holes > 0 && <><Dot /><span><b className="font-bold text-[var(--cream)]">{holes}</b> holes</span></>}
           {best != null && <><Dot /><span>best <b className="font-bold" style={{ color: scoreColor(best) }}>{fmt(best)}</b></span></>}
-          {data.iqCurrent > 0 && <><Dot /><span>IQ <b className="font-bold text-[var(--cream)]">{data.iqCurrent}</b>{iqChange !== 0 ? <span className={iqChange > 0 ? "text-[#5fcf80]" : "text-[#f08c8c]"}> {iqChange > 0 ? "▲" : "▼"}{Math.abs(iqChange)}</span> : null}</span></>}
+          {disp.hasValue && <><Dot /><span>{disp.shortLabel} <b className="font-bold text-[var(--cream)]">{disp.value}</b>{disp.provisional ? <span className="text-[var(--sage-dim)]"> PROV</span> : null}{change !== 0 ? <span className={change > 0 ? "text-[#5fcf80]" : "text-[#f08c8c]"}> {change > 0 ? "▲" : "▼"}{Math.abs(change)}</span> : null}</span></>}
         </>
       )}
     </div>

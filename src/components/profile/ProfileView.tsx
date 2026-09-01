@@ -11,7 +11,7 @@ import { type RankInfo } from "@/lib/community";
 import { getBagNames, getDiscCatalog, getCustomDiscs, normCat } from "@/lib/bag";
 import { buildDiscs, customToDiscData, type DiscData } from "@/lib/discs";
 import { slugify } from "@/lib/courses";
-import { rankForIQ, rankLabel, rankProgress } from "@/lib/rank";
+import { rankLabel, rankProgress, resolveRating } from "@/lib/rank";
 import { IqRing } from "@/components/dashboard/charts";
 import DiscGraphic from "@/components/bag/DiscGraphic";
 import LevelBadge from "@/components/rank/LevelBadge";
@@ -51,8 +51,9 @@ export default function ProfileView({ canonicalId, identity }: { canonicalId: st
 
   const bagByCat = useMemo(() => CAT_ORDER.map((c) => ({ ...c, discs: bag.filter((d) => normCat(d.category) === c.key) })).filter((g) => g.discs.length), [bag]);
 
-  const iq = data?.iqCurrent ?? 0;
-  const rank = useMemo(() => rankForIQ(iq), [iq]);
+  // Radius Rating with Game IQ fallback — drives the hero number, tier badge, and ring.
+  const disp = useMemo(() => resolveRating({ radiusRating: data?.radiusRating, radiusRatingProvisional: data?.radiusRatingProvisional, gameIQ: data?.iqCurrent }), [data]);
+  const rank = disp.rank;
   const metas = data?.roundMetas ?? [];
   const aces = data?.acesCount ?? 0;
   const courses = useMemo(() => new Set(metas.map((m) => (m.courseName || "").trim()).filter((c) => c && c !== "Unknown course")).size, [metas]);
@@ -98,7 +99,7 @@ export default function ProfileView({ canonicalId, identity }: { canonicalId: st
               <h1 className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-[-0.02em] md:text-5xl">{identity.name}</h1>
               <div className="text-[var(--sage-dim)]">@{identity.username}</div>
               <div className="mt-2 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-                <span className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-bold" style={{ background: `${rank.color}22`, color: rank.color }}>{rankLabel(rank)} · {iq || "—"} IQ</span>
+                <span className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-bold" style={{ background: `${rank.color}22`, color: rank.color }}>{rankLabel(rank)} · {disp.value || "—"}{disp.isRating ? "" : " IQ"}</span>
                 {identity.homeCourseName && (
                   identity.homeCourseId
                     ? <Link href={`/courses/${slugify(identity.homeCourseName, identity.homeCourseId)}`} className="inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.05] px-3 py-1 text-sm font-semibold text-[var(--cream)] transition-colors hover:border-[var(--gold)]/50">🏠 {identity.homeCourseName}</Link>
@@ -118,7 +119,7 @@ export default function ProfileView({ canonicalId, identity }: { canonicalId: st
             <HeroStat label="Courses" value={courses} />
             <HeroStat label="Best" value={best != null ? fmt(best) : "—"} color={best != null ? scoreColor(best) : undefined} />
             <HeroStat label="Avg" value={avgScore != null ? fmt(avgScore) : "—"} />
-            <HeroStat label="Game IQ" value={iq || "—"} />
+            <HeroStat label={disp.label} value={disp.value || "—"} />
           </div>
         </div>
       </div>
@@ -130,11 +131,11 @@ export default function ProfileView({ canonicalId, identity }: { canonicalId: st
             <>{[0, 1, 2].map((i) => <div key={i} className={`h-40 animate-pulse ${card}`} />)}</>
           ) : (
             <>
-              {/* Game IQ feature */}
+              {/* Rating feature (Game IQ fallback) */}
               <div className={`${card} flex flex-col items-center gap-6 p-6 sm:flex-row sm:items-center`}>
-                <IqRing iq={iq} progress={rankProgress(iq, rank)} label={rankLabel(rank)} color={rank.color} color2={rank.secondary} />
+                <IqRing iq={disp.value} progress={rankProgress(disp.value, rank)} label={rankLabel(rank)} caption={disp.provisional ? `${disp.label} · PROV` : disp.label} color={rank.color} color2={rank.secondary} />
                 <div className="min-w-0 flex-1 text-center sm:text-left">
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--gold)]">Game IQ</div>
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--gold)]">{disp.label}</div>
                   <div className="mt-0.5 font-[family-name:var(--font-heading)] text-2xl font-extrabold">{rankLabel(rank)}</div>
                   <p className="mt-1 text-sm text-[var(--text-body)]">Radius rates every round by how well you scored, putted, and avoided trouble — rolled into one number.</p>
                 </div>
@@ -146,7 +147,7 @@ export default function ProfileView({ canonicalId, identity }: { canonicalId: st
                   <div className="px-5 pt-5 text-[10px] font-bold uppercase tracking-widest text-[var(--gold)]">Posts</div>
                   <div className="px-5">
                     {posts.map((p) => (
-                      <PostCard key={p.id} post={p} rank={{ name: identity.name, photo: identity.photo, username: identity.username, tier: rank.tier, color: rank.color, iq } as RankInfo} myReaction={undefined} onReact={() => router.push(`/community/post/${p.id}`)} onOpen={() => router.push(`/community/post/${p.id}`)} />
+                      <PostCard key={p.id} post={p} rank={{ name: identity.name, photo: identity.photo, username: identity.username, tier: rank.tier, color: rank.color, iq: disp.value, value: disp.value, label: disp.label, isRating: disp.isRating, provisional: disp.provisional } as RankInfo} myReaction={undefined} onReact={() => router.push(`/community/post/${p.id}`)} onOpen={() => router.push(`/community/post/${p.id}`)} />
                     ))}
                   </div>
                 </div>

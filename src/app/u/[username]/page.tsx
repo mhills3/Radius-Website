@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getUserByUsername } from "@/lib/profileServer";
-import { rankForIQ, rankLabel } from "@/lib/rank";
+import { rankLabel, resolveRating } from "@/lib/rank";
 import ProfileView from "@/components/profile/ProfileView";
 
 type Props = { params: Promise<{ username: string }>; searchParams: Promise<{ id?: string }> };
@@ -12,9 +12,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { username } = await params;
   const u = await getUserByUsername(username).catch(() => null);
   if (!u || u.hidden) return { title: "Player profile", description: "A disc golfer on Radius.", robots: u?.hidden ? { index: false } : undefined };
-  const rank = rankForIQ(u.gameIQ);
+  const disp = resolveRating({ radiusRating: u.radiusRating, radiusRatingProvisional: u.radiusRatingProvisional, gameIQ: u.gameIQ });
   const title = `${u.name} (@${u.username}) — Disc Golf Profile`;
-  const description = `${u.name} is ${rankLabel(rank)} on Radius${u.gameIQ ? ` with a ${u.gameIQ} Game IQ` : ""}. See their stats, bag, achievements, and recent rounds.`;
+  const description = `${u.name} is ${rankLabel(disp.rank)} on Radius${disp.hasValue ? ` with a ${disp.value} ${disp.label}` : ""}. See their stats, bag, achievements, and recent rounds.`;
   return {
     title,
     description,
@@ -41,11 +41,11 @@ export default async function Page({ params, searchParams }: Props) {
     );
   }
 
-  const rank = rankForIQ(u.gameIQ);
+  const disp = resolveRating({ radiusRating: u.radiusRating, radiusRatingProvisional: u.radiusRatingProvisional, gameIQ: u.gameIQ });
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "ProfilePage",
-    mainEntity: { "@type": "Person", name: u.name, alternateName: `@${u.username}`, ...(u.photo ? { image: u.photo } : {}), description: `${rankLabel(rank)} disc golfer on Radius` },
+    mainEntity: { "@type": "Person", name: u.name, alternateName: `@${u.username}`, ...(u.photo ? { image: u.photo } : {}), description: `${rankLabel(disp.rank)} disc golfer on Radius` },
   };
 
   return (

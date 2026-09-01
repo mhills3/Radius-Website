@@ -29,7 +29,7 @@ const PLANS = [
 ];
 
 const TIMELINE = [
-  { icon: "🔓", day: "Today", body: "Unlock everything — unlimited Caddy, full Game IQ insights, your Improve plan, and every game mode." },
+  { icon: "🔓", day: "Today", body: "Unlock everything — unlimited Caddy, full Radius Rating insights, your Improve plan, and every game mode." },
   { icon: "🔔", day: "Day 5", body: "We'll send a reminder before your trial ends. No surprises, ever." },
   { icon: "◎", day: "Day 7", body: "Your plan begins at $3.33/mo (annual). Cancel any time before and pay nothing." },
 ];
@@ -37,7 +37,7 @@ const TIMELINE = [
 const VERSUS = [
   { free: "Your score at the end of the round", pro: "A clear plan to shoot it lower" },
   { free: "A taste of the Caddy", pro: "Smart guidance on every single hole" },
-  { free: "Your Game IQ number", pro: "The full breakdown behind it" },
+  { free: "Your Radius Rating", pro: "The full breakdown behind it" },
   { free: "Every round you play, saved forever", pro: "The trends and weak spots hidden inside them" },
 ];
 
@@ -51,7 +51,7 @@ const BENEFITS = [
   },
   {
     title: "Find your next gain, faster",
-    body: "Full Game IQ insights break your game into putting, driving, scramble and management — and pinpoint exactly what to work on.",
+    body: "Full Radius Rating insights break your game into putting, driving, scramble and management — and pinpoint exactly what to work on.",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><path d="M3 17l5-5 4 4 8-8" /><path d="M16 8h4v4" /></svg>
     ),
@@ -71,13 +71,13 @@ const COMPARE: { label: string; free: boolean; pro: boolean }[] = [
   { label: "Satellite hole maps & course leaderboards", free: true, pro: true },
   { label: "Disc scanning & bag builder", free: true, pro: true },
   { label: "Community: posts, follows & courses", free: true, pro: true },
-  { label: "Your Game IQ score", free: true, pro: true },
+  { label: "Your Radius Rating", free: true, pro: true },
   { label: "Caddy — sample shot reads", free: true, pro: true },
   { label: "Per-round stats", free: true, pro: true },
   { label: "Build & manage multiple bags", free: false, pro: true },
   { label: "Putting Practice — drills & training", free: false, pro: true },
   { label: "Full performance stats & trends", free: false, pro: true },
-  { label: "Full Game IQ Insights — skill breakdown & weaknesses", free: false, pro: true },
+  { label: "Full Radius Rating Insights — skill breakdown & weaknesses", free: false, pro: true },
   { label: "Unlimited Caddy — guidance on every hole", free: false, pro: true },
   { label: "Full bag analysis & optimization", free: false, pro: true },
   { label: "The Improve plan — personalized coaching for your weak spots", free: false, pro: true },
@@ -90,7 +90,7 @@ const PRO_SHOTS = [
   { img: "/features/putting.png", title: "Putting practice", body: "See where every putt misses on real hole maps with regulation C1 / C2 rings." },
 ];
 
-const FREE_CHIPS = ["Unlimited scorecards", "Your full round history", "Satellite course maps", "Disc scanning", "Game IQ score", "Per-round stats", "Community & feed"];
+const FREE_CHIPS = ["Unlimited scorecards", "Your full round history", "Satellite course maps", "Disc scanning", "Radius Rating", "Per-round stats", "Community & feed"];
 
 export default function SubscriptionPage() {
   const [annual, setAnnual] = useState(true);

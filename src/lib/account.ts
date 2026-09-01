@@ -1,6 +1,7 @@
 import { db } from "./firebase";
 import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
 import { getDecodedRoundsForCanonical, countAces, normEpoch, type RoundMeta } from "./rounds";
+import { computeOwnerRating } from "./ratingProfile";
 
 /** User image URLs can be arbitrary/invalid (content:// etc.) — keep only real http(s) URLs. */
 function safeHttp(u: unknown): string | undefined {
@@ -104,6 +105,12 @@ export interface Dashboard {
   profile: Profile;
   iqCurrent: number;
   iqHistory: IQPoint[];
+  // Radius Rating: authoritative iOS-mirrored number when synced, else recomputed
+  // from the user's own rounds. ratingHistory is the rolling-rating trajectory.
+  radiusRating?: number;
+  radiusRatingProvisional?: boolean;
+  radiusRatingRounds?: number;
+  ratingHistory: { t: number; value: number }[];
   rounds: RoundSummary[];
   topDiscs: { name: string; count: number }[];
   bag: BagDisc[];
@@ -417,5 +424,14 @@ export async function getDashboard(uid: string): Promise<Dashboard | null> {
     bag = (u.bagDiscs as unknown[]).map((n) => ({ name: String(n), hot: hotSet.has(String(n)) })).filter((d) => d.name);
   }
 
-  return { profile, iqCurrent, iqHistory, rounds, topDiscs, bag, roundMetas, acesCount };
+  // Radius Rating — authoritative iOS-mirrored number when present, else recompute
+  // from the user's own rounds (pre-sync stand-in). Trajectory is always computed.
+  const owner = await computeOwnerRating(decodedRounds);
+  const mirrored = typeof u.radiusRating === "number" && u.radiusRating > 0 ? (u.radiusRating as number) : undefined;
+  const radiusRating = mirrored ?? owner.player?.value;
+  const radiusRatingProvisional = mirrored != null ? u.radiusRatingProvisional === true : owner.player?.provisional;
+  const radiusRatingRounds = owner.player?.roundsRated ?? (typeof u.radiusRatingRounds === "number" ? (u.radiusRatingRounds as number) : undefined);
+  const ratingHistory = owner.trajectory;
+
+  return { profile, iqCurrent, iqHistory, radiusRating, radiusRatingProvisional, radiusRatingRounds, ratingHistory, rounds, topDiscs, bag, roundMetas, acesCount };
 }
