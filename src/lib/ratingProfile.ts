@@ -6,7 +6,9 @@
 // The authoritative number is still the iOS-mirrored users/{id}.radiusRating —
 // use this only to fill the trajectory/cards and as a pre-sync stand-in.
 
-import { getCourseById, type Course } from "./courses";
+import { db } from "./firebase";
+import { collection, getDocs, query, where, limit } from "firebase/firestore";
+import { getCourseById, docToCourse, type Course } from "./courses";
 import type { DecodedRound } from "./rounds";
 import {
   rate,
@@ -27,10 +29,11 @@ function toRatingRound(r: DecodedRound): RatingRoundLike {
   };
 }
 
-// Identity-first course resolution (iOS courseForRating precedence, courseId lane).
-// Rounds with no resolvable courseId still rate via their own hole distances (the
-// engine's 285-ft fallback), so name-matching is not required for a number.
-async function resolveCourses(rounds: DecodedRound[]): Promise<Map<string, Course>> {
+const norm = (s: string) => s.trim().toLowerCase();
+const hasMappedHole = (c: Course) => c.holes.some((h) => h.distance > 0 || (h.calculatedDistanceFt ?? 0) > 0);
+
+// Identity-first course resolution by courseId (iOS courseForRating id lane).
+async function resolveCoursesById(rounds: DecodedRound[]): Promise<Map<string, Course>> {
   const ids = [...new Set(rounds.map((r) => r.courseId).filter((x): x is string => !!x))];
   const map = new Map<string, Course>();
   await Promise.all(
@@ -38,10 +41,25 @@ async function resolveCourses(rounds: DecodedRound[]): Promise<Map<string, Cours
       try {
         const c = await getCourseById(id);
         if (c) map.set(id, c);
-      } catch { /* leave unresolved → hole-distance fallback */ }
+      } catch { /* fall through to name / hole-distance fallback */ }
     })
   );
   return map;
+}
+
+// Name lane (iOS courseForRating fallback): older rounds carry no courseId, so match by
+// course name and — for duplicate names — prefer a candidate whose hole count fits the round
+// and that actually has mapped geometry. Without this, unresolved rounds hit the 285-ft prior
+// (tighter than a real open course) and inflate the rating.
+async function resolveByName(name: string, playedCount: number): Promise<Course | null> {
+  try {
+    const snap = await getDocs(query(collection(db, "courses"), where("name", "==", name), limit(6)));
+    const cands = snap.docs.map((d) => docToCourse(d.id, d.data()));
+    if (cands.length <= 1) return cands[0] ?? null;
+    return cands.find((c) => c.holeCount === playedCount && hasMappedHole(c)) ?? cands.find(hasMappedHole) ?? cands[0];
+  } catch {
+    return null;
+  }
 }
 
 export interface RatedRoundPoint { date: number; rating: number; holesPlayed: number }
@@ -54,12 +72,30 @@ export interface OwnerRating {
 export async function computeOwnerRating(rounds: DecodedRound[], now = Date.now()): Promise<OwnerRating> {
   // Only rounds in the 24-month pool matter for the number/trajectory; bounds course fetches too.
   const complete = rounds.filter((r) => r.isComplete && r.date >= now - TWO_YEARS_MS);
-  const courses = await resolveCourses(complete);
+  const byId = await resolveCoursesById(complete);
+
+  // Name lane for rounds whose courseId didn't resolve (or is missing).
+  const needName = new Map<string, number>(); // normalized name → representative played-hole count
+  for (const r of complete) {
+    if ((r.courseId && byId.has(r.courseId)) || !r.courseName) continue;
+    const key = norm(r.courseName);
+    if (!needName.has(key)) needName.set(key, r.holes.filter((h) => h.score > 0).length || 18);
+  }
+  const byName = new Map<string, Course | null>();
+  await Promise.all(
+    [...needName.entries()].map(async ([key, played]) => {
+      // query with the round's own (untrimmed) name — course docs store the same typed name
+      const raw = complete.find((r) => norm(r.courseName) === key)?.courseName ?? key;
+      byName.set(key, await resolveByName(raw, played));
+    })
+  );
+
+  const courseFor = (r: DecodedRound): RatingCourseLike | null =>
+    (r.courseId ? byId.get(r.courseId) : undefined) ?? (r.courseName ? byName.get(norm(r.courseName)) ?? null : null);
 
   const rated: RatedRoundPoint[] = complete
     .map((r) => {
-      const course = (r.courseId ? courses.get(r.courseId) : undefined) as RatingCourseLike | undefined;
-      const rr = rate(toRatingRound(r), course ?? null);
+      const rr = rate(toRatingRound(r), courseFor(r));
       return rr ? { date: r.date, rating: rr.rating, holesPlayed: rr.holesPlayed } : null;
     })
     .filter((x): x is RatedRoundPoint => !!x)
