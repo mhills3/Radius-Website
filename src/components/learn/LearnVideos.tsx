@@ -9,9 +9,10 @@ const TUTORIALS: Tutorial[] = [
   { id: "JUt9u6Fcrnc", title: "How to Use the Home Tab", body: "Your dashboard for recent rounds, stats, and quick actions.", shot: "/screens/home.png" },
   { id: "WO1zfsUm5hQ", title: "How to Use the Discover Tab", body: "Find courses, players, and the community around you.", shot: "/screens/discover.png" },
   { id: "qgmhvFEuJfk", title: "Track a Round with Live Play", body: "Score, log shots, and capture data as you play.", shot: "/screens/holemap.png" },
+  { id: "IkkolFjNDmo", title: "Track Every Shot", body: "Log each throw — disc, distance, and result — for true shot-by-shot stats.", shot: "/screens/roundreview.png" },
   { id: "UK2VdbCMF-I", title: "How to Use Game Modes", body: "Run different formats with friends — solo, doubles, and more.", shot: "/screens/gamemodes.png" },
   { id: "ngibwiTZUBA", title: "How to Use the My Game Tab", body: "Target your weak spots with drills and tailored practice.", shot: "/screens/mygame.png" },
-  { id: "SHdkJ8qQGU4", title: "How to Build a Course", body: "Map a course hole-by-hole and share it with the community.", shot: "/screens/courses.png" },
+  { id: "iqt9ob9gfm4", title: "How to Build a Course", body: "Map a course hole-by-hole and share it with the community.", shot: "/screens/courses.png" },
 ];
 
 export default function LearnVideos() {
