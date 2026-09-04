@@ -10,8 +10,8 @@ import { getPlayedCourses } from "@/lib/rounds";
 import CourseTagPicker from "@/components/community/CourseTagPicker";
 import DiscTagPicker from "@/components/community/DiscTagPicker";
 import UserTagPicker from "@/components/community/UserTagPicker";
+import RatingLeaderboard from "@/components/community/RatingLeaderboard";
 import { getLeaderboard, getLeaderboardWithRegion, type MentionUser, type LeaderRow, type GeoLeaderRow } from "@/lib/leaderboard";
-import { followUser, unfollowUser } from "@/lib/follow";
 import { createNotification } from "@/lib/notifications";
 import { uploadPostImage } from "@/lib/postImage";
 import { getThreads, getMeetups, getRanksFor, FORUM_CATEGORIES, categoryColor, type Thread, type Meetup, type RankInfo } from "@/lib/community";
@@ -161,27 +161,10 @@ function CommunityInner() {
       getPlayedCourses(user.uid).then((m) => setPlayedNames(new Set(m.keys()))).catch(() => {});
     } else { setReactionMap({}); setFollowing(new Set()); setMyCid(null); setPlayedNames(new Set()); }
   }, [user]);
-  const toggleFollow = (targetId: string) => {
-    if (!user) { router.push("/login"); return; }
-    const isFollowing = following.has(targetId);
-    setFollowing((prev) => { const n = new Set(prev); if (isFollowing) n.delete(targetId); else n.add(targetId); return n; });
-    (isFollowing ? unfollowUser : followUser)(user.uid, targetId).catch(() => setFollowing((prev) => { const n = new Set(prev); if (isFollowing) n.add(targetId); else n.delete(targetId); return n; }));
-  };
   // The signed-in player's region (from their leaderboard row) drives the "near you" modules.
   const myRegion = useMemo(() => geoRows.find((r) => r.id === myCid) ?? undefined, [geoRows, myCid]);
   // My anchor point: real geolocation if granted, else my home-course coordinates.
   const myLoc = useMemo(() => userLoc ?? (myRegion?.lat != null && myRegion?.lng != null ? { lat: myRegion.lat, lng: myRegion.lng } : null), [userLoc, myRegion]);
-  const playersNearYou = useMemo(() => {
-    const pool = geoRows.filter((r) => r.id !== myCid && !following.has(r.id) && r.username);
-    if (myLoc) {
-      const withDist = pool.filter((r) => r.lat != null && r.lng != null).map((r) => ({ r, d: milesBetween(myLoc, { lat: r.lat!, lng: r.lng! }) })).sort((a, b) => a.d - b.d);
-      if (withDist.length >= 3) return withDist.slice(0, 8).map((x) => ({ ...x.r, dist: x.d }));
-    }
-    // Fallback: same state, then same country (never just one when the region has players).
-    const st = myRegion?.state ? pool.filter((r) => r.state === myRegion.state) : [];
-    const co = myRegion?.country ? pool.filter((r) => r.country === myRegion.country) : [];
-    return (st.length >= 3 ? st : co.length >= 3 ? co : pool).slice(0, 8).map((r) => ({ ...r, dist: undefined as number | undefined }));
-  }, [geoRows, myCid, following, myLoc, myRegion]);
   // Courses to improve — a MIX of task types (one clean line each), nearest first. We classify each
   // course by its single most-useful next task, then round-robin across the task buckets so the rail
   // always shows variety: at least one "leave a review", one "add a cover photo", one "add a layout".
@@ -667,32 +650,8 @@ function CommunityInner() {
           {/* RIGHT RAIL — borderless modules (label + list) */}
           <aside className="hidden lg:block">
             <div className="sticky top-[148px] space-y-8">
-              {/* Suggested for you — grows the follow graph (nearest players first) */}
-              <div>
-                <div className="mb-3 flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--gold)]">✨ Suggested for you</span>
-                  <Link href="/leaderboard" className="text-[11px] font-bold text-[var(--gold)] hover:underline">All →</Link>
-                </div>
-                {playersNearYou.length === 0 ? (
-                  <p className="text-sm text-[var(--sage-dim)]">Finding players to suggest…</p>
-                ) : (
-                  <div className="space-y-2.5">
-                    {playersNearYou.map((p) => (
-                      <div key={p.id} className="flex items-center gap-2.5">
-                        <Link href={`/u/${p.username}`} className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full bg-[var(--bg-mid)] text-xs font-bold text-[var(--cream)]">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          {p.photo ? <img src={p.photo} alt="" loading="lazy" className="h-full w-full object-cover" /> : p.name.charAt(0).toUpperCase()}
-                        </Link>
-                        <div className="min-w-0 flex-1">
-                          <Link href={`/u/${p.username}`} className="block truncate text-sm font-semibold text-[var(--cream)] hover:text-[var(--gold)]">{p.name}</Link>
-                          <div className="truncate text-[11px] text-[var(--sage-dim)]">{p.state || p.country || (p.username ? `@${p.username}` : "")}</div>
-                        </div>
-                        <button onClick={() => toggleFollow(p.id)} className="shrink-0 rounded-full bg-[#8FBDE3]/15 px-3 py-1 text-xs font-bold text-[#8FBDE3] transition-colors hover:bg-[#8FBDE3]/25">Follow</button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              {/* Top Radius Ratings — the community ranking board (toggle World / Country / State) */}
+              <RatingLeaderboard rows={geoRows} myState={myRegion?.state} myCountry={myRegion?.country} />
               {/* Courses to improve — drives contribution; each has a concrete reason + action */}
               {nearbyImprove.length > 0 && (
                 <div>
