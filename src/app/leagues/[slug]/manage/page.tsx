@@ -149,7 +149,9 @@ export default function LeagueManagePage() {
   useEffect(() => { if (teeEvent) { setTeeSize(teeEvent.teeGroupSize ?? 4); setTeeInt(teeEvent.teeIntervalMin ?? 10); setFlexEnd(teeEvent.windowEndsAt ? `${toDateInput(teeEvent.windowEndsAt)}T${toTimeInput(teeEvent.windowEndsAt)}` : ""); } }, [teeEid]); // eslint-disable-line react-hooks/exhaustive-deps
   const teeEntryOf = useMemo(() => new Map(teeEntries.map((e) => [e.id, e])), [teeEntries]);
   useEffect(() => { const cid2 = teeEvent?.courseId; if (!cid2) { setCourseHoleCount(null); return; } getCourseHoleCount(cid2).then(setCourseHoleCount).catch(() => setCourseHoleCount(null)); }, [teeEvent?.courseId]);
-  const holeCount = courseHoleCount ?? teeEvent?.holes ?? 18;
+  // Prefer the EVENT's configured hole count (the layout being played) over the course base — a
+  // shotgun on an 18-hole layout at a 9-basket course must spread across 18, not 9.
+  const holeCount = teeEvent?.holes ?? courseHoleCount ?? 18;
   useEffect(() => { if (primaryEvent) setEd(edFromEvent(primaryEvent)); }, [primaryEventId]); // eslint-disable-line react-hooks/exhaustive-deps
   // A tournament/one-off is really a single event — exit straight to it, skipping the container page.
   const exitHref = !isLeagueKind && primaryEvent ? `/leagues/${slug}/e/${primaryEvent.id}` : `/leagues/${slug}`;

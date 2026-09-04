@@ -193,7 +193,8 @@ export default function LeagueEventPage() {
     autoGenRef.current = true;
     (async () => {
       const hc = event.courseId ? await getCourseHoleCount(event.courseId).catch(() => null) : null;
-      await generateGroups(event.id, entries, { format: event.startFormat, size: event.teeGroupSize ?? 4, intervalMin: event.teeIntervalMin ?? 10, roundStarts: event.roundStarts ?? [event.date], roundCount: event.roundCount, divisions: league.settings.divisions, holeCount: hc ?? event.holes });
+      // Prefer the EVENT's configured hole count (the layout being played) over the course base.
+      await generateGroups(event.id, entries, { format: event.startFormat, size: event.teeGroupSize ?? 4, intervalMin: event.teeIntervalMin ?? 10, roundStarts: event.roundStarts ?? [event.date], roundCount: event.roundCount, divisions: league.settings.divisions, holeCount: event.holes ?? hc });
       await reload(event.id);
       setEvent((e) => (e ? { ...e, teeGenerated: true } : e));
     })().catch(() => { autoGenRef.current = false; });
