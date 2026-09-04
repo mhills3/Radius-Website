@@ -68,6 +68,7 @@ export interface FlightDisc {
   throwCount: number;
   known: boolean;
   isFavorite: boolean;
+  isPuttingPutter?: boolean; // flagged putting putter — excluded from the bag SCORE (grades your throwing arsenal)
   photoUrl?: string;
   outcomes?: DiscOutcomes;
 }
@@ -338,6 +339,7 @@ export async function getBag(uid: string, bagId?: string): Promise<Bag> {
       throwCount: Number(throwCounts[name]) || 0,
       known,
       isFavorite: favoriteIds.includes((d?.id ?? "").toString()),
+      isPuttingPutter: d?.isPuttingPutter === true,
       photoUrl: safeHttp(photoMap[(d?.id ?? "").toString()] ?? photoMap[name]),
       outcomes: outcomeMap.get(name),
     };

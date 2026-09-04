@@ -65,7 +65,14 @@ function emptyRating(ceiling: number): BagRating {
 
 export function rateBag(allDiscs: FlightDisc[], armSpeed: string | undefined, catalog: DbDisc[]): BagRating {
   const ceiling = ceilingFor(armSpeed);
-  const bag = allDiscs
+  // The score grades a THROWING arsenal — exclude putting putters from all five axes, the slot
+  // matrix, and the insights (iOS BagRater ratableBagDiscs, commit 8c7579a). A putting putter would
+  // otherwise fill putter slots you can't throw, satisfy the touch-approach role, and count in depth,
+  // speed spread, and fit. Guard: if the bag is ALL putting putters, fall back to the full bag so a
+  // player who hasn't added a throwing disc yet isn't graded 0/F.
+  const throwable = allDiscs.filter((d) => !d.isPuttingPutter);
+  const ratable = throwable.length ? throwable : allDiscs;
+  const bag = ratable
     .filter((d) => d.speed != null && d.turn != null && d.fade != null && SLOT_CATS.includes(d.category))
     .map((d) => {
       const w = withWear(d); // effective flight numbers used by every component (iOS scores post-withWear)

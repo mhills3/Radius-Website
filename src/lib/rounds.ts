@@ -262,7 +262,11 @@ function puttBandTally(round: DecodedRound, putterNames: Set<string>): { c1m: nu
       const isTee = lieStamp === "tee";
       const stampedPutt = lieStamp.startsWith("putt") || lieStamp === "tap-in";
       const standardPutt = log.lat == null && (log.distance ?? 0) === 0 && (log.result === "Basket" || log.result === "Miss Left");
-      const isPutt = startD <= 66 && !isTee && (stampedPutt || standardPutt || putterNames.has(log.discName));
+      // A distance-earned putt STAMP is a putt only when the disc agrees — putter-class/flagged, or
+      // unattributed (a real putt nobody named a disc for). Without this, a scramble punch-out with a
+      // mid from 30 ft becomes a missed C1 and a 50 ft upshot throw-in becomes a made C2 (iOS 0847a52).
+      const discSaysPutt = log.discName === "Throw" || !log.discName || putterNames.has(log.discName);
+      const isPutt = startD <= 66 && !isTee && (standardPutt || (stampedPutt && discSaysPutt) || putterNames.has(log.discName));
       if (!isPutt) return;
 
       const fabricatedThrowIn = i === 0 && log.result === "Basket" && log.distanceToBasket === 15 && log.lat == null;
@@ -382,7 +386,10 @@ export function computeStrokesGained(rounds: DecodedRound[], putterNames: Set<st
         const lieStamp = log.lie ?? "";
         const stampedPutt = lieStamp.startsWith("putt") || lieStamp === "tap-in";
         const standardPutt = log.lat == null && (log.distance ?? 0) === 0 && (log.result === "Basket" || log.result === "Miss Left");
-        const isPutt = startD <= 66 && !isTee && (stampedPutt || standardPutt || putterNames.has(log.discName));
+        // A distance-earned putt STAMP counts only when the disc agrees (putter-class/flagged or
+        // unattributed) — else a mid punch-out or a long upshot throw-in pollutes C1X/C2 (iOS 0847a52).
+        const discSaysPutt = log.discName === "Throw" || !log.discName || putterNames.has(log.discName);
+        const isPutt = startD <= 66 && !isTee && (standardPutt || (stampedPutt && discSaysPutt) || putterNames.has(log.discName));
         const isShort = !isTee && !isPutt && startD <= 150;
         if (isShort) shortCount++;
 

@@ -296,9 +296,13 @@ export default function BagView({ bag, uid, switcher, embedded = false }: { bag:
   const workhorse = [...discs].sort((a, b) => b.throwCount - a.throwCount)[0];
   const workhorseId = workhorse && workhorse.throwCount > 0 ? workhorse.id : null;
 
-  const slotCount = (c: Cat, t: Tier) => byCat(c).filter((d) => d.tier === t).length;
   const slotCats: Cat[] = ["DISTANCE", "FAIRWAY", "MIDRANGE", "PUTTER"];
-  const covered = slotCats.reduce((n, c) => n + TIERS.filter((t) => slotCount(c, t) > 0).length, 0);
+  // The bag SCORE grades a throwing arsenal — its slot matrix + slot count exclude putting putters
+  // (mirrors bagRating.rateBag ratableBagDiscs). Guard: an all-putting-putter bag falls back to full.
+  const scored = (() => { const t = discs.filter((d) => !d.isPuttingPutter); return t.length ? t : discs; })();
+  const puttingPutterCount = discs.length - scored.length;
+  const slotCountScored = (c: Cat, t: Tier) => scored.filter((d) => d.category === c && d.tier === t).length;
+  const covered = slotCats.reduce((n, c) => n + TIERS.filter((t) => slotCountScored(c, t) > 0).length, 0);
   const tierCount = (t: Tier) => known.filter((d) => d.tier === t).length;
   const avgSpeed = speeds.length ? (speeds.reduce((a, b) => a + b, 0) / speeds.length).toFixed(1) : "—";
   const brands = new Set(discs.map((d) => d.brand).filter(Boolean)).size;
@@ -352,6 +356,9 @@ export default function BagView({ bag, uid, switcher, embedded = false }: { bag:
                 <Bar label="Speed spread" value={b.speedSpread} tip="How many of the 5 speed bands (putter → distance) your bag covers. Improve it by adding discs in the speed ranges you're missing." />
                 <Bar label="Player fit" value={b.playerFit} tipUp tip="How well your discs' speeds match your arm speed. Set your arm speed in your profile, then carry discs you can throw with control rather than all max-speed drivers." />
               </div>
+              {puttingPutterCount > 0 && (
+                <p className="mt-3 text-[11px] leading-snug text-[var(--sage-dim)]">Discs marked as putting putters are left out of this score — it grades the discs you throw.</p>
+              )}
             </div>
           </div>
         </div>
@@ -393,7 +400,7 @@ export default function BagView({ bag, uid, switcher, embedded = false }: { bag:
                   <div key={t} className="text-[10px] font-semibold uppercase tracking-wide text-[var(--sage-dim)]">{TIER_META[t].label}</div>
                 ))}
                 {slotCats.map((c) => (
-                  <Row key={c} cat={c} slotCount={slotCount} />
+                  <Row key={c} cat={c} slotCount={slotCountScored} />
                 ))}
               </div>
             </div>
@@ -414,7 +421,7 @@ export default function BagView({ bag, uid, switcher, embedded = false }: { bag:
             </div>
 
             {/* Stability Map — fills the gap; click to open the full, shareable branded version. */}
-            <StabilityMap discs={discs} className="fade-up min-h-[200px] flex-1" />
+            <StabilityMap discs={scored} className="fade-up min-h-[200px] flex-1" />
             </div>
             </ProGate>
           </div>
