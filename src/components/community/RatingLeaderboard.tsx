@@ -8,6 +8,9 @@ import { STATE_NAMES } from "@/lib/courses";
 type Scope = "world" | "country" | "state";
 const MEDAL = ["🥇", "🥈", "🥉"];
 const TOP = 10;
+// Canonical state label — merges abbreviation ("TX") and full name ("Texas") so the picker doesn't
+// double-list a state, and filtering matches every row for it.
+const stKey = (s?: string) => (s ? STATE_NAMES[s] || s : "");
 
 // Compact Radius Rating leaderboard for the community sidebar. Fed the region-aware rows the page
 // already loads (geoRows) — toggleable World / Country / U.S. State. Rated players lead; players not
@@ -17,15 +20,19 @@ export default function RatingLeaderboard({ rows, myState, myCountry }: { rows: 
   const [selCountry, setSelCountry] = useState<string | null>(null);
   const [selState, setSelState] = useState<string | null>(null);
 
-  const countries = useMemo(() => { const m: Record<string, number> = {}; rows.forEach((r) => { if (r.country) m[r.country] = (m[r.country] || 0) + 1; }); return Object.entries(m).sort((a, b) => b[1] - a[1]); }, [rows]);
-  const states = useMemo(() => { const m: Record<string, number> = {}; rows.forEach((r) => { if (r.state) m[r.state] = (m[r.state] || 0) + 1; }); return Object.entries(m).sort((a, b) => b[1] - a[1]); }, [rows]);
+  // Options are deduped by canonical state label (merges "TX"/"Texas") and sorted A→Z.
+  const countries = useMemo(() => { const m: Record<string, number> = {}; rows.forEach((r) => { if (r.country) m[r.country] = (m[r.country] || 0) + 1; }); return Object.entries(m).sort((a, b) => a[0].localeCompare(b[0])); }, [rows]);
+  const states = useMemo(() => { const m: Record<string, number> = {}; rows.forEach((r) => { const k = stKey(r.state); if (k) m[k] = (m[k] || 0) + 1; }); return Object.entries(m).sort((a, b) => a[0].localeCompare(b[0])); }, [rows]);
+  const topCountry = useMemo(() => { const m: Record<string, number> = {}; rows.forEach((r) => { if (r.country) m[r.country] = (m[r.country] || 0) + 1; }); return Object.entries(m).sort((a, b) => b[1] - a[1])[0]?.[0]; }, [rows]);
+  const topState = useMemo(() => { const m: Record<string, number> = {}; rows.forEach((r) => { const k = stKey(r.state); if (k) m[k] = (m[k] || 0) + 1; }); return Object.entries(m).sort((a, b) => b[1] - a[1])[0]?.[0]; }, [rows]);
 
   // Default a region scope to the viewer's own region, else the most-populated one; selects override.
-  const country = selCountry ?? (myCountry && countries.some(([c]) => c === myCountry) ? myCountry : countries[0]?.[0]) ?? "";
-  const usState = selState ?? (myState && states.some(([s]) => s === myState) ? myState : states[0]?.[0]) ?? "";
+  const myStateK = stKey(myState);
+  const country = selCountry ?? (myCountry && countries.some(([c]) => c === myCountry) ? myCountry : topCountry) ?? "";
+  const usState = selState ?? (myStateK && states.some(([s]) => s === myStateK) ? myStateK : topState) ?? "";
 
   const list = useMemo(() => {
-    const base = scope === "country" ? rows.filter((r) => r.country === country) : scope === "state" ? rows.filter((r) => r.state === usState) : rows;
+    const base = scope === "country" ? rows.filter((r) => r.country === country) : scope === "state" ? rows.filter((r) => stKey(r.state) === usState) : rows;
     return base.slice(0, TOP);
   }, [rows, scope, country, usState]);
 
