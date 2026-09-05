@@ -9,7 +9,7 @@
 import { db } from "./firebase";
 import { collection, getDocs, query, where, limit } from "firebase/firestore";
 import { getCourseById, docToCourse, type Course } from "./courses";
-import type { DecodedRound } from "./rounds";
+import { isPlausibleRound, type DecodedRound } from "./rounds";
 import {
   rate,
   playerRating,
@@ -71,7 +71,8 @@ export interface OwnerRating {
 
 export async function computeOwnerRating(rounds: DecodedRound[], now = Date.now()): Promise<OwnerRating> {
   // Only rounds in the 24-month pool matter for the number/trajectory; bounds course fetches too.
-  const complete = rounds.filter((r) => r.isComplete && r.date >= now - TWO_YEARS_MS);
+  // Implausible rounds (better than 1.5 under/hole — fake/corrupted) never count toward the rating.
+  const complete = rounds.filter((r) => r.isComplete && isPlausibleRound(r) && r.date >= now - TWO_YEARS_MS);
   const byId = await resolveCoursesById(complete);
 
   // Name lane for rounds whose courseId didn't resolve (or is missing).

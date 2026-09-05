@@ -8,7 +8,7 @@ import LevelBadge from "@/components/rank/LevelBadge";
 import RankLibrary from "@/components/rank/RankLibrary";
 import Scorecard from "@/components/dashboard/Scorecard";
 import RoundsHeatmap from "@/components/dashboard/RoundsHeatmap";
-import { getDecodedRounds, type DecodedRound } from "@/lib/rounds";
+import { getDecodedRounds, isPlausibleScore, type DecodedRound, type RoundMeta } from "@/lib/rounds";
 import ProfileBar from "@/components/profile/ProfileBar";
 import RecapCard from "@/components/dashboard/RecapCard";
 import { useMetricPref } from "@/lib/useMetricPref";
@@ -88,11 +88,14 @@ export default function DashboardView({ data, uid }: { data: Dashboard; uid: str
   const iqDelta = iqValues.length >= 2 ? iqValues[iqValues.length - 1] - iqValues[0] : 0;
 
   // Avg/best from the FULL history (roundMetas), not the capped recent list — otherwise the all-time best is wrong.
-  const scored = roundMetas.filter((m) => m.scoreToPar != null) as { scoreToPar: number }[];
+  // Skip physically-implausible rounds (better than 1.5 under/hole — fake/corrupted) so a joke -31 doesn't
+  // become someone's "best round" or drag their average; the round still shows in the recent list.
+  const plausible = (m: RoundMeta) => m.scoreToPar != null && isPlausibleScore(m.scoreToPar, m.holesPlayed ?? 18);
+  const scored = roundMetas.filter(plausible) as { scoreToPar: number }[];
   const avgScore = scored.length ? scored.reduce((s, r) => s + r.scoreToPar, 0) / scored.length : null;
   const bestScore = scored.length ? Math.min(...scored.map((r) => r.scoreToPar)) : null;
   // Scoring trend = 5 most recent rounds (roundMetas is date-desc), oldest→newest for the chart.
-  const scoreSeries = roundMetas.filter((m) => m.scoreToPar != null).slice(0, 5).reverse().map((m) => m.scoreToPar as number);
+  const scoreSeries = roundMetas.filter(plausible).slice(0, 5).reverse().map((m) => m.scoreToPar as number);
 
   const topIQ = iqValues.length ? Math.max(...iqValues) : disp.value;
   const now = new Date();

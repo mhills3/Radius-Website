@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { getDashboard, type Dashboard } from "@/lib/account";
+import { isPlausibleScore } from "@/lib/rounds";
 import { getPostsByAuthor, type FeedPost } from "@/lib/feed";
 import PostCard from "@/components/community/PostCard";
 import { type RankInfo } from "@/lib/community";
@@ -57,9 +58,11 @@ export default function ProfileView({ canonicalId, identity }: { canonicalId: st
   const metas = data?.roundMetas ?? [];
   const aces = data?.acesCount ?? 0;
   const courses = useMemo(() => new Set(metas.map((m) => (m.courseName || "").trim()).filter((c) => c && c !== "Unknown course")).size, [metas]);
-  const best = useMemo(() => metas.reduce<number | null>((b, m) => (typeof m.scoreToPar === "number" && (b == null || m.scoreToPar < b) ? m.scoreToPar : b), null), [metas]);
+  // Avg/Best skip physically-implausible rounds (better than 1.5 under/hole — fake/corrupted) so a
+  // joke -31 isn't someone's "best round"; the round still appears in the recent list below.
+  const best = useMemo(() => metas.reduce<number | null>((b, m) => (typeof m.scoreToPar === "number" && isPlausibleScore(m.scoreToPar, m.holesPlayed ?? 18) && (b == null || m.scoreToPar < b) ? m.scoreToPar : b), null), [metas]);
   const recent = useMemo(() => [...metas].sort((a, b) => b.date - a.date).slice(0, 6), [metas]);
-  const scored = useMemo(() => metas.filter((m) => typeof m.scoreToPar === "number") as { scoreToPar: number }[], [metas]);
+  const scored = useMemo(() => metas.filter((m) => typeof m.scoreToPar === "number" && isPlausibleScore(m.scoreToPar, m.holesPlayed ?? 18)) as { scoreToPar: number }[], [metas]);
   const avgScore = scored.length ? Math.round(scored.reduce((s, m) => s + m.scoreToPar, 0) / scored.length) : null;
   const totalHoles = useMemo(() => metas.reduce((s, m) => s + (m.holesPlayed || 0), 0), [metas]);
   const thisYear = useMemo(() => { const y = new Date().getFullYear(); return metas.filter((m) => m.date && new Date(m.date).getFullYear() === y).length; }, [metas]);

@@ -74,6 +74,22 @@ function isMissKey(k: string): boolean {
   return k === "Miss";
 }
 
+/**
+ * Physical-plausibility guard for aggregate stats + rating. A round is ignored when it averages
+ * better than 1.5 strokes UNDER par per hole — real elite rounds top out near -1.1/hole, so -1.5 is
+ * unreachable, and only fake/corrupted rounds (e.g. -31 on 9 holes) trip it. Also requires at least
+ * 1 stroke per hole. The round still LISTS in recent rounds; it just no longer pollutes stats, the
+ * Radius Rating, or the leaderboard. NOTE: mirror this in the shared iOS/Android rating engine so the
+ * Firestore-mirrored radiusRating (what the cross-user leaderboard reads) stays clean at the source.
+ */
+export const MAX_UNDER_PER_HOLE = 1.5;
+export function isPlausibleScore(relativeToPar: number, holesPlayed: number): boolean {
+  return holesPlayed >= 1 && relativeToPar / holesPlayed >= -MAX_UNDER_PER_HOLE;
+}
+export function isPlausibleRound(r: { total: number; holesPlayed: number; relativeToPar: number }): boolean {
+  return r.holesPlayed >= 1 && r.total >= r.holesPlayed && isPlausibleScore(r.relativeToPar, r.holesPlayed);
+}
+
 export function computeRoundStats(round: DecodedRound, putterNames: Set<string> = new Set()): RoundStats {
   const played = round.holes.filter((h) => h.played);
   // Flatten throws, excluding "Score" pseudo-throws, tagging each with its hole.
@@ -323,7 +339,7 @@ function haversineFt(lat1: number, lng1: number, lat2: number, lng2: number): nu
 }
 
 export function computeStrokesGained(rounds: DecodedRound[], putterNames: Set<string> = new Set()): StrokesGained {
-  const complete = rounds.filter((r) => r.isComplete);
+  const complete = rounds.filter((r) => r.isComplete && isPlausibleRound(r));
   let sgD = 0, sgA = 0, sgS = 0, sgP = 0, sgRounds = 0;
   let teeAttempts = 0, teeOB = 0, teeFairway = 0, driveTotal = 0, driveCount = 0, driveLong = 0, driveShort = 0;
   let approachCount = 0, proximityTotal = 0, shortCount = 0;
@@ -470,7 +486,7 @@ export function rankedCategories(s: StrokesGained): RankedCategory[] {
 /** Aggregate the per-round metrics across all complete rounds — attempt-weighted from raw throws so
  *  career percentages are exact (not an average of per-round percentages). */
 export function computeCareerStats(rounds: DecodedRound[], putterNames: Set<string> = new Set()): CareerStats {
-  const complete = rounds.filter((r) => r.isComplete);
+  const complete = rounds.filter((r) => r.isComplete && isPlausibleRound(r));
   const successOf = (key: string) => RESULTS.find((r) => r.key === key)?.success ?? 40;
   let throws = 0, qSum = 0, holes = 0;
   let teeCount = 0, fairwayHits = 0, ob = 0, teeOb = 0;
