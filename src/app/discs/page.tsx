@@ -51,7 +51,15 @@ export default function DiscsPage() {
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
     return discs.filter((d) => {
-      if (s && !`${d.name} ${d.manufacturer}`.toLowerCase().includes(s)) return false;
+      // Folded + token match (parity with the apps' DiscSearch, 52567ce):
+      // "alva" finds Älva; "mint apex" matches across name+manufacturer.
+      if (s) {
+        const fold = (x: string) => x.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+        const hay = fold(`${d.name} ${d.manufacturer}`);
+        const words = fold(s).split(/\s+/).filter(Boolean);
+        const toks = hay.split(/\s+/);
+        if (!words.every((w) => hay.includes(w) || toks.some((t) => t.startsWith(w)))) return false;
+      }
       if (mfr && d.manufacturer !== mfr) return false;
       if (cat !== "ALL" && normCat(d.category) !== cat) return false;
       if (stab !== "ALL" && stabilityTier(d.stability) !== stab) return false;

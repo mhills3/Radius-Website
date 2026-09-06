@@ -53,7 +53,7 @@ export function ceilingFor(armSpeed?: string): number {
   }
 }
 
-const POPULAR = ["Innova", "Discraft", "Dynamic Discs", "Dynamic Disc", "MVP", "Axiom", "Discmania", "Latitude 64", "Westside", "Kastaplast", "Prodigy", "Gateway"];
+const POPULAR = ["Innova", "Discraft", "Dynamic Discs", "MVP", "Axiom", "Discmania", "Latitude 64", "Westside", "Kastaplast", "Prodigy", "Gateway"];
 
 function emptyRating(ceiling: number): BagRating {
   return {
