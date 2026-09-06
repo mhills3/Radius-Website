@@ -629,11 +629,13 @@ export async function getCourseScores(courseId: string, max = 25): Promise<Cours
     const cur = best.get(key);
     if (!cur || s.relativeToPar < cur.relativeToPar) best.set(key, s);
   }
-  // Sanity guard: drop physically-impossible scores (e.g. a "-46" on a 4-hole round). The best any
-  // round can shoot is acing every hole; even if every hole were a par 5 that's -4 per hole, so any
-  // relativeToPar below -4×holesPlayed is bad data, not a record.
+  // Sanity guard: drop implausible scores from the records board. Real rounds top out near -1.1
+  // strokes under par per hole, so anything better than -1.5/hole is fake/corrupted, not a record
+  // (matches the app-wide plausibility rule in rounds.ts). NOTE: this does NOT catch a score that is
+  // plausible but ORPHANED — e.g. a mirrored best from a round the player later deleted; those linger
+  // until the app cleans up the course `scores` doc (keyed by roundId) or it's purged.
   return [...best.values()]
-    .filter((s) => !s.holesPlayed || s.relativeToPar >= -4 * s.holesPlayed)
+    .filter((s) => !s.holesPlayed || s.relativeToPar / s.holesPlayed >= -1.5)
     .sort((a, b) => a.relativeToPar - b.relativeToPar)
     .slice(0, max);
 }
