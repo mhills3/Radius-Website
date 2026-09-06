@@ -61,6 +61,11 @@ function Card({ r, onResolved }: { r: RemovalRequest; onResolved: (id: string) =
     }
   };
 
+  // Bedford Boys Ranch guard (2026-09-06): a removal request that reads like
+  // an EDIT request ("just delete the 9 hole layout") got approved and hid the
+  // whole course — approve has no smaller hammer. Flag the language loudly.
+  const looksLikeEdit = /\blayout\b|\bholes? (changed|updated|moved)|\breconfigur|\bremap|\bjust (the|a) \b/i.test(r.detail || "");
+
   const builtTone = ev.requesterBuiltIt === true ? "good" : ev.requesterBuiltIt === false ? "bad" : "neutral";
   const builtText = ev.requesterBuiltIt === true ? "Yes — they built it" : ev.requesterBuiltIt === false ? "No — not the builder" : "Unknown";
 
@@ -102,6 +107,13 @@ function Card({ r, onResolved }: { r: RemovalRequest; onResolved: (id: string) =
           ? <div className="mt-1 text-[13px] font-semibold text-[#e0873f]">⚠ No email on file — can&apos;t reach out</div>
           : <a href={`mailto:${r.requesterEmail}`} className="mt-1 block text-[15px] font-bold text-[var(--gold)] hover:underline">{r.requesterEmail}</a>}
       </div>
+
+      {looksLikeEdit && (
+        <div className="mt-4 rounded-xl border border-[#E8B560]/40 bg-[#E8B560]/[0.08] px-4 py-3">
+          <div className={`${HEAD} text-[11px] font-black uppercase tracking-[0.16em] text-[#E8B560]`}>⚠ Reads like an edit request, not a removal</div>
+          <p className="mt-1 text-[13px] leading-snug text-[var(--cream)]">Approve deletes the <b>entire course</b> — there is no layout-sized removal. If they want holes or layouts fixed, <b>deny</b> and point them to <b>Request Admin Access</b> (••• menu on the course) so they can edit it themselves.</p>
+        </div>
+      )}
 
       {/* their reason */}
       {r.detail && <p className="mt-4 text-[14px] leading-relaxed text-[var(--text-body)]">&ldquo;{r.detail}&rdquo;</p>}
