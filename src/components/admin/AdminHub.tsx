@@ -22,6 +22,10 @@ const DEFS: Record<QueueMeta["key"], { name: string; desc: string; href: string;
     name: "Admin Requests", desc: "Grant course edit rights", href: "/admin/admin-requests",
     icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><path d="M12 15a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" /><path d="M17.8 19.4 19 22l1.6-1 1.6 1-1.2-3.4M20 13.5a8 8 0 1 0-9.7 7.8" /></svg>,
   },
+  discSubmissions: {
+    name: "Disc Submissions", desc: "Custom discs → catalog leads", href: "/admin/disc-submissions",
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><ellipse cx="12" cy="12" rx="9" ry="4.2" /><path d="M3 12c0 2.3 4 4.2 9 4.2s9-1.9 9-4.2" /><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none" /></svg>,
+  },
   removals: {
     name: "Course Removals", desc: "Pull courses from the directory", href: "/admin/removals",
     icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /></svg>,
