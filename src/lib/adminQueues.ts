@@ -2,6 +2,7 @@ import { getRemovalRequests } from "./courseRemoval";
 import { getAdminAccessRequests } from "./courseAdmin";
 import { getFulfillments } from "./rewards";
 import { getLatestDigest, type Digest } from "./communityDigest";
+import { getDiscSubmissions, pendingLeadCount } from "./discSubmissions";
 
 // Single source of truth for the /admin queue rows AND the nav badge, so the header total and the
 // nav badge can never disagree — both read getAdminQueues().total.
@@ -11,7 +12,7 @@ export type Freshness =
   | { type: "oldest"; ms: number }    // someone's been waiting this long
   | { type: "clear" };                // nothing pending
 
-export type QueueKey = "digest" | "fulfillment" | "removals" | "adminRequests";
+export type QueueKey = "digest" | "fulfillment" | "removals" | "adminRequests" | "discSubmissions";
 export interface QueueMeta { key: QueueKey; count: number; freshness: Freshness }
 export interface AdminQueues { queues: QueueMeta[]; total: number }
 
@@ -19,11 +20,12 @@ const digestUnreviewed = (d: Digest) =>
   [...d.categories.bugs, ...d.categories.features, ...d.categories.questions, ...d.categories.notable].filter((it) => !it.reviewed).length;
 
 export async function getAdminQueues(): Promise<AdminQueues> {
-  const [removalReqs, fulfillments, latestDigest, adminReqs] = await Promise.all([
+  const [removalReqs, fulfillments, latestDigest, adminReqs, discSubs] = await Promise.all([
     getRemovalRequests().catch(() => []),
     getFulfillments().catch(() => []),
     getLatestDigest().catch(() => null),
     getAdminAccessRequests().catch(() => []),
+    getDiscSubmissions().catch(() => []),
   ]);
 
   // Removals — pending requests, oldest by createdAt.
@@ -42,11 +44,17 @@ export async function getAdminQueues(): Promise<AdminQueues> {
   const pendingAdmin = adminReqs.filter((r) => (r.status || "") === "pending");
   const adminOldest = pendingAdmin.reduce((min, r) => Math.min(min, r.createdAt ?? Infinity), Infinity);
 
+  // Disc submissions — count = distinct pending LEADS (dupes + low-signal noise excluded); oldest by createdAt.
+  const pendingDisc = discSubs.filter((s) => (s.status || "") === "pending");
+  const discCount = pendingLeadCount(discSubs);
+  const discOldest = pendingDisc.reduce((min, s) => Math.min(min, s.createdAt ?? Infinity), Infinity);
+
   const queues: QueueMeta[] = [
     { key: "digest", count: digestCount, freshness: digestLastRun ? { type: "lastRun", ms: digestLastRun } : { type: "clear" } },
     { key: "fulfillment", count: pendingFul.length, freshness: pendingFul.length ? { type: "oldest", ms: fulOldest } : { type: "clear" } },
     { key: "removals", count: pendingRemovals.length, freshness: pendingRemovals.length ? { type: "oldest", ms: removalsOldest } : { type: "clear" } },
     { key: "adminRequests", count: pendingAdmin.length, freshness: pendingAdmin.length ? { type: "oldest", ms: adminOldest } : { type: "clear" } },
+    { key: "discSubmissions", count: discCount, freshness: discCount ? { type: "oldest", ms: discOldest } : { type: "clear" } },
   ];
   // Trending Issues is tracked manually — it doesn't contribute to the nav badge / "items need you"
   // total, and its tile hides the count chip (see AdminHub). The other queues still drive the badge.
