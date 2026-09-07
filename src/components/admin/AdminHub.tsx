@@ -72,7 +72,9 @@ function freshness(q: QueueMeta): { text: string; dot: string | null } {
 
 function Row({ q }: { q: QueueMeta }) {
   const { name, href, icon } = DEFS[q.key];
-  const active = q.count > 0;
+  // Trending Issues is tracked manually — keep the tile live/clickable but hide its count chip.
+  const hideCount = q.key === "digest";
+  const active = hideCount || q.count > 0;
   const count = useCountUp(q.count);
   const fr = freshness(q);
   return (
@@ -91,7 +93,7 @@ function Row({ q }: { q: QueueMeta }) {
           <span className="truncate">{fr.text}</span>
         </div>
       </div>
-      <span style={NUM} className={`text-[42px] font-black leading-none ${active ? "text-[var(--gold)]" : "text-[var(--sage-dim)]"}`}>{count}</span>
+      {!hideCount && <span style={NUM} className={`text-[42px] font-black leading-none ${active ? "text-[var(--gold)]" : "text-[var(--sage-dim)]"}`}>{count}</span>}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 shrink-0 text-[var(--sage-dim)] transition-transform duration-300 group-hover:translate-x-1 group-hover:text-[var(--sage)]"><path d="M9 18l6-6-6-6" /></svg>
     </Link>
   );

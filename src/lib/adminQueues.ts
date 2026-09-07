@@ -48,6 +48,8 @@ export async function getAdminQueues(): Promise<AdminQueues> {
     { key: "removals", count: pendingRemovals.length, freshness: pendingRemovals.length ? { type: "oldest", ms: removalsOldest } : { type: "clear" } },
     { key: "adminRequests", count: pendingAdmin.length, freshness: pendingAdmin.length ? { type: "oldest", ms: adminOldest } : { type: "clear" } },
   ];
-  const total = queues.reduce((n, q) => n + q.count, 0);
+  // Trending Issues is tracked manually — it doesn't contribute to the nav badge / "items need you"
+  // total, and its tile hides the count chip (see AdminHub). The other queues still drive the badge.
+  const total = queues.filter((q) => q.key !== "digest").reduce((n, q) => n + q.count, 0);
   return { queues, total };
 }
