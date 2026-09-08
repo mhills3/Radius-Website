@@ -90,6 +90,11 @@ function RemovalCard({ r, onResolved }: { r: RemovalRequest; onResolved: (id: st
                 Identity mismatch — the account that filed this is NOT the person it claims to be
               </Fact>
             )}
+            {r.requesterVerified === undefined && (
+              <Fact icon="🪪" tone="neutral">
+                Identity unverified (filed before the identity check existed) — Approve will ask for an override
+              </Fact>
+            )}
             <Fact icon="🥏" tone={rounds > 0 ? "warn" : "good"}>
               {rounds > 0 ? <><b className="text-[var(--cream)]">{rounds}</b> round{rounds === 1 ? "" : "s"} logged here <span className="text-[var(--sage)]">· they keep resolving after removal</span></> : "No rounds logged here"}
             </Fact>
