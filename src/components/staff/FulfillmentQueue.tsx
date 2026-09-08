@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { getFulfillments, markFulfillmentShipped, rejectFulfillment, TIER_LABEL, type Fulfillment } from "@/lib/rewards";
+import { getFulfillments, markFulfillmentShipped, rejectFulfillment, type Fulfillment } from "@/lib/rewards";
 import { parseResolveError } from "@/lib/courseRemoval";
+import { QueuePage, SectionLabel, Card, CardGrid, CardTitle, Tag, Fact, Spinner, Empty, Segmented, BTN, TONE } from "./QueueShell";
 
-const HEAD = "font-[family-name:var(--font-heading)]";
 const fmtDate = (ms?: number) => (ms ? new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—");
-const tierText = (t: string[] = []) => (t.includes("gear") && t.includes("bag") ? "Both · Gear + Bag" : t.includes("bag") ? "Bag" : t.includes("gear") ? "Gear" : "—");
+const tierText = (t: string[] = []) => (t.includes("gear") && t.includes("bag") ? "Gear + Bag" : t.includes("bag") ? "Bag" : t.includes("gear") ? "Gear" : "—");
+const isDomestic = (country?: string) => /^(us|usa|u\.s\.a?\.?|united states( of america)?)$/i.test((country || "").trim());
 
 // Prefer the server-verified recount over the browser-submitted figure. When they disagree, show both
 // so the discrepancy is visible — e.g. "12 courses · claimed 40".
@@ -31,7 +31,9 @@ function labelBlock(r: Fulfillment): string {
   ].filter(Boolean).join("\n");
 }
 
-function Card({ r, onShipped, onRejected }: { r: Fulfillment; onShipped: (id: string, tracking: string, note: string) => void; onRejected: (id: string, reason: string) => void }) {
+const input = "w-full rounded-xl border border-[var(--hair)] bg-white/[0.03] px-3.5 py-2.5 text-[14px] text-[var(--cream)] placeholder-[var(--sage-dim)] outline-none focus:border-[var(--gold)]/50";
+
+function ClaimCard({ r, onShipped, onRejected }: { r: Fulfillment; onShipped: (id: string, tracking: string, note: string) => void; onRejected: (id: string, reason: string) => void }) {
   const [mode, setMode] = useState<"idle" | "ship" | "reject">("idle");
   const [tracking, setTracking] = useState("");
   const [note, setNote] = useState("");
@@ -41,6 +43,7 @@ function Card({ r, onShipped, onRejected }: { r: Fulfillment; onShipped: (id: st
   const [copied, setCopied] = useState(false);
   const shipped = r.status === "shipped";
   const rejected = r.status === "rejected" || r.status === "dismissed";
+  const intl = !!r.country && !isDomestic(r.country);
 
   const copy = async () => {
     try { await navigator.clipboard.writeText(labelBlock(r)); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* ignore */ }
@@ -72,75 +75,71 @@ function Card({ r, onShipped, onRejected }: { r: Fulfillment; onShipped: (id: st
     }
   };
 
+  const errBox = err && <div className="rounded-xl px-3.5 py-2.5 text-[13px] font-semibold leading-snug" style={{ color: TONE.bad, background: "rgba(239,127,127,0.10)" }}>{err}</div>;
+
   return (
-    <div className={`rounded-2xl border bg-[var(--bg-mid)] p-5 shadow-sm border-[var(--hair)] ${shipped || rejected ? "opacity-80" : ""}`}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className={`${HEAD} text-[19px] font-bold text-[var(--cream)]`}>{r.fullName || "—"}</h3>
-            <span className="rounded-full bg-[var(--gold)]/15 px-2 py-0.5 text-[11px] font-bold text-[var(--gold)]">{tierText(r.tiers)}</span>
-            {shipped && <span className="rounded-full bg-[#5fcf80]/15 px-2 py-0.5 text-[11px] font-bold text-[#5fcf80]">Shipped</span>}
-            {rejected && <span className="rounded-full bg-[#e0526a]/15 px-2 py-0.5 text-[11px] font-bold text-[#e0526a]">Rejected</span>}
-          </div>
-          <div className="mt-1 text-[12.5px] text-[var(--sage-dim)]" style={{ fontFamily: "'Sora', sans-serif" }}>{fmtDate(r.submittedAt)}{courseCountText(r) ? ` · ${courseCountText(r)}` : ""}</div>
-        </div>
-        <button onClick={copy} className="shrink-0 rounded-full border border-[var(--hair-strong)] px-3 py-1.5 text-[12px] font-bold text-[var(--sage)] transition-colors hover:text-[var(--cream)]">{copied ? "Copied ✓" : "Copy address"}</button>
-      </div>
-
-      {/* label-ready address block */}
-      <pre className="mt-4 whitespace-pre-wrap rounded-xl border border-[var(--hair)] bg-white/[0.02] px-4 py-3 text-[14px] leading-relaxed text-[var(--cream)]" style={{ fontFamily: "inherit" }}>{labelBlock(r)}</pre>
-
-      {/* country + phone + email prominent */}
-      <div className="mt-3 flex flex-wrap gap-x-8 gap-y-2">
-        <div><div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--sage-dim)]">Country</div><div className="text-[15px] font-bold text-[var(--cream)]">{r.country || "—"}</div></div>
-        <div><div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--sage-dim)]">Phone</div><div className="text-[15px] font-bold text-[var(--cream)]">{r.phone || <span className="text-[#e0873f]">missing</span>}</div></div>
-        <div className="min-w-0"><div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--sage-dim)]">Email</div>{r.email ? <a href={`mailto:${r.email}`} className="block truncate text-[15px] font-bold text-[var(--gold)] hover:underline">{r.email}</a> : <div className="text-[15px] font-bold text-[#e0873f]">missing</div>}</div>
-      </div>
-
-      {(r.bagRequest || r.bagLink) && (
-        <div className="mt-3 rounded-xl border border-[var(--hair)] bg-white/[0.02] px-4 py-3">
-          <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--sage-dim)]">Bag request</div>
-          {r.bagRequest && <p className="mt-1 text-[14px] text-[var(--cream)]">{r.bagRequest}</p>}
-          {r.bagLink && <a href={r.bagLink} target="_blank" rel="noopener" className="mt-1 block truncate text-[13px] font-semibold text-[var(--gold)] hover:underline">{r.bagLink}</a>}
-        </div>
-      )}
-      {r.notes && <p className="mt-3 text-[13px] text-[var(--text-body)]">Note: {r.notes}</p>}
-
-      {shipped ? (
-        <div className="mt-4 border-t border-[var(--hair)] pt-3 text-[12.5px] text-[var(--sage-dim)]">Shipped {fmtDate(r.shippedAt)}{r.tracking ? ` · ${r.tracking}` : ""}{r.shipNote ? ` · ${r.shipNote}` : ""}</div>
-      ) : rejected ? (
-        <div className="mt-4 border-t border-[var(--hair)] pt-3 text-[12.5px] font-semibold text-[#e0526a]">Rejected{r.rejectedAt ? ` ${fmtDate(r.rejectedAt)}` : ""}{r.rejectReason ? ` · ${r.rejectReason}` : ""}</div>
-      ) : (
-        <div className="mt-4 border-t border-[var(--hair)] pt-4">
-          {mode === "idle" ? (
-            <div className="flex items-center gap-2.5">
-              <button onClick={() => { setMode("ship"); setErr(null); }} className="flex items-center gap-2 rounded-full bg-[var(--gold)] px-5 py-2.5 text-[13px] font-bold text-[#141B16] transition-colors hover:bg-[var(--gold-bright)]"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M20 6L9 17l-5-5" /></svg>Mark shipped</button>
-              <button onClick={() => { setMode("reject"); setErr(null); }} aria-label="Reject claim" title="Reject claim" className="ml-auto grid h-9 w-9 place-items-center rounded-full border border-[#e0526a]/35 text-[#e0526a] transition-colors hover:bg-[#e0526a]/10"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M10 11v6M14 11v6" /></svg></button>
+    <Card dim={shipped || rejected}>
+      <CardGrid
+        left={
+          <>
+            <CardTitle
+              title={r.fullName || "—"}
+              tag={<>
+                <Tag>{tierText(r.tiers)}</Tag>
+                {shipped && <Tag tone="good">Shipped</Tag>}
+                {rejected && <Tag tone="bad">Rejected</Tag>}
+              </>}
+              meta={[`Claimed ${fmtDate(r.submittedAt)}`, courseCountText(r)].filter(Boolean).join(" · ")}
+            />
+            {/* label-ready address block */}
+            <pre className="mt-5 whitespace-pre-wrap text-[15px] leading-relaxed text-[var(--cream)]" style={{ fontFamily: "inherit" }}>{labelBlock(r)}</pre>
+            <button onClick={copy} className="mt-2 text-[14px] font-semibold text-[var(--gold)] hover:underline">{copied ? "Copied ✓" : "Copy address"}</button>
+          </>
+        }
+        middle={
+          <>
+            <Fact icon="🌍" tone={intl ? "warn" : "neutral"}>
+              <b className="text-[var(--cream)]">{r.country || "—"}</b>{intl ? " · international shipping" : ""}
+            </Fact>
+            <Fact icon="☎️" tone={r.phone ? "neutral" : "bad"}>{r.phone ? <b className="text-[var(--cream)]">{r.phone}</b> : "No phone — carriers may need one"}</Fact>
+            <Fact icon="✉️" tone={r.email ? "neutral" : "bad"}>{r.email ? <a href={`mailto:${r.email}`} className="text-[var(--cream)] hover:text-[var(--gold)] hover:underline">{r.email}</a> : "No email on file"}</Fact>
+            {(r.bagRequest || r.bagLink) && (
+              <Fact icon="🎒">
+                {r.bagRequest && <span className="text-[var(--cream)]">{r.bagRequest}</span>}
+                {r.bagLink && <a href={r.bagLink} target="_blank" rel="noopener" className="block truncate font-semibold text-[var(--gold)] hover:underline">{r.bagLink}</a>}
+              </Fact>
+            )}
+            {r.notes && <Fact icon="📝"><span className="italic">&ldquo;{r.notes}&rdquo;</span></Fact>}
+            {shipped && <Fact icon="✅" tone="good">Shipped {fmtDate(r.shippedAt)}{r.tracking ? ` · ${r.tracking}` : ""}{r.shipNote ? ` · ${r.shipNote}` : ""}</Fact>}
+            {rejected && <Fact icon="🚫" tone="bad">Rejected{r.rejectedAt ? ` ${fmtDate(r.rejectedAt)}` : ""}{r.rejectReason ? ` · ${r.rejectReason}` : ""}</Fact>}
+          </>
+        }
+        right={
+          shipped || rejected ? null : mode === "idle" ? (
+            <div className="space-y-3">
+              <button onClick={() => { setMode("ship"); setErr(null); }} className={BTN.primary}>Mark shipped</button>
+              <button onClick={() => { setMode("reject"); setErr(null); }} className={BTN.secondary}>Reject</button>
             </div>
           ) : mode === "ship" ? (
             <div className="space-y-2.5">
-              <input value={tracking} onChange={(e) => setTracking(e.target.value)} placeholder="Tracking number (optional)" className="w-full rounded-xl border border-[var(--hair-strong)] bg-white/[0.03] px-3.5 py-2.5 text-[14px] text-[var(--cream)] placeholder-[var(--sage-dim)] outline-none focus:border-[var(--gold)]/50" />
-              <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (optional)" className="w-full rounded-xl border border-[var(--hair-strong)] bg-white/[0.03] px-3.5 py-2.5 text-[14px] text-[var(--cream)] placeholder-[var(--sage-dim)] outline-none focus:border-[var(--gold)]/50" />
-              {err && <div className="rounded-lg border border-[#e0873f]/40 bg-[#e0873f]/[0.08] px-3 py-2 text-[12.5px] font-semibold text-[#e0873f]">{err}</div>}
-              <div className="flex gap-2.5">
-                <button onClick={() => { setMode("idle"); setErr(null); }} disabled={busy} className="rounded-full border border-[var(--hair-strong)] px-4 py-2 text-[13px] font-bold text-[var(--sage)] transition-colors hover:text-[var(--cream)] disabled:opacity-50">Cancel</button>
-                <button onClick={confirmShip} disabled={busy} className="rounded-full bg-[var(--gold)] px-5 py-2 text-[13px] font-bold text-[#141B16] transition-colors hover:bg-[var(--gold-bright)] disabled:opacity-50">{busy ? "Marking…" : "Confirm shipped"}</button>
-              </div>
+              <input autoFocus value={tracking} onChange={(e) => setTracking(e.target.value)} placeholder="Tracking number (optional)" className={input} />
+              <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (optional)" className={input} />
+              {errBox}
+              <button onClick={confirmShip} disabled={busy} className={BTN.primary}>{busy ? "Marking…" : "Confirm shipped"}</button>
+              <button onClick={() => { setMode("idle"); setErr(null); }} disabled={busy} className="block w-full text-center text-[14px] text-[var(--sage-dim)] transition-colors hover:text-[var(--sage)]">Cancel</button>
             </div>
           ) : (
             <div className="space-y-2.5">
-              <div className="text-[13px] font-semibold text-[var(--cream)]">Reject this claim? Nothing ships and it leaves the pending queue.</div>
-              <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason (optional — e.g. duplicate, fraudulent)" className="w-full rounded-xl border border-[var(--hair-strong)] bg-white/[0.03] px-3.5 py-2.5 text-[14px] text-[var(--cream)] placeholder-[var(--sage-dim)] outline-none focus:border-[#e0526a]/60" />
-              {err && <div className="rounded-lg border border-[#e0873f]/40 bg-[#e0873f]/[0.08] px-3 py-2 text-[12.5px] font-semibold text-[#e0873f]">{err}</div>}
-              <div className="flex gap-2.5">
-                <button onClick={() => { setMode("idle"); setErr(null); }} disabled={busy} className="rounded-full border border-[var(--hair-strong)] px-4 py-2 text-[13px] font-bold text-[var(--sage)] transition-colors hover:text-[var(--cream)] disabled:opacity-50">Cancel</button>
-                <button onClick={confirmReject} disabled={busy} className="rounded-full bg-[#e0526a] px-5 py-2 text-[13px] font-bold text-white transition-colors hover:bg-[#d13d57] disabled:opacity-50">{busy ? "Rejecting…" : "Reject claim"}</button>
-              </div>
+              <div className="text-[13px] leading-snug text-[var(--sage)]">Nothing ships and it leaves the pending queue.</div>
+              <input autoFocus value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason (optional — e.g. duplicate, fraudulent)" className={input} />
+              {errBox}
+              <button onClick={confirmReject} disabled={busy} className={BTN.danger}>{busy ? "Rejecting…" : "Reject claim"}</button>
+              <button onClick={() => { setMode("idle"); setErr(null); }} disabled={busy} className="block w-full text-center text-[14px] text-[var(--sage-dim)] transition-colors hover:text-[var(--sage)]">Cancel</button>
             </div>
-          )}
-        </div>
-      )}
-    </div>
+          )
+        }
+      />
+    </Card>
   );
 }
 
@@ -185,19 +184,16 @@ export default function FulfillmentQueue() {
   const matchYear = (r: Fulfillment) => year === "all" || (r.submittedAt != null && yearOf(r.submittedAt) === year);
   const matchQuarter = (r: Fulfillment) => quarter === 0 || (r.submittedAt != null && quarterOf(r.submittedAt) === quarter);
 
-  const shown = all.filter((r) => matchStatus(r) && matchYear(r) && matchQuarter(r));
+  // Oldest first for the pending queue (clear the old ones); newest first for history.
+  const shown = all
+    .filter((r) => matchStatus(r) && matchYear(r) && matchQuarter(r))
+    .sort((a, b) => (status === "pending" ? (a.submittedAt ?? Infinity) - (b.submittedAt ?? Infinity) : (b.submittedAt ?? 0) - (a.submittedAt ?? 0)));
 
   // period-aware tab counts so "what's needed vs what we did" reads at a glance for the chosen window.
   const inPeriod = (r: Fulfillment) => matchYear(r) && matchQuarter(r);
   const pendingCount = all.filter((r) => isPending(r) && inPeriod(r)).length;
   const completedCount = all.filter((r) => r.status === "shipped" && inPeriod(r)).length;
   const rejectedCount = all.filter((r) => isRejected(r) && inPeriod(r)).length;
-  const TABS: { k: Filter; label: string }[] = [
-    { k: "pending", label: `Pending${pendingCount ? ` (${pendingCount})` : ""}` },
-    { k: "completed", label: `Completed${completedCount ? ` (${completedCount})` : ""}` },
-    { k: "rejected", label: `Rejected${rejectedCount ? ` (${rejectedCount})` : ""}` },
-    { k: "all", label: "All" },
-  ];
 
   // quarter pill counts respect the status + year selection (ignore quarter) → shows the spread across the year.
   const inScope = all.filter((r) => matchStatus(r) && matchYear(r));
@@ -207,58 +203,36 @@ export default function FulfillmentQueue() {
   const noun = status === "completed" ? "shipped" : status === "pending" ? "to ship" : status === "rejected" ? "rejected" : "total";
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-10">
-      <Link href="/admin" className="text-[12px] font-semibold text-[var(--sage)] transition-colors hover:text-[var(--gold)]">← Admin</Link>
-      <div className="mt-2 font-mono text-[10px] font-bold uppercase tracking-[0.24em] text-[var(--gold)]">Staff</div>
-      <h1 className={`${HEAD} mt-1 text-3xl font-black tracking-[-0.02em] sm:text-4xl`}>Reward fulfillment</h1>
-      <p className="mt-2 max-w-xl text-[14px] text-[var(--text-body)]">Builder gear + bag claims. The address reads straight onto a label — copy it, ship it, mark it shipped.</p>
-
-      <div className="mt-6 inline-flex rounded-full bg-white/[0.05] p-1">
-        {TABS.map((t) => (
-          <button key={t.k} onClick={() => setStatus(t.k)} className={`rounded-full px-4 py-1.5 text-[13px] font-bold transition-colors ${status === t.k ? "bg-[var(--gold)] text-[#141B16]" : "text-[var(--sage)] hover:text-[var(--cream)]"}`}>{t.label}</button>
-        ))}
-      </div>
-
-      {/* period: year dropdown + quarter pills — auto-organizes claims into quarterly shipping batches */}
-      <div className="mt-3 flex flex-wrap items-center gap-3">
+    <QueuePage title="Reward Fulfillment" blurb={<>Builder gear + bag claims, batched into quarterly shipments. The address reads straight onto a label — copy it, ship it, mark it shipped.<br />Rejecting ships nothing and drops the claim from the queue.</>}>
+      <div className="mt-8 flex flex-wrap items-center gap-3">
+        <Segmented value={status} onChange={setStatus} options={[
+          { k: "pending", label: "Pending", n: pendingCount },
+          { k: "completed", label: "Completed", n: completedCount },
+          { k: "rejected", label: "Rejected", n: rejectedCount },
+          { k: "all", label: "All" },
+        ]} />
         <div className="relative">
           <select
             value={String(year)}
             onChange={(e) => setYear(e.target.value === "all" ? "all" : Number(e.target.value))}
-            className="appearance-none rounded-full border border-[var(--hair-strong)] bg-white/[0.04] py-1.5 pl-4 pr-9 text-[13px] font-bold text-[var(--cream)] outline-none transition-colors focus:border-[var(--gold)]/50"
+            className="appearance-none rounded-full bg-white/[0.05] py-2 pl-4 pr-9 text-[13px] font-bold text-[var(--cream)] outline-none"
           >
             <option value="all">All years</option>
             {years.map((y) => <option key={y} value={y}>{y}</option>)}
           </select>
           <svg className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--sage)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
         </div>
-        <div className="inline-flex rounded-full bg-white/[0.05] p-1">
-          {QUARTERS.map((qq) => {
-            const c = qCount(qq.q);
-            const on = quarter === qq.q;
-            return (
-              <button key={qq.q} onClick={() => setQuarter(qq.q)} className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] font-bold transition-colors ${on ? "bg-[var(--gold)] text-[#141B16]" : "text-[var(--sage)] hover:text-[var(--cream)]"}`}>
-                {qq.label}
-                {c > 0 && <span className={`text-[11px] ${on ? "text-[#141B16]/70" : "text-[var(--sage-dim)]"}`}>{c}</span>}
-              </button>
-            );
-          })}
-        </div>
+        <Segmented value={quarter} onChange={setQuarter} options={QUARTERS.map((qq) => ({ k: qq.q, label: qq.label, n: qCount(qq.q) }))} />
       </div>
 
-      {rows === null ? (
-        <div className="mt-10 flex justify-center text-[var(--sage)]"><svg className="h-6 w-6 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg></div>
-      ) : shown.length === 0 ? (
-        <div className="mt-8 rounded-2xl border border-dashed border-[var(--hair)] bg-[var(--bg-mid)] p-10 text-center">
-          <div className="text-3xl">{status === "pending" ? "✅" : status === "rejected" ? "🚫" : "📦"}</div>
-          <p className="mt-2 text-[15px] font-semibold text-[var(--cream)]">{status === "pending" ? "Nothing to ship" : status === "rejected" ? "No rejected claims" : "Nothing here"} <span className="text-[var(--sage-dim)]">· {periodLabel}</span></p>
-        </div>
+      {rows === null ? <Spinner /> : shown.length === 0 ? (
+        <Empty emoji={status === "pending" ? "✅" : status === "rejected" ? "🚫" : "📦"} title={<>{status === "pending" ? "Nothing to ship" : status === "rejected" ? "No rejected claims" : "Nothing here"} <span className="text-[var(--sage-dim)]">· {periodLabel}</span></>} />
       ) : (
-        <>
-          <div className="mt-6 text-[12.5px] font-semibold text-[var(--sage-dim)]">{shown.length} {noun} · {periodLabel}</div>
-          <div className="mt-3 space-y-5">{shown.map((r) => <Card key={r.id} r={r} onShipped={onShipped} onRejected={onRejected} />)}</div>
-        </>
+        <div className="mt-10 space-y-5">
+          <SectionLabel>{shown.length} {noun} · {periodLabel}</SectionLabel>
+          {shown.map((r) => <ClaimCard key={r.id} r={r} onShipped={onShipped} onRejected={onRejected} />)}
+        </div>
       )}
-    </div>
+    </QueuePage>
   );
 }

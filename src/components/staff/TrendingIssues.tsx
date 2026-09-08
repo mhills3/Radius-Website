@@ -143,11 +143,10 @@ export default function TrendingIssues() {
   const openColor = openGroup ? PALETTE[bars.findIndex((b) => b.theme === openGroup.theme) % PALETTE.length]?.c ?? "#f6c165" : "#f6c165";
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-10">
-      <Link href="/admin" className="text-[12px] font-semibold text-[var(--sage)] transition-colors hover:text-[var(--gold)]">← The Circle</Link>
-      <div className="mt-2 font-mono text-[10px] font-bold uppercase tracking-[0.24em] text-[var(--gold)]">Internal use only</div>
-      <h1 className={`${HEAD} mt-1 text-3xl font-black tracking-[-0.02em] sm:text-4xl`}>Trending issues</h1>
-      <p className="mt-2 max-w-xl text-[14px] leading-relaxed text-[var(--text-body)]">What the community is raising most — themes ranked by how many people brought them up. Tap a bar to see the exact bugs, requests, and messages behind it.</p>
+    <div className="mx-auto max-w-6xl px-6 py-12 sm:py-16">
+      <Link href="/admin" className="text-[15px] font-medium text-[var(--sage-dim)] transition-colors hover:text-[var(--gold)]">← The Circle</Link>
+      <h1 className={`${HEAD} mt-4 text-[40px] font-black leading-none tracking-[-0.03em] text-[var(--cream)] sm:text-[48px]`}>Trending Issues</h1>
+      <p className="mt-4 max-w-3xl text-[16px] leading-relaxed text-[var(--sage)]">What the community is raising most — themes ranked by how many people brought them up.<br />Tap a bar to see the exact bugs, requests, and messages behind it.</p>
 
       {/* week pager */}
       <div className="mt-6 flex items-center justify-between gap-3">
