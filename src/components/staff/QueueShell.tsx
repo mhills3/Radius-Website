@@ -54,7 +54,7 @@ export function Fact({ icon, tone = "neutral", children }: { icon: string; tone?
 
 export function Card({ children, accent, dim }: { children: ReactNode; accent?: "bad" | "warn"; dim?: boolean }) {
   return (
-    <div className={`rounded-3xl bg-white/[0.035] p-8 ${accent === "bad" ? "ring-1 ring-[#ef7f7f]/40" : accent === "warn" ? "ring-1 ring-[#f0c069]/30" : ""} ${dim ? "opacity-70" : ""}`}>
+    <div className={`rounded-3xl border border-white/[0.06] bg-[#0e1612]/60 p-8 backdrop-blur-md shadow-[0_18px_50px_-30px_rgba(0,0,0,0.9)] ${accent === "bad" ? "ring-1 ring-[#ef7f7f]/40" : accent === "warn" ? "ring-1 ring-[#f0c069]/30" : ""} ${dim ? "opacity-70" : ""}`}>
       {children}
     </div>
   );
@@ -151,7 +151,7 @@ export function Spinner() {
 
 export function Empty({ emoji, title, sub }: { emoji: string; title: ReactNode; sub?: ReactNode }) {
   return (
-    <div className="mt-10 rounded-3xl bg-white/[0.025] p-12 text-center">
+    <div className="mt-10 rounded-3xl border border-white/[0.06] bg-[#0e1612]/50 p-12 text-center backdrop-blur-md">
       <div className="text-3xl">{emoji}</div>
       <p className="mt-3 text-[16px] font-semibold text-[var(--cream)]">{title}</p>
       {sub && <p className="mt-1 text-[14px] text-[var(--sage-dim)]">{sub}</p>}

@@ -63,7 +63,7 @@ function Row({ q }: { q: QueueMeta }) {
   return (
     <Link
       href={href}
-      className={`group flex items-center gap-6 rounded-2xl px-7 py-6 transition-colors ${active ? "bg-white/[0.035] hover:bg-white/[0.055]" : "bg-white/[0.02] opacity-60 hover:opacity-90"}`}
+      className={`group flex items-center gap-6 rounded-2xl px-7 py-6 transition-colors ${active ? "bg-[#0e1612]/60 hover:bg-[#0e1612]/75" : "bg-[#0e1612]/40 opacity-60 hover:opacity-90"} border border-white/[0.06] backdrop-blur-md shadow-[0_18px_50px_-30px_rgba(0,0,0,0.9)]`}
     >
       <span className="grid h-[68px] w-[68px] shrink-0 place-items-center rounded-2xl bg-white/[0.04] text-[28px] leading-none">{icon}</span>
 
@@ -88,7 +88,7 @@ function Row({ q }: { q: QueueMeta }) {
         )}
       </div>
 
-      {delta && <span className="shrink-0 font-mono text-[14px] font-semibold text-[var(--gold)]">{delta}</span>}
+      {delta && <span style={NUM} className="shrink-0 text-[14px] font-semibold text-[var(--gold)]">{delta}</span>}
 
       <div className="w-[64px] shrink-0 text-right">
         <div style={NUM} className={`text-[34px] font-black leading-none ${active ? "text-[var(--cream)]" : "text-[var(--sage-dim)]"}`}>{q.count}</div>
@@ -102,7 +102,7 @@ function DigestRow({ q }: { q: QueueMeta }) {
   const { name, blurb, href, icon } = DEFS.digest;
   const lastRun = q.freshness.type === "lastRun" ? ` · last run ${ago(q.freshness.ms)}` : "";
   return (
-    <Link href={href} className="group flex items-center gap-5 rounded-2xl bg-white/[0.025] px-7 py-5 transition-colors hover:bg-white/[0.045]">
+    <Link href={href} className="group flex items-center gap-5 rounded-2xl border border-white/[0.06] bg-[#0e1612]/50 px-7 py-5 backdrop-blur-md transition-colors hover:bg-[#0e1612]/70">
       <span className="shrink-0 text-[24px] leading-none">{icon}</span>
       <div className="min-w-0 flex-1">
         <div className={`${HEAD} text-[19px] font-bold leading-tight text-[var(--cream)]`}>{name}</div>
@@ -116,7 +116,7 @@ function DigestRow({ q }: { q: QueueMeta }) {
 function Stat({ value, label, color }: { value: string; label: string; color?: string }) {
   return (
     <div className="text-center">
-      <div className="font-mono text-[30px] font-bold leading-none" style={{ color: color || "var(--cream)" }}>{value}</div>
+      <div className={`${HEAD} text-[30px] font-extrabold leading-none tracking-[-0.02em]`} style={{ color: color || "var(--cream)" }}>{value}</div>
       <div className="mt-2 text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--sage-dim)]">{label}</div>
     </div>
   );
@@ -161,7 +161,7 @@ export default function AdminHub({ growth }: { growth: GrowthData }) {
         )}
       </div>
 
-      <div className="mt-14 rounded-3xl bg-white/[0.02] p-6 sm:p-8">
+      <div className="mt-14 rounded-3xl border border-white/[0.06] bg-[#0e1612]/55 p-6 backdrop-blur-md sm:p-8">
         <div className="mb-5 flex items-center gap-2.5">
           <span className="relative flex h-2 w-2">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#5fcf80] opacity-60" />

@@ -174,7 +174,7 @@ export default function DiscSubmissionQueue() {
       )}
 
       {/* release-loop footer */}
-      <div className="mt-12 rounded-3xl bg-white/[0.025] p-6 text-[13px] leading-relaxed text-[var(--sage-dim)]">
+      <div className="mt-12 rounded-3xl border border-white/[0.06] bg-[#0e1612]/50 p-6 text-[13px] backdrop-blur-md leading-relaxed text-[var(--sage-dim)]">
         <div className={`${HEAD} mb-2 text-[12px] font-bold uppercase tracking-[0.16em] text-[var(--sage)]`}>How approval reaches players</div>
         Approving <b className="text-[var(--cream)]">stages</b> a disc into <code className="text-[var(--sage)]">discCatalogQueue</code> — it does <b>not</b> edit the live catalog. A staged disc goes live when (1) <b className="text-[var(--cream)]">discs.json is regenerated</b> for web (anytime — the site is dynamic), and (2) iOS/Android <b className="text-[var(--cream)]">compile it into their next release&apos;s DiscDatabase</b>. Until then, approved ≠ live — the <span style={{ color: TONE.good }}>Live on web</span> badge on the Approved tab means the folded name already matches discs.json. Flight numbers players type are often wrong; verify against the manufacturer before a catalog release.
       </div>
