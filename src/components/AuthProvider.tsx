@@ -44,9 +44,16 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         // forget, then refresh so rules see it). Web was the one platform
         // that never called this; course ownership rules now key on the
         // claim, so migrated owners need it stamped here too (2026-09-07).
-        httpsCallable(functions, "syncCanonicalClaim")({})
-          .then(() => u.getIdToken(true))
-          .catch(() => {});
+        // Skip when the token already carries a claim — onAuthStateChanged
+        // fires on every page load and the callable only needs to run once
+        // per token lifetime.
+        u.getIdTokenResult()
+          .then((t) =>
+            t.claims.canonicalId
+              ? null
+              : httpsCallable(functions, "syncCanonicalClaim")({}).then(() => u.getIdToken(true))
+          )
+          .catch((e) => console.warn("syncCanonicalClaim failed; migrated-account ownership may not resolve", e));
       } else {
         setProfile(null);
         setProfileLoading(false);
