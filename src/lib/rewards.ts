@@ -35,7 +35,7 @@ export async function getClaimable(uid: string): Promise<Claimable> {
 
   const tiers: Tier[] = [], milestoneKeys: string[] = [], alreadyPending: Tier[] = [];
   for (const [key, tier] of MILESTONES) {
-    if (!awarded.has(key) || fulfilled.has(tier)) continue;
+    if (!awarded.has(key) || fulfilled.has(key)) continue; // merchFulfilled holds milestone KEYS
     if (submitted.has(tier)) { alreadyPending.push(tier); continue; }
     tiers.push(tier); milestoneKeys.push(key);
   }

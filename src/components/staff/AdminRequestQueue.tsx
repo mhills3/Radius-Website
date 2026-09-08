@@ -101,10 +101,11 @@ export default function AdminRequestQueue() {
   const byOldest = (a: AdminRequest, b: AdminRequest) => (a.createdAt ?? Infinity) - (b.createdAt ?? Infinity);
   const pending = (requests || []).filter((r) => r.status === "pending").sort(byOldest);
   const invalid = (requests || []).filter((r) => r.status === "invalid").sort(byOldest);
+  const errored = (requests || []).filter((r) => r.status === "error").sort(byOldest);
 
   return (
     <QueuePage title="Admin Requests" blurb={<>Approving adds them to the course&apos;s admins — they can edit its info, holes and layouts everywhere.<br />Denying changes nothing.</>}>
-      {requests === null ? <Spinner /> : loadErr ? <LoadError /> : pending.length === 0 && invalid.length === 0 ? (
+      {requests === null ? <Spinner /> : loadErr ? <LoadError /> : pending.length === 0 && invalid.length === 0 && errored.length === 0 ? (
         <Empty emoji="✅" title="Queue is clear" sub="No pending admin requests right now." />
       ) : (
         <div className="mt-10 space-y-5">
@@ -114,6 +115,12 @@ export default function AdminRequestQueue() {
             <>
               <SectionLabel tone="bad" className="pt-6">{invalid.length} flagged invalid — needs attention</SectionLabel>
               {invalid.map((r) => <RequestCard key={r.id} r={r} onResolved={onResolved} />)}
+            </>
+          )}
+          {errored.length > 0 && (
+            <>
+              <SectionLabel tone="bad" className="pt-6">{errored.length} failed server processing — deny to clear, requester re-files</SectionLabel>
+              {errored.map((r) => <RequestCard key={r.id} r={r} onResolved={onResolved} />)}
             </>
           )}
         </div>

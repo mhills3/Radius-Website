@@ -166,10 +166,11 @@ export default function RemovalQueue() {
   const byOldest = (a: RemovalRequest, b: RemovalRequest) => (a.createdAt ?? Infinity) - (b.createdAt ?? Infinity);
   const pending = (requests || []).filter((r) => r.status === "pending").sort(byOldest);
   const invalid = (requests || []).filter((r) => r.status === "invalid").sort(byOldest);
+  const errored = (requests || []).filter((r) => r.status === "error").sort(byOldest);
 
   return (
     <QueuePage title="Course Removals" blurb={<>Approving is a soft delete — the course leaves the map and search while existing rounds keep resolving. Nothing is destroyed.<br />Denying changes nothing.</>}>
-      {requests === null ? <Spinner /> : loadErr ? <LoadError /> : pending.length === 0 && invalid.length === 0 ? (
+      {requests === null ? <Spinner /> : loadErr ? <LoadError /> : pending.length === 0 && invalid.length === 0 && errored.length === 0 ? (
         <Empty emoji="✅" title="Queue is clear" sub="No pending removal requests right now." />
       ) : (
         <div className="mt-10 space-y-5">
@@ -179,6 +180,12 @@ export default function RemovalQueue() {
             <>
               <SectionLabel tone="bad" className="pt-6">{invalid.length} flagged invalid — needs attention</SectionLabel>
               {invalid.map((r) => <RemovalCard key={r.id} r={r} onResolved={onResolved} />)}
+            </>
+          )}
+          {errored.length > 0 && (
+            <>
+              <SectionLabel tone="bad" className="pt-6">{errored.length} failed server processing — deny to clear, requester re-files</SectionLabel>
+              {errored.map((r) => <RemovalCard key={r.id} r={r} onResolved={onResolved} />)}
             </>
           )}
         </div>
