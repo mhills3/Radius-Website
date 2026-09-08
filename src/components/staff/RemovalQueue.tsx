@@ -32,6 +32,7 @@ function RemovalCard({ r, onResolved }: { r: RemovalRequest; onResolved: (id: st
   const snap = r.courseSnapshot || {};
   const dups = ev.likelyDuplicates || [];
   const invalid = r.status === "invalid";
+  const errored = r.status === "error";
   const map = twoPinMapUrl(snap, dups[0] ?? null);
   const rounds = ev.roundsPlayed ?? 0;
 
@@ -61,6 +62,12 @@ function RemovalCard({ r, onResolved }: { r: RemovalRequest; onResolved: (id: st
 
   return (
     <Card accent={invalid ? "bad" : looksLikeEdit ? "warn" : undefined}>
+      {errored && (
+        <div className="mb-6 rounded-2xl px-5 py-4" style={{ background: "rgba(239,127,127,0.08)" }}>
+          <SectionLabel tone="bad">Server processing failed</SectionLabel>
+          <p className="mt-2 text-[14px] leading-snug text-[var(--cream)]">The evidence builder crashed on this request, so nothing here is server-verified. Approve is disabled — <b>Deny</b> clears it and the requester can re-file.{r.triggerError ? <> Error: <code className="text-[12px]">{r.triggerError}</code></> : null}</p>
+        </div>
+      )}
       {invalid && (
         <div className="mb-6 rounded-2xl px-5 py-4" style={{ background: "rgba(239,127,127,0.08)" }}>
           <SectionLabel tone="bad">Failed server validation</SectionLabel>
@@ -107,7 +114,7 @@ function RemovalCard({ r, onResolved }: { r: RemovalRequest; onResolved: (id: st
         }
         right={
           <ActionRail
-            primary={{ label: "Approve", busyLabel: "Approving…", onClick: (n) => act("approve", n) }}
+            primary={{ label: "Approve", busyLabel: "Approving…", onClick: (n) => act("approve", n), disabled: errored }}
             secondary={{ label: "Deny", busyLabel: "Denying…", onClick: (n) => act("deny", n) }}
             busy={busy}
             note="Note — attached to the decision"

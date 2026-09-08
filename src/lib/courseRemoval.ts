@@ -38,7 +38,9 @@ export interface RemovalRequest {
   evidence?: RemovalEvidence;
   /** Server-stamped: the request writer's auth identity matched the claimed requester. */
   requesterVerified?: boolean;
-  status: string;       // pending | invalid | approved | denied
+  status: string;       // pending | invalid | error | approved | denied
+  /** Server-stamped when the evidence trigger failed — card is deny-only. */
+  triggerError?: string;
   validationErrors?: string[];
   createdAt?: number;
 }
@@ -53,7 +55,7 @@ export async function getPendingRemovalCount(): Promise<number> {
 
 /** Everything the staff queue shows: pending requests + the server-flagged invalid ones. */
 export async function getRemovalRequests(): Promise<RemovalRequest[]> {
-  const snap = await getDocs(query(collection(db, "courseRemovalRequests"), where("status", "in", ["pending", "invalid"])));
+  const snap = await getDocs(query(collection(db, "courseRemovalRequests"), where("status", "in", ["pending", "invalid", "error"])));
   return snap.docs
     .map((d) => ({ id: d.id, ...(d.data() as Omit<RemovalRequest, "id">) }))
     .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));

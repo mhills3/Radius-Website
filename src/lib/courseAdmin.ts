@@ -26,14 +26,16 @@ export interface AdminRequest {
   requesterEmailMissing?: boolean;
   requesterUsername?: string;
   evidence?: AdminRequestEvidence;
-  status: string;       // pending | invalid | approved | denied
+  status: string;       // pending | invalid | error | approved | denied
+  /** Server-stamped when the evidence trigger failed — card is deny-only. */
+  triggerError?: string;
   validationErrors?: string[];
   createdAt?: number;
 }
 
 /** Everything the staff queue shows: pending requests + the server-flagged invalid ones. */
 export async function getAdminAccessRequests(): Promise<AdminRequest[]> {
-  const snap = await getDocs(query(collection(db, "courseAdminRequests"), where("status", "in", ["pending", "invalid"])));
+  const snap = await getDocs(query(collection(db, "courseAdminRequests"), where("status", "in", ["pending", "invalid", "error"])));
   return snap.docs
     .map((d) => ({ id: d.id, ...(d.data() as Omit<AdminRequest, "id">) }))
     .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
