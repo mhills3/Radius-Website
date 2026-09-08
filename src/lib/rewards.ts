@@ -1,5 +1,5 @@
 import { db, functions } from "./firebase";
-import { doc, getDoc, collection, addDoc, getDocs, getCountFromServer, query, where } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs, getCountFromServer, query, where } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { resolveCanonicalId } from "./account";
 
@@ -46,21 +46,10 @@ export interface FulfillmentInput {
   fullName: string; email: string; address1: string; address2?: string; city: string; region: string; postcode: string; country: string; phone: string;
   bagRequest?: string; bagLink?: string; notes?: string;
 }
-/** Write the claim to rewardFulfillments (status pending). One submission covers all claimable tiers. */
-export async function submitFulfillment(claim: Claimable, input: FulfillmentInput): Promise<void> {
-  const t = (s?: string) => (s || "").trim();
-  await addDoc(collection(db, "rewardFulfillments"), {
-    userId: claim.canonicalId,
-    tiers: claim.tiers,
-    milestoneKeys: claim.milestoneKeys,
-    fullName: t(input.fullName), email: t(input.email), address1: t(input.address1), address2: t(input.address2),
-    city: t(input.city), region: t(input.region), postcode: t(input.postcode), country: t(input.country), phone: t(input.phone),
-    bagRequest: t(input.bagRequest), bagLink: t(input.bagLink), notes: t(input.notes),
-    courseCount: claim.courseCount,
-    status: "pending",
-    submittedAt: Date.now(),
-    platform: "web",
-  });
+/** Submit the claim through the server (rewardFulfillments is server-write-only;
+ *  the callable re-derives identity + entitlement, so nothing here is trusted). */
+export async function submitFulfillment(_claim: Claimable, input: FulfillmentInput): Promise<void> {
+  await httpsCallable(functions, "submitClaim")({ form: input });
 }
 
 // ---------- tokenised claim (emailed "?t=" link, no login) ----------
