@@ -85,6 +85,11 @@ function RemovalCard({ r, onResolved }: { r: RemovalRequest; onResolved: (id: st
             <Fact icon="🏗️" tone={ev.requesterBuiltIt === true ? "good" : ev.requesterBuiltIt === false ? "bad" : "neutral"}>
               {ev.requesterBuiltIt === true ? "They built this course" : ev.requesterBuiltIt === false ? "Not the builder" : "Builder unknown"}
             </Fact>
+            {r.requesterVerified === false && (
+              <Fact icon="🪪" tone="bad">
+                Identity mismatch — the account that filed this is NOT the person it claims to be
+              </Fact>
+            )}
             <Fact icon="🥏" tone={rounds > 0 ? "warn" : "good"}>
               {rounds > 0 ? <><b className="text-[var(--cream)]">{rounds}</b> round{rounds === 1 ? "" : "s"} logged here <span className="text-[var(--sage)]">· they keep resolving after removal</span></> : "No rounds logged here"}
             </Fact>

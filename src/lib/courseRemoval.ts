@@ -36,6 +36,8 @@ export interface RemovalRequest {
   requesterEmailMissing?: boolean;
   requesterUsername?: string;
   evidence?: RemovalEvidence;
+  /** Server-stamped: the request writer's auth identity matched the claimed requester. */
+  requesterVerified?: boolean;
   status: string;       // pending | invalid | approved | denied
   validationErrors?: string[];
   createdAt?: number;
