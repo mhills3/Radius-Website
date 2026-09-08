@@ -7,6 +7,13 @@ import { QueuePage, SectionLabel, Card, CardGrid, CardTitle, Tag, Fact, Spinner,
 
 const fmtDate = (ms?: number) => (ms ? new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—");
 const tierText = (t: string[] = []) => (t.includes("gear") && t.includes("bag") ? "Gear + Bag" : t.includes("bag") ? "Bag" : t.includes("gear") ? "Gear" : "—");
+const DAY = 86_400_000;
+// Claims ship in quarterly batches — everything submitted in a quarter is due by that quarter's last day.
+const quarterEndMs = (year: number, q: 1 | 2 | 3 | 4) => new Date(year, q * 3, 0, 23, 59, 59, 999).getTime(); // day 0 of next quarter's first month = last day of this quarter
+const fmtDue = (ms: number) => new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+const daysLeft = (ms: number) => Math.ceil((ms - Date.now()) / DAY);
+const dueTone = (ms: number): "good" | "warn" | "bad" => (daysLeft(ms) <= 7 ? "bad" : daysLeft(ms) <= 21 ? "warn" : "good");
+const dueText = (ms: number) => { const d = daysLeft(ms); return d < 0 ? `${-d} day${d === -1 ? "" : "s"} overdue` : d === 0 ? "due today" : `${d} day${d === 1 ? "" : "s"} left`; };
 const isDomestic = (country?: string) => /^(us|usa|u\.s\.a?\.?|united states( of america)?)$/i.test((country || "").trim());
 
 // Prefer the server-verified recount over the browser-submitted figure. When they disagree, show both
@@ -110,6 +117,10 @@ function ClaimCard({ r, onShipped, onRejected }: { r: Fulfillment; onShipped: (i
               </Fact>
             )}
             {r.notes && <Fact icon="📝"><span className="italic">&ldquo;{r.notes}&rdquo;</span></Fact>}
+            {!shipped && !rejected && r.submittedAt != null && (() => {
+              const due = quarterEndMs(yearOf(r.submittedAt), quarterOf(r.submittedAt) as 1 | 2 | 3 | 4);
+              return <Fact icon="⏳" tone={dueTone(due)}>Due <b className="text-[var(--cream)]">{fmtDue(due)}</b> · Q{quarterOf(r.submittedAt)} batch · {dueText(due)}</Fact>;
+            })()}
             {shipped && <Fact icon="✅" tone="good">Shipped {fmtDate(r.shippedAt)}{r.tracking ? ` · ${r.tracking}` : ""}{r.shipNote ? ` · ${r.shipNote}` : ""}</Fact>}
             {rejected && <Fact icon="🚫" tone="bad">Rejected{r.rejectedAt ? ` ${fmtDate(r.rejectedAt)}` : ""}{r.rejectReason ? ` · ${r.rejectReason}` : ""}</Fact>}
           </>
@@ -144,6 +155,7 @@ function ClaimCard({ r, onShipped, onRejected }: { r: Fulfillment; onShipped: (i
 }
 
 type Filter = "pending" | "completed" | "rejected" | "all";
+type TierFilter = "all" | "gear" | "bag" | "both";
 type Quarter = 0 | 1 | 2 | 3 | 4; // 0 = whole year
 
 // claims are batched into quarterly shipments — group by the quarter they were submitted.
@@ -156,6 +168,7 @@ export default function FulfillmentQueue() {
   const [status, setStatus] = useState<Filter>("pending");
   const [year, setYear] = useState<number | "all">("all");
   const [quarter, setQuarter] = useState<Quarter>(0);
+  const [tier, setTier] = useState<TierFilter>("all");
 
   useEffect(() => { getFulfillments().then(setRows).catch(() => setRows([])); }, []);
   // default to the current quarter's shipping batch — set on mount (client-only) to avoid an SSR date mismatch.
@@ -183,24 +196,38 @@ export default function FulfillmentQueue() {
   const matchStatus = (r: Fulfillment) => (status === "all" ? true : status === "completed" ? r.status === "shipped" : status === "rejected" ? isRejected(r) : isPending(r));
   const matchYear = (r: Fulfillment) => year === "all" || (r.submittedAt != null && yearOf(r.submittedAt) === year);
   const matchQuarter = (r: Fulfillment) => quarter === 0 || (r.submittedAt != null && quarterOf(r.submittedAt) === quarter);
+  // Gear = anyone who needs a gear bundle (incl. both-claims); Bag likewise; Both = needs both.
+  const hasTier = (r: Fulfillment, t: "gear" | "bag") => (r.tiers || []).includes(t);
+  const matchTier = (r: Fulfillment) => tier === "all" ? true : tier === "both" ? hasTier(r, "gear") && hasTier(r, "bag") : hasTier(r, tier);
 
   // Oldest first for the pending queue (clear the old ones); newest first for history.
   const shown = all
-    .filter((r) => matchStatus(r) && matchYear(r) && matchQuarter(r))
+    .filter((r) => matchStatus(r) && matchYear(r) && matchQuarter(r) && matchTier(r))
     .sort((a, b) => (status === "pending" ? (a.submittedAt ?? Infinity) - (b.submittedAt ?? Infinity) : (b.submittedAt ?? 0) - (a.submittedAt ?? 0)));
 
   // period-aware tab counts so "what's needed vs what we did" reads at a glance for the chosen window.
-  const inPeriod = (r: Fulfillment) => matchYear(r) && matchQuarter(r);
+  const inPeriod = (r: Fulfillment) => matchYear(r) && matchQuarter(r) && matchTier(r);
   const pendingCount = all.filter((r) => isPending(r) && inPeriod(r)).length;
   const completedCount = all.filter((r) => r.status === "shipped" && inPeriod(r)).length;
   const rejectedCount = all.filter((r) => isRejected(r) && inPeriod(r)).length;
 
   // quarter pill counts respect the status + year selection (ignore quarter) → shows the spread across the year.
-  const inScope = all.filter((r) => matchStatus(r) && matchYear(r));
+  const inScope = all.filter((r) => matchStatus(r) && matchYear(r) && matchTier(r));
+  // tier pill counts respect status + period (ignore tier) → what's in each pile for this batch.
+  const tierScope = all.filter((r) => matchStatus(r) && matchYear(r) && matchQuarter(r));
+  const tCount = (t: TierFilter) => tierScope.filter((r) => t === "all" ? true : t === "both" ? hasTier(r, "gear") && hasTier(r, "bag") : hasTier(r, t)).length;
+
+  // The batch deadline: end of the selected quarter, or of the current quarter when viewing a whole year.
+  const now = new Date();
+  const dueYear = typeof year === "number" ? year : now.getFullYear();
+  const dueQ = (quarter === 0 ? Math.floor(now.getMonth() / 3) + 1 : quarter) as 1 | 2 | 3 | 4;
+  const dueMs = quarterEndMs(dueYear, dueQ);
+  const dueColor = { good: "#8fe0a5", warn: "#f0c069", bad: "#ef7f7f" }[dueTone(dueMs)];
   const qCount = (q: Quarter) => (q === 0 ? inScope.length : inScope.filter((r) => r.submittedAt != null && quarterOf(r.submittedAt) === q).length);
 
   const periodLabel = year === "all" ? (quarter === 0 ? "all time" : `Q${quarter}, all years`) : quarter === 0 ? `${year}` : `Q${quarter} ${year}`;
   const noun = status === "completed" ? "shipped" : status === "pending" ? "to ship" : status === "rejected" ? "rejected" : "total";
+  const tierLabel = tier === "all" ? "" : tier === "both" ? " · gear + bag" : ` · ${tier}`;
 
   return (
     <QueuePage title="Reward Fulfillment" blurb={<>Builder gear + bag claims, batched into quarterly shipments. The address reads straight onto a label — copy it, ship it, mark it shipped.<br />Rejecting ships nothing and drops the claim from the queue.</>}>
@@ -223,13 +250,31 @@ export default function FulfillmentQueue() {
           <svg className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--sage)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
         </div>
         <Segmented value={quarter} onChange={setQuarter} options={QUARTERS.map((qq) => ({ k: qq.q, label: qq.label, n: qCount(qq.q) }))} />
+        <Segmented value={tier} onChange={setTier} options={[
+          { k: "all", label: "All rewards" },
+          { k: "gear", label: "Gear", n: tCount("gear") },
+          { k: "bag", label: "Bag", n: tCount("bag") },
+          { k: "both", label: "Gear + Bag", n: tCount("both") },
+        ]} />
       </div>
 
+      {/* batch deadline */}
+      {status === "pending" && (
+        <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-white/[0.06] bg-[#0e1612]/50 px-6 py-4 backdrop-blur-md">
+          <span className="text-[22px] leading-none">⏳</span>
+          <div className="min-w-0 flex-1">
+            <div className="text-[16px] text-[var(--cream)]">Q{dueQ} {dueYear} batch due <b>{fmtDue(dueMs)}</b></div>
+            <div className="mt-0.5 text-[13px] text-[var(--sage-dim)]">Everything claimed in a quarter ships by that quarter&apos;s last day{quarter === 0 ? " · showing the current quarter's deadline" : ""}.</div>
+          </div>
+          <span className="text-[15px] font-bold" style={{ color: dueColor }}>{dueText(dueMs)}</span>
+        </div>
+      )}
+
       {rows === null ? <Spinner /> : shown.length === 0 ? (
-        <Empty emoji={status === "pending" ? "✅" : status === "rejected" ? "🚫" : "📦"} title={<>{status === "pending" ? "Nothing to ship" : status === "rejected" ? "No rejected claims" : "Nothing here"} <span className="text-[var(--sage-dim)]">· {periodLabel}</span></>} />
+        <Empty emoji={status === "pending" ? "✅" : status === "rejected" ? "🚫" : "📦"} title={<>{status === "pending" ? "Nothing to ship" : status === "rejected" ? "No rejected claims" : "Nothing here"} <span className="text-[var(--sage-dim)]">· {periodLabel}{tierLabel}</span></>} />
       ) : (
         <div className="mt-10 space-y-5">
-          <SectionLabel>{shown.length} {noun} · {periodLabel}</SectionLabel>
+          <SectionLabel>{shown.length} {noun} · {periodLabel}{tierLabel}</SectionLabel>
           {shown.map((r) => <ClaimCard key={r.id} r={r} onShipped={onShipped} onRejected={onRejected} />)}
         </div>
       )}
