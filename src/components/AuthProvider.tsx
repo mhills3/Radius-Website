@@ -2,7 +2,8 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged, signOut as fbSignOut, type User } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { httpsCallable } from "firebase/functions";
+import { auth, functions } from "@/lib/firebase";
 import { getProfileLite, type ProfileLite } from "@/lib/account";
 
 type AuthCtx = {
@@ -39,6 +40,13 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       if (u) {
         setProfileLoading(true);
         getProfileLite(u.uid).then(setProfile).catch(() => setProfile(null)).finally(() => setProfileLoading(false));
+        // Stamp the canonical-identity claim on this login's token (fire and
+        // forget, then refresh so rules see it). Web was the one platform
+        // that never called this; course ownership rules now key on the
+        // claim, so migrated owners need it stamped here too (2026-09-07).
+        httpsCallable(functions, "syncCanonicalClaim")({})
+          .then(() => u.getIdToken(true))
+          .catch(() => {});
       } else {
         setProfile(null);
         setProfileLoading(false);
