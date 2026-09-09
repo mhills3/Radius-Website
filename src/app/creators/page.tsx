@@ -3,7 +3,8 @@ import CreatorFlywheel from "@/components/story/CreatorFlywheel";
 export const metadata = {
   title: "Creators",
   description: "Partner with Radius. Share the home of disc golf with your audience — and get rewarded with cash, commission, and a free year of Radius.",
-  alternates: { canonical: "https://radiusdiscgolf.com/creators" },
+  // No self-canonical: a canonical is an "index me" signal that fights the noindex below. Google
+  // will drop the lingering /creators sitelink on its next crawl once it re-reads this noindex.
   robots: { index: false, follow: false }, // page kept but not surfaced/indexed
 };
 

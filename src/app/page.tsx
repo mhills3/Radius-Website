@@ -1,6 +1,7 @@
 import Hero from "@/components/home/Hero";
 import CommunityBand from "@/components/home/CommunityBand";
 import Ecosystem from "@/components/home/Ecosystem";
+import FeaturedIn from "@/components/home/FeaturedIn";
 import CoursesStrip from "@/components/home/CoursesStrip";
 import DownloadBand from "@/components/home/DownloadBand";
 import JoinCTA from "@/components/home/JoinCTA";
@@ -24,6 +25,7 @@ export default async function Home() {
       <Hero />
       <CommunityBand playerCount={players} regionCount={regions} />
       <Ecosystem />
+      <FeaturedIn />
       <CoursesStrip />
       <DownloadBand />
       <JoinCTA />

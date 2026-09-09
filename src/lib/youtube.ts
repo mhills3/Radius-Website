@@ -17,19 +17,6 @@ export interface Highlight {
 
 const UDG_ID = "UCoXpqth3OS3XzaRcp0TtvXw";
 
-// Pinned as the "Radius Exclusive" card on the highlights rail — Foundation's Robot-vs-Human
-// caddie battle, which pits the Radius caddy against a human.
-const RADIUS_SPOTLIGHT: Highlight = {
-  id: "idApg7z3t-U",
-  title: "Robot vs. Human Disc Golf Caddie Battle at the Hardest Course",
-  channel: "Foundation Disc Golf",
-  channelId: "",
-  published: Date.parse("2026-08-30T00:00:00Z"),
-  url: "https://youtu.be/idApg7z3t-U",
-  thumb: "https://i.ytimg.com/vi/idApg7z3t-U/hqdefault.jpg",
-  exclusive: true,
-};
-
 // Order is cosmetic; UDG is pinned to the featured slot regardless.
 const CHANNELS: { name: string; id: string }[] = [
   { name: "Urban Disc Golf", id: UDG_ID },
@@ -136,9 +123,7 @@ export async function getHighlights(limit = 12): Promise<Highlight[]> {
 
   const list = udgFresh ? [{ ...udg!, featured: true }, ...rest] : rest;
 
-  // Radius Spotlight pinned as the "Radius Exclusive" card — it leads the rail while the partner
-  // slot is vacant; the moment UDG posts fresh (reclaiming slot 1) it moves to card 3.
-  const rotated = list.filter((v) => v.id !== RADIUS_SPOTLIGHT.id);
-  rotated.splice(udgFresh ? Math.min(2, rotated.length) : 0, 0, RADIUS_SPOTLIGHT);
-  return rotated.slice(0, limit);
+  // The Foundation "Radius Exclusive" pin moved to the homepage "Featured In" rail — the community
+  // highlights strip is pure pro/partner uploads again.
+  return list.slice(0, limit);
 }
