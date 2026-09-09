@@ -36,7 +36,7 @@ function Card({ v, onClick }: { v: Vid; onClick: () => void }) {
           <div className="mt-2 flex items-center gap-2 border-t border-white/[0.07] pt-2">
             <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: v.own ? "var(--gold)" : "var(--sage)" }} />
             <span className={`min-w-0 truncate text-[11.5px] font-bold ${v.own ? "text-[var(--gold)]" : "text-[var(--sage)]"}`}>{v.channel}</span>
-            {v.views ? <span className="shrink-0 text-[11px] font-medium text-[var(--sage-dim)]">· {fmtViews(v.views)} views</span> : null}
+            {v.views && v.views >= 2000 ? <span className="shrink-0 text-[11px] font-medium text-[var(--sage-dim)]">· {fmtViews(v.views)} views</span> : null}
             <svg className="ml-auto h-3.5 w-3.5 shrink-0 text-[var(--sage-dim)] transition-colors group-hover/card:text-[var(--gold)]" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.6V8.4l6.3 3.6-6.3 3.6Z" /></svg>
           </div>
         </div>

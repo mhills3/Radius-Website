@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getRemovalRequests, resolveCourseRemoval, parseResolveError, twoPinMapUrl, type RemovalRequest, type DuplicateCandidate } from "@/lib/courseRemoval";
-import { QueuePage, SectionLabel, Card, CardGrid, CardTitle, Tag, Fact, Requester, ActionRail, Spinner, Empty, LoadError, fmtAgo, TONE } from "./QueueShell";
+import { getRemovalRequests, getResolvedRemovalRequests, resolveCourseRemoval, parseResolveError, twoPinMapUrl, type RemovalRequest, type DuplicateCandidate } from "@/lib/courseRemoval";
+import { QueuePage, SectionLabel, Card, CardGrid, CardTitle, Tag, Fact, Requester, ActionRail, Spinner, Empty, LoadError, Segmented, HistoryList, fmtAgo, TONE } from "./QueueShell";
 
 const REASON: Record<string, string> = { duplicate: "Duplicate", mistake: "Mistake", closed: "Course closed", wrong_location: "Wrong location", other: "Other" };
 const loc = (c?: { city?: string; state?: string }) => [c?.city, c?.state].filter(Boolean).join(", ");
@@ -23,7 +23,7 @@ function DupRow({ d }: { d: DuplicateCandidate }) {
   );
 }
 
-function RemovalCard({ r, onResolved }: { r: RemovalRequest; onResolved: (id: string) => void }) {
+function RemovalCard({ r, onResolved }: { r: RemovalRequest; onResolved: (id: string, decision: "approve" | "deny", note: string) => void }) {
   const [busy, setBusy] = useState<"primary" | "secondary" | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [canOverride, setCanOverride] = useState(false);
@@ -42,7 +42,7 @@ function RemovalCard({ r, onResolved }: { r: RemovalRequest; onResolved: (id: st
     try {
       const res = await resolveCourseRemoval(r.id, decision, note || undefined, override);
       if (res.error) { setErr(res.error); setBusy(null); return; }
-      onResolved(r.id); // ok OR alreadyResolved — either way it's off the queue
+      onResolved(r.id, decision, note); // ok OR alreadyResolved — either way it's off the queue
     } catch (e) {
       console.error("[resolveCourseRemoval] failed:", e); // surfaces code/message/details in devtools
       const { code, message, overridable } = parseResolveError(e);
@@ -156,39 +156,56 @@ function RemovalCard({ r, onResolved }: { r: RemovalRequest; onResolved: (id: st
 
 export default function RemovalQueue() {
   const [requests, setRequests] = useState<RemovalRequest[] | null>(null);
+  const [resolved, setResolved] = useState<RemovalRequest[]>([]);
+  const [tab, setTab] = useState<"pending" | "history">("pending");
   const [loadErr, setLoadErr] = useState(false);
 
   useEffect(() => {
     getRemovalRequests().then(setRequests).catch(() => { setLoadErr(true); setRequests([]); });
+    getResolvedRemovalRequests().then(setResolved).catch(() => setResolved([]));
   }, []);
 
-  const onResolved = (id: string) => setRequests((rs) => (rs ? rs.filter((r) => r.id !== id) : rs));
+  const onResolved = (id: string, decision: "approve" | "deny", note: string) =>
+    setRequests((rs) => {
+      const done = (rs || []).find((r) => r.id === id);
+      if (done) setResolved((h) => [{ ...done, status: decision === "approve" ? "approved" : "denied", reviewedAt: Date.now(), note: note || undefined }, ...h]);
+      return rs ? rs.filter((r) => r.id !== id) : rs;
+    });
   const byOldest = (a: RemovalRequest, b: RemovalRequest) => (a.createdAt ?? Infinity) - (b.createdAt ?? Infinity);
   const pending = (requests || []).filter((r) => r.status === "pending").sort(byOldest);
   const invalid = (requests || []).filter((r) => r.status === "invalid").sort(byOldest);
   const errored = (requests || []).filter((r) => r.status === "error").sort(byOldest);
+  const openCount = pending.length + invalid.length + errored.length;
+  const history = resolved.map((r) => ({ id: r.id, title: r.courseSnapshot?.name || r.courseName, sub: `${r.requesterName || "Unknown"}${r.requesterUsername ? ` @${r.requesterUsername}` : ""}`, decision: r.status, at: r.reviewedAt ?? r.createdAt, note: r.note }));
 
   return (
     <QueuePage title="Course Removals" blurb={<>Approving is a soft delete — the course leaves the map and search while existing rounds keep resolving. Nothing is destroyed.<br />Denying changes nothing.</>}>
-      {requests === null ? <Spinner /> : loadErr ? <LoadError /> : pending.length === 0 && invalid.length === 0 && errored.length === 0 ? (
-        <Empty emoji="✅" title="Queue is clear" sub="No pending removal requests right now." />
-      ) : (
-        <div className="mt-10 space-y-5">
-          {pending.length > 0 && <SectionLabel>{pending.length} pending</SectionLabel>}
-          {pending.map((r) => <RemovalCard key={r.id} r={r} onResolved={onResolved} />)}
-          {invalid.length > 0 && (
-            <>
-              <SectionLabel tone="bad" className="pt-6">{invalid.length} flagged invalid — needs attention</SectionLabel>
-              {invalid.map((r) => <RemovalCard key={r.id} r={r} onResolved={onResolved} />)}
-            </>
+      {requests === null ? <Spinner /> : loadErr ? <LoadError /> : (
+        <>
+          <div className="mt-8"><Segmented value={tab} onChange={setTab} options={[{ k: "pending", label: "Open", n: openCount }, { k: "history", label: "History", n: resolved.length }]} /></div>
+          {tab === "history" ? (
+            <HistoryList items={history} />
+          ) : openCount === 0 ? (
+            <Empty emoji="✅" title="Queue is clear" sub="No pending removal requests right now." />
+          ) : (
+            <div className="mt-8 space-y-5">
+              {pending.length > 0 && <SectionLabel>{pending.length} pending</SectionLabel>}
+              {pending.map((r) => <RemovalCard key={r.id} r={r} onResolved={onResolved} />)}
+              {invalid.length > 0 && (
+                <>
+                  <SectionLabel tone="bad" className="pt-6">{invalid.length} flagged invalid — needs attention</SectionLabel>
+                  {invalid.map((r) => <RemovalCard key={r.id} r={r} onResolved={onResolved} />)}
+                </>
+              )}
+              {errored.length > 0 && (
+                <>
+                  <SectionLabel tone="bad" className="pt-6">{errored.length} failed server processing — deny to clear, requester re-files</SectionLabel>
+                  {errored.map((r) => <RemovalCard key={r.id} r={r} onResolved={onResolved} />)}
+                </>
+              )}
+            </div>
           )}
-          {errored.length > 0 && (
-            <>
-              <SectionLabel tone="bad" className="pt-6">{errored.length} failed server processing — deny to clear, requester re-files</SectionLabel>
-              {errored.map((r) => <RemovalCard key={r.id} r={r} onResolved={onResolved} />)}
-            </>
-          )}
-        </div>
+        </>
       )}
     </QueuePage>
   );

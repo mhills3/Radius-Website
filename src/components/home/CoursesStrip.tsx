@@ -15,16 +15,18 @@ function colorFor(key: string): string {
   return TILE_COLORS[h % TILE_COLORS.length];
 }
 
-export default function CoursesStrip() {
+export default function CoursesStrip({ courseCount = 0 }: { courseCount?: number }) {
   const router = useRouter();
   const [courses, setCourses] = useState<Course[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
+  // Seed from the SERVER-rendered count so the number always shows — the client aggregation can be
+  // blocked on mobile Safari (tracking prevention), which was showing "0 courses".
+  const [totalCount, setTotalCount] = useState(courseCount);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
 
   useEffect(() => {
     getAllCourses().then(setCourses).catch(() => setCourses([])).finally(() => setLoading(false));
-    getTotalCourseCount().then(setTotalCount).catch(() => {});
+    getTotalCourseCount().then((n) => { if (n > 0) setTotalCount(n); }).catch(() => {});
   }, []);
 
   // Only courses WITH a cover photo (the grid shows the real photo), most-reviewed first, then

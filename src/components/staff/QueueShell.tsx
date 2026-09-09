@@ -179,6 +179,30 @@ export function Segmented<T extends string | number>({ value, onChange, options 
   );
 }
 
+/** Read-only log of resolved (approved/denied) requests — the "history" every queue shows. */
+export interface HistoryEntry { id: string; title: string; sub?: string; decision: string; at?: number; note?: string; by?: string }
+export function HistoryList({ items }: { items: HistoryEntry[] }) {
+  if (items.length === 0) return <Empty emoji="🗂️" title="No history yet" sub="Approved and denied requests will show up here." />;
+  return (
+    <div className="mt-6 divide-y divide-white/[0.05] overflow-hidden rounded-2xl border border-white/[0.06] bg-[#0e1612]/50 backdrop-blur-md">
+      {items.map((h) => {
+        const approved = h.decision === "approved";
+        const c = approved ? TONE.good : TONE.bad;
+        return (
+          <div key={h.id} className="flex items-center gap-4 px-5 py-3.5">
+            <span className="w-[74px] shrink-0 rounded-md py-[3px] text-center text-[11px] font-bold uppercase tracking-[0.08em]" style={{ color: c, background: `color-mix(in srgb, ${c} 14%, transparent)` }}>{approved ? "Approved" : "Denied"}</span>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[15px] font-semibold text-[var(--cream)]">{h.title}</div>
+              {(h.sub || h.note) && <div className="truncate text-[13px] text-[var(--sage-dim)]">{h.sub}{h.note ? <span className="italic"> · &ldquo;{h.note}&rdquo;</span> : null}</div>}
+            </div>
+            <span className="shrink-0 text-[13px] text-[var(--sage-dim)]">{fmtAgo(h.at)}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export const fmtAgo = (ms?: number) => {
   if (!ms) return "";
   const s = Math.max(1, Math.floor((Date.now() - ms) / 1000));

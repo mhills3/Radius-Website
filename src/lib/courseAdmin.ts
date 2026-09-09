@@ -31,6 +31,10 @@ export interface AdminRequest {
   triggerError?: string;
   validationErrors?: string[];
   createdAt?: number;
+  // Stamped by the resolve callable — surfaced in the History view.
+  reviewedAt?: number;
+  reviewedBy?: string;
+  note?: string;
 }
 
 /** Everything the staff queue shows: pending requests + the server-flagged invalid ones. */
@@ -39,6 +43,15 @@ export async function getAdminAccessRequests(): Promise<AdminRequest[]> {
   return snap.docs
     .map((d) => ({ id: d.id, ...(d.data() as Omit<AdminRequest, "id">) }))
     .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+}
+
+/** Resolved requests (approved/denied) — the History tab, newest decision first. */
+export async function getResolvedAdminRequests(max = 60): Promise<AdminRequest[]> {
+  const snap = await getDocs(query(collection(db, "courseAdminRequests"), where("status", "in", ["approved", "denied"])));
+  return snap.docs
+    .map((d) => ({ id: d.id, ...(d.data() as Omit<AdminRequest, "id">) }))
+    .sort((a, b) => ((b.reviewedAt ?? b.createdAt ?? 0) - (a.reviewedAt ?? a.createdAt ?? 0)))
+    .slice(0, max);
 }
 
 export interface ResolveAdminResult { ok?: boolean; alreadyResolved?: boolean; status?: string; error?: string }

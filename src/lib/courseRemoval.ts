@@ -43,6 +43,10 @@ export interface RemovalRequest {
   triggerError?: string;
   validationErrors?: string[];
   createdAt?: number;
+  // Stamped by the resolve callable — surfaced in the History view.
+  reviewedAt?: number;
+  reviewedBy?: string;
+  note?: string;
 }
 
 /** Just the count of pending requests — for the Admin nav badge + hub card (cheap server-side count). */
@@ -59,6 +63,15 @@ export async function getRemovalRequests(): Promise<RemovalRequest[]> {
   return snap.docs
     .map((d) => ({ id: d.id, ...(d.data() as Omit<RemovalRequest, "id">) }))
     .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+}
+
+/** Resolved requests (approved/denied) — the History tab, newest decision first. */
+export async function getResolvedRemovalRequests(max = 60): Promise<RemovalRequest[]> {
+  const snap = await getDocs(query(collection(db, "courseRemovalRequests"), where("status", "in", ["approved", "denied"])));
+  return snap.docs
+    .map((d) => ({ id: d.id, ...(d.data() as Omit<RemovalRequest, "id">) }))
+    .sort((a, b) => ((b.reviewedAt ?? b.createdAt ?? 0) - (a.reviewedAt ?? a.createdAt ?? 0)))
+    .slice(0, max);
 }
 
 export interface ResolveResult { ok?: boolean; alreadyResolved?: boolean; error?: string }
