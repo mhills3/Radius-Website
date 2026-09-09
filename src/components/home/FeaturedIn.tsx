@@ -30,13 +30,13 @@ function Card({ v, onClick }: { v: Vid; onClick: () => void }) {
           <span className="absolute left-1/2 top-1/2 grid h-14 w-14 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-black/40 text-white shadow-lg ring-1 ring-white/20 backdrop-blur-md transition-all duration-300 group-hover/card:scale-110 group-hover/card:bg-[var(--gold)] group-hover/card:text-[#141b16] group-hover/card:ring-[var(--gold)]">
             <svg className="ml-0.5 h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
           </span>
-          {v.views ? <span className="absolute bottom-2 right-2 rounded-md bg-black/70 px-1.5 py-0.5 text-[10px] font-bold text-white backdrop-blur-sm">{fmtViews(v.views)} views</span> : null}
         </div>
         <div className="px-4 pb-3 pt-3">
           <div className="line-clamp-2 min-h-[2.35rem] text-[13px] font-semibold leading-snug text-[var(--cream)]/90 transition-colors group-hover/card:text-[var(--cream)]">{v.title}</div>
           <div className="mt-2 flex items-center gap-2 border-t border-white/[0.07] pt-2">
             <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: v.own ? "var(--gold)" : "var(--sage)" }} />
-            <span className={`truncate text-[11.5px] font-bold ${v.own ? "text-[var(--gold)]" : "text-[var(--sage)]"}`}>{v.channel}</span>
+            <span className={`min-w-0 truncate text-[11.5px] font-bold ${v.own ? "text-[var(--gold)]" : "text-[var(--sage)]"}`}>{v.channel}</span>
+            {v.views ? <span className="shrink-0 text-[11px] font-medium text-[var(--sage-dim)]">· {fmtViews(v.views)} views</span> : null}
             <svg className="ml-auto h-3.5 w-3.5 shrink-0 text-[var(--sage-dim)] transition-colors group-hover/card:text-[var(--gold)]" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.6V8.4l6.3 3.6-6.3 3.6Z" /></svg>
           </div>
         </div>
