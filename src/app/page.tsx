@@ -6,6 +6,7 @@ import CoursesStrip from "@/components/home/CoursesStrip";
 import DownloadBand from "@/components/home/DownloadBand";
 import JoinCTA from "@/components/home/JoinCTA";
 import { getPlayerCountServer, getRegionCountServer } from "@/lib/stats";
+import { getFeaturedVideos } from "@/lib/featuredVideos";
 import type { Metadata } from "next";
 
 // Self-canonical so Google consolidates on the apex (non-www) homepage.
@@ -16,16 +17,17 @@ export const revalidate = 3600;
 
 export default async function Home() {
   // Fetched server-side (reliable transport) and passed into the courses section — see CoursesStrip.
-  const [players, regions] = await Promise.all([
+  const [players, regions, featured] = await Promise.all([
     getPlayerCountServer().catch(() => 0),
     getRegionCountServer().catch(() => 0),
+    getFeaturedVideos().catch(() => []),
   ]);
   return (
     <>
       <Hero />
       <CommunityBand playerCount={players} regionCount={regions} />
       <Ecosystem />
-      <FeaturedIn />
+      <FeaturedIn videos={featured} />
       <CoursesStrip />
       <DownloadBand />
       <JoinCTA />

@@ -2,19 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-
-type Vid = { id: string; title: string; channel: string; own?: boolean };
-
-// Videos Radius was featured in + our own channel films. Marquee loops seamlessly; click to watch.
-const FEATURED: Vid[] = [
-  { id: "idApg7z3t-U", title: "Robot vs. Human Caddie Battle at the Hardest Course", channel: "Foundation Disc Golf" },
-  { id: "uxOc3k9z9oY", title: "Why I Left UDisc and Built My Own Disc Golf App", channel: "Radius", own: true },
-  { id: "ma_kNu_Z6CM", title: "Abandoned Six Flags — Buhr, Barela, Babcock, Gossage, Samson", channel: "Urban Disc Golf" },
-  { id: "OB2rUsyAWZo", title: "How They Created a Groundbreaking Disc Golf App", channel: "Funsie Podcast" },
-  { id: "ZbZdmr7s9Sk", title: "I Spent 1,000 Hours Building the Smartest Disc Golf App", channel: "Radius", own: true },
-];
+import type { FeaturedVideo as Vid } from "@/lib/featuredVideos";
 
 const thumb = (id: string) => `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+const fmtViews = (n?: number) => {
+  if (!n) return "";
+  if (n >= 1e6) return `${(n / 1e6).toFixed(1).replace(/\.0$/, "")}M`;
+  if (n >= 1e3) return `${(n / 1e3).toFixed(n >= 1e4 ? 0 : 1).replace(/\.0$/, "")}K`;
+  return `${n}`;
+};
 
 function Card({ v, onClick }: { v: Vid; onClick: () => void }) {
   return (
@@ -34,10 +30,11 @@ function Card({ v, onClick }: { v: Vid; onClick: () => void }) {
           <span className="absolute left-1/2 top-1/2 grid h-14 w-14 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-black/40 text-white shadow-lg ring-1 ring-white/20 backdrop-blur-md transition-all duration-300 group-hover/card:scale-110 group-hover/card:bg-[var(--gold)] group-hover/card:text-[#141b16] group-hover/card:ring-[var(--gold)]">
             <svg className="ml-0.5 h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
           </span>
+          {v.views ? <span className="absolute bottom-2 right-2 rounded-md bg-black/70 px-1.5 py-0.5 text-[10px] font-bold text-white backdrop-blur-sm">{fmtViews(v.views)} views</span> : null}
         </div>
-        <div className="p-4">
-          <div className="line-clamp-2 min-h-[2.5rem] text-[13.5px] font-semibold leading-snug text-[var(--cream)]/90 transition-colors group-hover/card:text-[var(--cream)]">{v.title}</div>
-          <div className="mt-2.5 flex items-center gap-2 border-t border-white/[0.07] pt-2.5">
+        <div className="px-4 pb-3 pt-3">
+          <div className="line-clamp-2 min-h-[2.35rem] text-[13px] font-semibold leading-snug text-[var(--cream)]/90 transition-colors group-hover/card:text-[var(--cream)]">{v.title}</div>
+          <div className="mt-2 flex items-center gap-2 border-t border-white/[0.07] pt-2">
             <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: v.own ? "var(--gold)" : "var(--sage)" }} />
             <span className={`truncate text-[11.5px] font-bold ${v.own ? "text-[var(--gold)]" : "text-[var(--sage)]"}`}>{v.channel}</span>
             <svg className="ml-auto h-3.5 w-3.5 shrink-0 text-[var(--sage-dim)] transition-colors group-hover/card:text-[var(--gold)]" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.6V8.4l6.3 3.6-6.3 3.6Z" /></svg>
@@ -48,10 +45,10 @@ function Card({ v, onClick }: { v: Vid; onClick: () => void }) {
   );
 }
 
-export default function FeaturedIn() {
+export default function FeaturedIn({ videos }: { videos: Vid[] }) {
   const [active, setActive] = useState<Vid | null>(null);
   // Duplicate the list so translateX(-50%) lands exactly one set over → seamless loop.
-  const loop = [...FEATURED, ...FEATURED];
+  const loop = [...videos, ...videos];
 
   useEffect(() => {
     if (!active) return;
@@ -61,7 +58,7 @@ export default function FeaturedIn() {
   }, [active]);
 
   return (
-    <section className="relative overflow-hidden border-y border-white/[0.07] bg-[#0a120e] py-16 sm:py-20">
+    <section className="relative overflow-hidden border-y border-white/[0.07] bg-[var(--bg-deep)] py-16 sm:py-20">
       {/* faint gold glow so the band reads as its own section, not a continuation of the bento above */}
       <div aria-hidden className="pointer-events-none absolute left-1/2 top-0 h-72 w-[52rem] max-w-[90%] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(246,193,101,0.10),transparent_70%)]" />
       <div className="relative mx-auto max-w-7xl px-6">
