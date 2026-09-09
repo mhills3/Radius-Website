@@ -19,26 +19,20 @@ function Card({ v, onClick }: { v: Vid; onClick: () => void }) {
         <div className="relative aspect-video w-full overflow-hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={thumb(v.id)} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-[600ms] ease-out group-hover/card:scale-[1.07]" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/5 to-transparent" />
-          {/* badge */}
-          {v.own ? (
-            <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#f8cf80] via-[#f6c165] to-[#e0a23a] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[#141b16] shadow-[0_4px_12px_rgba(246,193,101,0.5)]">★ Radius</span>
-          ) : (
-            <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full border border-white/15 bg-black/45 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--cream)] backdrop-blur-md">Featured in</span>
-          )}
-          {/* play affordance — always present, blooms gold on hover */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
+          {/* play affordance — blooms gold on hover */}
           <span className="absolute left-1/2 top-1/2 grid h-14 w-14 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-black/40 text-white shadow-lg ring-1 ring-white/20 backdrop-blur-md transition-all duration-300 group-hover/card:scale-110 group-hover/card:bg-[var(--gold)] group-hover/card:text-[#141b16] group-hover/card:ring-[var(--gold)]">
             <svg className="ml-0.5 h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
           </span>
         </div>
-        <div className="px-4 pb-3 pt-3">
-          <div className="line-clamp-2 min-h-[2.35rem] text-[13px] font-semibold leading-snug text-[var(--cream)]/90 transition-colors group-hover/card:text-[var(--cream)]">{v.title}</div>
-          <div className="mt-2 flex items-center gap-2 border-t border-white/[0.07] pt-2">
+        <div className="px-4 pb-3.5 pt-3">
+          {/* source up top — the channel itself says who; gold = our own, sage = a partner */}
+          <div className="flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: v.own ? "var(--gold)" : "var(--sage)" }} />
             <span className={`min-w-0 truncate text-[11.5px] font-bold ${v.own ? "text-[var(--gold)]" : "text-[var(--sage)]"}`}>{v.channel}</span>
             {v.views && v.views >= 2000 ? <span className="shrink-0 text-[11px] font-medium text-[var(--sage-dim)]">· {fmtViews(v.views)} views</span> : null}
-            <svg className="ml-auto h-3.5 w-3.5 shrink-0 text-[var(--sage-dim)] transition-colors group-hover/card:text-[var(--gold)]" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.6V8.4l6.3 3.6-6.3 3.6Z" /></svg>
           </div>
+          <div className="mt-1.5 line-clamp-2 min-h-[2.4rem] text-[14px] font-semibold leading-snug text-[var(--cream)]">{v.title}</div>
         </div>
       </div>
     </button>
