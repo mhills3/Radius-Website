@@ -18,18 +18,32 @@ const thumb = (id: string) => `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
 
 function Card({ v, onClick }: { v: Vid; onClick: () => void }) {
   return (
-    <button onClick={onClick} className="group/card w-[300px] shrink-0 text-left transition-transform duration-300 hover:-translate-y-1 sm:w-[340px]">
-      <div className="relative aspect-video w-full overflow-hidden rounded-xl ring-1 ring-white/10">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={thumb(v.id)} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover/card:scale-[1.05]" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 transition-opacity group-hover/card:opacity-100" />
-        <span className="absolute left-2.5 top-2.5 rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--cream)] backdrop-blur">{v.own ? "Radius" : "Featured in"}</span>
-        <span className="absolute left-1/2 top-1/2 grid h-11 w-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-black/55 text-white opacity-0 shadow-lg backdrop-blur transition-opacity duration-300 group-hover/card:opacity-100">
-          <svg className="ml-0.5 h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
-        </span>
+    <button onClick={onClick} className="group/card w-[300px] shrink-0 text-left sm:w-[340px]">
+      <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.05] to-white/[0.02] shadow-[0_22px_55px_-28px_rgba(0,0,0,0.9)] transition-all duration-300 group-hover/card:-translate-y-1.5 group-hover/card:border-[var(--gold)]/30 group-hover/card:shadow-[0_30px_70px_-26px_rgba(246,193,101,0.28)]">
+        <div className="relative aspect-video w-full overflow-hidden">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={thumb(v.id)} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-[600ms] ease-out group-hover/card:scale-[1.07]" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/5 to-transparent" />
+          {/* badge */}
+          {v.own ? (
+            <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#f8cf80] via-[#f6c165] to-[#e0a23a] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[#141b16] shadow-[0_4px_12px_rgba(246,193,101,0.5)]">★ Radius</span>
+          ) : (
+            <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full border border-white/15 bg-black/45 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--cream)] backdrop-blur-md">Featured in</span>
+          )}
+          {/* play affordance — always present, blooms gold on hover */}
+          <span className="absolute left-1/2 top-1/2 grid h-14 w-14 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-black/40 text-white shadow-lg ring-1 ring-white/20 backdrop-blur-md transition-all duration-300 group-hover/card:scale-110 group-hover/card:bg-[var(--gold)] group-hover/card:text-[#141b16] group-hover/card:ring-[var(--gold)]">
+            <svg className="ml-0.5 h-6 w-6" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+          </span>
+        </div>
+        <div className="p-4">
+          <div className="line-clamp-2 min-h-[2.5rem] text-[13.5px] font-semibold leading-snug text-[var(--cream)]/90 transition-colors group-hover/card:text-[var(--cream)]">{v.title}</div>
+          <div className="mt-2.5 flex items-center gap-2 border-t border-white/[0.07] pt-2.5">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: v.own ? "var(--gold)" : "var(--sage)" }} />
+            <span className={`truncate text-[11.5px] font-bold ${v.own ? "text-[var(--gold)]" : "text-[var(--sage)]"}`}>{v.channel}</span>
+            <svg className="ml-auto h-3.5 w-3.5 shrink-0 text-[var(--sage-dim)] transition-colors group-hover/card:text-[var(--gold)]" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.6V8.4l6.3 3.6-6.3 3.6Z" /></svg>
+          </div>
+        </div>
       </div>
-      <div className="mt-2.5 line-clamp-1 text-[13px] font-semibold text-[var(--cream)]/85 transition-colors group-hover/card:text-[var(--cream)]">{v.title}</div>
-      <div className={`mt-0.5 truncate text-[11px] font-bold ${v.own ? "text-[var(--gold)]" : "text-[var(--sage)]"}`}>{v.channel}</div>
     </button>
   );
 }
