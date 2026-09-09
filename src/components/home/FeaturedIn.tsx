@@ -19,7 +19,7 @@ const thumb = (id: string) => `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
 function Card({ v, onClick }: { v: Vid; onClick: () => void }) {
   return (
     <button onClick={onClick} className="group/card w-[300px] shrink-0 text-left sm:w-[340px]">
-      <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.05] to-white/[0.02] shadow-[0_22px_55px_-28px_rgba(0,0,0,0.9)] transition-all duration-300 group-hover/card:-translate-y-1.5 group-hover/card:border-[var(--gold)]/30 group-hover/card:shadow-[0_30px_70px_-26px_rgba(246,193,101,0.28)]">
+      <div className="overflow-hidden rounded-2xl border border-white/[0.12] bg-[var(--bg-mid)] shadow-[0_24px_60px_-24px_rgba(0,0,0,0.95)] ring-1 ring-black/20 transition-all duration-300 group-hover/card:-translate-y-1.5 group-hover/card:border-[var(--gold)]/40 group-hover/card:shadow-[0_32px_72px_-24px_rgba(246,193,101,0.32)]">
         <div className="relative aspect-video w-full overflow-hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={thumb(v.id)} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-[600ms] ease-out group-hover/card:scale-[1.07]" />
@@ -61,11 +61,13 @@ export default function FeaturedIn() {
   }, [active]);
 
   return (
-    <section className="relative overflow-hidden border-y border-white/[0.06] bg-[var(--bg-deep)] py-16 sm:py-20">
-      <div className="mx-auto max-w-7xl px-6">
+    <section className="relative overflow-hidden border-y border-white/[0.07] bg-[#0a120e] py-16 sm:py-20">
+      {/* faint gold glow so the band reads as its own section, not a continuation of the bento above */}
+      <div aria-hidden className="pointer-events-none absolute left-1/2 top-0 h-72 w-[52rem] max-w-[90%] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(246,193,101,0.10),transparent_70%)]" />
+      <div className="relative mx-auto max-w-7xl px-6">
         <div className="text-center">
           <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.24em] text-[var(--gold)]">Featured in</div>
-          <h2 className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-[-0.03em] text-[var(--cream)] sm:text-4xl">Seen across the sport.</h2>
+          <h2 className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-[-0.03em] text-[var(--cream)] sm:text-4xl">As seen across the sport.</h2>
           <p className="mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-[var(--text-body)]">Creators, podcasts, and touring pros covering Radius — alongside a few films of our own. Tap any to watch.</p>
         </div>
       </div>
