@@ -141,7 +141,8 @@ export interface CourseScore {
   layoutName?: string;
   playerUid?: string;
   playerHandle?: string;
-  id?: string;            // score doc id
+  id?: string;            // score doc id ("{playerId}_{roundId}")
+  roundId?: string;       // the round this mirrored score came from — used to detect orphans (round deleted)
   canonicalUid?: string;  // player's canonical id (alias logins collapse to this) — used for moderation
 }
 
@@ -611,6 +612,8 @@ export async function getCourseScores(courseId: string, max = 25): Promise<Cours
       playerUid: data.playerUid ?? data.playerId,
       playerHandle: (data.playerHandle as string | undefined)?.replace(/^@/, ""),
       id: d.id,
+      // Round provenance: the explicit field, else parsed from the "{uid}_{roundId}" doc id.
+      roundId: (data.roundId as string | undefined) ?? (d.id.includes("_") ? d.id.slice(d.id.indexOf("_") + 1) : undefined),
       canonicalUid: "",
     };
   });

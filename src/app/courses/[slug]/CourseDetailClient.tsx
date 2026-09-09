@@ -41,6 +41,7 @@ export default function CourseDetailClient({ slug, initialCourse }: { slug: stri
   const [notFound, setNotFound] = useState(false);
   const [activeHole, setActiveHole] = useState<number | null>(null);
   const [myRounds, setMyRounds] = useState<DecodedRound[]>([]);
+  const [myRoundsLoaded, setMyRoundsLoaded] = useState(false);
   const [roundIdx, setRoundIdx] = useState(0);
   const [records, setRecords] = useState<CourseRecordsData>({ aces: [], drives: [], loaded: false });
   const [layoutId, setLayoutId] = useState("default");
@@ -69,8 +70,9 @@ export default function CourseDetailClient({ slug, initialCourse }: { slug: stri
   }, [slug, initialCourse]);
 
   useEffect(() => {
-    if (user && course) getCourseRoundsForUser(user.uid, course.name).then((r) => { setMyRounds(r); setRoundIdx(0); }).catch(() => {});
-    else setMyRounds([]);
+    setMyRoundsLoaded(false);
+    if (user && course) getCourseRoundsForUser(user.uid, course.name).then((r) => { setMyRounds(r); setRoundIdx(0); }).catch(() => setMyRounds([])).finally(() => setMyRoundsLoaded(true));
+    else { setMyRounds([]); setMyRoundsLoaded(true); }
   }, [user, course]);
 
   // Gate private courses: only the creator (across their linked ids) may view one.
@@ -153,7 +155,16 @@ export default function CourseDetailClient({ slug, initialCourse }: { slug: stri
   const activeHoles = activeLayout.holes;
   const hasLayouts = layoutOptions.length > 1;
   const layoutNames = new Set((course.layouts || []).map((l) => l.name));
-  const scopedScores = !hasLayouts ? scores : activeLayout.id === "default" ? scores.filter((s) => !s.layoutName || !layoutNames.has(s.layoutName)) : scores.filter((s) => s.layoutName === activeLayout.name);
+  // Drop the signed-in viewer's own ORPHANED scores — a mirrored best from a round they've since
+  // deleted (the score doc lingers). Desktop read the stale mirror while mobile recomputes from live
+  // rounds, so a phantom personal record (Alan's "-17") showed only on the web. We can verify the
+  // VIEWER's own rounds here; other players' orphans need the app cleanup / a staff purge, since the
+  // mirror is the app-authoritative source for everyone else's scores.
+  const myRoundIds = new Set(myRounds.map((r) => r.roundId));
+  const cleanScores = user && myRoundsLoaded
+    ? scores.filter((s) => !(s.playerUid === user.uid && s.roundId && !myRoundIds.has(s.roundId)))
+    : scores;
+  const scopedScores = !hasLayouts ? cleanScores : activeLayout.id === "default" ? cleanScores.filter((s) => !s.layoutName || !layoutNames.has(s.layoutName)) : cleanScores.filter((s) => s.layoutName === activeLayout.name);
   // hidden players drop out of the public numbers; the owner still sees them (dimmed) so they can un-hide.
   const isHidden = (s: CourseScore) => hiddenIds.has(s.canonicalUid || "");
   const visibleScopedScores = scopedScores.filter((s) => !isHidden(s));
