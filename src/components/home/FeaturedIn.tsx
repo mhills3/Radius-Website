@@ -65,8 +65,8 @@ export default function FeaturedIn() {
       <div className="mx-auto max-w-7xl px-6">
         <div className="text-center">
           <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.24em] text-[var(--gold)]">Featured in</div>
-          <h2 className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-[-0.03em] text-[var(--cream)] sm:text-4xl">Radius, out in the wild.</h2>
-          <p className="mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-[var(--text-body)]">The creators, podcasts, and pros talking about Radius — plus a couple of our own. Tap any to watch.</p>
+          <h2 className="font-[family-name:var(--font-heading)] text-3xl font-extrabold tracking-[-0.03em] text-[var(--cream)] sm:text-4xl">Seen across the sport.</h2>
+          <p className="mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-[var(--text-body)]">Creators, podcasts, and touring pros covering Radius — alongside a few films of our own. Tap any to watch.</p>
         </div>
       </div>
 
