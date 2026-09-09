@@ -13,8 +13,8 @@ const fmtViews = (n?: number) => {
 };
 
 function Card({ v, onClick }: { v: Vid; onClick: () => void }) {
-  return (
-    <button onClick={onClick} className="group/card w-[300px] shrink-0 text-left sm:w-[340px]">
+  const cls = "group/card block w-[300px] shrink-0 text-left sm:w-[340px]";
+  const inner = (
       <div className="overflow-hidden rounded-2xl border border-white/[0.12] bg-[var(--bg-mid)] shadow-[0_24px_60px_-24px_rgba(0,0,0,0.95)] ring-1 ring-black/20 transition-all duration-300 group-hover/card:-translate-y-1.5 group-hover/card:border-[var(--gold)]/40 group-hover/card:shadow-[0_32px_72px_-24px_rgba(246,193,101,0.32)]">
         <div className="relative aspect-video w-full overflow-hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -27,16 +27,23 @@ function Card({ v, onClick }: { v: Vid; onClick: () => void }) {
         </div>
         <div className="px-4 pb-3.5 pt-3">
           {/* source up top — the channel itself says who; gold = our own, sage = a partner */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: v.own ? "var(--gold)" : "var(--sage)" }} />
-            <span className={`min-w-0 truncate text-[11.5px] font-bold ${v.own ? "text-[var(--gold)]" : "text-[var(--sage)]"}`}>{v.channel}</span>
-            {v.views && v.views >= 2000 ? <span className="shrink-0 text-[11px] font-medium text-[var(--sage-dim)]">· {fmtViews(v.views)} views</span> : null}
+            <span className={`min-w-0 flex-1 truncate text-[11.5px] font-bold ${v.own ? "text-[var(--gold)]" : "text-[var(--sage)]"}`}>{v.channel}</span>
+            {v.views && v.views >= 2000 ? (
+              <span className="flex shrink-0 items-center gap-1 text-[12.5px] font-bold text-[var(--cream)]">
+                <svg className="h-3.5 w-3.5 text-[var(--sage-dim)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></svg>
+                {fmtViews(v.views)} views
+              </span>
+            ) : null}
           </div>
           <div className="mt-1.5 line-clamp-2 min-h-[2.4rem] text-[14px] font-semibold leading-snug text-[var(--cream)]">{v.title}</div>
         </div>
       </div>
-    </button>
   );
+  return v.href
+    ? <a href={v.href} target="_blank" rel="noopener" className={cls}>{inner}</a>
+    : <button onClick={onClick} className={cls}>{inner}</button>;
 }
 
 export default function FeaturedIn({ videos }: { videos: Vid[] }) {
