@@ -1,7 +1,8 @@
-// Server-only: the "Featured In" video list + a best-effort view-count fetch. There's no YouTube
-// Data API key wired up, so we read the public watch page and pull `viewCount` out of ytInitialData
-// (same pragmatic approach as youtube.ts's Shorts probe). Cached 6h; if a fetch fails the card just
-// omits the count. Data flows server → the client <FeaturedIn> as a prop.
+// Server-only: the "Featured In" video list + view counts. No YouTube Data API key is wired up
+// (the Firebase key is blocked for it), so we read the count from YouTube's InnerTube player API
+// (a JSON POST — far more reliable from datacenter/build IPs than scraping the consent-walled watch
+// page). Each entry also carries a fallback count so the chip ALWAYS renders even if the live fetch
+// is blocked. Cached 6h; data flows server → the client <FeaturedIn> as a prop.
 
 export interface FeaturedVideo {
   id: string;
@@ -11,25 +12,31 @@ export interface FeaturedVideo {
   views?: number;
 }
 
-const FEATURED: Omit<FeaturedVideo, "views">[] = [
-  { id: "idApg7z3t-U", title: "Robot vs. Human Caddie Battle at the Hardest Course", channel: "Foundation Disc Golf" },
-  { id: "uxOc3k9z9oY", title: "Why I Left UDisc and Built My Own Disc Golf App", channel: "Radius", own: true },
-  { id: "ma_kNu_Z6CM", title: "Abandoned Six Flags — Buhr, Barela, Babcock, Gossage, Samson", channel: "Urban Disc Golf" },
-  { id: "OB2rUsyAWZo", title: "How They Created a Groundbreaking Disc Golf App", channel: "Funsie Podcast" },
-  { id: "ZbZdmr7s9Sk", title: "I Spent 1,000 Hours Building the Smartest Disc Golf App", channel: "Radius", own: true },
+// fallback = last-known count (2026-09-09) so a chip shows even if the live fetch is blocked.
+const FEATURED: (Omit<FeaturedVideo, "views"> & { fallbackViews: number })[] = [
+  { id: "idApg7z3t-U", title: "Robot vs. Human Caddie Battle at the Hardest Course", channel: "Foundation Disc Golf", fallbackViews: 58000 },
+  { id: "uxOc3k9z9oY", title: "Why I Left UDisc and Built My Own Disc Golf App", channel: "Radius", own: true, fallbackViews: 460 },
+  { id: "ma_kNu_Z6CM", title: "Abandoned Six Flags — Buhr, Barela, Babcock, Gossage, Samson", channel: "Urban Disc Golf", fallbackViews: 155000 },
+  { id: "OB2rUsyAWZo", title: "How They Created a Groundbreaking Disc Golf App", channel: "Funsie Podcast", fallbackViews: 250 },
+  { id: "ZbZdmr7s9Sk", title: "I Spent 1,000 Hours Building the Smartest Disc Golf App", channel: "Radius", own: true, fallbackViews: 2600 },
 ];
+
+// Public InnerTube web key — a well-known constant, not a secret.
+const INNERTUBE_KEY = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8";
 
 async function fetchViews(id: string): Promise<number | undefined> {
   try {
-    const r = await fetch(`https://www.youtube.com/watch?v=${id}&hl=en`, {
-      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Accept-Language": "en-US,en;q=0.9", Cookie: "CONSENT=YES+1" },
-      signal: AbortSignal.timeout(5000),
+    const r = await fetch(`https://www.youtube.com/youtubei/v1/player?key=${INNERTUBE_KEY}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" },
+      body: JSON.stringify({ context: { client: { clientName: "WEB", clientVersion: "2.20240726.00.00", hl: "en" } }, videoId: id }),
+      signal: AbortSignal.timeout(6000),
       next: { revalidate: 21600 }, // 6h
     });
     if (!r.ok) return undefined;
-    const html = await r.text();
-    const m = html.match(/"viewCount":"(\d+)"/);
-    return m ? Number(m[1]) : undefined;
+    const j = (await r.json()) as { videoDetails?: { viewCount?: string } };
+    const n = Number(j?.videoDetails?.viewCount);
+    return Number.isFinite(n) && n > 0 ? n : undefined;
   } catch {
     return undefined;
   }
@@ -37,5 +44,5 @@ async function fetchViews(id: string): Promise<number | undefined> {
 
 export async function getFeaturedVideos(): Promise<FeaturedVideo[]> {
   const views = await Promise.all(FEATURED.map((v) => fetchViews(v.id)));
-  return FEATURED.map((v, i) => ({ ...v, views: views[i] }));
+  return FEATURED.map(({ fallbackViews, ...v }, i) => ({ ...v, views: views[i] ?? fallbackViews }));
 }
