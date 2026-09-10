@@ -93,6 +93,7 @@ export interface Course {
   holes: CourseHole[];
   createdBy: string;
   createdById: string;
+  adminIds?: string[];
   reviewStatus: string;
   isDraft?: boolean;
   defaultLayoutName?: string;
@@ -123,9 +124,12 @@ export function isPrivateCourse(c: { courseType?: string }): boolean {
   return (c.courseType || "").trim().toLowerCase() === "private";
 }
 
-/** Whether `ownerIds` (a user's linked ids from getOwnedIds) includes this course's creator. */
-export function isOwnedBy(c: { createdById?: string }, ownerIds?: Set<string> | null): boolean {
-  return !!ownerIds && !!c.createdById && ownerIds.has(c.createdById);
+/** Whether `ownerIds` (a user's linked ids from getOwnedIds) includes this course's creator
+ *  OR any of its admins — a dashboard admin grant confers the same manage rights (Cam, 2026-09-04). */
+export function isOwnedBy(c: { createdById?: string; adminIds?: string[] }, ownerIds?: Set<string> | null): boolean {
+  if (!ownerIds) return false;
+  if (!!c.createdById && ownerIds.has(c.createdById)) return true;
+  return (c.adminIds ?? []).some((id) => ownerIds.has(id));
 }
 
 export interface CourseScore {
@@ -250,6 +254,7 @@ export function docToCourse(id: string, data: DocumentData): Course {
       : undefined,
     createdBy: data.createdBy ?? "",
     createdById: data.createdById ?? "",
+    adminIds: Array.isArray(data.adminIds) ? (data.adminIds as string[]).map(String) : [],
     reviewStatus: data.reviewStatus ?? "",
     isDraft: data.isDraft === true,
     defaultLayoutName: typeof data.defaultLayoutName === "string" ? data.defaultLayoutName : undefined,
@@ -262,9 +267,8 @@ export function docToCourse(id: string, data: DocumentData): Course {
 /** Owner-only: set the list of canonical player ids hidden from this course's records + leaderboard. */
 export async function setHiddenPlayers(uid: string, courseId: string, hiddenPlayerIds: string[]): Promise<boolean> {
   try {
-    const cid = await resolveCanonicalId(uid);
     const snap = await getDoc(doc(db, "courses", courseId));
-    if (!snap.exists() || (snap.data().createdById as string) !== cid) return false;
+    if (!snap.exists() || !(await ownsCourse(uid, snap.data()))) return false;
     await updateDoc(doc(db, "courses", courseId), { hiddenPlayerIds, lastModified: Date.now() });
     return true;
   } catch {
@@ -311,7 +315,7 @@ const DIRECTORY_FIELDS = [
   "plannedCourseType", "terrain", "amenities", "isFree", "isPublic", "isFeatured", "coverPhotoUrl",
   "galleryPhotoUrls", "communityAverage", "communityScoreCount", "rating", "reviewCount",
   "manualDifficulty", "courseFeeAmount", "latitude", "longitude", "layoutAverages", "createdBy",
-  "createdById", "reviewStatus", "isDraft", "defaultLayoutName", "lastModified", "dateCreated",
+  "createdById", "adminIds", "reviewStatus", "isDraft", "defaultLayoutName", "lastModified", "dateCreated",
 ];
 
 export async function getAllCourses(ownerIds?: Set<string> | null): Promise<Course[]> {
@@ -522,9 +526,19 @@ export async function getTopBuilders(max = 10): Promise<Builder[]> {
 export async function getMyCourses(uid: string): Promise<Course[]> {
   try {
     const cid = await resolveCanonicalId(uid);
-    const snap = await getDocs(query(collection(db, "courses"), where("createdById", "==", cid), limit(200)));
-    return snap.docs
-      .map((d) => docToCourse(d.id, d.data()))
+    // Built courses + admin-granted courses (adminIds may hold the raw uid —
+    // the dashboard writes uids — or a canonical id; query both when they differ).
+    const queries = [
+      getDocs(query(collection(db, "courses"), where("createdById", "==", cid), limit(200))),
+      getDocs(query(collection(db, "courses"), where("adminIds", "array-contains", cid), limit(200))),
+    ];
+    if (uid && uid !== cid) {
+      queries.push(getDocs(query(collection(db, "courses"), where("adminIds", "array-contains", uid), limit(200))));
+    }
+    const snaps = await Promise.all(queries);
+    const byId = new Map<string, ReturnType<typeof docToCourse>>();
+    for (const snap of snaps) for (const d of snap.docs) byId.set(d.id, docToCourse(d.id, d.data()));
+    return Array.from(byId.values())
       .filter((c) => (c.reviewStatus || "").trim().toLowerCase() !== "removed")
       .sort((a, b) => (b.dateCreated ?? 0) - (a.dateCreated ?? 0));
   } catch {
@@ -538,9 +552,8 @@ export type CourseEdit = Partial<Pick<Course, "name" | "city" | "state" | "descr
 /** Owner-only course detail edit. Verifies ownership, writes ONLY the given fields (never clobbers holes/layout). */
 export async function updateCourse(uid: string, courseId: string, fields: CourseEdit): Promise<boolean> {
   try {
-    const cid = await resolveCanonicalId(uid);
     const snap = await getDoc(doc(db, "courses", courseId));
-    if (!snap.exists() || (snap.data().createdById as string) !== cid) return false;
+    if (!snap.exists() || !(await ownsCourse(uid, snap.data()))) return false;
     const clean = Object.fromEntries(Object.entries(fields).filter(([, v]) => v !== undefined));
     await updateDoc(doc(db, "courses", courseId), { ...clean, lastModified: Date.now() });
     return true;
@@ -553,9 +566,8 @@ export interface HoleEdit { holeNumber: number; par: number; distance: number }
 /** Owner-only hole edit. Preserves EVERY existing hole field (tee/basket geo, elevation, etc.) — only par/distance change. Recomputes totals. */
 export async function updateCourseHoles(uid: string, courseId: string, edits: HoleEdit[]): Promise<boolean> {
   try {
-    const cid = await resolveCanonicalId(uid);
     const snap = await getDoc(doc(db, "courses", courseId));
-    if (!snap.exists() || (snap.data().createdById as string) !== cid) return false;
+    if (!snap.exists() || !(await ownsCourse(uid, snap.data()))) return false;
     const raw: DocumentData[] = Array.isArray(snap.data().holes) ? snap.data().holes : [];
     const byNum = new Map(edits.map((e) => [e.holeNumber, e]));
     const newHoles = raw.map((h, i) => {
