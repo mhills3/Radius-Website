@@ -336,7 +336,9 @@ export default function MyGameImprove({ uid }: { uid: string }) {
           <ProGate pro={pro} title="Unlock your skills" blurb="See exactly where you land against every level of player — with Radius Pro." className="!rounded-2xl">
             <StackBar label="C1X putting" value={career?.c1.pct != null ? career.c1.pct * 100 : null} tiers={C1_TIERS} unit="%" gold />
             <StackBar label="Circle 2 putting" value={career?.c2.pct != null ? career.c2.pct * 100 : null} tiers={C2_TIERS} unit="%" />
-            <StackBar label="Drive distance" value={career?.avgDriveFt ?? null} tiers={DRIVE_TIERS} unit="ft" />
+            {/* Engine drive average (tee shots ≥100 ft, ≥5 drives) — same rule as the iOS/Android
+                "Drive distance" ladder; the career tally had no floor and read 30 ft low. */}
+            <StackBar label="Drive distance" value={sg && sg.driveCount >= 5 ? sg.driveAvg : null} tiers={DRIVE_TIERS} unit="ft" />
           </ProGate>
 
           <Hair />

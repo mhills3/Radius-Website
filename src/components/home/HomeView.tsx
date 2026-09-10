@@ -501,8 +501,12 @@ export default function HomeView({ uid }: { uid: string }) {
               <ProGate pro={pro} title="Your game" blurb="Your C1X putting, drive distance and fairway rate — see them with Radius Pro." className="!rounded-2xl min-h-[230px]">
                 <div className="grid grid-cols-3 gap-2">
                   <StatRing size={86} label="C1X Putt" value={career && career.c1.att >= 3 && career.c1.pct != null ? `${Math.round(career.c1.pct * 100)}` : "—"} unit={career && career.c1.att >= 3 && career.c1.pct != null ? "%" : undefined} frac={career && career.c1.att >= 3 ? career.c1.pct : null} />
-                  <StatRing size={86} label="Avg Drive" value={career?.avgDriveFt ? `${Math.round(career.avgDriveFt)}` : "—"} unit={career?.avgDriveFt ? "ft" : undefined} frac={career?.avgDriveFt ? career.avgDriveFt / 400 : null} />
-                  <StatRing size={86} label="Fairway" value={career?.fairwayPct != null ? `${Math.round(career.fairwayPct * 100)}` : "—"} unit={career?.fairwayPct != null ? "%" : undefined} frac={career?.fairwayPct ?? null} />
+                  {/* Drive + fairway read the strokes-gained engine, not the career tally: the engine is the
+                      iOS/Android ShotInsightsEngine port (tee shots ≥100 ft, aces not fairway hits, gated like
+                      the app tiles). The career tally averaged EVERY first throw >0 ft and counted aces, so the
+                      same player read 210 ft here vs 240 ft in the app (Dewil, 2026-09-10). */}
+                  <StatRing size={86} label="Avg Drive" value={sg && sg.driveCount >= 5 ? `${sg.driveAvg}` : "—"} unit={sg && sg.driveCount >= 5 ? "ft" : undefined} frac={sg && sg.driveCount >= 5 ? sg.driveAvg / 400 : null} />
+                  <StatRing size={86} label="Fairway" value={sg && sg.teeAttempts >= 10 ? `${sg.teeFairwayPct}` : "—"} unit={sg && sg.teeAttempts >= 10 ? "%" : undefined} frac={sg && sg.teeAttempts >= 10 ? sg.teeFairwayPct / 100 : null} />
                 </div>
               </ProGate>
               <Link href="/bag" className="mt-5 inline-block text-[15px] font-semibold text-[var(--gold)]">Open My Game →</Link>
