@@ -164,7 +164,10 @@ export function computeRoundStats(round: DecodedRound, putterNames: Set<string> 
         // iOS puttTally: a legacy Standard "landing" row (no GPS, no lie, distance 0, result Circle 1/2)
         // stamps its OWN dtb as the landing (~0), so ring it by the PREVIOUS throw's distance instead —
         // otherwise a 40 ft C2 putt buckets as C1 and C2 shows no attempts.
-        const legacyLanding = cur.lat == null && !cur.lie && (cur.distance ?? 0) === 0 && (cur.result === "Circle 1" || cur.result === "Circle 2");
+        // Android 09a09ba parity: NO distance clause — legacy rows from Android's
+        // hole-length-stamping window (2026-07-09..08-17) carry a fabricated
+        // non-zero distance and would fail a `distance === 0` test.
+        const legacyLanding = isLegacyQuickScore(cur) && (cur.result === "Circle 1" || cur.result === "Circle 2");
         if (legacyLanding) {
           if (prevRealDtb != null) ring = prevRealDtb <= 33 ? "c1" : prevRealDtb <= 66 ? "c2" : null;
         } else if (dtb != null) {
@@ -256,10 +259,21 @@ export interface CareerStats {
 // 20/50-ft putts that collapsed C1X (the "iOS 48% artifact"). Such rows are dropped from the tally
 // (unless the previous row is itself a legacy landing, which then supplies the real start). Also drops
 // a hole's first row when it's a made basket stamped dtb=15 with no GPS (a throw-in, not a 15-ft putt).
+// A legacy quick-score row measured nothing: no release fix, no lie stamp. Its stored
+// distance may still be NON-zero — Android stamped the full hole length on every such row
+// for 5.5 weeks (c25e160..5fdc53f; Dewil's three 88 m putts) — so distance must never be
+// part of the legacy test, and consumers read measuredDistance instead of the raw column
+// (Android 09a09ba / iOS parity, 2026-09-09).
+const isLegacyQuickScore = (t: { lat?: number | null; lie?: string | null }): boolean =>
+  t.lat == null && !(t.lie ?? "");
+
+export const measuredDistance = (t: { lat?: number | null; lie?: string | null; distance?: number | null }): number =>
+  isLegacyQuickScore(t) ? 0 : (t.distance ?? 0);
+
 function puttBandTally(round: DecodedRound, putterNames: Set<string>): { c1m: number; c1a: number; c2m: number; c2a: number } {
   let c1m = 0, c1a = 0, c2m = 0, c2a = 0;
   const isLegacyLanding = (t: DecodedThrow) =>
-    t.lat == null && !(t.lie ?? "") && (t.distance ?? 0) === 0 && (t.result === "Circle 1" || t.result === "Circle 2");
+    isLegacyQuickScore(t) && (t.result === "Circle 1" || t.result === "Circle 2");
   for (const h of round.holes) {
     if (!h.played) continue;
     const logs = h.throws.filter((t) => t.discName !== "Score" && t.distanceToBasket != null);
@@ -277,7 +291,7 @@ function puttBandTally(round: DecodedRound, putterNames: Set<string>): { c1m: nu
       const lieStamp = log.lie ?? "";
       const isTee = lieStamp === "tee";
       const stampedPutt = lieStamp.startsWith("putt") || lieStamp === "tap-in";
-      const standardPutt = log.lat == null && (log.distance ?? 0) === 0 && (log.result === "Basket" || log.result === "Miss Left");
+      const standardPutt = log.lat == null && measuredDistance(log) === 0 && (log.result === "Basket" || log.result === "Miss Left");
       // A distance-earned putt STAMP is a putt only when the disc agrees — putter-class/flagged, or
       // unattributed (a real putt nobody named a disc for). Without this, a scramble punch-out with a
       // mid from 30 ft becomes a missed C1 and a 50 ft upshot throw-in becomes a made C2 (iOS 0847a52).
@@ -323,7 +337,7 @@ export interface DiscStat { name: string; count: number; avg: number; inPlayPct?
 export interface RankedCategory { id: string; name: string; evidence: string; sg: number; eligible: boolean; progress: string }
 
 export const legacyLandingRow = (t: DecodedThrow) =>
-  t.lat == null && !(t.lie ?? "") && (t.distance ?? 0) === 0 && (t.result === "Circle 1" || t.result === "Circle 2");
+  isLegacyQuickScore(t) && (t.result === "Circle 1" || t.result === "Circle 2");
 
 // iOS RecommendationEngine.expectedStrokes(fromFeet:) — baseline expected strokes by feet-to-basket.
 export function expectedStrokes(d: number): number {
@@ -377,7 +391,7 @@ export function computeStrokesGained(rounds: DecodedRound[], putterNames: Set<st
         const dn = log.discName || "Unknown";
         const td = teeDiscMap.get(dn) ?? { dist: 0, count: 0, inPlay: 0, distCount: 0 };
         td.count++; if (inPlay) td.inPlay++;
-        if ((log.distance ?? 0) >= 100) { const d = log.distance!; driveTotal += d; driveCount++; driveLong = Math.max(driveLong, d); driveShort = driveShort === 0 ? d : Math.min(driveShort, d); td.dist += d; td.distCount++; }
+        if (measuredDistance(log) >= 100) { const d = measuredDistance(log); driveTotal += d; driveCount++; driveLong = Math.max(driveLong, d); driveShort = driveShort === 0 ? d : Math.min(driveShort, d); td.dist += d; td.distCount++; }
         teeDiscMap.set(dn, td);
       });
       // DTB chain — strokes gained, proximity, putt bands.
@@ -401,7 +415,7 @@ export function computeStrokesGained(rounds: DecodedRound[], putterNames: Set<st
         const isTee = log.lie === "tee";
         const lieStamp = log.lie ?? "";
         const stampedPutt = lieStamp.startsWith("putt") || lieStamp === "tap-in";
-        const standardPutt = log.lat == null && (log.distance ?? 0) === 0 && (log.result === "Basket" || log.result === "Miss Left");
+        const standardPutt = log.lat == null && measuredDistance(log) === 0 && (log.result === "Basket" || log.result === "Miss Left");
         // A distance-earned putt STAMP counts only when the disc agrees (putter-class/flagged or
         // unattributed) — else a mid punch-out or a long upshot throw-in pollutes C1X/C2 (iOS 0847a52).
         const discSaysPutt = log.discName === "Throw" || !log.discName || putterNames.has(log.discName);
@@ -514,7 +528,7 @@ export function computeCareerStats(rounds: DecodedRound[], putterNames: Set<stri
           teeCount++;
           if (["Fairway", "Circle 1", "Circle 2", "Basket"].includes(key)) fairwayHits++;
           if (key === "OB") teeOb++;
-          if (typeof t.distance === "number" && t.distance > 0) { driveSum += t.distance; driveN++; }
+          if (measuredDistance(t) > 0) { driveSum += measuredDistance(t); driveN++; }
         }
         if (key === "OB") ob++;
         if (isMissKey(key) || key === "OB") hadTrouble = true;
