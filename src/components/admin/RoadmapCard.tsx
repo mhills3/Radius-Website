@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 // The Circle → "Roadmap: Goals, Milestones & Monetization" card.
 // A private staff reminder of where we're taking Radius as a BUSINESS — not a queue, not live data.
 // The pilot snapshot is a hand-pulled reading (see PILOT_AS_OF) so we have the shape of the data in
@@ -17,26 +19,26 @@ const USERS_NOW = 9102;
 
 // ── pilot snapshot (manual, 2026-09-10) ───────────────────────────────────
 const PILOT_AS_OF = "Sep 10, 2026";
-const BAG_SAMPLE = 4330; // users whose bag was readable for this pull
+const BAG_SAMPLE = 6527; // users whose bag was readable for this pull
 // most-bagged molds — count / share of the sample
 const TOP_DISCS: { name: string; brand: string; n: number }[] = [
-  { name: "Buzzz", brand: "Discraft", n: 1081 },
-  { name: "Zone", brand: "Discraft", n: 976 },
-  { name: "Destroyer", brand: "Innova", n: 912 },
-  { name: "Trail", brand: "MVP", n: 754 },
-  { name: "Hex", brand: "Axiom", n: 734 },
-  { name: "Luna", brand: "Discraft", n: 586 },
-  { name: "Wraith", brand: "Innova", n: 585 },
-  { name: "Crave", brand: "Axiom", n: 564 },
+  { name: "Buzzz", brand: "Discraft", n: 2256 },
+  { name: "Zone", brand: "Discraft", n: 2038 },
+  { name: "Destroyer", brand: "Innova", n: 1939 },
+  { name: "Trail", brand: "MVP", n: 1634 },
+  { name: "Hex", brand: "Axiom", n: 1544 },
+  { name: "Wraith", brand: "Innova", n: 1264 },
+  { name: "Luna", brand: "Discraft", n: 1226 },
+  { name: "Crave", brand: "Axiom", n: 1194 },
 ];
 // brand presence — total bag slots logged (directional share-of-bag)
 const TOP_BRANDS: { name: string; n: number }[] = [
-  { name: "Discraft", n: 9056 },
-  { name: "Innova", n: 8277 },
-  { name: "Axiom", n: 5100 },
-  { name: "MVP", n: 4456 },
-  { name: "Discmania", n: 3597 },
-  { name: "Latitude 64", n: 2211 },
+  { name: "Discraft", n: 19195 },
+  { name: "Innova", n: 17571 },
+  { name: "Axiom", n: 10964 },
+  { name: "MVP", n: 9516 },
+  { name: "Discmania", n: 7993 },
+  { name: "Latitude 64", n: 4618 },
 ];
 const ARM_SPLIT: { label: string; pct: number }[] = [
   { label: "Intermediate", pct: 50 },
@@ -90,13 +92,19 @@ export default function RoadmapCard() {
   return (
     <div className="mt-14 overflow-hidden rounded-3xl border border-[var(--gold)]/20 bg-[#0e1612]/55 backdrop-blur-md">
       {/* header */}
-      <div className="border-b border-white/[0.06] bg-[radial-gradient(120%_140%_at_0%_0%,rgba(246,193,101,0.10),transparent_60%)] px-6 py-5 sm:px-8">
-        <div className="flex items-center gap-2.5">
-          <span className="text-[16px] leading-none">🎯</span>
-          <span className={`${HEAD} text-[12px] font-bold uppercase tracking-[0.2em]`} style={{ color: GOLD }}>Roadmap</span>
+      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-white/[0.06] bg-[radial-gradient(120%_140%_at_0%_0%,rgba(246,193,101,0.10),transparent_60%)] px-6 py-5 sm:px-8">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2.5">
+            <span className="text-[16px] leading-none">🎯</span>
+            <span className={`${HEAD} text-[12px] font-bold uppercase tracking-[0.2em]`} style={{ color: GOLD }}>Roadmap</span>
+          </div>
+          <h2 className={`${HEAD} mt-1.5 text-[26px] font-black leading-tight tracking-[-0.02em] text-[var(--cream)]`}>Goals, Milestones & Monetization</h2>
+          <p className="mt-1 text-[14px] text-[var(--sage)]">Where we take Radius beyond the user base. A reminder, not a queue.</p>
         </div>
-        <h2 className={`${HEAD} mt-1.5 text-[26px] font-black leading-tight tracking-[-0.02em] text-[var(--cream)]`}>Goals, Milestones & Monetization</h2>
-        <p className="mt-1 text-[14px] text-[var(--sage)]">Where we take Radius beyond the user base. A reminder, not a queue.</p>
+        <Link href="/admin/insights" className="group inline-flex shrink-0 items-center gap-2 rounded-full border border-[var(--gold)]/40 bg-[var(--gold)]/10 px-4 py-2 text-[13px] font-bold text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/20">
+          Open the data room
+          <span className="transition-transform group-hover:translate-x-0.5">→</span>
+        </Link>
       </div>
 
       <div className="space-y-8 px-6 py-7 sm:px-8">
@@ -126,7 +134,7 @@ export default function RoadmapCard() {
           </div>
           <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-[var(--text-body)]">
             A monthly subscription for disc companies — a private dashboard into <b className="text-[var(--cream)]">their own</b> discs: who bags them,
-            at what arm speed, how they actually fly, and what's rising or getting benched. Market intelligence they can't get anywhere else.
+            at what arm speed, how they actually fly, and what’s rising or getting benched. Market intelligence they can’t get anywhere else.
             Scales with players now; flight performance layers on as rounds densify. ~10–15 brands at recurring 4–5 figures each.
           </p>
           <div className="mt-3 flex flex-wrap gap-1.5">
