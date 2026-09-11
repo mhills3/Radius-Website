@@ -42,6 +42,7 @@ export interface LiveInsights {
     baggerArm: { disc: string; brand: string; baggers: number; arm: LiveSlice[] }[];
     minThrows: number;
   };
+  surprises?: { area: string; headline: string; detail: string; surprise: number; sample: number }[];
 }
 
 export async function getLiveInsights(): Promise<LiveInsights | null> {

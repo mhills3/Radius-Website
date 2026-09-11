@@ -32,13 +32,14 @@ interface View {
   putting: LiveInsights["putting"] | null;
   scoring: NonNullable<LiveInsights["scoring"]> | null;
   discs: NonNullable<LiveInsights["discs"]> | null;
+  surprises: NonNullable<LiveInsights["surprises"]> | null;
 }
 
 const bakedView = (): View => ({
   live: false, asOf: PILOT_AS_OF, totals: TOTALS,
   arm: ARM_SPEED, style: STYLE, hand: HAND, gender: GENDER, genderSet: GENDER_SET,
   maxDistance: paint(MAX_DISTANCE, {}), ratingTiers: RATING_TIERS,
-  brandShare: BRAND_SHARE, topMolds: TOP_MOLDS, putting: null, scoring: null, discs: null,
+  brandShare: BRAND_SHARE, topMolds: TOP_MOLDS, putting: null, scoring: null, discs: null, surprises: null,
 });
 const liveView = (d: LiveInsights): View => ({
   live: true, asOf: d.asOf, updatedAt: d.updatedAt, totals: d.totals,
@@ -49,6 +50,7 @@ const liveView = (d: LiveInsights): View => ({
   putting: d.putting && d.putting.coverage.zonedMisses > 0 ? d.putting : null,
   scoring: d.scoring && d.scoring.byPar.length > 0 ? d.scoring : null,
   discs: d.discs && d.discs.performance.length > 0 ? d.discs : null,
+  surprises: d.surprises && d.surprises.length > 0 ? d.surprises : null,
 });
 
 // ── generic panels ──────────────────────────────────────────────────────────
@@ -230,6 +232,38 @@ function PuttingLocked() {
   );
 }
 
+// ── surprises (live) ─────────────────────────────────────────────────────────
+const AREA_C: Record<string, string> = { putting: "#f6c165", driving: "#6fb2ff", bags: "#8fd3a6", scoring: "#bb95e8", segments: "#ef8f6b" };
+function SurprisesSection({ items }: { items: NonNullable<View["surprises"]> }) {
+  return (
+    <div className="mt-8 overflow-hidden rounded-3xl border border-[var(--gold)]/25 bg-[radial-gradient(130%_150%_at_0%_0%,rgba(246,193,101,0.10),transparent_60%)] bg-[#0e1612]/55 p-6 backdrop-blur-md sm:p-7">
+      <div className="mb-4 flex items-center gap-2.5">
+        <span className="text-[15px] leading-none">✨</span>
+        <span className={`${HEAD} text-[12px] font-bold uppercase tracking-[0.2em]`} style={{ color: GOLD }}>Surprises this month</span>
+        <span className="text-[12px] text-[var(--sage-dim)]">— the findings nobody else in the sport has</span>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {items.map((f, i) => {
+          const c = AREA_C[f.area] || GOLD;
+          return (
+            <div key={i} className="rounded-2xl border border-white/[0.08] bg-[#0e1612]/70 p-4">
+              <div className="mb-1.5 flex items-center gap-2">
+                <span className="rounded-full px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wider" style={{ color: c, background: `${c}1f` }}>{f.area}</span>
+                <span style={NUM} className="text-[10px] font-semibold text-[var(--sage-dim)]">n={f.sample.toLocaleString()}</span>
+                <span className="ml-auto flex items-center gap-1" title="surprise score">
+                  {[0, 1, 2, 3, 4].map((k) => <span key={k} className="h-1.5 w-1.5 rounded-full" style={{ background: f.surprise >= (k + 1) * 18 ? GOLD : "rgba(255,255,255,0.14)" }} />)}
+                </span>
+              </div>
+              <div className={`${HEAD} text-[15.5px] font-extrabold leading-snug text-[var(--cream)]`}>{f.headline}</div>
+              <div className="mt-1 text-[13px] leading-snug text-[var(--sage)]">{f.detail}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── by the disc (live) ───────────────────────────────────────────────────────
 function DiscSection({ d }: { d: NonNullable<View["discs"]> }) {
   const maxOb = Math.max(1, ...d.performance.map((x) => x.obPct));
@@ -372,6 +406,8 @@ export default function InsightsDashboard() {
         <Stat value={v.totals.bagSlots.toLocaleString()} label="Discs in bags" />
         <Stat value={String(v.totals.avgBagSize)} label="Avg bag size" />
       </div>
+
+      {v.surprises && <SurprisesSection items={v.surprises} />}
 
       <div className="mt-8 grid gap-4 lg:grid-cols-2">
         <Panel title="Brand share of every bagged disc" sub={`${brandTotal.toLocaleString()} discs`}>
