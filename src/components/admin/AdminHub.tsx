@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getAdminQueues, type AdminQueues, type QueueMeta } from "@/lib/adminQueues";
 import GrowthStrip from "@/components/growth/GrowthStrip";
+import RoadmapCard from "@/components/admin/RoadmapCard";
 import type { GrowthData } from "@/lib/growth";
 
 const HEAD = "font-[family-name:var(--font-heading)]";
@@ -171,6 +172,9 @@ export default function AdminHub({ growth }: { growth: GrowthData }) {
         </div>
         <GrowthStrip data={growth} />
       </div>
+
+      {/* ===== roadmap · goals, milestones & monetization ===== */}
+      <RoadmapCard />
 
       {/* ===== the crew ===== */}
       <div className="mt-14">
