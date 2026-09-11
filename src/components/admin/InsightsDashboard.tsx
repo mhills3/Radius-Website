@@ -252,6 +252,7 @@ export default function InsightsDashboard() {
           ) : (
             <div>Snapshot · {v.asOf}<br />Baked pilot · awaiting first monthly run</div>
           )}
+          <div className="mt-1.5 text-[11px] text-[var(--sage-dim)]">Refreshes automatically on the 1st of each month</div>
         </div>
       </div>
 

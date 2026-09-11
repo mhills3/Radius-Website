@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getAdminQueues, type AdminQueues, type QueueMeta } from "@/lib/adminQueues";
 import GrowthStrip from "@/components/growth/GrowthStrip";
-import RoadmapCard from "@/components/admin/RoadmapCard";
+import DataRoomCard from "@/components/admin/DataRoomCard";
+import OpportunityBoard from "@/components/admin/OpportunityBoard";
 import type { GrowthData } from "@/lib/growth";
 
 const HEAD = "font-[family-name:var(--font-heading)]";
@@ -150,6 +151,9 @@ export default function AdminHub({ growth }: { growth: GrowthData }) {
         )}
       </div>
 
+      {/* ===== data room (top, easy access) ===== */}
+      <DataRoomCard />
+
       {/* ===== queues ===== */}
       <div className="mt-10 space-y-4">
         {queues === null ? (
@@ -173,8 +177,8 @@ export default function AdminHub({ growth }: { growth: GrowthData }) {
         <GrowthStrip data={growth} />
       </div>
 
-      {/* ===== roadmap · goals, milestones & monetization ===== */}
-      <RoadmapCard />
+      {/* ===== opportunity board · goals, milestones & monetization ===== */}
+      <OpportunityBoard />
 
       {/* ===== the crew ===== */}
       <div className="mt-14">
