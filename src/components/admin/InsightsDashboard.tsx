@@ -31,13 +31,14 @@ interface View {
   brandShare: { label: string; n: number }[]; topMolds: { name: string; brand: string; n: number }[];
   putting: LiveInsights["putting"] | null;
   scoring: NonNullable<LiveInsights["scoring"]> | null;
+  discs: NonNullable<LiveInsights["discs"]> | null;
 }
 
 const bakedView = (): View => ({
   live: false, asOf: PILOT_AS_OF, totals: TOTALS,
   arm: ARM_SPEED, style: STYLE, hand: HAND, gender: GENDER, genderSet: GENDER_SET,
   maxDistance: paint(MAX_DISTANCE, {}), ratingTiers: RATING_TIERS,
-  brandShare: BRAND_SHARE, topMolds: TOP_MOLDS, putting: null, scoring: null,
+  brandShare: BRAND_SHARE, topMolds: TOP_MOLDS, putting: null, scoring: null, discs: null,
 });
 const liveView = (d: LiveInsights): View => ({
   live: true, asOf: d.asOf, updatedAt: d.updatedAt, totals: d.totals,
@@ -47,6 +48,7 @@ const liveView = (d: LiveInsights): View => ({
   brandShare: d.base.brandShare, topMolds: d.base.topMolds,
   putting: d.putting && d.putting.coverage.zonedMisses > 0 ? d.putting : null,
   scoring: d.scoring && d.scoring.byPar.length > 0 ? d.scoring : null,
+  discs: d.discs && d.discs.performance.length > 0 ? d.discs : null,
 });
 
 // ── generic panels ──────────────────────────────────────────────────────────
@@ -228,6 +230,56 @@ function PuttingLocked() {
   );
 }
 
+// ── by the disc (live) ───────────────────────────────────────────────────────
+function DiscSection({ d }: { d: NonNullable<View["discs"]> }) {
+  const maxOb = Math.max(1, ...d.performance.map((x) => x.obPct));
+  return (
+    <div className="mt-4">
+      <div className="mb-3 flex items-center gap-2.5"><span className={`${HEAD} text-[12px] font-bold uppercase tracking-[0.2em] text-[var(--sage)]`}>By the disc</span><span className="h-px flex-1 bg-[var(--hair)]" /></div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* performance */}
+        <Panel title="Disc performance — OB & fairway rate" sub={`≥ ${d.minThrows} throws`}>
+          <div className="space-y-2">
+            <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider text-[var(--sage-dim)]">
+              <span className="w-4 shrink-0" /><span className="w-[128px] shrink-0">Disc</span><span className="flex-1">OB rate</span><span className="w-[52px] shrink-0 text-right">OB</span><span className="w-[52px] shrink-0 text-right">Fway</span>
+            </div>
+            {d.performance.map((r, i) => (
+              <div key={r.disc} className="flex items-center gap-3">
+                <span style={NUM} className="w-4 shrink-0 text-right text-[11px] font-bold text-[var(--sage-dim)]">{i + 1}</span>
+                <div className="w-[128px] shrink-0 truncate text-[13px] text-[var(--cream)]">{r.disc}{r.brand && <span className="text-[var(--sage-dim)]"> · {r.brand}</span>}</div>
+                <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/[0.06]"><div className="h-full rounded-full" style={{ width: `${Math.max(3, (r.obPct / maxOb) * 100)}%`, background: "#ef8f6b" }} /></div>
+                <span style={NUM} className="w-[52px] shrink-0 text-right text-[12.5px] font-semibold text-[var(--sage)]">{fmtPct(r.obPct)}%</span>
+                <span style={NUM} className="w-[52px] shrink-0 text-right text-[12px] text-[var(--sage-dim)]">{fmtPct(r.fairwayPct)}%</span>
+              </div>
+            ))}
+            <div className="pt-1 text-[11px] text-[var(--sage-dim)]">How each mold actually flies in the wild — the performance read brands can&apos;t see.</div>
+          </div>
+        </Panel>
+        {/* who bags it */}
+        <Panel title="Who bags each disc — arm speed" sub="top molds">
+          <div className="space-y-2">
+            {d.baggerArm.slice(0, 10).map((m) => {
+              const tot = m.arm.reduce((a, b) => a + b.n, 0);
+              return (
+                <div key={m.disc} className="flex items-center gap-3">
+                  <div className="w-[120px] shrink-0 truncate text-[13px] text-[var(--cream)]">{m.disc}</div>
+                  <div className="flex h-2.5 flex-1 overflow-hidden rounded-full bg-white/[0.06]">
+                    {m.arm.map((a) => <div key={a.label} style={{ width: `${pctOf(a.n, tot)}%`, background: ARM_C[a.label] || GOLD }} title={`${a.label} ${fmtPct(pctOf(a.n, tot))}%`} />)}
+                  </div>
+                  <span style={NUM} className="w-[46px] shrink-0 text-right text-[11px] text-[var(--sage-dim)]">{m.baggers.toLocaleString()}</span>
+                </div>
+              );
+            })}
+            <div className="flex flex-wrap gap-x-3 gap-y-1 pt-1">
+              {Object.entries(ARM_C).map(([l, c]) => <span key={l} className="inline-flex items-center gap-1.5 text-[10.5px] text-[var(--sage)]"><span className="h-2 w-2 rounded-[2px]" style={{ background: c }} />{l}</span>)}
+            </div>
+          </div>
+        </Panel>
+      </div>
+    </div>
+  );
+}
+
 // ── scoring (live) ───────────────────────────────────────────────────────────
 const SCORE_SEG = [
   { key: "birdiePct" as const, label: "Birdie+", c: "#8fe0a5" },
@@ -329,6 +381,8 @@ export default function InsightsDashboard() {
           <RankBars items={v.topMolds.map((m) => ({ label: m.name, brand: m.brand, n: m.n }))} total={v.totals.withBag} showBrand accent="#8fd3a6" denomLabel="% of players carrying each mold." />
         </Panel>
       </div>
+
+      {v.discs && <DiscSection d={v.discs} />}
 
       <div className="mt-4">
         <div className="mb-3 flex items-center gap-2.5"><span className={`${HEAD} text-[12px] font-bold uppercase tracking-[0.2em] text-[var(--sage)]`}>Who plays Radius</span><span className="h-px flex-1 bg-[var(--hair)]" /></div>

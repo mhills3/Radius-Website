@@ -37,6 +37,11 @@ export interface LiveInsights {
     resultMix: { label: string; n: number; pct: number }[];
     resultTotal: number; minSample: number;
   };
+  discs?: {
+    performance: { disc: string; brand: string | null; throws: number; obPct: number; fairwayPct: number }[];
+    baggerArm: { disc: string; brand: string; baggers: number; arm: LiveSlice[] }[];
+    minThrows: number;
+  };
 }
 
 export async function getLiveInsights(): Promise<LiveInsights | null> {
