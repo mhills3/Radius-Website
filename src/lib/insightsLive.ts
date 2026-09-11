@@ -31,6 +31,12 @@ export interface LiveInsights {
     makeRate: { C1: number; C1att: number; C2: number; C2att: number };
     byArm: LiveArmRow[]; perPutter: LivePutter[]; minSample: number;
   };
+  scoring?: {
+    byPar: { par: number; holes: number; avgToPar: number; birdiePct: number; parPct: number; bogeyPct: number; dblPct: number }[];
+    byDistance: { bucket: string; holes: number; avgToPar: number; birdiePct: number }[];
+    resultMix: { label: string; n: number; pct: number }[];
+    resultTotal: number; minSample: number;
+  };
 }
 
 export async function getLiveInsights(): Promise<LiveInsights | null> {

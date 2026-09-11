@@ -30,13 +30,14 @@ interface View {
   maxDistance: Slice[]; ratingTiers: Slice[];
   brandShare: { label: string; n: number }[]; topMolds: { name: string; brand: string; n: number }[];
   putting: LiveInsights["putting"] | null;
+  scoring: NonNullable<LiveInsights["scoring"]> | null;
 }
 
 const bakedView = (): View => ({
   live: false, asOf: PILOT_AS_OF, totals: TOTALS,
   arm: ARM_SPEED, style: STYLE, hand: HAND, gender: GENDER, genderSet: GENDER_SET,
   maxDistance: paint(MAX_DISTANCE, {}), ratingTiers: RATING_TIERS,
-  brandShare: BRAND_SHARE, topMolds: TOP_MOLDS, putting: null,
+  brandShare: BRAND_SHARE, topMolds: TOP_MOLDS, putting: null, scoring: null,
 });
 const liveView = (d: LiveInsights): View => ({
   live: true, asOf: d.asOf, updatedAt: d.updatedAt, totals: d.totals,
@@ -45,6 +46,7 @@ const liveView = (d: LiveInsights): View => ({
   maxDistance: paint(d.base.maxDistance, {}), ratingTiers: paint(d.base.ratingTiers, TIER_C),
   brandShare: d.base.brandShare, topMolds: d.base.topMolds,
   putting: d.putting && d.putting.coverage.zonedMisses > 0 ? d.putting : null,
+  scoring: d.scoring && d.scoring.byPar.length > 0 ? d.scoring : null,
 });
 
 // ── generic panels ──────────────────────────────────────────────────────────
@@ -226,6 +228,60 @@ function PuttingLocked() {
   );
 }
 
+// ── scoring (live) ───────────────────────────────────────────────────────────
+const SCORE_SEG = [
+  { key: "birdiePct" as const, label: "Birdie+", c: "#8fe0a5" },
+  { key: "parPct" as const, label: "Par", c: "#6fb2ff" },
+  { key: "bogeyPct" as const, label: "Bogey", c: "#f0c069" },
+  { key: "dblPct" as const, label: "Double+", c: "#ef7f7f" },
+];
+function ScoringSection({ s }: { s: NonNullable<View["scoring"]> }) {
+  return (
+    <div className="mt-4">
+      <div className="mb-3 flex items-center gap-2.5"><span className={`${HEAD} text-[12px] font-bold uppercase tracking-[0.2em] text-[var(--sage)]`}>How the sport scores</span><span className="h-px flex-1 bg-[var(--hair)]" /></div>
+      <div className="grid gap-4 lg:grid-cols-3">
+        {/* by par */}
+        <Panel title="Scoring by par" sub="birdie / par / bogey">
+          <div className="space-y-3.5">
+            {s.byPar.map((r) => (
+              <div key={r.par}>
+                <div className="mb-1 flex items-baseline justify-between text-[12.5px]"><span className="font-semibold text-[var(--cream)]">Par {r.par}</span><span style={NUM} className="text-[var(--sage-dim)]">avg {r.avgToPar > 0 ? "+" : ""}{r.avgToPar} · {r.holes.toLocaleString()} holes</span></div>
+                <div className="flex h-3 w-full overflow-hidden rounded-full">
+                  {SCORE_SEG.map((seg) => <div key={seg.key} style={{ width: `${r[seg.key]}%`, background: seg.c }} title={`${seg.label} ${fmtPct(r[seg.key])}%`} />)}
+                </div>
+              </div>
+            ))}
+            <div className="flex flex-wrap gap-x-3 gap-y-1 pt-0.5">
+              {SCORE_SEG.map((seg) => <span key={seg.key} className="inline-flex items-center gap-1.5 text-[11px] text-[var(--sage)]"><span className="h-2 w-2 rounded-[2px]" style={{ background: seg.c }} />{seg.label}</span>)}
+            </div>
+          </div>
+        </Panel>
+        {/* by distance */}
+        <Panel title="Scoring by hole length" sub="birdie rate">
+          <div className="space-y-2.5">
+            {s.byDistance.map((r) => {
+              const max = Math.max(1, ...s.byDistance.map((x) => x.birdiePct));
+              return (
+                <div key={r.bucket} className="flex items-center gap-3">
+                  <div className="w-[76px] shrink-0 text-[12.5px] text-[var(--cream)]">{r.bucket}</div>
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/[0.06]"><div className="h-full rounded-full" style={{ width: `${Math.max(3, (r.birdiePct / max) * 100)}%`, background: "#8fe0a5" }} /></div>
+                  <span style={NUM} className="w-[40px] shrink-0 text-right text-[12px] font-semibold text-[var(--sage)]">{fmtPct(r.birdiePct)}%</span>
+                  <span style={NUM} className="w-[42px] shrink-0 text-right text-[11px] text-[var(--sage-dim)]">{r.avgToPar > 0 ? "+" : ""}{r.avgToPar}</span>
+                </div>
+              );
+            })}
+            <div className="pt-1 text-[11px] text-[var(--sage-dim)]">Birdie rate + avg score to par, by tee-to-basket distance.</div>
+          </div>
+        </Panel>
+        {/* result mix */}
+        <Panel title="Shot result mix" sub={`${s.resultTotal.toLocaleString()} shots`}>
+          <RankBars items={s.resultMix.map((r) => ({ label: r.label, n: r.n }))} total={s.resultTotal} accent="#bb95e8" denomLabel="Every logged throw by outcome." />
+        </Panel>
+      </div>
+    </div>
+  );
+}
+
 // ── page ─────────────────────────────────────────────────────────────────────
 export default function InsightsDashboard() {
   const [v, setV] = useState<View>(bakedView);
@@ -285,6 +341,8 @@ export default function InsightsDashboard() {
           <Panel title="Rating tiers" sub={`${v.totals.ratedPlayers} rated`}><SplitBar items={v.ratingTiers} denom={`Game IQ (live rating). Skews strong — only engaged players get a computed rating. Radius Rating is ${v.totals.ratingRolloutPct}% rolled out.`} /></Panel>
         </div>
       </div>
+
+      {v.scoring && <ScoringSection s={v.scoring} />}
 
       <div className="mt-8">{v.putting ? <PuttingLive p={v.putting} /> : <PuttingLocked />}</div>
 
