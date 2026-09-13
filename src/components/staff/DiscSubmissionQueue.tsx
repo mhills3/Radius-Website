@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import {
   getDiscSubmissions, groupLeads, catalogCheck, isLiveOnWeb, getDiscCatalogSafe,
@@ -29,21 +29,41 @@ function VerdictFact({ verdict }: { verdict: CatalogVerdict }) {
   return <Fact icon="⚠️" tone="warn">Did they mean {verdict.disc.manufacturer} {verdict.disc.name}? <span className="text-[var(--sage)]">· one letter off — likely the same disc</span></Fact>;
 }
 
+const CATEGORIES = ["Distance Driver", "Control Driver", "Fairway Driver", "Midrange", "Approach", "Putter"];
+const inputCls = "w-full rounded-xl border border-[var(--hair)] bg-white/[0.03] px-3.5 py-2.5 text-[14px] text-[var(--cream)] placeholder-[var(--sage-dim)] outline-none focus:border-[var(--gold)]/50";
+
+interface Draft { name: string; manufacturer: string; category: string; speed: string; glide: string; turn: string; fade: string }
+const draftFrom = (l: DiscLead): Draft => ({ name: l.name || "", manufacturer: l.manufacturer || "", category: l.category || "", speed: String(l.speed ?? ""), glide: String(l.glide ?? ""), turn: String(l.turn ?? ""), fade: String(l.fade ?? "") });
+
 function LeadCard({ lead, catalog, staffUid, onResolved, readOnly }: {
   lead: DiscLead; catalog: DbDisc[]; staffUid: string;
   onResolved: (ids: string[], status: "approved" | "denied") => void; readOnly?: boolean;
 }) {
-  const verdict = useMemo(() => catalogCheck(lead, catalog), [lead, catalog]);
-  const live = useMemo(() => isLiveOnWeb(lead, catalog), [lead, catalog]);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<Draft>(() => draftFrom(lead));
   const [busy, setBusy] = useState<"primary" | "secondary" | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
-  const act = async (decision: "approve" | "deny") => {
+  // Verdict + live badge track what will actually be STAGED — the draft while editing, the lead otherwise.
+  const effName = editing ? draft.name : lead.name;
+  const effMfr = editing ? draft.manufacturer : lead.manufacturer;
+  const verdict = useMemo(() => catalogCheck({ name: effName, manufacturer: effMfr }, catalog), [effName, effMfr, catalog]);
+  const live = useMemo(() => isLiveOnWeb(lead, catalog), [lead, catalog]);
+
+  const startEdit = () => { setDraft(draftFrom(lead)); setErr(null); setEditing(true); };
+  const set = (k: keyof Draft) => (e: ChangeEvent<HTMLInputElement>) => setDraft((d) => ({ ...d, [k]: e.target.value }));
+
+  const act = async (decision: "approve" | "deny", withEdits: boolean) => {
     if (!staffUid) { setErr("Sign in as staff to act."); return; }
+    if (decision === "approve" && withEdits && !draft.name.trim()) { setErr("Name can't be empty."); return; }
     setBusy(decision === "approve" ? "primary" : "secondary"); setErr(null);
     try {
       const { resolveLead } = await import("@/lib/discSubmissions");
-      await resolveLead(lead, decision, staffUid);
+      const edits = withEdits ? {
+        name: draft.name.trim(), manufacturer: draft.manufacturer.trim(), category: draft.category.trim(),
+        speed: Number(draft.speed) || 0, glide: Number(draft.glide) || 0, turn: Number(draft.turn) || 0, fade: Number(draft.fade) || 0,
+      } : undefined;
+      await resolveLead(lead, decision, staffUid, edits);
       onResolved(lead.submissions.map((s) => s.id), decision === "approve" ? "approved" : "denied");
     } catch (e) {
       console.error("[resolveLead] failed:", e);
@@ -54,10 +74,12 @@ function LeadCard({ lead, catalog, staffUid, onResolved, readOnly }: {
 
   const rep = lead.submissions[0];
   const others = lead.submitterCount - 1;
-  const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(`${lead.manufacturer} ${lead.name} disc golf flight numbers`)}`;
+  const searchName = editing ? draft.name : lead.name;
+  const searchMfr = editing ? draft.manufacturer : lead.manufacturer;
+  const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(`${searchMfr} ${searchName} disc golf flight numbers`)}`;
 
   return (
-    <Card dim={readOnly}>
+    <Card dim={readOnly} accent={editing ? "warn" : undefined}>
       <CardGrid
         left={
           <>
@@ -65,6 +87,7 @@ function LeadCard({ lead, catalog, staffUid, onResolved, readOnly }: {
               title={lead.name || "—"}
               tag={<>
                 {lead.submitterCount > 1 && <Tag>×{lead.submitterCount} submitted</Tag>}
+                {editing && <Tag tone="warn">Editing</Tag>}
                 {readOnly && live && <Tag tone="good">Live on web</Tag>}
               </>}
               meta={<>{lead.manufacturer || "Custom"} · {lead.category || "—"} · <span style={{ fontVariantNumeric: "tabular-nums" }}>{fmtFlight(lead)}</span></>}
@@ -76,20 +99,55 @@ function LeadCard({ lead, catalog, staffUid, onResolved, readOnly }: {
             </div>
           </>
         }
-        middle={
+        middle={editing ? (
+          <div className="space-y-2.5">
+            <div className="text-[12px] font-bold uppercase tracking-[0.14em] text-[var(--sage-dim)]">Clean up before staging</div>
+            <div>
+              <label className="mb-1 block text-[12px] font-semibold text-[var(--sage)]">Disc name</label>
+              <input value={draft.name} onChange={set("name")} placeholder="e.g. Hiaaro" className={inputCls} />
+            </div>
+            <div>
+              <label className="mb-1 block text-[12px] font-semibold text-[var(--sage)]">Manufacturer</label>
+              <input value={draft.manufacturer} onChange={set("manufacturer")} placeholder="e.g. Discraft" className={inputCls} />
+            </div>
+            <div>
+              <label className="mb-1 block text-[12px] font-semibold text-[var(--sage)]">Category</label>
+              <input value={draft.category} onChange={set("category")} list="disc-categories" placeholder="e.g. Putter" className={inputCls} />
+              <datalist id="disc-categories">{CATEGORIES.map((c) => <option key={c} value={c} />)}</datalist>
+            </div>
+            <div>
+              <label className="mb-1 block text-[12px] font-semibold text-[var(--sage)]">Flight (speed / glide / turn / fade)</label>
+              <div className="grid grid-cols-4 gap-2">
+                {(["speed", "glide", "turn", "fade"] as const).map((k) => (
+                  <input key={k} value={draft[k]} onChange={set(k)} inputMode="decimal" aria-label={k} className={`${inputCls} text-center`} style={{ fontVariantNumeric: "tabular-nums" }} />
+                ))}
+              </div>
+            </div>
+            <div className="pt-1"><VerdictFact verdict={verdict} /></div>
+          </div>
+        ) : (
           <>
             <VerdictFact verdict={verdict} />
             <Fact icon="🔎"><a href={searchUrl} target="_blank" rel="noopener" className="font-semibold hover:underline" style={{ color: TONE.info }}>Search {lead.manufacturer || "the mold"} {lead.name} ↗</a></Fact>
             {!readOnly && <Fact icon="🥏">The player&apos;s custom disc is untouched either way — this only triages a catalog lead</Fact>}
           </>
-        }
-        right={readOnly ? null : (
+        )}
+        right={readOnly ? null : editing ? (
           <ActionRail
-            primary={{ label: "Approve", busyLabel: "Approving…", onClick: () => act("approve") }}
-            secondary={{ label: "Deny", busyLabel: "Denying…", onClick: () => act("deny") }}
+            primary={{ label: "Approve", busyLabel: "Approving…", onClick: () => act("approve", true) }}
+            secondary={{ label: "Cancel", onClick: () => { setEditing(false); setErr(null); } }}
             busy={busy}
             error={err}
           />
+        ) : (
+          <ActionRail
+            primary={{ label: "Approve", busyLabel: "Approving…", onClick: () => act("approve", false) }}
+            secondary={{ label: "Deny", busyLabel: "Denying…", onClick: () => act("deny", false) }}
+            busy={busy}
+            error={err}
+          >
+            <button onClick={startEdit} disabled={!!busy} className="w-full rounded-2xl border border-[var(--gold)]/35 py-3.5 text-[15px] font-bold text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/10 disabled:opacity-50">✏️ Edit &amp; approve</button>
+          </ActionRail>
         )}
       />
     </Card>

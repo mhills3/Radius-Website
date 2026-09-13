@@ -181,7 +181,13 @@ export function pendingLeadCount(subs: DiscSubmission[]): number {
 // ---- Resolve (direct writes) ----
 // Approving stages the lead into `discCatalogQueue` (the catalog-release staging list — it does NOT
 // touch discs.json). Denying just flips status. Either way the submitters' custom discs are untouched.
-export async function resolveLead(lead: DiscLead, decision: "approve" | "deny", staffUid: string): Promise<void> {
+//
+// `edits` lets staff CLEAN the entry before it's staged — players fat-finger names ("Putter Hiaaro",
+// "discraf") and we don't want that in the catalog. The submitters' own docs keep what they typed;
+// only the staged catalog row gets the corrected values, with the original preserved for audit.
+export type LeadEdits = { name: string; manufacturer: string; category: string; speed: number; glide: number; turn: number; fade: number };
+
+export async function resolveLead(lead: DiscLead, decision: "approve" | "deny", staffUid: string, edits?: Partial<LeadEdits>): Promise<void> {
   const now = Date.now();
   const status = decision === "approve" ? "approved" : "denied";
   await Promise.all(
@@ -189,17 +195,26 @@ export async function resolveLead(lead: DiscLead, decision: "approve" | "deny", 
   );
   if (decision === "approve") {
     const rep = lead.submissions[0]; // newest — best flight numbers
+    const num = (v: number | undefined, fallback: number) => (typeof v === "number" && Number.isFinite(v) ? v : fallback);
+    const clean = {
+      name: (edits?.name ?? rep.name).trim(),
+      manufacturer: (edits?.manufacturer ?? rep.manufacturer).trim(),
+      category: (edits?.category ?? rep.category).trim(),
+      speed: num(edits?.speed, rep.speed), glide: num(edits?.glide, rep.glide), turn: num(edits?.turn, rep.turn), fade: num(edits?.fade, rep.fade),
+    };
+    const edited = clean.name !== rep.name || clean.manufacturer !== rep.manufacturer || clean.category !== rep.category
+      || clean.speed !== rep.speed || clean.glide !== rep.glide || clean.turn !== rep.turn || clean.fade !== rep.fade;
     await addDoc(collection(db, "discCatalogQueue"), {
-      name: rep.name,
-      manufacturer: rep.manufacturer,
-      category: rep.category,
-      speed: rep.speed, glide: rep.glide, turn: rep.turn, fade: rep.fade,
+      ...clean,
       sourceSubmissionIds: lead.submissions.map((s) => s.id),
       submitterCount: lead.submitterCount,
       submittedByName: rep.submittedByName,
       approvedBy: staffUid,
       approvedAt: now,
       status: "staged",
+      edited,
+      // keep what the player actually typed, so a correction is auditable
+      ...(edited ? { submittedName: rep.name, submittedManufacturer: rep.manufacturer, submittedCategory: rep.category, submittedFlight: { speed: rep.speed, glide: rep.glide, turn: rep.turn, fade: rep.fade } } : {}),
     });
   }
 }
