@@ -15,6 +15,37 @@ function colorFor(key: string): string {
   return TILE_COLORS[h % TILE_COLORS.length];
 }
 
+const shuffle = <T,>(a: T[]): T[] => {
+  const r = [...a];
+  for (let i = r.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [r[i], r[j]] = [r[j], r[i]]; }
+  return r;
+};
+const dedupeById = (a: Course[]): Course[] => {
+  const seen = new Set<string>(); const out: Course[] = [];
+  for (const c of a) { if (c.id && !seen.has(c.id)) { seen.add(c.id); out.push(c); } }
+  return out;
+};
+
+/**
+ * A ROTATING showcase — the old code locked to the same 5 most-reviewed courses, so with thousands of
+ * courses (and new ones daily) the strip looked frozen. Now: a curated-quality hero that rotates among
+ * the best, plus supporting tiles drawn from a mix of strong AND newly-added courses, reshuffled each
+ * visit so it stays fresh and new courses actually surface. All tiles still require a real cover photo.
+ */
+function pickShowcase(courses: Course[]): Course[] {
+  const withPhoto = courses.filter((c) => c.coverPhotoUrl);
+  if (!withPhoto.length) return [];
+  const byQuality = [...withPhoto].sort((a, b) =>
+    ((b.reviewCount ?? 0) - (a.reviewCount ?? 0)) || ((b.rating ?? 0) - (a.rating ?? 0)) || (b.holeCount - a.holeCount) || a.name.localeCompare(b.name));
+  const byRecent = [...withPhoto].sort((a, b) => (b.dateCreated ?? 0) - (a.dateCreated ?? 0));
+  // Hero: rotate among staff-featured courses if any, else the top-quality ones — always looks strong.
+  const heroPool = withPhoto.filter((c) => c.isFeatured).length ? withPhoto.filter((c) => c.isFeatured) : byQuality.slice(0, 15);
+  const hero = shuffle(heroPool)[0];
+  // Supporting: strong courses + recently-added ones, so the thousands of new courses get airtime.
+  const supportPool = dedupeById([...byQuality.slice(0, 60), ...byRecent.slice(0, 50)]).filter((c) => c.id !== hero?.id);
+  return dedupeById([hero, ...shuffle(supportPool)].filter(Boolean) as Course[]).slice(0, 5);
+}
+
 export default function CoursesStrip({ courseCount = 0 }: { courseCount?: number }) {
   const router = useRouter();
   const [courses, setCourses] = useState<Course[]>([]);
@@ -29,9 +60,10 @@ export default function CoursesStrip({ courseCount = 0 }: { courseCount?: number
     getTotalCourseCount().then((n) => { if (n > 0) setTotalCount(n); }).catch(() => {});
   }, []);
 
-  // Only courses WITH a cover photo (the grid shows the real photo), most-reviewed first, then
-  // rating, then size.
-  const list = useMemo(() => courses.filter((c) => c.coverPhotoUrl).sort((a, b) => ((b.reviewCount ?? 0) - (a.reviewCount ?? 0)) || ((b.rating ?? 0) - (a.rating ?? 0)) || (b.holeCount - a.holeCount) || a.name.localeCompare(b.name)).slice(0, 5), [courses]);
+  // Rotating showcase (see pickShowcase) — computed once per load so it stays put while you're on the
+  // page but is fresh on every visit. Depends only on `courses`, so typing in the search box (which
+  // just routes to /courses) never reshuffles the grid.
+  const list = useMemo(() => pickShowcase(courses), [courses]);
   const featured = list[0];
   const rest = useMemo(() => list.slice(1, 5), [list]);
 
