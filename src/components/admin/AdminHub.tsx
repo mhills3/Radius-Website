@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getAdminQueues, type AdminQueues, type QueueMeta } from "@/lib/adminQueues";
 import GrowthStrip from "@/components/growth/GrowthStrip";
+import PulsePanel from "@/components/admin/PulsePanel";
 import DataRoomCard from "@/components/admin/DataRoomCard";
 import OpportunityBoard from "@/components/admin/OpportunityBoard";
 import type { GrowthData } from "@/lib/growth";
@@ -175,6 +176,7 @@ export default function AdminHub({ growth }: { growth: GrowthData }) {
           <span className={`${HEAD} text-[12px] font-bold uppercase tracking-[0.2em] text-[var(--sage)]`}>Radius pulse</span>
         </div>
         <GrowthStrip data={growth} />
+        <PulsePanel />
       </div>
 
       {/* ===== opportunity board · goals, milestones & monetization ===== */}
