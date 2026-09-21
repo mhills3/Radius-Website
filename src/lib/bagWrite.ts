@@ -29,6 +29,17 @@ function decodeJsonArray(v: unknown): any[] {
   return [];
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function decodeJsonObject(v: unknown): Record<string, any> {
+  if (v && typeof v === "object" && !Array.isArray(v)) return v as Record<string, unknown>;
+  if (typeof v === "string") {
+    for (const s of [v, (() => { try { return b64ToUtf8(v); } catch { return ""; } })()]) {
+      try { const o = JSON.parse(s); if (o && typeof o === "object" && !Array.isArray(o)) return o; } catch {}
+    }
+  }
+  return {};
+}
+
 const dataDoc = (cid: string) => doc(db, `userBackups/${cid}/data/current`);
 
 // All mutations run through one chain: a second edit fired during the first
@@ -197,11 +208,26 @@ export function addDiscToBag(uid: string, discName: string): Promise<void> {
 // would resurrect (and later republish / duplicate on recover). Move-back stays safe: recoverToBag
 // appends a FRESH id (newDisc), which a stale tombstone never blocks.
 
+// Wear must TRAVEL with a disc that leaves the bag. discWearJSON (base64 JSON,
+// name → DiscWear) is the apps' fallback wear store for discs NOT in the bag:
+// iOS shows it for collection/lost discs and seeds the fresh row from it when
+// the disc comes back. Dropping the row without persisting its wear reverted
+// the disc to Brand New and lost custom flight numbers on the round trip
+// (Matt Doyle, 2026-09-20). Entries go through the same sanitizer as bag rows —
+// iOS decodes the WHOLE map with try?, so one malformed entry loses all wear.
+function wearMapPatch(data: Record<string, unknown>, row: RawDisc | undefined, discName: string): Record<string, unknown> {
+  if (!row?.wear || typeof row.wear !== "object") return {};
+  const map = decodeJsonObject(data.discWearJSON);
+  map[discName] = sanitizeEntry({ id: row.id, discName, wear: row.wear }).wear;
+  return { discWearJSON: encodeJsonB64(map) };
+}
+
 /** Move a bag disc into the collection. Removes + tombstones ONLY that id from the fresh cloud bag. */
 export function moveToCollection(uid: string, discId: string, discName: string, bagId?: string): Promise<void> {
   return enqueue(async () => {
     const { ref, data, bag, bagsCtx } = await readCurrent(uid, bagId);
-    await setDoc(ref, { ...bagFields(bagsCtx, bag.filter((r) => r?.id !== discId), data), myCollection: arrayUnion(discName), lostDiscs: arrayRemove(discName), deletedBagDiscIds: arrayUnion(discId), lastUpdated: Date.now() }, { merge: true });
+    const row = bag.find((r) => r?.id === discId);
+    await setDoc(ref, { ...bagFields(bagsCtx, bag.filter((r) => r?.id !== discId), data), ...wearMapPatch(data, row, discName), myCollection: arrayUnion(discName), lostDiscs: arrayRemove(discName), deletedBagDiscIds: arrayUnion(discId), lastUpdated: Date.now() }, { merge: true });
   });
 }
 
@@ -209,7 +235,8 @@ export function moveToCollection(uid: string, discId: string, discName: string, 
 export function markAsLost(uid: string, discId: string, discName: string, bagId?: string): Promise<void> {
   return enqueue(async () => {
     const { ref, data, bag, bagsCtx } = await readCurrent(uid, bagId);
-    await setDoc(ref, { ...bagFields(bagsCtx, bag.filter((r) => r?.id !== discId), data), lostDiscs: arrayUnion(discName), myCollection: arrayRemove(discName), deletedBagDiscIds: arrayUnion(discId), lastUpdated: Date.now() }, { merge: true });
+    const row = bag.find((r) => r?.id === discId);
+    await setDoc(ref, { ...bagFields(bagsCtx, bag.filter((r) => r?.id !== discId), data), ...wearMapPatch(data, row, discName), lostDiscs: arrayUnion(discName), myCollection: arrayRemove(discName), deletedBagDiscIds: arrayUnion(discId), lastUpdated: Date.now() }, { merge: true });
   });
 }
 
@@ -217,7 +244,11 @@ export function markAsLost(uid: string, discId: string, discName: string, bagId?
 export function recoverToBag(uid: string, raw: RawDisc, discName: string, bagId?: string): Promise<void> {
   return enqueue(async () => {
     const { ref, data, bag, bagsCtx } = await readCurrent(uid, bagId);
-    await setDoc(ref, { ...bagFields(bagsCtx, [...bag, raw], data), myCollection: arrayRemove(discName), lostDiscs: arrayRemove(discName), lastUpdated: Date.now() }, { merge: true });
+    // Seed the fresh row's wear from the name-keyed store so a recovered disc
+    // keeps the condition + custom flight numbers it left with (see wearMapPatch).
+    const savedWear = decodeJsonObject(data.discWearJSON)[discName];
+    const entry = savedWear && typeof savedWear === "object" ? sanitizeEntry({ ...raw, wear: savedWear }) : raw;
+    await setDoc(ref, { ...bagFields(bagsCtx, [...bag, entry], data), myCollection: arrayRemove(discName), lostDiscs: arrayRemove(discName), lastUpdated: Date.now() }, { merge: true });
   });
 }
 
