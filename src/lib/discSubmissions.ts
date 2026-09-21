@@ -28,6 +28,7 @@ export interface DiscSubmission {
   createdAt: number;
   reviewedBy?: string;
   reviewedAt?: number;
+  reviewedVia?: "auto" | "manual" | string;
 }
 
 // ---- Normalization (catalog-check parity with the apps' DiscSearch) ----
@@ -116,6 +117,51 @@ export function isLowSignal(s: { name: string; manufacturer: string; speed: numb
   return false;
 }
 
+// ---- Auto-triage ----
+// Turn the manual approve/deny grind into oversight: confidently deny duplicates + noise, confidently
+// approve genuine missing discs, and HOLD the ambiguous "close results" for a human. The three buckets
+// map onto the catalog verdict, with one guard — a "missing" disc only auto-approves when its name
+// looks clean AND its brand is one we already carry, so junk like "Putter Hiaaro" or an unknown-brand
+// typo never auto-stages into the catalog; it goes to review instead.
+const CATEGORY_WORDS = new Set(["putter", "putt", "approach", "midrange", "mid", "fairway", "control", "distance", "driver", "disc"]);
+
+/** A clean, catalog-ready name: 1–3 tokens, not led by a category word, not noise. */
+export function nameLooksClean(lead: { name: string; manufacturer: string; speed: number; glide: number; turn: number; fade: number }): boolean {
+  if (isLowSignal(lead)) return false;
+  const toks = canonName(lead.name).split(" ").filter(Boolean);
+  return toks.length >= 1 && toks.length <= 3 && !CATEGORY_WORDS.has(toks[0]);
+}
+/** True when the submitted manufacturer resolves to a brand already in our catalog. */
+export function brandKnown(lead: { manufacturer: string }, catalog: DbDisc[]): boolean {
+  const m = canonMfr(lead.manufacturer);
+  if (!m || m === "custom") return false;
+  return catalog.some((d) => canonMfr(d.manufacturer) === m);
+}
+
+export type TriageAction = "approve" | "deny" | "review";
+export interface TriagedLead { lead: DiscLead; action: TriageAction; reason: string }
+export interface TriageResult { approve: TriagedLead[]; deny: TriagedLead[]; review: TriagedLead[] }
+
+/** Classify each pending lead. Pure — no writes; the UI runs the approve/deny batches. */
+export function triageLeads(leads: DiscLead[], catalog: DbDisc[]): TriageResult {
+  const out: TriageResult = { approve: [], deny: [], review: [] };
+  for (const lead of leads) {
+    let t: TriagedLead;
+    if (lead.lowSignal || isLowSignal(lead)) {
+      t = { lead, action: "deny", reason: "Noise — test name or empty custom" };
+    } else {
+      const v = catalogCheck(lead, catalog);
+      if (v.kind === "exact") t = { lead, action: "deny", reason: `Duplicate — already carry ${v.disc.manufacturer} ${v.disc.name}` };
+      else if (v.kind === "fuzzy") t = { lead, action: "review", reason: `Close to ${v.disc.manufacturer} ${v.disc.name} — typo or a genuinely different mold?` };
+      else if (v.kind === "nameOtherMfr") t = { lead, action: "review", reason: `Name exists under ${v.disc.manufacturer} — dupe or different mold?` };
+      else if (nameLooksClean(lead) && brandKnown(lead, catalog)) t = { lead, action: "approve", reason: "Genuine — missing from the catalog" };
+      else t = { lead, action: "review", reason: "Missing, but the name or brand needs a look before it's staged" };
+    }
+    out[t.action].push(t);
+  }
+  return out;
+}
+
 // ---- Grouping into leads ----
 // Three users submitting "Cloudbreaker" = ONE lead. Group by folded name+manufacturer; a submitter's
 // own re-creates collapse to one (keep their latest flight numbers). Lead flight numbers + display
@@ -187,11 +233,12 @@ export function pendingLeadCount(subs: DiscSubmission[]): number {
 // only the staged catalog row gets the corrected values, with the original preserved for audit.
 export type LeadEdits = { name: string; manufacturer: string; category: string; speed: number; glide: number; turn: number; fade: number };
 
-export async function resolveLead(lead: DiscLead, decision: "approve" | "deny", staffUid: string, edits?: Partial<LeadEdits>): Promise<void> {
+export async function resolveLead(lead: DiscLead, decision: "approve" | "deny", staffUid: string, edits?: Partial<LeadEdits>, opts: { auto?: boolean } = {}): Promise<void> {
   const now = Date.now();
   const status = decision === "approve" ? "approved" : "denied";
+  const via = opts.auto ? "auto" : "manual";
   await Promise.all(
-    lead.submissions.map((s) => updateDoc(doc(db, "discSubmissions", s.id), { status, reviewedBy: staffUid, reviewedAt: now })),
+    lead.submissions.map((s) => updateDoc(doc(db, "discSubmissions", s.id), { status, reviewedBy: staffUid, reviewedAt: now, reviewedVia: via })),
   );
   if (decision === "approve") {
     const rep = lead.submissions[0]; // newest — best flight numbers
@@ -212,6 +259,7 @@ export async function resolveLead(lead: DiscLead, decision: "approve" | "deny", 
       approvedBy: staffUid,
       approvedAt: now,
       status: "staged",
+      via,
       edited,
       // keep what the player actually typed, so a correction is auditable
       ...(edited ? { submittedName: rep.name, submittedManufacturer: rep.manufacturer, submittedCategory: rep.category, submittedFlight: { speed: rep.speed, glide: rep.glide, turn: rep.turn, fade: rep.fade } } : {}),
