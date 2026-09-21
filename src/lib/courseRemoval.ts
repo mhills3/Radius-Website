@@ -17,19 +17,35 @@ export interface DuplicateCandidate {
   lng?: number;
 }
 export interface CourseSnapshot { name?: string; city?: string; state?: string; lat?: number; lng?: number; holeCount?: number }
+/** One layout named by a layout-scoped request — snapshotted + ownership-checked by the trigger. */
+export interface LayoutEvidenceEntry {
+  id: string;
+  name?: string;
+  holeCount?: number;
+  createdById?: string;
+  /** The id names no layout on the live course (already gone) — approve skips it. */
+  missing?: boolean;
+  ownedByRequester?: boolean;
+}
 export interface RemovalEvidence {
   requesterBuiltIt?: boolean;
   likelyDuplicates?: DuplicateCandidate[];
   roundsPlayed?: number;
   holeCount?: number;
   isPublished?: boolean;
+  /** Present only on layout-scoped requests. */
+  layouts?: LayoutEvidenceEntry[];
 }
 export interface RemovalRequest {
   id: string;
   courseId?: string;
   courseName: string;
   courseSnapshot?: CourseSnapshot;
-  reasonKey?: string;   // duplicate | mistake | closed | wrong_location | other
+  /** "course" (or absent — pre-scope clients) targets the whole course; "layouts" names specific layouts. */
+  scope?: string;
+  /** Client-claimed layout picks; render evidence.layouts (server-verified) instead where present. */
+  layouts?: { id: string; name?: string }[];
+  reasonKey?: string;   // course: duplicate | mistake | closed | wrong_location | other · layouts: duplicate | mistake | outdated | wrong_data | other
   detail?: string;      // free text, ≥10 chars
   requesterName?: string;
   requesterEmail?: string;
@@ -47,6 +63,8 @@ export interface RemovalRequest {
   reviewedAt?: number;
   reviewedBy?: string;
   note?: string;
+  /** Layout-scoped approvals: how many layouts actually left the course. */
+  removedLayoutCount?: number;
 }
 
 /** Just the count of pending requests — for the Admin nav badge + hub card (cheap server-side count). */

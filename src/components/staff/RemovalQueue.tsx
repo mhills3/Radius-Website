@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { getRemovalRequests, getResolvedRemovalRequests, resolveCourseRemoval, parseResolveError, twoPinMapUrl, type RemovalRequest, type DuplicateCandidate } from "@/lib/courseRemoval";
 import { QueuePage, SectionLabel, Card, CardGrid, CardTitle, Tag, Fact, Requester, ActionRail, Spinner, Empty, LoadError, Segmented, HistoryList, fmtAgo, TONE } from "./QueueShell";
 
-const REASON: Record<string, string> = { duplicate: "Duplicate", mistake: "Mistake", closed: "Course closed", wrong_location: "Wrong location", other: "Other" };
+const REASON: Record<string, string> = { duplicate: "Duplicate", mistake: "Mistake", closed: "Course closed", wrong_location: "Wrong location", outdated: "Layout gone", wrong_data: "Wrong data", other: "Other" };
 const loc = (c?: { city?: string; state?: string }) => [c?.city, c?.state].filter(Boolean).join(", ");
 
 function DupRow({ d }: { d: DuplicateCandidate }) {
@@ -35,6 +35,11 @@ function RemovalCard({ r, onResolved }: { r: RemovalRequest; onResolved: (id: st
   const errored = r.status === "error";
   const map = twoPinMapUrl(snap, dups[0] ?? null);
   const rounds = ev.roundsPlayed ?? 0;
+  // Layout-scoped: approve removes ONLY the listed layouts; the course stays
+  // live. Render the server-verified evidence.layouts, never the client's
+  // claimed list (the trigger snapshots + ownership-checks each one).
+  const layoutScoped = r.scope === "layouts";
+  const evLayouts = ev.layouts || [];
 
   const act = async (decision: "approve" | "deny", note: string, override = false) => {
     setBusy(decision === "approve" ? "primary" : "secondary"); setErr(null); setLastNote(note);
@@ -56,7 +61,9 @@ function RemovalCard({ r, onResolved }: { r: RemovalRequest; onResolved: (id: st
   // Bedford Boys Ranch guard (2026-09-06): a removal request that reads like
   // an EDIT request ("just delete the 9 hole layout") got approved and hid the
   // whole course — approve has no smaller hammer. Flag the language loudly.
-  const looksLikeEdit = /\blayout\b|\bholes? (changed|updated|moved)|\breconfigur|\bremap|\bjust (the|a) \b/i.test(r.detail || "");
+  // A layout-scoped request IS the smaller hammer, so the warning only fires
+  // on whole-course requests whose language smells layout-sized.
+  const looksLikeEdit = !layoutScoped && /\blayout\b|\bholes? (changed|updated|moved)|\breconfigur|\bremap|\bjust (the|a) \b/i.test(r.detail || "");
 
   const meta = [loc(snap) || "Location unknown", snap.holeCount ? `${snap.holeCount} holes` : null, ev.isPublished === false ? "unpublished" : ev.isPublished ? "published" : null].filter(Boolean).join(" · ");
 
@@ -83,15 +90,22 @@ function RemovalCard({ r, onResolved }: { r: RemovalRequest; onResolved: (id: st
       <CardGrid
         left={
           <>
-            <CardTitle title={snap.name || r.courseName} tag={r.reasonKey ? <Tag>{REASON[r.reasonKey] || r.reasonKey}</Tag> : null} meta={meta} />
+            <CardTitle title={snap.name || r.courseName} tag={<>{layoutScoped && <Tag tone="info">Layouts only</Tag>}{r.reasonKey ? <Tag>{REASON[r.reasonKey] || r.reasonKey}</Tag> : null}</>} meta={meta} />
             <Requester name={r.requesterName} username={r.requesterUsername} email={r.requesterEmail} emailMissing={r.requesterEmailMissing} quote={r.detail} />
           </>
         }
         middle={
           <>
             <Fact icon="🏗️" tone={ev.requesterBuiltIt === true ? "good" : ev.requesterBuiltIt === false ? "bad" : "neutral"}>
-              {ev.requesterBuiltIt === true ? "They built this course" : ev.requesterBuiltIt === false ? "Not the builder" : "Builder unknown"}
+              {layoutScoped
+                ? (ev.requesterBuiltIt === true ? "They built every selected layout" : ev.requesterBuiltIt === false ? "Not the builder of every selected layout" : "Layout builder unknown")
+                : (ev.requesterBuiltIt === true ? "They built this course" : ev.requesterBuiltIt === false ? "Not the builder" : "Builder unknown")}
             </Fact>
+            {layoutScoped && (
+              <Fact icon="🗺️" tone="info">
+                Approve removes <b className="text-[var(--cream)]">{evLayouts.filter((l) => !l.missing).length}</b> layout{evLayouts.filter((l) => !l.missing).length === 1 ? "" : "s"} — the course itself stays live
+              </Fact>
+            )}
             {r.requesterVerified === false && (
               <Fact icon="🪪" tone="bad">
                 Identity mismatch — the account that filed this is NOT the person it claims to be
@@ -132,6 +146,27 @@ function RemovalCard({ r, onResolved }: { r: RemovalRequest; onResolved: (id: st
           />
         }
       />
+
+      {layoutScoped && evLayouts.length > 0 && (
+        <div className="mt-7 border-t border-[var(--hair)] pt-6">
+          <SectionLabel>Layouts named in this request</SectionLabel>
+          <div className="mt-3 rounded-2xl bg-white/[0.03] px-5 py-1">
+            {evLayouts.map((l, i) => (
+              <div key={l.id || i} className="flex items-center gap-3 border-t border-[var(--hair)] py-3 first:border-0">
+                <div className="min-w-0 flex-1">
+                  <span className="truncate text-[15px] font-semibold text-[var(--cream)]">{l.name || l.id}</span>
+                  <div className="truncate text-[13px] text-[var(--sage-dim)]">{l.holeCount ? `${l.holeCount} holes` : "—"}</div>
+                </div>
+                {l.missing
+                  ? <Tag tone="warn">Already gone — skipped</Tag>
+                  : l.ownedByRequester
+                    ? <Tag tone="good">Their layout</Tag>
+                    : <Tag tone="bad">Not theirs</Tag>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {dups.length > 0 && (
         <div className="mt-7 border-t border-[var(--hair)] pt-6">
@@ -176,10 +211,10 @@ export default function RemovalQueue() {
   const invalid = (requests || []).filter((r) => r.status === "invalid").sort(byOldest);
   const errored = (requests || []).filter((r) => r.status === "error").sort(byOldest);
   const openCount = pending.length + invalid.length + errored.length;
-  const history = resolved.map((r) => ({ id: r.id, title: r.courseSnapshot?.name || r.courseName, sub: `${r.requesterName || "Unknown"}${r.requesterUsername ? ` @${r.requesterUsername}` : ""}`, decision: r.status, at: r.reviewedAt ?? r.createdAt, note: r.note }));
+  const history = resolved.map((r) => ({ id: r.id, title: `${r.courseSnapshot?.name || r.courseName}${r.scope === "layouts" ? ` · ${(r.evidence?.layouts || r.layouts || []).length} layout(s)` : ""}`, sub: `${r.requesterName || "Unknown"}${r.requesterUsername ? ` @${r.requesterUsername}` : ""}`, decision: r.status, at: r.reviewedAt ?? r.createdAt, note: r.note }));
 
   return (
-    <QueuePage title="Course Removals" blurb={<>Approving is a soft delete — the course leaves the map and search while existing rounds keep resolving. Nothing is destroyed.<br />Denying changes nothing.</>}>
+    <QueuePage title="Course Removals" blurb={<>Approving a course request is a soft delete — the course leaves the map and search while existing rounds keep resolving. Approving a <b>Layouts only</b> request removes just the named layouts; the course stays live.<br />Denying changes nothing.</>}>
       {requests === null ? <Spinner /> : loadErr ? <LoadError /> : (
         <>
           <div className="mt-8"><Segmented value={tab} onChange={setTab} options={[{ k: "pending", label: "Open", n: openCount }, { k: "history", label: "History", n: resolved.length }]} /></div>
