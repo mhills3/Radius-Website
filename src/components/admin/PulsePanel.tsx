@@ -27,7 +27,7 @@ function Section({ title, sub, children }: { title: string; sub?: string; childr
 /** Monthly bars with the value on top; the current month is drawn hollow-topped with its pace. */
 function MonthBars({ rows, current, pace, color }: { rows: MonthCount[]; current: string; pace?: number | null; color: string }) {
   const [hover, setHover] = useState<number | null>(null);
-  const max = Math.max(1, ...rows.map((r) => r.n), pace ?? 0);
+  const max = Math.max(1, ...rows.map((r) => r.n + (r.imported ?? 0)), pace ?? 0);
   const W = 640, H = 150, padB = 24, padT = 22;
   const gh = H - padB - padT, baseY = padT + gh;
   const n = rows.length || 1, slot = W / n, bw = Math.min(slot * 0.62, 64);
@@ -43,7 +43,10 @@ function MonthBars({ rows, current, pace, color }: { rows: MonthCount[]; current
               <rect x={cx - bw / 2} y={y(pace)} width={bw} height={y(r.n) - y(pace)} rx={3} fill="none" stroke={color} strokeDasharray="3 3" opacity={0.6} />
             )}
             <rect x={cx - bw / 2} y={y(r.n)} width={bw} height={Math.max(2, baseY - y(r.n))} rx={3} fill={color} opacity={isCur ? 1 : 0.85} />
-            <text x={cx} y={y(Math.max(r.n, isCur && pace ? pace : 0)) - 7} textAnchor="middle" fontSize={12} fontWeight={700} fill={isCur ? color : "rgba(245,237,225,0.85)"} style={NUM}>{fmt(r.n)}</text>
+            {(r.imported ?? 0) > 0 && (
+              <rect x={cx - bw / 2} y={y(r.n + (r.imported ?? 0))} width={bw} height={Math.max(1, y(r.n) - y(r.n + (r.imported ?? 0)))} rx={2} fill={color} opacity={0.22} />
+            )}
+            <text x={cx} y={y(Math.max(r.n + (r.imported ?? 0), isCur && pace ? pace : 0)) - 7} textAnchor="middle" fontSize={12} fontWeight={700} fill={isCur ? color : "rgba(245,237,225,0.85)"} style={NUM}>{fmt(r.n)}</text>
             <text x={cx} y={H - 6} textAnchor="middle" fontSize={11.5} fill={isCur ? color : "rgba(168,179,145,0.6)"} fontWeight={isCur ? 700 : 500}>{monthLabel(r.month)}</text>
             <rect x={slot * i} y={0} width={slot} height={H} fill="transparent" onMouseEnter={() => setHover(i)} />
           </g>
@@ -90,7 +93,7 @@ export default function PulsePanel() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Section title="Rounds logged per month" sub={`Excludes imported history · ${fmt(p.rounds.total)} round docs total · trend from ${monthLabel(p.launchMonth)} ${p.launchMonth.slice(0, 4)}`}>
+        <Section title="Rounds logged per month" sub={`Solid = logged in Radius · faint = imported scorecard history dated that month (${fmt(p.rounds.imported)} of ${fmt(p.rounds.total)} round docs) · from ${monthLabel(p.launchMonth)} ${p.launchMonth.slice(0, 4)}`}>
           <MonthBars rows={p.rounds.byMonth.slice(-9)} current={cur.month} pace={cur.pace} color={GOLD} />
           <div className="mt-3 flex flex-wrap items-baseline gap-x-6 gap-y-1 text-[13px] text-[var(--sage)]">
             <span><b style={NUM} className="text-[var(--cream)]">{fmt(cur.n)}</b> so far · day {cur.dayOfMonth} of {cur.daysIn}</span>
@@ -110,7 +113,7 @@ export default function PulsePanel() {
             <Big value={fmt(a.activated)} label={`3+ rounds · ${pct(a.activated, a.loggers)} of loggers`} color={GREEN} />
             <Big value={fmt(a.oneAndDone)} label={`One and done · ${pct(a.oneAndDone, a.loggers)}`} color="#ef7f7f" />
           </div>
-          <p className="mt-4 text-[12px] leading-relaxed text-[var(--sage-dim)]">Reads the cloud backup, which Android under-published before 3.3.3 — so one-and-done is a ceiling and 3+ is a floor until the reconcile rolls out.</p>
+          <p className="mt-4 text-[12px] leading-relaxed text-[var(--sage-dim)]">Imported history doesn&apos;t count as logging{a.inclImported ? <> (with it: {fmt(a.inclImported.loggers)} loggers · {fmt(a.inclImported.activated)} at 3+ · {fmt(a.inclImported.oneAndDone)} one-and-done)</> : null}. Reads the cloud backup, which Android under-published before 3.3.3 — so one-and-done is a ceiling and 3+ is a floor until the reconcile rolls out.</p>
         </Section>
 
         <Section title="Builders" sub={`${fmt(p.builders.creators)} people have built at least one countable course · qualifies vs actually awarded`}>

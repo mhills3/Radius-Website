@@ -5,7 +5,7 @@ import { functions } from "./firebase";
 // Served by the `adminPulse` callable (radius-functions), which re-checks staff with the Admin SDK,
 // recomputes when the cached adminInsights/pulse doc is older than an hour, and returns the doc.
 
-export interface MonthCount { month: string; n: number } // month = "YYYY-MM" (UTC)
+export interface MonthCount { month: string; n: number; imported?: number } // month = "YYYY-MM" (UTC); n = logged in Radius
 export interface BuilderTier { key: string; threshold: number; grantDays: number; merchTier: string | null; builders: number; awarded: number }
 export interface AdminPulse {
   generatedAt: number;
@@ -16,7 +16,7 @@ export interface AdminPulse {
     thisMonth: { month: string; n: number; dayOfMonth: number; daysIn: number; pace: number | null };
   };
   courses: { byMonth: MonthCount[]; total: number; undated: number; countable: number };
-  activation: { accounts: number; loggers: number; activated: number; oneAndDone: number };
+  activation: { accounts: number; loggers: number; activated: number; oneAndDone: number; inclImported?: { loggers: number; activated: number; oneAndDone: number } };
   builders: { creators: number; tiers: BuilderTier[] };
   cached?: boolean;
 }
