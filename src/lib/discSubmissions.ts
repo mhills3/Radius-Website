@@ -57,6 +57,7 @@ const MFR_ALIAS: Record<string, string> = {
   dd: "dynamic",                 // "DD" ≡ Dynamic Discs
   ld: "latitude",                // "LD"/"Lat64" ≡ Latitude 64
   lat64: "latitude", lat: "latitude",
+  tsa: "thought space athletics", // catalog spells it out (Michael 2026-09-21: no abbreviations except MVP)
 };
 export function canonMfr(s: string): string {
   const toks = fold(s)
