@@ -28,6 +28,17 @@ export interface DiscSubmission {
   createdAt: number;
   reviewedBy?: string;
   reviewedAt?: number;
+  catalogQueueId?: string;
+  /** Server verdict from the verifier (radius-functions discVerify): why it approved/denied/held. */
+  triage?: {
+    action: "approve" | "deny" | "review";
+    reason: string;
+    at?: number;
+    source?: string;
+    verified?: { source: string; url: string; brand?: string; name?: string; flight?: { speed: number; glide: number; turn: number; fade: number } | null; category?: string | null; approved?: string | null; flightFromPage?: boolean; corrected?: boolean };
+    duplicateOf?: { name: string; manufacturer: string };
+    clean?: { name: string; manufacturer: string; category: string; speed: number; glide: number; turn: number; fade: number };
+  };
   reviewedVia?: "auto" | "manual" | string;
 }
 
@@ -269,4 +280,16 @@ export async function resolveLead(lead: DiscLead, decision: "approve" | "deny", 
 
 export async function getDiscCatalogSafe(): Promise<DbDisc[]> {
   try { return await getDiscCatalog(); } catch { return []; }
+}
+
+// ---- Server verification (radius-functions verifyDiscSubmissions) ----
+// The verifier runs automatically when a submission is created; this re-runs it over everything
+// still pending (docs that already carry a verdict are skipped unless force). Staff-only.
+export interface VerifyRunResult { scanned: number; approved: number; denied: number; review: number; skipped: number; errors: number }
+export async function verifyPendingSubmissions(force = false): Promise<VerifyRunResult> {
+  const { httpsCallable } = await import("firebase/functions");
+  const { functions } = await import("./firebase");
+  const fn = httpsCallable<{ force?: boolean }, VerifyRunResult>(functions, "verifyDiscSubmissions");
+  const res = await fn(force ? { force: true } : {});
+  return res.data;
 }
