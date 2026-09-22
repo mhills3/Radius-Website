@@ -22,8 +22,8 @@ const PLANS = [
     badge: "7-day free trial",
     featured: true,
     free: false,
-    annual: { price: "$3.33", per: "/mo", sub: "Billed $39.99/yr · save 33%" },
-    monthly: { price: "$4.99", per: "/mo", sub: "Billed monthly" },
+    annual: { price: "$3.33", per: "/mo", sub: "Billed $39.99/yr · save 52%" },
+    monthly: { price: "$6.99", per: "/mo", sub: "Billed monthly" },
     cta: "Start free trial",
   },
 ];
@@ -312,7 +312,7 @@ export default function SubscriptionPage() {
           <div className="mx-auto flex max-w-7xl flex-col items-start gap-3 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="font-[family-name:var(--font-heading)] font-bold text-[var(--cream)]">Start your free trial. On us for 7 days.</div>
-              <div className="text-sm text-[var(--text-body)]">Then $3.33/mo (annual) or $4.99/mo. Cancel anytime.</div>
+              <div className="text-sm text-[var(--text-body)]">Then $3.33/mo (annual) or $6.99/mo. Cancel anytime.</div>
             </div>
             <Link href="/login" className="shrink-0 rounded-full bg-[var(--gold)] px-7 py-3 text-sm font-bold text-[#16221b] transition-colors hover:bg-[var(--gold-bright)]">
               Start free trial
