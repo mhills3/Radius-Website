@@ -3,6 +3,7 @@ import { getAdminAccessRequests } from "./courseAdmin";
 import { getFulfillments } from "./rewards";
 import { getLatestDigest, type Digest } from "./communityDigest";
 import { getDiscSubmissions, groupLeads, pendingLeadCount } from "./discSubmissions";
+import { getBrandMentions } from "./brandMentions";
 
 // Single source of truth for the /admin queue rows AND the nav badge, so the header total and the
 // nav badge can never disagree — both read getAdminQueues().total.
@@ -12,7 +13,7 @@ export type Freshness =
   | { type: "oldest"; ms: number }    // someone's been waiting this long
   | { type: "clear" };                // nothing pending
 
-export type QueueKey = "digest" | "fulfillment" | "removals" | "adminRequests" | "discSubmissions";
+export type QueueKey = "digest" | "fulfillment" | "removals" | "adminRequests" | "discSubmissions" | "mentions";
 
 /** The oldest pending item, summarised for the hub's "Next up:" line. */
 export interface NextUp { title: string; detail: string }
@@ -70,12 +71,13 @@ const tierWord = (t: string[] = []) => (t.includes("gear") && t.includes("bag") 
 const isDomestic = (country?: string) => /^(us|usa|u\.s\.a?\.?|united states( of america)?)$/i.test((country || "").trim());
 
 export async function getAdminQueues(): Promise<AdminQueues> {
-  const [removalReqs, fulfillments, latestDigest, adminReqs, discSubs] = await Promise.all([
+  const [removalReqs, fulfillments, latestDigest, adminReqs, discSubs, mentions] = await Promise.all([
     getRemovalRequests().catch(() => []),
     getFulfillments().catch(() => []),
     getLatestDigest().catch(() => null),
     getAdminAccessRequests().catch(() => []),
     getDiscSubmissions().catch(() => []),
+    getBrandMentions().catch(() => []),
   ]);
   const now = Date.now();
 
@@ -128,18 +130,28 @@ export async function getAdminQueues(): Promise<AdminQueues> {
     detail: oldestLead.submitterCount > 1 ? `submitted by ${oldestLead.submitterCount} players` : `submitted by ${oldestLead.submissions[0]?.submittedByName || "a player"}`,
   };
 
+  // Brand mentions — badge counts NEW + HIGH confidence only ("maybe" rows never nag).
+  const newMentions = mentions.filter((m) => m.status === "new" && m.confidence === "high");
+  const mentionTimes = newMentions.map((m) => m.createdAt || m.foundAt).filter((t): t is number => t != null);
+  const latestMention = [...newMentions].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))[0];
+  const mentionNext: NextUp | undefined = latestMention && {
+    title: latestMention.title || latestMention.snippet?.slice(0, 60) || latestMention.url,
+    detail: [latestMention.venue || latestMention.source, latestMention.author && `by ${latestMention.author}`].filter(Boolean).join(" · "),
+  };
+
   const queues: QueueMeta[] = [
     { key: "digest", count: digestCount, freshness: digestLastRun ? { type: "lastRun", ms: digestLastRun } : { type: "clear" }, newThisWeek: 0, newToday: 0, newSinceFriday: 0 },
     { key: "fulfillment", count: pendingFul.length, freshness: freshnessOf(fulTimes), nextUp: fulNext, ...arrivals(fulTimes, now) },
     { key: "removals", count: pendingRemovals.length, freshness: freshnessOf(removalTimes), nextUp: removalNext, ...arrivals(removalTimes, now) },
     { key: "adminRequests", count: pendingAdmin.length, freshness: freshnessOf(adminTimes), nextUp: adminNext, ...arrivals(adminTimes, now) },
     { key: "discSubmissions", count: discCount, freshness: freshnessOf(discTimes), nextUp: discNext, ...arrivals(discTimes, now) },
+    { key: "mentions", count: newMentions.length, freshness: freshnessOf(mentionTimes), nextUp: mentionNext, ...arrivals(mentionTimes, now) },
   ];
   // Trending Issues is tracked manually — it doesn't contribute to the nav badge / "open" total, and its
   // hub row has no count. The other queues still drive the badge.
   const actionable = queues.filter((q) => q.key !== "digest");
   const total = actionable.reduce((n, q) => n + q.count, 0);
   const sinceFriday = actionable.reduce((n, q) => n + q.newSinceFriday, 0);
-  const oldestAll = oldestOf([...removalTimes, ...fulTimes, ...adminTimes, ...discTimes]);
+  const oldestAll = oldestOf([...removalTimes, ...fulTimes, ...adminTimes, ...discTimes, ...mentionTimes]);
   return { queues, total, sinceFriday, oldestMs: Number.isFinite(oldestAll) ? oldestAll : null };
 }

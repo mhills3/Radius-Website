@@ -24,6 +24,7 @@ const DEFS: Record<QueueMeta["key"], { name: string; blurb: string; href: string
   removals: { name: "Course Removals", blurb: "Pull courses from the directory", href: "/admin/removals", icon: "🗑️", unit: ["item", "items"] },
   adminRequests: { name: "Admin Requests", blurb: "Grant course edit rights", href: "/admin/admin-requests", icon: "🔑", unit: ["item", "items"] },
   discSubmissions: { name: "Disc Submissions", blurb: "Custom discs → catalog leads", href: "/admin/disc-submissions", icon: "🥏", unit: ["lead", "leads"] },
+  mentions: { name: "Brand Mentions", blurb: "Radius spotted on Reddit & around the web", href: "/admin/mentions", icon: "📣", unit: ["mention", "mentions"] },
   digest: { name: "Trending Issues", blurb: "Weekly digest of what the community is talking about", href: "/admin/digest", icon: "💬", unit: ["item", "items"] },
 };
 
