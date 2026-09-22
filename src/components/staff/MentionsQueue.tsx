@@ -66,7 +66,22 @@ export default function MentionsQueue() {
     >
       {mentions === null ? <Spinner /> : loadErr ? <LoadError /> : (
         <>
-          <div className="mt-8"><Segmented value={tab} onChange={setTab} options={[{ k: "new", label: "New", n: fresh.length }, { k: "all", label: "All", n: all.length }]} /></div>
+          <div className="mt-8 flex items-center justify-between gap-4">
+            <Segmented value={tab} onChange={setTab} options={[{ k: "new", label: "New", n: fresh.length }, { k: "all", label: "All", n: all.length }]} />
+            {fresh.length > 0 && (
+              <button
+                onClick={async () => {
+                  // Optimistic sweep; anything that fails stays "new" for the next pass.
+                  const ids = fresh.map((m) => m.id);
+                  setMentions((ms) => (ms || []).map((m) => (m.status === "new" ? { ...m, status: "seen" } : m)));
+                  await Promise.allSettled(ids.map((id) => setMentionStatus(id, "seen")));
+                }}
+                className="shrink-0 rounded-full bg-white/[0.06] px-4 py-2 text-[13px] font-semibold text-[var(--cream)] transition-colors hover:bg-white/[0.12]"
+              >
+                Mark all seen
+              </button>
+            )}
+          </div>
           {shown.length === 0 ? (
             <Empty emoji="🔭" title={tab === "new" ? "Nothing new out there" : "No mentions collected yet"} sub={tab === "new" ? "The sweep runs every 2 hours." : "Rows appear as soon as the sweep finds the first mention."} />
           ) : tab === "new" ? (
