@@ -40,6 +40,7 @@ function RemovalCard({ r, onResolved }: { r: RemovalRequest; onResolved: (id: st
   // claimed list (the trigger snapshots + ownership-checks each one).
   const layoutScoped = r.scope === "layouts";
   const evLayouts = ev.layouts || [];
+  const liveLayoutCount = evLayouts.filter((l) => !l.missing).length;
 
   const act = async (decision: "approve" | "deny", note: string, override = false) => {
     setBusy(decision === "approve" ? "primary" : "secondary"); setErr(null); setLastNote(note);
@@ -90,7 +91,7 @@ function RemovalCard({ r, onResolved }: { r: RemovalRequest; onResolved: (id: st
       <CardGrid
         left={
           <>
-            <CardTitle title={snap.name || r.courseName} tag={<>{layoutScoped && <Tag tone="info">Layouts only</Tag>}{r.reasonKey ? <Tag>{REASON[r.reasonKey] || r.reasonKey}</Tag> : null}</>} meta={meta} />
+            <CardTitle title={snap.name || r.courseName} tag={<>{layoutScoped ? <Tag tone="info">Layouts only</Tag> : <Tag tone="warn">Entire course</Tag>}{r.reasonKey ? <Tag>{REASON[r.reasonKey] || r.reasonKey}</Tag> : null}</>} meta={meta} />
             <Requester name={r.requesterName} username={r.requesterUsername} email={r.requesterEmail} emailMissing={r.requesterEmailMissing} quote={r.detail} />
           </>
         }
@@ -103,7 +104,7 @@ function RemovalCard({ r, onResolved }: { r: RemovalRequest; onResolved: (id: st
             </Fact>
             {layoutScoped && (
               <Fact icon="🗺️" tone="info">
-                Approve removes <b className="text-[var(--cream)]">{evLayouts.filter((l) => !l.missing).length}</b> layout{evLayouts.filter((l) => !l.missing).length === 1 ? "" : "s"} — the course itself stays live
+                Approve removes <b className="text-[var(--cream)]">{liveLayoutCount}</b> layout{liveLayoutCount === 1 ? "" : "s"} — the course itself stays live
               </Fact>
             )}
             {r.requesterVerified === false && (
@@ -128,7 +129,7 @@ function RemovalCard({ r, onResolved }: { r: RemovalRequest; onResolved: (id: st
         }
         right={
           <ActionRail
-            primary={{ label: "Approve", busyLabel: "Approving…", onClick: (n) => act("approve", n), disabled: errored }}
+            primary={{ label: layoutScoped ? `Approve · ${liveLayoutCount} layout${liveLayoutCount === 1 ? "" : "s"}` : "Approve · entire course", busyLabel: "Approving…", onClick: (n) => act("approve", n), disabled: errored }}
             secondary={{ label: "Deny", busyLabel: "Denying…", onClick: (n) => act("deny", n) }}
             busy={busy}
             note="Note — attached to the decision"
@@ -208,6 +209,9 @@ export default function RemovalQueue() {
     });
   const byOldest = (a: RemovalRequest, b: RemovalRequest) => (a.createdAt ?? Infinity) - (b.createdAt ?? Infinity);
   const pending = (requests || []).filter((r) => r.status === "pending").sort(byOldest);
+  // Whole-course requests first — they're the big hammer, so they get looked at as a group.
+  const pendingCourse = pending.filter((r) => r.scope !== "layouts");
+  const pendingLayouts = pending.filter((r) => r.scope === "layouts");
   const invalid = (requests || []).filter((r) => r.status === "invalid").sort(byOldest);
   const errored = (requests || []).filter((r) => r.status === "error").sort(byOldest);
   const openCount = pending.length + invalid.length + errored.length;
@@ -224,8 +228,10 @@ export default function RemovalQueue() {
             <Empty emoji="✅" title="Queue is clear" sub="No pending removal requests right now." />
           ) : (
             <div className="mt-8 space-y-5">
-              {pending.length > 0 && <SectionLabel>{pending.length} pending</SectionLabel>}
-              {pending.map((r) => <RemovalCard key={r.id} r={r} onResolved={onResolved} />)}
+              {pendingCourse.length > 0 && <SectionLabel tone="warn">{pendingCourse.length} entire course — approve hides the whole course</SectionLabel>}
+              {pendingCourse.map((r) => <RemovalCard key={r.id} r={r} onResolved={onResolved} />)}
+              {pendingLayouts.length > 0 && <SectionLabel tone="info" className={pendingCourse.length > 0 ? "pt-6" : ""}>{pendingLayouts.length} layouts only — the course stays live</SectionLabel>}
+              {pendingLayouts.map((r) => <RemovalCard key={r.id} r={r} onResolved={onResolved} />)}
               {invalid.length > 0 && (
                 <>
                   <SectionLabel tone="bad" className="pt-6">{invalid.length} flagged invalid — needs attention</SectionLabel>
