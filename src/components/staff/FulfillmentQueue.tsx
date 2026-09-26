@@ -40,6 +40,28 @@ function labelBlock(r: Fulfillment): string {
 
 const input = "w-full rounded-xl border border-[var(--hair)] bg-white/[0.03] px-3.5 py-2.5 text-[14px] text-[var(--cream)] placeholder-[var(--sage-dim)] outline-none focus:border-[var(--gold)]/50";
 
+// Pirate Ship "Upload a Spreadsheet" import — these headers match their template, so the
+// column mapping auto-detects. Order ID carries the claim id for tracing a label back here.
+function pirateShipCsv(rows: Fulfillment[]): string {
+  const esc = (v?: string | number) => { const s = String(v ?? "").replace(/\r?\n/g, " ").trim(); return /[",]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const header = ["Name", "Email", "Phone", "Address 1", "Address 2", "City", "State", "Zipcode", "Country", "Order ID", "Reward"];
+  const lines = rows.map((r) => [
+    esc(r.fullName), esc(r.email), esc(r.phone), esc(r.address1), esc(r.address2),
+    esc(r.city), esc(r.region), esc(r.postcode), esc(r.country || "United States"),
+    esc(r.id), esc(tierText(r.tiers)),
+  ].join(","));
+  return [header.join(","), ...lines].join("\n");
+}
+
+function downloadCsv(rows: Fulfillment[], label: string) {
+  const blob = new Blob([pirateShipCsv(rows)], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `radius-fulfillment-${label.replace(/[^A-Za-z0-9-]+/g, "-").toLowerCase()}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 function ClaimCard({ r, onShipped, onRejected }: { r: Fulfillment; onShipped: (id: string, tracking: string, note: string) => void; onRejected: (id: string, reason: string) => void }) {
   const [mode, setMode] = useState<"idle" | "ship" | "reject">("idle");
   const [tracking, setTracking] = useState("");
@@ -274,7 +296,18 @@ export default function FulfillmentQueue() {
         <Empty emoji={status === "pending" ? "✅" : status === "rejected" ? "🚫" : "📦"} title={<>{status === "pending" ? "Nothing to ship" : status === "rejected" ? "No rejected claims" : "Nothing here"} <span className="text-[var(--sage-dim)]">· {periodLabel}{tierLabel}</span></>} />
       ) : (
         <div className="mt-10 space-y-5">
-          <SectionLabel>{shown.length} {noun} · {periodLabel}{tierLabel}</SectionLabel>
+          <div className="flex items-center justify-between gap-4">
+            <SectionLabel>{shown.length} {noun} · {periodLabel}{tierLabel}</SectionLabel>
+            {status === "pending" && shown.length > 0 && (
+              <button
+                onClick={() => downloadCsv(shown, periodLabel + tierLabel)}
+                className="rounded-full bg-white/[0.05] px-4 py-2 text-[13px] font-bold text-[var(--cream)] transition-colors hover:bg-white/[0.09]"
+                title="CSV in Pirate Ship's spreadsheet-upload format — every claim currently shown"
+              >
+                ⬇ Pirate Ship CSV · {shown.length}
+              </button>
+            )}
+          </div>
           {shown.map((r) => <ClaimCard key={r.id} r={r} onShipped={onShipped} onRejected={onRejected} />)}
         </div>
       )}
