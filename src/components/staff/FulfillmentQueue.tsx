@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getFulfillments, markFulfillmentShipped, rejectFulfillment, type Fulfillment } from "@/lib/rewards";
+import { getFulfillments, markFulfillmentShipped, rejectFulfillment, type Fulfillment, type Tier } from "@/lib/rewards";
 import { parseResolveError } from "@/lib/courseRemoval";
 import { QueuePage, SectionLabel, Card, CardGrid, CardTitle, Tag, Fact, Spinner, Empty, Segmented, BTN, TONE } from "./QueueShell";
 
@@ -40,6 +40,20 @@ function labelBlock(r: Fulfillment): string {
 
 const input = "w-full rounded-xl border border-[var(--hair)] bg-white/[0.03] px-3.5 py-2.5 text-[14px] text-[var(--cream)] placeholder-[var(--sage-dim)] outline-none focus:border-[var(--gold)]/50";
 
+// One label per person: duplicate claims (same account or same email) collapse into the
+// first row with their tiers merged, so nobody gets two boxes. Same-name-different-account
+// is NOT merged — that can be two real people; the queue tags it for review instead.
+function dedupeForExport(rows: Fulfillment[]): Fulfillment[] {
+  const byKey = new Map<string, Fulfillment>();
+  for (const r of rows) {
+    const key = r.userId || (r.email || "").trim().toLowerCase() || r.id;
+    const prior = byKey.get(key);
+    if (!prior) byKey.set(key, { ...r });
+    else prior.tiers = Array.from(new Set([...(prior.tiers || []), ...(r.tiers || [])])) as Tier[];
+  }
+  return Array.from(byKey.values());
+}
+
 // Pirate Ship "Upload a Spreadsheet" import — these headers match their template, so the
 // column mapping auto-detects. Order ID carries the claim id for tracing a label back here.
 function pirateShipCsv(rows: Fulfillment[]): string {
@@ -54,7 +68,7 @@ function pirateShipCsv(rows: Fulfillment[]): string {
 }
 
 function downloadCsv(rows: Fulfillment[], label: string) {
-  const blob = new Blob([pirateShipCsv(rows)], { type: "text/csv;charset=utf-8" });
+  const blob = new Blob([pirateShipCsv(dedupeForExport(rows))], { type: "text/csv;charset=utf-8" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = `radius-fulfillment-${label.replace(/[^A-Za-z0-9-]+/g, "-").toLowerCase()}.csv`;
@@ -62,7 +76,7 @@ function downloadCsv(rows: Fulfillment[], label: string) {
   URL.revokeObjectURL(a.href);
 }
 
-function ClaimCard({ r, onShipped, onRejected }: { r: Fulfillment; onShipped: (id: string, tracking: string, note: string) => void; onRejected: (id: string, reason: string) => void }) {
+function ClaimCard({ r, dup, onShipped, onRejected }: { r: Fulfillment; dup?: "hard" | "name" | null; onShipped: (id: string, tracking: string, note: string) => void; onRejected: (id: string, reason: string) => void }) {
   const [mode, setMode] = useState<"idle" | "ship" | "reject">("idle");
   const [tracking, setTracking] = useState("");
   const [note, setNote] = useState("");
@@ -115,6 +129,8 @@ function ClaimCard({ r, onShipped, onRejected }: { r: Fulfillment; onShipped: (i
               title={r.fullName || "—"}
               tag={<>
                 <Tag>{tierText(r.tiers)}</Tag>
+                {dup === "hard" && <Tag tone="bad">Duplicate claim</Tag>}
+                {dup === "name" && <Tag tone="warn">Same name — check</Tag>}
                 {shipped && <Tag tone="good">Shipped</Tag>}
                 {rejected && <Tag tone="bad">Rejected</Tag>}
               </>}
@@ -139,6 +155,12 @@ function ClaimCard({ r, onShipped, onRejected }: { r: Fulfillment; onShipped: (i
               </Fact>
             )}
             {r.notes && <Fact icon="📝"><span className="italic">&ldquo;{r.notes}&rdquo;</span></Fact>}
+            {dup === "hard" && !shipped && !rejected && (
+              <Fact icon="⚠️" tone="bad">Another pending claim exists for this same account/email — <b className="text-[var(--cream)]">reject one</b> or they ship twice. The CSV export already collapses them into one label.</Fact>
+            )}
+            {dup === "name" && !shipped && !rejected && (
+              <Fact icon="⚠️" tone="warn">Another pending claim has this exact name on a different account — could be one person double-claiming or two people sharing a name. Check before shipping both.</Fact>
+            )}
             {!shipped && !rejected && r.submittedAt != null && (() => {
               const due = quarterEndMs(yearOf(r.submittedAt), quarterOf(r.submittedAt) as 1 | 2 | 3 | 4);
               return <Fact icon="⏳" tone={dueTone(due)}>Due <b className="text-[var(--cream)]">{fmtDue(due)}</b> · Q{quarterOf(r.submittedAt)} batch · {dueText(due)}</Fact>;
@@ -222,6 +244,21 @@ export default function FulfillmentQueue() {
   const hasTier = (r: Fulfillment, t: "gear" | "bag") => (r.tiers || []).includes(t);
   const matchTier = (r: Fulfillment) => tier === "all" ? true : tier === "both" ? hasTier(r, "gear") && hasTier(r, "bag") : hasTier(r, tier);
 
+  // Duplicate detection across ALL pending claims (ignores filters — a dupe hiding in
+  // another tier/quarter still matters). Same account or email = same person, hard flag;
+  // same exact name on different accounts = maybe, soft flag.
+  const pendingAll = all.filter(isPending);
+  const keyOf = (r: Fulfillment) => r.userId || (r.email || "").trim().toLowerCase();
+  const nameOf = (r: Fulfillment) => (r.fullName || "").trim().toLowerCase();
+  const keyCounts = new Map<string, number>();
+  const nameCounts = new Map<string, number>();
+  for (const r of pendingAll) {
+    const k = keyOf(r); if (k) keyCounts.set(k, (keyCounts.get(k) || 0) + 1);
+    const n = nameOf(r); if (n) nameCounts.set(n, (nameCounts.get(n) || 0) + 1);
+  }
+  const dupOf = (r: Fulfillment): "hard" | "name" | null =>
+    !isPending(r) ? null : (keyCounts.get(keyOf(r)) || 0) > 1 ? "hard" : (nameCounts.get(nameOf(r)) || 0) > 1 ? "name" : null;
+
   // Oldest first for the pending queue (clear the old ones); newest first for history.
   const shown = all
     .filter((r) => matchStatus(r) && matchYear(r) && matchQuarter(r) && matchTier(r))
@@ -304,11 +341,11 @@ export default function FulfillmentQueue() {
                 className="rounded-full bg-white/[0.05] px-4 py-2 text-[13px] font-bold text-[var(--cream)] transition-colors hover:bg-white/[0.09]"
                 title="CSV in Pirate Ship's spreadsheet-upload format — every claim currently shown"
               >
-                ⬇ Pirate Ship CSV · {shown.length}
+                ⬇ Pirate Ship CSV · {dedupeForExport(shown).length}
               </button>
             )}
           </div>
-          {shown.map((r) => <ClaimCard key={r.id} r={r} onShipped={onShipped} onRejected={onRejected} />)}
+          {shown.map((r) => <ClaimCard key={r.id} r={r} dup={dupOf(r)} onShipped={onShipped} onRejected={onRejected} />)}
         </div>
       )}
     </QueuePage>
