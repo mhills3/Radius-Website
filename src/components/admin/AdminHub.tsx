@@ -5,6 +5,7 @@ import Link from "next/link";
 import { getAdminQueues, type AdminQueues, type QueueMeta } from "@/lib/adminQueues";
 import GrowthStrip from "@/components/growth/GrowthStrip";
 import PulsePanel from "@/components/admin/PulsePanel";
+import StabilityPanel from "@/components/admin/StabilityPanel";
 import DataRoomCard from "@/components/admin/DataRoomCard";
 import OpportunityBoard from "@/components/admin/OpportunityBoard";
 import type { GrowthData } from "@/lib/growth";
@@ -178,6 +179,7 @@ export default function AdminHub({ growth }: { growth: GrowthData }) {
         </div>
         <GrowthStrip data={growth} />
         <PulsePanel />
+        <div className="mt-5"><StabilityPanel /></div>
       </div>
 
       {/* ===== opportunity board · goals, milestones & monetization ===== */}
