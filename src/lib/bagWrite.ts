@@ -227,7 +227,7 @@ export function moveToCollection(uid: string, discId: string, discName: string, 
   return enqueue(async () => {
     const { ref, data, bag, bagsCtx } = await readCurrent(uid, bagId);
     const row = bag.find((r) => r?.id === discId);
-    await setDoc(ref, { ...bagFields(bagsCtx, bag.filter((r) => r?.id !== discId), data), ...wearMapPatch(data, row, discName), myCollection: arrayUnion(discName), lostDiscs: arrayRemove(discName), deletedBagDiscIds: arrayUnion(discId), lastUpdated: Date.now() }, { merge: true });
+    await setDoc(ref, { ...bagFields(bagsCtx, bag.filter((r) => r?.id !== discId), data), ...wearMapPatch(data, row, discName), myCollection: arrayUnion(discName), lostDiscs: arrayRemove(discName), deletedBagDiscIds: arrayUnion(discId), collectionLostUpdated: Date.now(), lastUpdated: Date.now() }, { merge: true });
   });
 }
 
@@ -236,7 +236,7 @@ export function markAsLost(uid: string, discId: string, discName: string, bagId?
   return enqueue(async () => {
     const { ref, data, bag, bagsCtx } = await readCurrent(uid, bagId);
     const row = bag.find((r) => r?.id === discId);
-    await setDoc(ref, { ...bagFields(bagsCtx, bag.filter((r) => r?.id !== discId), data), ...wearMapPatch(data, row, discName), lostDiscs: arrayUnion(discName), myCollection: arrayRemove(discName), deletedBagDiscIds: arrayUnion(discId), lastUpdated: Date.now() }, { merge: true });
+    await setDoc(ref, { ...bagFields(bagsCtx, bag.filter((r) => r?.id !== discId), data), ...wearMapPatch(data, row, discName), lostDiscs: arrayUnion(discName), myCollection: arrayRemove(discName), deletedBagDiscIds: arrayUnion(discId), collectionLostUpdated: Date.now(), lastUpdated: Date.now() }, { merge: true });
   });
 }
 
@@ -248,7 +248,7 @@ export function recoverToBag(uid: string, raw: RawDisc, discName: string, bagId?
     // keeps the condition + custom flight numbers it left with (see wearMapPatch).
     const savedWear = decodeJsonObject(data.discWearJSON)[discName];
     const entry = savedWear && typeof savedWear === "object" ? sanitizeEntry({ ...raw, wear: savedWear }) : raw;
-    await setDoc(ref, { ...bagFields(bagsCtx, [...bag, entry], data), myCollection: arrayRemove(discName), lostDiscs: arrayRemove(discName), lastUpdated: Date.now() }, { merge: true });
+    await setDoc(ref, { ...bagFields(bagsCtx, [...bag, entry], data), myCollection: arrayRemove(discName), lostDiscs: arrayRemove(discName), collectionLostUpdated: Date.now(), lastUpdated: Date.now() }, { merge: true });
   });
 }
 
@@ -256,7 +256,7 @@ export function recoverToBag(uid: string, raw: RawDisc, discName: string, bagId?
 export function deleteStoredDisc(uid: string, discName: string): Promise<void> {
   return enqueue(async () => {
     const cid = await resolveCanonicalIdStrict(uid);
-    await setDoc(dataDoc(cid), { myCollection: arrayRemove(discName), lostDiscs: arrayRemove(discName), lastUpdated: Date.now() }, { merge: true });
+    await setDoc(dataDoc(cid), { myCollection: arrayRemove(discName), lostDiscs: arrayRemove(discName), collectionLostUpdated: Date.now(), lastUpdated: Date.now() }, { merge: true });
   });
 }
 
@@ -316,6 +316,8 @@ export function addCustomDisc(uid: string, custom: CustomDiscInput, dest: "bag" 
       if (newEntry) Object.assign(payload, bagFields(bagsCtx, [...bag, newEntry], data));
     } else {
       payload.myCollection = arrayUnion(custom.name);
+      // The lists' own LWW clock (cross-platform) — see the move functions.
+      payload.collectionLostUpdated = Date.now();
     }
     await setDoc(ref, payload, { merge: true });
   });
