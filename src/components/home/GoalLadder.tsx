@@ -14,7 +14,7 @@ const COMPLETED = [
   {
     goal: 10_000,
     label: "10,000",
-    story: "called for end of 2026 — hit September, six months after launch",
+    story: "hit Sept 2026 — three months early",
   },
 ];
 const ACTIVE = { goal: 50_000, label: "50,000", deadline: "end of 2027" };
@@ -99,7 +99,6 @@ export default function GoalLadder({ playerCount }: { playerCount: number }) {
   const celebrating = phase === "celebrate" || phase === "stamp";
   const oldCount = useCountUp(COMPLETED[0].goal, phase === "celebrate" && animated.current, 1300);
   const activePct = Math.min(100, (playerCount / ACTIVE.goal) * 100);
-  const liveCount = useCountUp(playerCount, phase === "settled" && animated.current, 1100);
 
   if (phase === "init") {
     // One frame before the effect runs — render nothing moving.
@@ -124,8 +123,8 @@ export default function GoalLadder({ playerCount }: { playerCount: number }) {
             />
             {phase === "stamp" && <Confetti />}
           </div>
-          <p className={`mt-2.5 text-sm font-semibold transition-opacity duration-300 ${phase === "stamp" ? "opacity-100" : "opacity-0"}`} style={{ color: GOLD_TEXT }}>
-            ✓ Promised by end of 2026 — reached in September, six months after launch.
+          <p className={`mt-2.5 truncate text-sm font-semibold transition-opacity duration-300 ${phase === "stamp" ? "opacity-100" : "opacity-0"}`} style={{ color: GOLD_TEXT }}>
+            ✓ Called for end of 2026 — hit three months early.
           </p>
         </div>
       )}
@@ -134,21 +133,17 @@ export default function GoalLadder({ playerCount }: { playerCount: number }) {
       {phase === "settled" && (
         <div className={animated.current ? "animate-[goal-rise_600ms_cubic-bezier(0.16,1,0.3,1)]" : undefined}>
           {COMPLETED.map((m) => (
-            <div key={m.goal} className="flex items-center gap-2.5 border-b border-black/[0.07] pb-3">
-              <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#16221b] text-[11px] font-bold text-[var(--gold)]">✓</span>
-              <div className="min-w-0">
-                <span className="font-[family-name:var(--font-heading)] text-sm font-extrabold tracking-tight">{m.label}</span>
-                <span className="ml-2 text-[13px] text-[#6b7a70]">{m.story}</span>
-              </div>
+            <div key={m.goal} className="flex min-w-0 items-center gap-2 whitespace-nowrap">
+              <span className="grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full bg-[#16221b] text-[10px] font-bold leading-none text-[var(--gold)]">✓</span>
+              <span className="font-[family-name:var(--font-heading)] text-sm font-extrabold tracking-tight">{m.label}</span>
+              <span className="truncate text-sm text-[#6b7a70]">{m.story}</span>
             </div>
           ))}
 
-          <div className="mt-4">
-            <div className="flex items-baseline justify-between">
+          <div className="mt-5">
+            <div className="flex items-baseline justify-between whitespace-nowrap">
               <div className="font-[family-name:var(--font-heading)] text-sm font-extrabold tracking-tight">Next stop: {ACTIVE.label}</div>
-              <div className="text-sm font-bold" style={{ color: GOLD_TEXT }}>
-                {(animated.current ? liveCount : playerCount).toLocaleString()} · {Math.round(activePct)}% there
-              </div>
+              <div className="text-sm font-bold" style={{ color: GOLD_TEXT }}>{Math.round(activePct)}% there</div>
             </div>
             <div
               role="progressbar"
@@ -163,7 +158,7 @@ export default function GoalLadder({ playerCount }: { playerCount: number }) {
                 style={{ width: `${activePct}%` }}
               />
             </div>
-            <p className="mt-2.5 text-sm text-[#6b7a70]">{ACTIVE.goal.toLocaleString()} disc golfers by the {ACTIVE.deadline} — every player counts.</p>
+            <p className="mt-2.5 truncate text-sm text-[#6b7a70]">{ACTIVE.goal.toLocaleString()} by the {ACTIVE.deadline} — every player counts.</p>
           </div>
           <style>{`@keyframes goal-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }`}</style>
         </div>
