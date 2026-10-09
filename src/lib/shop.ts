@@ -45,6 +45,21 @@ export const CATEGORY_LABEL: Record<ShopCategory, string> = { apparel: "Apparel"
 // before launch; photos land in /public/shop/.
 export const PRODUCTS: ShopProduct[] = [
   {
+    slug: "rope-hat",
+    name: "Rope Hat",
+    category: "apparel",
+    price: 32,
+    blurb: "Radius rope hat, snapback",
+    description: "The Radius hat from the builder boxes — rope front, snapback, one size. Packed and shipped by the person who built the app.",
+    images: [],
+    variants: [{ color: "default", colorHex: "#F4F1E8", size: "OS", sku: "ROPE-HAT", stock: 10 }],
+    details: [
+      { label: "Fit", value: "One size, snapback" },
+      { label: "Ships", value: "USPS, flat $5 US" },
+    ],
+    relatedSlugs: ["lobster-disc", "sticker-pack"],
+  },
+  {
     slug: "lobster-disc",
     name: "Lobster Disc",
     category: "discs",
@@ -57,9 +72,26 @@ export const PRODUCTS: ShopProduct[] = [
       { label: "Stamp", value: "Radius lobster" },
       { label: "Ships", value: "USPS, flat $5 US" },
     ],
-    relatedSlugs: [],
+    relatedSlugs: ["rope-hat", "sticker-pack"],
+  },
+  {
+    slug: "sticker-pack",
+    name: "Sticker Pack",
+    category: "accessories",
+    price: 8,
+    blurb: "Weatherproof Radius vinyl",
+    description: "Weatherproof vinyl Radius stickers — bag, cart, car, basket. The same ones that ride along in every builder box.",
+    images: [],
+    variants: [{ color: "default", colorHex: "#E7B45F", size: "OS", sku: "STICKER-PACK", stock: 30 }],
+    details: [
+      { label: "Material", value: "Weatherproof vinyl" },
+      { label: "Ships", value: "USPS, flat $5 US" },
+    ],
+    relatedSlugs: ["lobster-disc", "rope-hat"],
   },
 ];
+// Stock counts above (hat 10, disc 25, stickers 30) are placeholders —
+// Michael confirms real counts before launch; they cap the quantity steppers.
 
 export const productBySlug = (slug: string) => PRODUCTS.find((p) => p.slug === slug);
 export const totalStock = (p: ShopProduct) => p.variants.reduce((n, v) => n + v.stock, 0);
