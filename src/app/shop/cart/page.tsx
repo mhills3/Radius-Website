@@ -69,11 +69,11 @@ export default function CartPage() {
         <div className="mx-auto max-w-[1040px] px-6 sm:px-8">
           <div className="mx-auto mt-14 max-w-[480px] text-center">
             <div className="mx-auto flex h-36 w-36 items-center justify-center rounded-full border border-[var(--shop-hair)]" style={{ background: TILE_BG }}>
-              <svg width="88" height="88" viewBox="0 0 200 200" fill="none" stroke="var(--shop-gold-soft)" strokeOpacity=".6" strokeWidth="3" aria-hidden="true">
-                <ellipse cx="100" cy="104" rx="66" ry="58" /><ellipse cx="100" cy="100" rx="66" ry="58" /><ellipse cx="100" cy="100" rx="26" ry="22" />
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--shop-gold-soft)" strokeOpacity=".75" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" /><path d="M3 6h18" /><path d="M16 10a4 4 0 0 1-8 0" />
               </svg>
             </div>
-            <h2 className="mt-7 font-[family-name:var(--font-heading)] text-[24px] font-bold tracking-[-0.02em] text-[var(--shop-cream)]">Empty cart, full backswing.</h2>
+            <h2 className="mt-7 font-[family-name:var(--font-heading)] text-[24px] font-bold tracking-[-0.02em] text-[var(--shop-cream)]">Your cart is empty.</h2>
             <p className="mx-auto mt-2.5 max-w-[360px] text-[14.5px] leading-relaxed text-[var(--shop-muted)]">The runs are small and they don&apos;t come back. Grab yours while it&apos;s here.</p>
             <Link href="/shop" className="mt-7 inline-flex h-[52px] items-center rounded-2xl bg-[var(--shop-gold)] px-7 font-[family-name:var(--font-heading)] text-[15px] font-bold text-[#1C1400] shadow-[0_10px_32px_rgba(215,160,0,.22)] transition-colors hover:bg-[var(--shop-gold-soft)]">
               Browse the shop
