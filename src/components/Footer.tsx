@@ -17,6 +17,15 @@ const COLUMNS: { heading: string; links: { label: string; href: string; external
     ],
   },
   {
+    heading: "Shop",
+    links: [
+      { label: "Apparel", href: "/shop?category=apparel" },
+      { label: "Discs", href: "/shop?category=discs" },
+      { label: "Accessories", href: "/shop?category=accessories" },
+      { label: "Builder rewards", href: "/rewards" },
+    ],
+  },
+  {
     heading: "Radius",
     links: [
       { label: "Features", href: "/features" },
@@ -68,7 +77,7 @@ export default function Footer() {
   return (
     <footer className="border-t border-white/5 bg-[var(--bg-deep)]">
       <div className="mx-auto max-w-7xl px-6 py-16">
-        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.5fr_repeat(4,1fr)]">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.5fr_repeat(5,1fr)]">
           {/* brand + app */}
           <div>
             {/* Footer logo is the subtle entrance to the internal Growth page. */}

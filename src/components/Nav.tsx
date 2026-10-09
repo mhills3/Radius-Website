@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import Logo from "@/components/Logo";
 import { useAuth } from "@/components/AuthProvider";
 import NotificationBell from "@/components/NotificationBell";
+import CartButton from "@/components/shop/CartButton";
 import { getAdminQueues } from "@/lib/adminQueues";
 
 const APP_STORE = "https://apps.apple.com/us/app/radius-disc-golf/id6760574186";
@@ -16,6 +17,7 @@ const NAV_LINKS = [
   { href: "/courses", label: "Courses" },
   { href: "/community", label: "Community" },
   { href: "/subscription", label: "Subscription" },
+  { href: "/shop", label: "Shop" },
 ];
 
 function AppleIcon() {
@@ -70,7 +72,7 @@ export default function Nav() {
   // settles into a DARK frosted bar on scroll (unlike marketing pages, which settle into the cream bar).
   // The state/city/mine/new course sub-pages are still light, so they keep the default nav.
   const coursesHero = pathname === "/courses" || (pathname.startsWith("/courses/") && !/^\/courses\/(state|city|mine|new)(\/|$)/.test(pathname));
-  const darkPage = pathname === "/dashboard" || pathname === "/bag" || pathname === "/notifications" || pathname === "/community" || pathname.startsWith("/community/") || pathname === "/courses/mine" || pathname === "/courses/new" || pathname.startsWith("/u/") || pathname.startsWith("/leagues") || pathname.startsWith("/admin") || pathname.startsWith("/rewards"); // app surfaces are dark
+  const darkPage = pathname === "/dashboard" || pathname === "/bag" || pathname === "/notifications" || pathname === "/community" || pathname.startsWith("/community/") || pathname === "/courses/mine" || pathname === "/courses/new" || pathname.startsWith("/u/") || pathname.startsWith("/leagues") || pathname.startsWith("/admin") || pathname.startsWith("/rewards") || pathname.startsWith("/shop"); // app surfaces are dark
   const atHeroTop = (darkHeroPage || coursesHero) && !scrolled;
   const onDark = darkPage || coursesHero || atHeroTop; // cream text/logo when over the dark hero photo or on dark app surfaces
   const onDarkSettle = darkPage || (coursesHero && scrolled); // dark frosted bar
@@ -129,6 +131,7 @@ export default function Nav() {
               {l.href === "/admin" && adminPending > 0 && <span className="grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[var(--gold)] px-1 text-[10px] font-bold text-[#141B16]">{adminPending}</span>}
             </Link>
           ))}
+          {pathname.startsWith("/shop") && <span className="ml-2"><CartButton /></span>}
           {user ? (
             <div className="ml-2 flex items-center gap-1">
             <NotificationBell onDark={onDark} />
