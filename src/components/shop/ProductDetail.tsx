@@ -203,7 +203,10 @@ export default function ProductDetail({ product }: { product: ShopProduct }) {
               {added ? "Added to cart ✓" : !selected && axes ? "Choose your options" : `Add to cart — $${total}`}
             </button>
           </div>
-          <p className="mt-2.5 text-[12px] text-[var(--shop-dim)]">Preview build — checkout switches on at launch.</p>
+          <p className="mt-2.5 text-[12px] text-[var(--shop-dim)]">
+            Preview build — checkout switches on at launch.
+            {added && <Link href="/shop/cart" className="ml-2 font-semibold text-[var(--shop-gold)] hover:underline">View cart →</Link>}
+          </p>
 
           {product.details.length > 0 && (
             <div className="mt-7 border-t border-[var(--shop-hair)]">

@@ -132,3 +132,19 @@ export function addToCart(line: CartLine): void {
 export function clearCart(): void {
   try { localStorage.removeItem(CART_KEY); window.dispatchEvent(new Event("radius-cart")); } catch { /* ignore */ }
 }
+/** Set a line's quantity; 0 or less removes the line. */
+export function updateCartLine(sku: string, qty: number): void {
+  try {
+    const cart = readCart().map((l) => (l.sku === sku ? { ...l, qty } : l)).filter((l) => l.qty > 0);
+    localStorage.setItem(CART_KEY, JSON.stringify(cart));
+    window.dispatchEvent(new Event("radius-cart"));
+  } catch { /* ignore */ }
+}
+/** Max purchasable quantity for a sku — the variant's live stock. */
+export function stockForSku(sku: string): number {
+  for (const p of PRODUCTS) for (const v of p.variants) if (v.sku === sku) return v.stock;
+  return 1;
+}
+export function productForSku(sku: string): ShopProduct | undefined {
+  return PRODUCTS.find((p) => p.variants.some((v) => v.sku === sku));
+}
