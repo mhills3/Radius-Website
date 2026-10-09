@@ -26,21 +26,8 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
             Wear it. Throw it. <span className="text-[var(--shop-gold)]">Earn it.</span>
           </h1>
           <p className="mx-auto mt-5 max-w-[540px] text-[15px] leading-[1.55] text-[var(--shop-muted)] sm:text-[16.5px]">
-            Small-run kit for players who log every throw. Stamped and packed by hand in Massachusetts.
+            Small-run kit for players who log every throw. Stamped, packed and shipped by hand.
           </p>
-        </div>
-      </section>
-
-      {/* trust strip — only claims that are true today */}
-      <section className="border-b border-[var(--shop-hair)] bg-[rgba(252,249,239,.022)]">
-        <div className="mx-auto flex min-h-[58px] max-w-[1200px] flex-wrap items-center justify-center gap-x-3.5 gap-y-1 px-6 py-2 text-[13px] text-[var(--shop-muted)] sm:px-8">
-          {["Packed by hand in Beverly, MA", "Small runs on purpose", "Builder rewards ship free, always"].map((t, i) => (
-            <span key={t} className="inline-flex items-center gap-2">
-              {i > 0 && <span className="mr-3.5 text-[var(--shop-dim)]" aria-hidden="true">·</span>}
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--shop-gold)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
-              {t}
-            </span>
-          ))}
         </div>
       </section>
 
@@ -84,7 +71,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
       <section className="mx-auto mt-16 max-w-[1200px] px-6 sm:mt-[70px] sm:px-8">
         <div className="grid grid-cols-1 gap-8 border-t border-[var(--shop-hair)] pt-10 sm:grid-cols-3 sm:gap-10 sm:pt-[46px]">
           {[
-            { title: "Shipped from Massachusetts", body: "Packed by hand in Beverly and shipped USPS, flat $5 anywhere in the US.", icon: <><rect x="1" y="3" width="15" height="13" /><polygon points="16 8 20 8 23 11 23 16 16 16 16 8" /><circle cx="5.5" cy="18.5" r="2.5" /><circle cx="18.5" cy="18.5" r="2.5" /></> },
+            { title: "Packed by the builder", body: "Every order packed by hand and shipped USPS, flat $5 anywhere in the US.", icon: <><rect x="1" y="3" width="15" height="13" /><polygon points="16 8 20 8 23 11 23 16 16 16 16 8" /><circle cx="5.5" cy="18.5" r="2.5" /><circle cx="18.5" cy="18.5" r="2.5" /></> },
             { title: "Small runs, on purpose", body: "We make a little of each. When a run sells out, the next one looks different.", icon: <><path d="M3 6h18" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></> },
             { title: "Questions? Ask in Discord", body: "Sizing, restocks, order help. Usually answered the same day.", icon: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /> },
           ].map((s) => (

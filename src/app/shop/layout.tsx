@@ -6,7 +6,7 @@ import type { Metadata } from "next";
 // launch = remove robots + the preview copy in ProductDetail, merge, done.
 export const metadata: Metadata = {
   title: "Shop — Radius",
-  description: "Small-run Radius gear, packed and shipped from Massachusetts.",
+  description: "Small-run Radius gear, packed and shipped by hand.",
   robots: { index: false, follow: false },
 };
 
